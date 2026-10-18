@@ -2,7 +2,7 @@ import type { GameState, SimEvent } from '../sim';
 import { audioTuning, sfx, type SfxId } from '../../data/sfx';
 import { onSettingsChange, settings } from '../app/settings';
 import { readArena, WaveWatcher } from '../ui/arena';
-import { cuesForEvent, spatialize, type Cue } from './cues';
+import { cuesForEvent, spatialize, SpellCueTracker, type Cue } from './cues';
 import { mixSfx } from './synth';
 import { VoiceLimiter } from './voices';
 
@@ -41,6 +41,7 @@ export function createAudio(): AudioSystem {
   const limiter = new VoiceLimiter(audioTuning.maxVoices);
   const sources = new Map<number, AudioBufferSourceNode>();
   const waves = new WaveWatcher();
+  const spellCues = new SpellCueTracker();
 
   const applyVolume = (): void => {
     if (!engine) return;
@@ -175,9 +176,16 @@ export function createAudio(): AudioSystem {
 
   return {
     handleEvents(events, state) {
-      if (!engine) return;
+      if (!engine) {
+        // Keep the orb/sigil bookkeeping current even before audio is unlocked.
+        for (const e of events) spellCues.cues(e);
+        return;
+      }
       try {
-        for (const e of events) for (const c of cuesForEvent(e, state)) playCue(c, state);
+        for (const e of events) {
+          for (const c of cuesForEvent(e, state)) playCue(c, state);
+          for (const c of spellCues.cues(e)) playCue(c, state);
+        }
         // Waves have no sim events: they show up as arena state changes.
         const w = waves.update(readArena(state));
         if (w.transition === 'started') play('waveStart');

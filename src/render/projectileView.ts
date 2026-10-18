@@ -1,9 +1,20 @@
 import { Container } from 'pixi.js';
 import type { DamageType } from '../../data/combatTypes';
 import type { GameState, Projectile } from '../sim';
+import type { SpellInstance } from '../sim/weave/runtime/types';
+import { mixRgb } from './ailmentPalette';
 import type { Atlas } from './atlas';
 import { PROJ } from './combatPalette';
-import { boltLook, dominantType, type ElementLook } from './elementLook';
+import {
+  boltLook,
+  dominantType,
+  ECHO_ALPHA,
+  ECHO_TINT,
+  elementType,
+  secondLook,
+  spellLook,
+  type ElementLook,
+} from './elementLook';
 import type { FxLayer, FxParticle } from './particles';
 import { ParticlePool } from './particles';
 
@@ -20,7 +31,10 @@ interface ProjView {
   emberTimer: number;
 }
 
-/** Above this many live projectiles, bolts stop shedding embers in flight. */
+/** What a flying body needs to be drawn: an enemy Projectile or a player Bolt instance. */
+type Flyer = Pick<Projectile, 'id' | 'x' | 'y' | 'prevX' | 'prevY' | 'vx' | 'vy' | 'radius'>;
+
+/** Above this many live projectiles and bolts, bolts stop shedding embers in flight. */
 const EMBER_LIMIT = 300;
 
 /** Glow, trail and core pools for one team, drawn in that order. */
@@ -31,10 +45,12 @@ interface Pools {
 }
 
 /**
- * Projectiles, interpolated between ticks. Player bolts go in `player` (dimmed by effect
- * density), enemy shots in `enemy` (never dimmed, drawn above the player). Each projectile is
- * three pooled particles in separate layers (glow under trail under core), so swap-removal
- * never reorders them. Glows use normal blending: additive washes out on light ground.
+ * Projectiles, interpolated between ticks: enemy shots (`state.projectiles`) and the player's
+ * Bolt spell instances (`state.spells`, form 'bolt'). Player bolts go in `player` (dimmed by
+ * effect density), enemy shots in `enemy` (never dimmed, drawn above the player). Each one is
+ * three pooled particles in separate layers (glow under trail under core), so swap-removal never
+ * reorders them. A bolt takes its first element's look (elementLook.ts); a second element colors
+ * its trail. Echo repeats are paler and fainter.
  */
 export class ProjectileView {
   readonly player = new Container();
@@ -69,7 +85,7 @@ export class ProjectileView {
     return this.live.length;
   }
 
-  /** Element of a projectile seen last frame (for its impact burst), or null. */
+  /** Element of a projectile or bolt seen last frame (for its impact burst), or null. */
   elementOf(id: number): DamageType | null {
     return this.byId.get(id)?.element ?? null;
   }
@@ -82,48 +98,20 @@ export class ProjectileView {
 
   update(state: GameState, alpha: number, dt: number): void {
     const frame = ++this.frame;
-    const shed = state.projectiles.length < EMBER_LIMIT;
+    const shed = this.live.length < EMBER_LIMIT;
     for (const p of state.projectiles) {
       if (p.ended) continue;
       let v = this.byId.get(p.id);
-      if (!v) v = this.create(p);
+      if (!v) v = this.createArrowOrShot(p);
       v.seen = frame;
-      const x = p.prevX + (p.x - p.prevX) * alpha;
-      const y = p.prevY + (p.y - p.prevY) * alpha;
-      const ang = Math.atan2(p.vy, p.vx);
-      v.phase += dt;
-      const flick = 0.5 + 0.5 * Math.sin(v.phase * 31 + v.id);
-      const crackle = !v.isArrow && v.look.crackle;
-      if (v.glow) {
-        v.glow.x = x;
-        v.glow.y = y;
-        v.glow.rotation = ang;
-        if (!v.isArrow) {
-          const f = crackle ? 0.8 + 0.4 * Math.random() : 0.92 + 0.12 * flick;
-          v.glow.scaleX = v.glow.scaleY = PROJ.boltGlowR * p.radius * f;
-        }
-      }
-      if (v.trail) {
-        v.trail.x = x;
-        v.trail.y = y;
-        v.trail.rotation = ang;
-        // Grow the trail over the first moments so it never pokes out behind the caster.
-        const len = Math.min(1, v.phase * 12) * (v.isArrow ? PROJ.arrowTrailLen : PROJ.boltTrailLen);
-        v.trail.scaleX = len;
-      }
-      if (v.core) {
-        v.core.x = x;
-        v.core.y = y;
-        // Storm sparks spin and flicker; other cores face their flight.
-        v.core.rotation = crackle ? v.phase * 25 + Math.random() * 0.8 : ang;
-      }
-      if (!v.isArrow && shed) {
-        v.emberTimer -= dt;
-        if (v.emberTimer <= 0) {
-          v.emberTimer = 0.03 + Math.random() * 0.04;
-          this.shed(v.look, p, x, y, ang);
-        }
-      }
+      this.place(v, p, alpha, dt, shed);
+    }
+    for (const s of state.spells) {
+      if (s.form !== 'bolt' || s.ended) continue;
+      let v = this.byId.get(s.id);
+      if (!v) v = this.createBolt(s);
+      v.seen = frame;
+      this.place(v, s, alpha, dt, shed);
     }
     for (let i = this.live.length - 1; i >= 0; i--) {
       const v = this.live[i]!;
@@ -135,8 +123,46 @@ export class ProjectileView {
     }
   }
 
-  /** One in-flight particle behind a player projectile, by its element's style. */
-  private shed(L: ElementLook, p: Projectile, x: number, y: number, ang: number): void {
+  private place(v: ProjView, p: Flyer, alpha: number, dt: number, shed: boolean): void {
+    const x = p.prevX + (p.x - p.prevX) * alpha;
+    const y = p.prevY + (p.y - p.prevY) * alpha;
+    const ang = Math.atan2(p.vy, p.vx);
+    v.phase += dt;
+    const flick = 0.5 + 0.5 * Math.sin(v.phase * 31 + v.id);
+    const crackle = !v.isArrow && v.look.crackle;
+    if (v.glow) {
+      v.glow.x = x;
+      v.glow.y = y;
+      v.glow.rotation = ang;
+      if (!v.isArrow) {
+        const f = crackle ? 0.8 + 0.4 * Math.random() : 0.92 + 0.12 * flick;
+        v.glow.scaleX = v.glow.scaleY = PROJ.boltGlowR * p.radius * f;
+      }
+    }
+    if (v.trail) {
+      v.trail.x = x;
+      v.trail.y = y;
+      v.trail.rotation = ang;
+      // Grow the trail over the first moments so it never pokes out behind the caster.
+      v.trail.scaleX = Math.min(1, v.phase * 12) * (v.isArrow ? PROJ.arrowTrailLen : PROJ.boltTrailLen);
+    }
+    if (v.core) {
+      v.core.x = x;
+      v.core.y = y;
+      // Storm sparks spin and flicker; other cores face their flight.
+      v.core.rotation = crackle ? v.phase * 25 + Math.random() * 0.8 : ang;
+    }
+    if (!v.isArrow && shed) {
+      v.emberTimer -= dt;
+      if (v.emberTimer <= 0) {
+        v.emberTimer = 0.03 + Math.random() * 0.04;
+        this.shed(v.look, p, x, y, ang);
+      }
+    }
+  }
+
+  /** One in-flight particle behind a player bolt, by its element's style. */
+  private shed(L: ElementLook, p: Flyer, x: number, y: number, ang: number): void {
     const r = p.radius;
     const sx = x - Math.cos(ang) * r + (Math.random() - 0.5) * r;
     const sy = y - Math.sin(ang) * r + (Math.random() - 0.5) * r;
@@ -161,7 +187,7 @@ export class ProjectileView {
     }
   }
 
-  private create(p: Projectile): ProjView {
+  private take(id: number): ProjView {
     const v = this.spare.pop() ?? {
       id: 0,
       seen: 0,
@@ -174,46 +200,74 @@ export class ProjectileView {
       phase: 0,
       emberTimer: 0,
     };
-    v.id = p.id;
+    v.id = id;
     v.phase = 0;
     v.emberTimer = 0;
+    this.byId.set(id, v);
+    this.live.push(v);
+    return v;
+  }
+
+  /** Enemy arrows (and any other projectile in state.projectiles). */
+  private createArrowOrShot(p: Projectile): ProjView {
+    const v = this.take(p.id);
     const enemy = p.team === 'enemy';
     v.isArrow = enemy;
     v.element = dominantType(p.damage.base);
     v.look = boltLook(v.element);
-    const P = enemy ? this.theirs : this.mine;
-    const a = this.atlas;
-    if (enemy) {
-      // Fire arrow: thin dark shaft and hot tip, wrapped in the danger color.
-      v.glow = P.glow.alloc(a.get('elong_glow'));
-      if (v.glow) {
-        v.glow.paint(PROJ.arrowDanger, 0.75);
-        v.glow.scaleX = PROJ.arrowLen * 0.85;
-        v.glow.scaleY = 2.4;
-      }
-      v.trail = P.trail.alloc(a.get('streak'));
-      if (v.trail) {
-        v.trail.paint(0xff6a3a, 0.7);
-        v.trail.scaleY = 0.45;
-        v.trail.anchorX = 1 - (PROJ.arrowLen * 0.35) / PROJ.arrowTrailLen;
-      }
-      v.core = P.core.alloc(a.get('arrow'));
-    } else {
-      // Player bolt, in its element's look (elementLook.ts).
-      const L = v.look;
-      v.glow = P.glow.alloc(a.get('glow'));
-      if (v.glow) v.glow.paint(L.glow, L.glowAlpha);
-      v.trail = P.trail.alloc(a.get('streak'));
-      if (v.trail) {
-        v.trail.paint(L.trail, L.trailAlpha);
-        v.trail.scaleY = p.radius * 1.7;
-      }
-      v.core = P.core.alloc(a.get(L.boltCore));
-      if (v.core) v.core.scaleX = v.core.scaleY = p.radius * 0.85;
+    if (!enemy) {
+      this.dressBolt(v, p.radius, null, false);
+      return v;
     }
-    this.byId.set(p.id, v);
-    this.live.push(v);
+    // Fire arrow: thin dark shaft and hot tip, wrapped in the danger color.
+    const P = this.theirs;
+    const a = this.atlas;
+    v.glow = P.glow.alloc(a.get('elong_glow'));
+    if (v.glow) {
+      v.glow.paint(PROJ.arrowDanger, 0.75);
+      v.glow.scaleX = PROJ.arrowLen * 0.85;
+      v.glow.scaleY = 2.4;
+    }
+    v.trail = P.trail.alloc(a.get('streak'));
+    if (v.trail) {
+      v.trail.paint(0xff6a3a, 0.7);
+      v.trail.scaleY = 0.45;
+      v.trail.anchorX = 1 - (PROJ.arrowLen * 0.35) / PROJ.arrowTrailLen;
+    }
+    v.core = P.core.alloc(a.get('arrow'));
     return v;
+  }
+
+  /** A player Bolt spell instance. */
+  private createBolt(s: SpellInstance): ProjView {
+    const v = this.take(s.id);
+    v.isArrow = false;
+    v.element = elementType(s.spec.elements[0]?.element);
+    v.look = spellLook(s.spec.elements);
+    this.dressBolt(v, s.radius, secondLook(s.spec.elements), s.echo);
+    return v;
+  }
+
+  private dressBolt(v: ProjView, radius: number, second: ElementLook | null, echo: boolean): void {
+    const L = v.look;
+    const P = this.mine;
+    const a = this.atlas;
+    const pale = (c: number): number => (echo ? mixRgb(c, ECHO_TINT, 0.55) : c);
+    const fade = echo ? ECHO_ALPHA : 1;
+    v.glow = P.glow.alloc(a.get('glow'));
+    if (v.glow) v.glow.paint(pale(L.glow), L.glowAlpha * fade);
+    v.trail = P.trail.alloc(a.get('streak'));
+    if (v.trail) {
+      // A second element shows in the trail (Fire + Storm: a violet wake behind the fireball).
+      const t = second ?? L;
+      v.trail.paint(pale(t.trail), t.trailAlpha * fade);
+      v.trail.scaleY = radius * 1.7;
+    }
+    v.core = P.core.alloc(a.get(L.boltCore));
+    if (v.core) {
+      v.core.scaleX = v.core.scaleY = radius * 0.85;
+      if (echo) v.core.paint(ECHO_TINT, ECHO_ALPHA + 0.2);
+    }
   }
 
   private release(v: ProjView): void {

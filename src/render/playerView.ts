@@ -1,7 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { PlayerState } from '../sim';
-import { spells } from '../../data/spells';
-import { ELEMENT, FX } from './combatPalette';
+import { FX } from './combatPalette';
 import type { Tuning } from '../../data/tuning';
 import { PLAYER as P } from './palette';
 import { buildPlayerShapes } from './playerShapes';
@@ -51,6 +50,8 @@ export class PlayerView {
   private readonly flash: Graphics;
   private readonly flashHood: Graphics;
   private readonly castGlow: Graphics;
+  /** Staff glow color while casting: the cast slot's element (set by the renderer from the weave). */
+  castTint: number = FX.strikeEdge;
   /** Animation speed from the sim's actionSpeed: chill slows the idle motion, Freeze stops it. */
   animSpeed = 1;
   /** Staff tip in world cells, for cast flashes (updated every frame). */
@@ -208,12 +209,12 @@ export class PlayerView {
 
     // Cast cue: a glow gathers at the staff tip until the spell releases, then fades.
     const cg = this.castGlow;
-    if (p.castSpell && p.castTime > 0) {
+    if (p.castSlot >= 0 && p.castTime > 0) {
       const elapsed = p.castTime - p.castLeft;
       const release = p.castTime * tuning.castReleaseFraction;
       const u = release > 0 ? Math.min(1, elapsed / release) : 1;
       cg.visible = true;
-      cg.tint = spells[p.castSpell].form === 'bolt' ? ELEMENT.fire : FX.strikeEdge;
+      if (cg.tint !== this.castTint) cg.tint = this.castTint;
       cg.alpha = p.castReleased ? Math.max(0, cg.alpha - dt * 10) : 0.35 + 0.5 * u;
       cg.scale.set(p.castReleased ? cg.scale.x : 0.35 + 0.45 * u);
     } else if (cg.visible) {

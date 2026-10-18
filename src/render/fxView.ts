@@ -17,6 +17,9 @@ interface Swoosh {
   t: number;
   angle: number;
   dir: number;
+  /** Reach ÷ 5 cells (Wide strikes are bigger) and peak alpha (Echo repeats are fainter). */
+  size: number;
+  a: number;
 }
 
 
@@ -54,7 +57,7 @@ export class FxView {
       const echo = new Sprite(atlas.get('crescent'));
       main.visible = echo.visible = false;
       this.swooshLayer.addChild(echo, main);
-      this.swooshes.push({ main, echo, t: 1, angle: 0, dir: 1 });
+      this.swooshes.push({ main, echo, t: 1, angle: 0, dir: 1, size: 1, a: 1 });
     }
     this.vignette = new Sprite(makeVignette());
     this.vignette.alpha = 0;
@@ -90,10 +93,10 @@ export class FxView {
       const sweep = (1 - (1 - u) * (1 - u)) * 0.9 - 0.55;
       s.main.rotation = s.angle + sweep * s.dir;
       s.echo.rotation = s.angle + (sweep - 0.28) * s.dir;
-      const sc = 0.85 + 0.2 * u;
+      const sc = (0.85 + 0.2 * u) * s.size;
       s.main.scale.set(sc, sc * s.dir);
       s.echo.scale.set(sc * 0.96, sc * 0.96 * s.dir);
-      s.main.alpha = u < 0.35 ? 1 : 1 - (u - 0.35) / 0.65;
+      s.main.alpha = (u < 0.35 ? 1 : 1 - (u - 0.35) / 0.65) * s.a;
       s.echo.alpha = s.main.alpha * 0.4;
     }
     this.vignetteT = Math.max(0, this.vignetteT - dt);
@@ -166,11 +169,15 @@ export class FxView {
 
   // ---- events ---------------------------------------------------------------------------------
 
-  strike(x: number, y: number, dirX: number, dirY: number): void {
+  /** A Strike swoosh. size: reach ÷ 5 cells; tint: element wash (white for physical); alpha: Echo fades it. */
+  strike(x: number, y: number, dirX: number, dirY: number, size = 1, tint = 0xffffff, alpha = 1): void {
     let s = this.swooshes[0]!;
     for (const c of this.swooshes) if (c.t > s.t) s = c;
     this.swingDir = -this.swingDir;
     s.t = 0;
+    s.size = size;
+    s.a = alpha;
+    if (s.main.tint !== tint) s.main.tint = s.echo.tint = tint;
     s.angle = Math.atan2(dirY, dirX);
     s.dir = this.swingDir;
     s.main.position.set(x, y);

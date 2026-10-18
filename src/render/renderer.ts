@@ -10,7 +10,9 @@ import { Camera } from './camera';
 import { CombatEvents } from './combatEvents';
 import { FX } from './combatPalette';
 import { DamageNumbers } from './damageNumbers';
-import { elementAtlasEntries } from './elementLook';
+import { elementAtlasEntries, spellLook } from './elementLook';
+import { FormLayer } from './forms/formLayer';
+import { formAtlasEntries } from './forms/formShapes';
 import { EnemyLayer } from './enemyLayer';
 import { enemyAtlasEntries } from './enemyShapes';
 import { fxAtlasEntries } from './fxShapes';
@@ -57,6 +59,15 @@ export interface Renderer {
   destroy(): void;
 }
 
+/** Staff glow color for the slot being cast: its root spell's element, gold for melee forms. */
+function castTint(s: GameState): number {
+  const slot = s.player.castSlot;
+  const root = slot >= 0 ? s.weaves.slots[slot]?.program?.root : undefined;
+  if (!root) return FX.strikeEdge;
+  if (root.elements.length === 0 && (root.form === 'strike' || root.form === 'swath')) return FX.strikeEdge;
+  return spellLook(root.elements).rim;
+}
+
 function smoothstep(a: number, b: number, v: number): number {
   const t = Math.max(0, Math.min(1, (v - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -89,6 +100,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     ...fxAtlasEntries(),
     ...ailmentAtlasEntries(),
     ...elementAtlasEntries(),
+    ...formAtlasEntries(),
   ]);
   const world = new Container();
   const room = new RoomView();
@@ -101,6 +113,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const telegraphs = new TelegraphView(app.renderer);
   const numbers = new DamageNumbers();
   const ailments = new AilmentFx(atlas);
+  const forms = new FormLayer(atlas, fx);
   const ai = new AiOverlay();
   const shake = new Shake();
   world.addChild(
@@ -108,6 +121,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     ambient.root,
     enemies.corpses,
     enemies.shadows.container,
+    forms.ground,
     projectiles.player,
     fx.player,
     telegraphs.root,
@@ -116,6 +130,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     enemies.bodies,
     ailments.over.container,
     ailments.fx,
+    forms.air,
     player.ghostLayer,
     player.root,
     ailments.threat,
@@ -137,6 +152,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     enemies,
     fx,
     ailments,
+    forms,
     projectiles,
     player,
     numbers,
@@ -156,6 +172,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     telegraphs.reset();
     fx.reset();
     ailments.reset();
+    forms.reset();
     numbers.reset();
     shake.reset();
     camera.snap();
@@ -184,23 +201,26 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
 
       ambient.update(time);
       player.animSpeed = actionSpeed(s, p);
+      player.castTint = castTint(s);
       player.update(p, x, y, s.tuning.player, dt);
       enemies.update(s, alpha, dt);
       const xf = { scale: camera.scale, ox, oy, screenScale };
       ailments.update(s, enemies, player, dt, xf, screen.width, screen.height, overlays.hitboxes);
       projectiles.update(s, alpha, dt);
+      forms.update(s, alpha, dt, x, y);
       telegraphs.update(s, dt);
       fx.update(dt, screen.width, screen.height);
       numbers.root.visible = settings.damageNumbers;
       numbers.update(dt, camera.scale, ox, oy, screenScale);
 
       // Busy screens dim the player's own effects toward the effect-density setting (DESIGN §14).
-      const busy = enemies.count + projectiles.count / 4 + (fx.particleCount + ailments.particleCount) / 40;
+      const busy = enemies.count + projectiles.count / 4 + (fx.particleCount + ailments.particleCount + forms.particleCount) / 40;
       const target = 1 - smoothstep(FX.busyStart, FX.busyFull, busy) * (1 - settings.effectDensity);
       dim += (target - dim) * (1 - Math.exp(-dt / 0.3));
       projectiles.player.alpha = dim;
       fx.player.alpha = dim;
       ailments.fx.alpha = dim;
+      forms.ground.alpha = forms.air.alpha = dim;
 
       if (overlays.aiTargets) ai.update(s, enemies, camera.scale, ox, oy, screenScale);
       else ai.hide();
@@ -219,7 +239,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     stats: () => ({
       enemies: enemies.count,
       projectiles: projectiles.count,
-      particles: fx.particleCount + ailments.particleCount,
+      particles: fx.particleCount + ailments.particleCount + forms.particleCount,
       playerFxAlpha: dim,
     }),
     destroy() {
