@@ -37,6 +37,24 @@ let rootEl: HTMLElement | null = null;
  */
 let modality: 'pointer' | 'keyboard' = 'pointer';
 
+const FOCUSABLE = 'button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** The Loom is modal: Tab wraps from its last control to its first, and back with Shift. */
+function trapFocus(e: KeyboardEvent, a: HTMLElement): void {
+  if (!rootEl) return;
+  const all = [...rootEl.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+  const first = all[0];
+  const last = all[all.length - 1];
+  if (!first || !last) return;
+  if (e.shiftKey && a === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && a === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 export function createLoom(session: Session): LoomController {
   injectLoomStyle();
   const st = new LoomState(session);
@@ -64,10 +82,16 @@ export function createLoom(session: Session): LoomController {
     const inside = !!rootEl && !!a && rootEl.contains(a) && a !== rootEl;
     if (inside && /^(Arrow\w+|Enter| )$/.test(e.key) && !isTextField(a)) modality = 'keyboard';
     if (e.key === 'Tab') {
-      // Keyboard focus inside the Loom: Tab moves between controls. Otherwise it closes the Loom.
+      // After keyboard navigation, Tab moves between controls. After a click it closes the Loom.
       // stopPropagation keeps the game's input sampler from swallowing the Tab.
-      if (inside && modality === 'keyboard') {
+      if (modality === 'keyboard') {
         e.stopPropagation();
+        if (inside) trapFocus(e, a as HTMLElement);
+        else {
+          // Focus fell out (a control went away): bring it back to the slot tabs.
+          e.preventDefault();
+          document.getElementById(`lm-tab-${st.slot.peek()}`)?.focus();
+        }
         return true;
       }
       e.preventDefault();
@@ -107,6 +131,7 @@ export function LoomPanel({ loom, onClose }: { loom: LoomController; onClose(): 
   const { st } = loom;
   useEffect(() => {
     rootEl = ref.current;
+    modality = 'pointer';
     ref.current?.focus({ preventScroll: true });
     return () => {
       rootEl = null;

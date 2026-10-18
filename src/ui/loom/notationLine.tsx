@@ -71,15 +71,19 @@ export function SlotStatusLine({ st }: { st: LoomState }) {
           <span>
             <b>⚠ {warn}</b>
           </span>
-        ) : s.kind === 'ok' ? (
+        ) : s.kind === 'ok' && s.applied ? (
           <span>
             <b>✓ Live in {label}.</b> Changes apply as you weave.
+          </span>
+        ) : s.kind === 'ok' ? (
+          <span>
+            <b>✓ This weave works.</b> Press Enter to put it in {label}.
           </span>
         ) : (
           <span>{label} is empty. Pick a trigger and a form to start, or load a reference weave.</span>
         )}
       </div>
-      {warn && !(s.kind === 'invalid' && s.applied && !st.parseError.value) ? (
+      {(warn || !s.applied) && !(s.kind === 'invalid' && s.applied && !st.parseError.value) ? (
         <div class="lm-status-live">
           <span>
             {label} keeps {live ? <code>{live}</code> : 'nothing (empty)'}

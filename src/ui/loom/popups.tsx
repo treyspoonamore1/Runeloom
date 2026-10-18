@@ -81,7 +81,7 @@ export function Picker({ st }: { st: LoomState }) {
     if (!el || !pk) return;
     Object.assign(el.style, place(pk.at, 'below', el.offsetWidth, el.offsetHeight));
     el.style.visibility = 'visible';
-    el.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+    el.querySelector<HTMLButtonElement>('button[role=menuitem]')?.focus({ preventScroll: true });
   }, [pk?.key]);
   if (!pk) return null;
   const tree = st.draft;
@@ -118,8 +118,17 @@ export function Picker({ st }: { st: LoomState }) {
                   key={rune.id}
                   type="button"
                   role="menuitem"
+                  aria-label={`${rune.name}, ${rune.kind}, complexity ${rune.cx}`}
                   class={`lm-chip sm k-${rune.kind} r-${rune.id}`}
-                  onClick={() => st.place(p, rune.id)}
+                  onClick={() => {
+                    st.place(p, rune.id);
+                    // Back to the spot that opened the picker (keyboard users keep their place).
+                    requestAnimationFrame(() => {
+                      const a = document.activeElement;
+                      if (a && a !== document.body) return;
+                      document.querySelector<HTMLElement>(`[data-spot="${pk.key}"]`)?.focus();
+                    });
+                  }}
                   {...tipHandlers(rune, 'right')}
                 >
                   <span class={`lm-medal k-${rune.kind} r-${rune.id}`}>

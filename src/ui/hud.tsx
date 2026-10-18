@@ -283,6 +283,7 @@ export function createHud(ctx: HudContext): Hud {
   };
   const closeLoom = (): void => {
     if (s.screen.value !== 'loom') return;
+    loom.st.commitNotation();
     loom.st.open.value = false;
     loom.st.disarm();
     s.screen.value = 'play';

@@ -152,41 +152,45 @@ function SpotButton(p: {
       )}
     </button>
   );
-  if (!selected || !p.path) return btn;
+  // Always wrapped, so selecting a chip doesn't remount its button (keyboard focus stays on it).
   const path = p.path;
   return (
     <span class="lm-selwrap">
       {btn}
-      <span class="lm-chipacts">
-        <button
-          type="button"
-          class="lm-act"
-          aria-label={`Swap ${p.rune?.name ?? ''}`}
-          title="Swap for another rune"
-          onClick={(e) => {
-            e.stopPropagation();
-            openPicker((e.currentTarget.parentElement?.previousElementSibling as Element) ?? e.currentTarget);
-          }}
-        >
-          ⇄
-        </button>
-        <button
-          type="button"
-          class="lm-act del"
-          aria-label={`Remove ${p.rune?.name ?? ''}`}
-          title={
-            path[path.length - 1] === 'branch'
-              ? 'Remove this branch and everything under it (Del)'
-              : 'Remove (Del)'
-          }
-          onClick={(e) => {
-            e.stopPropagation();
-            st.remove(path);
-          }}
-        >
-          ×
-        </button>
-      </span>
+      {selected && path ? (
+        <span class="lm-chipacts">
+          <button
+            type="button"
+            class="lm-act"
+            aria-label={`Swap ${p.rune?.name ?? ''}`}
+            title="Swap for another rune"
+            onClick={(e) => {
+              e.stopPropagation();
+              openPicker(
+                (e.currentTarget.parentElement?.previousElementSibling as Element) ?? e.currentTarget,
+              );
+            }}
+          >
+            ⇄
+          </button>
+          <button
+            type="button"
+            class="lm-act del"
+            aria-label={`Remove ${p.rune?.name ?? ''}`}
+            title={
+              path[path.length - 1] === 'branch'
+                ? 'Remove this branch and everything under it (Del)'
+                : 'Remove (Del)'
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              st.remove(path);
+            }}
+          >
+            ×
+          </button>
+        </span>
+      ) : null}
     </span>
   );
 }

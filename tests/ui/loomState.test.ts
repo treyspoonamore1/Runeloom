@@ -60,7 +60,13 @@ describe('LoomState', () => {
     expect(getLoadout(s).slots[0]!.notation).toBe('Cast > Bolt[Fire]');
     st.typeNotation('Cast > Bolt[Storm]');
     expect(st.parseError.value).toBeNull();
+    // Typed notation waits for Enter, so half-typed weaves that compile never replace the slot.
+    expect(getLoadout(s).slots[0]!.notation).toBe('Cast > Bolt[Fire]');
+    expect(st.status).toMatchObject({ kind: 'ok', applied: false });
+    st.commitNotation();
     expect(getLoadout(s).slots[0]!.notation).toBe('Cast > Bolt[Storm]');
+    expect(st.status).toMatchObject({ kind: 'ok', applied: true });
+    expect(st.text.value).toBeNull();
     st.clearSlot();
     expect(getLoadout(s).slots[0]!.notation).toBeNull();
   });

@@ -26,7 +26,8 @@ export type SlotStatus =
       /** True when this is the slot's live weave (it stopped fitting, e.g. after a spindle switch). */
       applied: boolean;
     }
-  | { kind: 'ok'; notation: string; program: SpellProgram; costs: WeaveCosts; applied: true };
+  /** `applied` is false only while typed notation waits for Enter. */
+  | { kind: 'ok'; notation: string; program: SpellProgram; costs: WeaveCosts; applied: boolean };
 
 /** A popover anchored at a screen rectangle. */
 export interface Anchor {
@@ -129,7 +130,13 @@ export class LoomState {
       };
     const c = pv.compiled!;
     if (c.ok)
-      return { kind: 'ok', notation: c.program.notation, program: c.program, costs: c.costs, applied: true };
+      return {
+        kind: 'ok',
+        notation: c.program.notation,
+        program: c.program,
+        costs: c.costs,
+        applied: live === c.program.notation,
+      };
     return {
       kind: 'invalid',
       notation,
@@ -140,22 +147,28 @@ export class LoomState {
     };
   }
 
-  /** Replaces the current slot's draft; applies it when it compiles (or empties the slot when blank). */
+  /**
+   * Replaces a slot's draft. With `apply` (every tree edit), a draft that compiles goes into the
+   * slot at once and a blank one empties it; typed notation passes false until Enter or blur, so
+   * half-typed weaves that happen to compile never replace the slot's weave.
+   */
   setDraft(
     tree: WeaveTree,
     selected: WeavePath | null = this.selected.peek(),
     slot = this.slot.peek(),
+    apply = true,
   ): void {
     const l0 = getLoadout(this.session);
-    let status = this.evaluate(slot, tree, l0);
+    const first = this.evaluate(slot, tree, l0);
     const live = l0.slots[slot]?.notation ?? null;
-    if (status.kind === 'ok' && live !== status.notation) applyWeave(this.session, slot, status.notation);
-    else if (status.kind === 'empty' && live !== null) applyWeave(this.session, slot, null);
+    if (apply && first.kind === 'ok' && live !== first.notation)
+      applyWeave(this.session, slot, first.notation);
+    else if (apply && first.kind === 'empty' && live !== null) applyWeave(this.session, slot, null);
     const l = getLoadout(this.session);
-    if (status.kind !== 'ok' && status.kind !== 'empty') status = this.evaluate(slot, tree, l);
+    const status = this.evaluate(slot, tree, l);
     this.seenRev = loadoutRev.peek();
     this.synced[slot] = l.slots[slot]?.notation ?? null;
-    this.held[slot] = status.kind !== 'ok' && status.kind !== 'empty';
+    this.held[slot] = !status.applied;
     batch(() => {
       const drafts = this.drafts.peek().slice();
       drafts[slot] = tree;
@@ -192,6 +205,7 @@ export class LoomState {
 
   selectSlot(slot: number): void {
     if (slot === this.slot.peek()) return;
+    this.commitNotation();
     batch(() => {
       this.slot.value = slot;
       this.selected.value = null;
@@ -208,19 +222,23 @@ export class LoomState {
       this.text.value = text;
       if (p.ok) {
         this.parseError.value = null;
-        this.setDraft(p.tree, null);
+        this.setDraft(p.tree, null, this.slot.peek(), false);
       } else if (text.trim() === '') {
         this.parseError.value = null;
-        this.setDraft(emptyTree(), null);
+        this.setDraft(emptyTree(), null, this.slot.peek(), false);
       } else {
         this.parseError.value = p.error;
       }
     });
   }
 
-  /** Leaving the notation line: show the canonical form again if it parsed. */
+  /** Enter or leaving the notation line: apply what was typed if it parsed, and show it canonically. */
   commitNotation(): void {
-    if (this.parseError.peek() === null) this.text.value = null;
+    if (this.text.peek() === null || this.parseError.peek() !== null) return;
+    batch(() => {
+      this.text.value = null;
+      this.setDraft(this.draft, null);
+    });
   }
 
   loadNotation(notation: string): void {
