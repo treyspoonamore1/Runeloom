@@ -49,3 +49,15 @@ same rules, and stop at the end with the end-of-milestone report.
 - If a milestone is going badly, ask the agent to cut scope within the milestone instead of skipping acceptance criteria.
 - Bugs are easiest to fix from replays: press F9 right after something goes wrong and attach the file.
 - Keep `docs/DECISIONS.md` honest. It's how a later session knows why things are the way they are.
+
+## Tools
+
+All commands run from the repo root. Flags go after `--`.
+
+| Command | Flags |
+|---|---|
+| `npm run sim -- ...` | `--scenario <id>` (default `wander`), `--ticks N` (10000), `--seed S` (1), `--every N` print the hash every N ticks (to find where two runs diverge), `--json`, `--list`, `--replay <file>` (replays an F9 file, prints MATCH or MISMATCH, exits 1 on mismatch, warns if tuning was edited) |
+| `npm run bench -- ...` | `--ticks N` (20000, min 10000), `--warmup N`, `--bench <id>`, `--strict` (exit 1 if over budget), `--json`. Budgets are DESIGN §12: entity step 2.7 ms, grid 2.0 ms (n/a until M3). Add benches to the `benches` list in `tools/bench.ts` |
+| `npm run shots -- ...` | `--scene <id>`, `--milestone <name>` (m0), `--ticks N` (advance the sim first), `--viewport 390x844` (1280x720). Writes `shots/<milestone>_<scene>.png` |
+| `npm run validate` | Rooms parse, scenario and scene rooms exist, tuning defaults are finite numbers > 0, spawn markers match `@spawn` headers (warning only) |
+| `npm run test:browser` | Playwright determinism tests (Node vs. page hashes). Set `E2E_PORT` (default 5174) to avoid clashing with other dev servers |
