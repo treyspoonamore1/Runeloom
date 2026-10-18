@@ -89,7 +89,7 @@ function SpotButton(p: {
     p.plus ? 'plus' : filled ? `lm-chip lg k-${p.rune!.kind} r-${p.rune!.id}` : 'empty',
     pl?.ok ? 'lit' : pl ? 'blocked' : active ? 'dim' : '',
     selected ? 'sel' : '',
-    badKey === p.spotKey ? 'bad' : '',
+    badKey === p.spotKey && !pl?.ok ? 'bad' : '',
   ]
     .filter(Boolean)
     .join(' ');
