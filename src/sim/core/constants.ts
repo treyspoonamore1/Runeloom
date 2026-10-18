@@ -8,3 +8,5 @@ export const GRID_EVERY = 3;
 export const TILE_CELLS = 4;
 /** Pixels per cell at the reference resolution 1280×720 (DESIGN §4). */
 export const CELL_PX = 8;
+/** Spatial hash bucket edge in cells (DESIGN §12). */
+export const SPATIAL_BUCKET_CELLS = 8;
