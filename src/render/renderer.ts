@@ -1,11 +1,23 @@
 import { Application, Container } from 'pixi.js';
 import type { GameState, SimEvent } from '../sim';
+import { settings } from '../app/settings';
 import { AmbientView } from './ambientView';
+import { Atlas } from './atlas';
 import { Camera } from './camera';
+import { CombatEvents } from './combatEvents';
+import { FX } from './combatPalette';
+import { DamageNumbers } from './damageNumbers';
+import { EnemyLayer } from './enemyLayer';
+import { enemyAtlasEntries } from './enemyShapes';
+import { fxAtlasEntries } from './fxShapes';
+import { FxView } from './fxView';
 import { OverlayView } from './overlayView';
 import { PAL } from './palette';
 import { PlayerView } from './playerView';
+import { ProjectileView } from './projectileView';
 import { RoomView } from './roomView';
+import { Shake } from './shake';
+import { TelegraphView } from './telegraphView';
 
 /** Debug overlay switches, toggled from the debug UI (F1). */
 export interface Overlays {
@@ -36,15 +48,24 @@ export interface Renderer {
    * render(): hit flashes, damage numbers, particles, screen shake.
    */
   handleEvents(events: readonly SimEvent[]): void;
+  /** Live view counts, for benchmarks and the debug overlay. */
+  stats(): { enemies: number; projectiles: number; particles: number };
   destroy(): void;
 }
 
+function smoothstep(a: number, b: number, v: number): number {
+  const t = Math.max(0, Math.min(1, (v - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
 /**
- * M0 renderer. Reads sim state and never writes it (CLAUDE.md rule 2). All
- * animation state (camera, springs, trails, water phase) lives here, driven by frameDt.
+ * The renderer. Reads sim state and never writes it (CLAUDE.md rule 2). All animation state
+ * (camera, springs, particles, shake) lives here, driven by frameDt.
  *
- * Layers, bottom to top, all in world space (1 unit = 1 cell):
- * baked room → ambient (water, flames) → afterimages → player → debug overlays.
+ * World layers, bottom to top (1 unit = 1 cell): baked room → ambient → corpses → enemy
+ * shadows → player bolts and effects (dimmed when busy) → enemy telegraphs → ember glows →
+ * enemies → afterimages → player → enemy shots → readable effects (clanks, hurt) → debug.
+ * Screen layers: damage numbers, hurt vignette.
  */
 export async function createRenderer(host: HTMLElement, state: GameState): Promise<Renderer> {
   const app = new Application();
@@ -59,23 +80,55 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   });
   host.appendChild(app.canvas);
 
+  const atlas = new Atlas(app.renderer, [...enemyAtlasEntries(), ...fxAtlasEntries()]);
   const world = new Container();
   const room = new RoomView();
   const ambient = new AmbientView();
   const player = new PlayerView();
   const overlay = new OverlayView();
-  world.addChild(room.root, ambient.root, player.ghostLayer, player.root, overlay.root);
-  app.stage.addChild(world);
+  const enemies = new EnemyLayer(atlas);
+  const fx = new FxView(atlas);
+  const projectiles = new ProjectileView(atlas, fx.pNorm);
+  const telegraphs = new TelegraphView(app.renderer);
+  const numbers = new DamageNumbers();
+  const shake = new Shake();
+  world.addChild(
+    room.root,
+    ambient.root,
+    enemies.corpses,
+    enemies.shadows.container,
+    projectiles.player,
+    fx.player,
+    telegraphs.root,
+    enemies.glows.container,
+    enemies.bodies,
+    player.ghostLayer,
+    player.root,
+    projectiles.enemy,
+    fx.top,
+    overlay.root,
+  );
+  app.stage.addChild(world, numbers.root, fx.vignette);
 
   const camera = new Camera();
   const overlays: Overlays = { grid: false, hitboxes: false, aiTargets: false };
   let time = 0;
+  let current = state;
+  let dim = 1;
+  const events = new CombatEvents({ enemies, fx, player, numbers, telegraphs, shake, state: () => current });
 
   const setRoom = (s: GameState): void => {
+    current = s;
     const map = room.build(s.room);
     ambient.build(map);
     player.reset();
     overlay.invalidate();
+    enemies.reset();
+    projectiles.reset();
+    telegraphs.reset();
+    fx.reset();
+    numbers.reset();
+    shake.reset();
     camera.snap();
   };
   setRoom(state);
@@ -84,6 +137,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     app,
     overlays,
     render(s, alpha, frameDt) {
+      current = s;
       const dt = Math.max(0, frameDt);
       time += dt;
       const p = s.player;
@@ -91,12 +145,30 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       const y = p.prevY + (p.y - p.prevY) * alpha;
 
       const screen = app.screen;
+      const screenScale = screen.height / 720;
       camera.update(x, y, s.room, screen.width, screen.height, app.renderer.resolution, s.tuning.camera, dt);
+      shake.update(dt, settings.screenShake, screenScale);
+      const ox = camera.offsetX + shake.x;
+      const oy = camera.offsetY + shake.y;
       world.scale.set(camera.scale);
-      world.position.set(camera.offsetX, camera.offsetY);
+      world.position.set(ox, oy);
 
       ambient.update(time);
       player.update(p, x, y, s.tuning.player, dt);
+      enemies.update(s, alpha, dt);
+      projectiles.update(s, alpha, dt);
+      telegraphs.update(s, dt);
+      fx.update(dt, screen.width, screen.height);
+      numbers.root.visible = settings.damageNumbers;
+      numbers.update(dt, camera.scale, ox, oy, screenScale);
+
+      // Busy screens dim the player's own effects toward the effect-density setting (DESIGN §14).
+      const busy = enemies.count + projectiles.count / 4 + fx.particleCount / 40;
+      const target = 1 - smoothstep(FX.busyStart, FX.busyFull, busy) * (1 - settings.effectDensity);
+      dim += (target - dim) * (1 - Math.exp(-dt / 0.3));
+      projectiles.player.alpha = dim;
+      fx.player.alpha = dim;
+
       if (overlays.grid || overlays.hitboxes || overlay.root.visible) {
         overlay.root.visible = overlays.grid || overlays.hitboxes;
         overlay.update(s, overlays, x, y, camera.cursorWorld(), camera.scale);
@@ -106,9 +178,10 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     screenToWorld: (sx, sy) => camera.screenToWorld(sx, sy),
     setCursor: (sx, sy) => camera.setCursor(sx, sy),
     setRoom,
-    handleEvents() {
-      // M1 render task: hit flash, damage numbers, death particles, screen shake.
+    handleEvents(list) {
+      events.handle(list);
     },
+    stats: () => ({ enemies: enemies.count, projectiles: projectiles.count, particles: fx.particleCount }),
     destroy() {
       app.destroy(true, { children: true });
     },

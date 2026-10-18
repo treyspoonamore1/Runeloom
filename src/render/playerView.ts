@@ -1,5 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { PlayerState } from '../sim';
+import { spells } from '../../data/spells';
+import { ELEMENT, FX } from './combatPalette';
 import type { Tuning } from '../../data/tuning';
 import { PLAYER as P } from './palette';
 import { buildPlayerShapes } from './playerShapes';
@@ -46,6 +48,16 @@ export class PlayerView {
   private readonly face: Graphics;
   private readonly pips = new Graphics();
   private readonly ghosts: Ghost[] = [];
+  private readonly flash: Graphics;
+  private readonly flashHood: Graphics;
+  private readonly castGlow: Graphics;
+  /** Staff tip in world cells, for cast flashes (updated every frame). */
+  readonly tip = { x: 0, y: 0 };
+
+  private hurtT = 0;
+  /** Seconds since death (-1 alive) and since respawn (-1 when not re-weaving). */
+  private deadT = -1;
+  private weaveT = -1;
 
   private time = 0;
   private bobPhase = 0;
@@ -69,8 +81,22 @@ export class PlayerView {
     this.hoodPeak = new Graphics(s.hoodPeak);
     this.hoodRim = new Graphics(s.hoodRim);
     this.face = new Graphics(s.face);
-    this.hood.addChild(this.hoodPeak, new Graphics(s.hood), this.face, this.hoodRim);
-    this.lift.addChild(this.staffBack, new Graphics(s.cloak), this.cloakRim, this.hood, this.staffFront);
+    this.flash = new Graphics(s.flash);
+    this.flashHood = new Graphics(s.flashHood);
+    this.flash.tint = this.flashHood.tint = FX.hurt;
+    this.flash.alpha = this.flashHood.alpha = 0;
+    this.castGlow = new Graphics(s.castGlow);
+    this.castGlow.visible = false;
+    this.hood.addChild(this.hoodPeak, new Graphics(s.hood), this.face, this.hoodRim, this.flashHood);
+    this.lift.addChild(
+      this.staffBack,
+      new Graphics(s.cloak),
+      this.cloakRim,
+      this.flash,
+      this.hood,
+      this.staffFront,
+      this.castGlow,
+    );
     this.unaxis.addChild(this.lift);
     this.axis.addChild(this.unaxis);
     this.root.addChild(this.shadow, this.axis, this.pips);
@@ -92,10 +118,19 @@ export class PlayerView {
     this.run = 0;
     this.leanX = 0;
     this.leanY = 0;
+    this.hurtT = 0;
+    this.deadT = -1;
+    this.weaveT = -1;
+    this.root.alpha = 1;
     for (const g of this.ghosts) {
       g.life = 0;
       g.axis.visible = false;
     }
+  }
+
+  /** A hit landed on the player: red flash. */
+  hurt(): void {
+    this.hurtT = FX.hurtFlashTime;
   }
 
   /** x, y: interpolated position in cells. */
@@ -160,6 +195,61 @@ export class PlayerView {
 
     this.updateGhosts(dodging, x, y - hop, dt);
     this.drawPips(p, tuning, dt);
+    this.updateCombat(p, tuning, x, y, hop, dt);
+  }
+
+  /** Hurt flash, cast cue, death collapse and re-weave. */
+  private updateCombat(p: PlayerState, tuning: Tuning['player'], x: number, y: number, hop: number, dt: number): void {
+    this.hurtT = Math.max(0, this.hurtT - dt);
+    const f = this.hurtT > 0 ? Math.sqrt(this.hurtT / FX.hurtFlashTime) * 0.85 : 0;
+    this.flash.alpha = this.flashHood.alpha = f;
+
+    // Cast cue: a glow gathers at the staff tip until the spell releases, then fades.
+    const cg = this.castGlow;
+    if (p.castSpell && p.castTime > 0) {
+      const elapsed = p.castTime - p.castLeft;
+      const release = p.castTime * tuning.castReleaseFraction;
+      const u = release > 0 ? Math.min(1, elapsed / release) : 1;
+      cg.visible = true;
+      cg.tint = spells[p.castSpell].form === 'bolt' ? ELEMENT.fire : FX.strikeEdge;
+      cg.alpha = p.castReleased ? Math.max(0, cg.alpha - dt * 10) : 0.35 + 0.5 * u;
+      cg.scale.set(p.castReleased ? cg.scale.x : 0.35 + 0.45 * u);
+    } else if (cg.visible) {
+      cg.alpha = Math.max(0, cg.alpha - dt * 10);
+      if (cg.alpha <= 0) cg.visible = false;
+    }
+    const st = this.staffFront.visible ? this.staffFront : this.staffBack;
+    const ca = Math.cos(st.rotation);
+    const sa = Math.sin(st.rotation);
+    cg.position.set(st.x + ca * 2.85, st.y + sa * 2.85);
+    this.tip.x = x + this.lift.x + cg.x;
+    this.tip.y = y - hop + cg.y;
+
+    // Death: collapse into threads (fx spawns them), then stay hidden; re-weave on respawn.
+    if (p.dead) {
+      if (this.deadT < 0) this.deadT = 0;
+      this.deadT += dt;
+      this.weaveT = -1;
+      const u = Math.min(1, this.deadT / FX.collapseTime);
+      this.root.alpha = 1 - u;
+      this.lift.scale.set(1 + 0.5 * u, 1 - 0.8 * u);
+    } else if (this.deadT >= 0) {
+      this.deadT = -1;
+      this.weaveT = 0;
+    }
+    if (this.weaveT >= 0) {
+      this.weaveT += dt;
+      const u = Math.min(1, this.weaveT / FX.reweaveTime);
+      // Threads arrive first; the body forms over the second half with a small overshoot.
+      const v = Math.max(0, (u - 0.45) / 0.55);
+      this.root.alpha = v;
+      const sc = 0.5 + 0.5 * v + Math.sin(v * Math.PI) * 0.15;
+      this.lift.scale.set(sc * this.lift.scale.x, sc * this.lift.scale.y);
+      if (u >= 1) {
+        this.weaveT = -1;
+        this.root.alpha = 1;
+      }
+    }
   }
 
   private updateFacing(p: PlayerState): void {
