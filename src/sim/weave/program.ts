@@ -37,7 +37,7 @@ export interface SpellProgram {
   complexity: number;
   /** Mana paid when the root fires: trigger mana mult × root.manaCost. Channel: per fire. */
   mana: number;
-  /** Seconds from press to release basis (form cast time × Heavy ÷ cast speed); 0 if the trigger ignores cast time. */
+  /** Full cast time in seconds: root form cast time × Heavy ÷ cast speed; 0 if the trigger ignores cast time. (M1 casting releases the spell at tuning castReleaseFraction of it.) */
   castTime: number;
   /** Rune level the damage was scaled for. */
   runeLevel: number;
