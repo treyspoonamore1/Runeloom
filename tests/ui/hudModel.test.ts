@@ -74,28 +74,16 @@ describe('readSnap', () => {
     expect(s.mana).toBe(50);
     expect(s.dead).toBe(false);
     expect(s.pips).toEqual([1, 1]);
-    expect(s.slots.map((x) => [x.key, x.name, fmtCost(x.cost)])).toEqual([
-      ['LMB', 'Fire Bolt', '6.6'],
-      ['RMB', 'Strike', '4'],
-    ]);
+    expect(s.slots).toEqual([]); // slots come from hudSlots.slotSnaps (tests/ui/hudSlots.test.ts)
     expect(s.wave).toBeNull();
   });
 
-  it('flags unaffordable spells, an active cast and death', () => {
+  it('flags death', () => {
     const g = game();
-    g.player.mana = 5;
-    g.player.castSlot = 1;
-    g.player.castLeft = 0.1;
-    g.player.castTime = 0.4;
-    let s = readSnap(g);
-    expect(s.slots[0]!.affordable).toBe(false);
-    expect(s.slots[1]!.affordable).toBe(true);
-    expect(s.slots[1]!.casting).toBe(true);
-    expect(s.slots[1]!.progress).toBe(0.75);
     g.player.dead = true;
     g.player.life = 0;
     g.player.respawnLeft = 1.2;
-    s = readSnap(g);
+    const s = readSnap(g);
     expect(s.dead).toBe(true);
     expect(s.respawnSec).toBe(2);
   });

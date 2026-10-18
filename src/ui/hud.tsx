@@ -7,10 +7,14 @@ import type { InputSampler } from '../app/input';
 import type { Renderer } from '../render/renderer';
 import type { AudioSystem } from '../audio/audio';
 import { fmtCost, readSnap, snapEqual, waveText, type HudSnap } from './hudModel';
+import { slotSnaps } from './hudSlots';
+import { getLoadout, slotTimers, type LoadoutView } from '../app/loadout';
+import { createLoom, LoomPanel, type LoomController } from './loom/loom';
+import { differsFromSaved, loadoutRev, restoreLoadout } from './loom/loadoutStore';
+import { WeaveIcon } from './loom/glyphs';
 import { readArena, WaveWatcher } from './arena';
 import { consoleOpen } from './console/Console';
 import { injectHudStyle } from './hudStyle';
-import { SpellIcon } from './icons';
 import { PauseMenu } from './pauseMenu';
 import { StartScreen } from './startScreen';
 
@@ -35,7 +39,7 @@ export interface Hud {
   frame(state: GameState): void;
 }
 
-type Screen = 'start' | 'play' | 'pause';
+type Screen = 'start' | 'play' | 'pause' | 'loom';
 interface Banner {
   id: number;
   title: string;
@@ -99,20 +103,32 @@ function Bar({ s }: { s: Sigs }) {
           {v.slots.map((sl) => (
             <div class="rl-slotwrap" key={sl.slot}>
               <div
-                class={`rl-slot${sl.affordable ? '' : ' poor'}${sl.casting ? ' casting' : ''}`}
-                title={sl.name}
+                class={`rl-slot${sl.affordable ? '' : ' poor'}${sl.casting ? ' casting' : ''}${sl.notation ? '' : ' empty'}${sl.warn ? ' warn' : ''}`}
+                title={
+                  sl.warn ? `Doesn't fire: ${sl.warn}` : (sl.notation ?? 'Empty slot: press Tab to weave')
+                }
               >
-                <SpellIcon spell={sl.spell} />
+                {sl.notation ? <WeaveIcon form={sl.form} element={sl.element} /> : null}
                 <i class={`rl-sweep${sl.casting ? '' : ' idle'}`} style={`--p:${sl.progress}`} />
-                <span class="rl-cost" title="Mana cost">
-                  {fmtCost(sl.cost)}
-                </span>
+                {sl.auto ? (
+                  <i class={`rl-cd${sl.cooldown > 0 ? '' : ' idle'}`} style={`--p:${sl.cooldown}`} />
+                ) : null}
+                {sl.auto ? <span class="rl-auto">auto</span> : null}
+                {sl.cost !== null ? (
+                  <span class="rl-cost" title="Mana cost">
+                    {fmtCost(sl.cost)}
+                  </span>
+                ) : null}
+                {sl.warn ? <i class="rl-warn" aria-label="Doesn't fit the spindle" /> : null}
                 {deny.slot === sl.slot && deny.n > 0 ? <i class="rl-deny" key={deny.n} /> : null}
               </div>
               <span class="rl-key">{sl.key}</span>
               <span class="rl-spellname">{sl.name}</span>
             </div>
           ))}
+        </div>
+        <div class="rl-loomhint">
+          <span class="rl-cap">Tab</span> Loom
         </div>
       </div>
       <Globe kind="mana" value={v.mana} max={v.maxMana} frac={v.manaFrac} flash={deny.n} />
@@ -136,10 +152,14 @@ function HudApp({
   s,
   play,
   pause,
+  loom,
+  closeLoom,
 }: {
   s: Sigs;
   play(): void;
   pause: { resume(): void; restart(): void; tick(): void };
+  loom: LoomController;
+  closeLoom(): void;
 }) {
   const screen = s.screen.value;
   const v = s.snap.value;
@@ -170,6 +190,7 @@ function HudApp({
       ) : null}
       {screen === 'start' ? <StartScreen onPlay={play} /> : null}
       {screen === 'pause' ? <PauseMenu {...pause} /> : null}
+      {screen === 'loom' ? <LoomPanel loom={loom} onClose={closeLoom} /> : null}
     </>
   );
 }
@@ -181,6 +202,13 @@ const isTypingTarget = (t: EventTarget | null): boolean =>
 
 export function createHud(ctx: HudContext): Hud {
   injectHudStyle();
+  // The player's saved weaves and spindle (DESIGN §5.1), applied before the first tick.
+  restoreLoadout(ctx.session);
+  ctx.session.onReset(() => {
+    if (differsFromSaved(ctx.session)) restoreLoadout(ctx.session);
+    else loadoutRev.value++;
+  });
+  const loom = createLoom(ctx.session);
   const params = new URLSearchParams(location.search);
   const skipStart = ctx.skipStart ?? (params.get('paused') === '1' || params.get('autostart') === '1');
 
@@ -240,6 +268,32 @@ export function createHud(ctx: HudContext): Hud {
     focusGame();
   };
 
+  // The Loom: the sim pauses and player input is off while it is open.
+  let pausedBeforeLoom = false;
+  const openLoom = (): void => {
+    if (s.screen.value !== 'play') return;
+    pausedBeforeLoom = ctx.loop.paused;
+    ctx.loop.paused = true;
+    ctx.input.enabled = false;
+    loom.st.syncFromLoadout();
+    loom.st.open.value = true;
+    s.screen.value = 'loom';
+    ctx.uiRoot.classList.add('rl-looming');
+    ctx.audio.play('uiClick');
+  };
+  const closeLoom = (): void => {
+    if (s.screen.value !== 'loom') return;
+    loom.st.commitNotation();
+    loom.st.open.value = false;
+    loom.st.disarm();
+    s.screen.value = 'play';
+    ctx.uiRoot.classList.remove('rl-looming');
+    ctx.loop.paused = pausedBeforeLoom;
+    ctx.input.enabled = true;
+    ctx.audio.play('uiClick');
+    focusGame();
+  };
+
   if (s.screen.value === 'start') ctx.loop.paused = true;
   s.screen.subscribe((v) => ctx.uiRoot.classList.toggle('rl-starting', v === 'start'));
 
@@ -257,6 +311,15 @@ export function createHud(ctx: HudContext): Hud {
   window.addEventListener(
     'keydown',
     (e) => {
+      if (s.screen.value === 'loom') {
+        if (consoleOpen.value) return;
+        if (loom.handleKey(e, closeLoom)) return;
+      }
+      if (e.code === 'Tab' && s.screen.value === 'play' && !consoleOpen.value && !e.repeat) {
+        e.preventDefault();
+        openLoom();
+        return;
+      }
       if (e.repeat) return;
       if (e.code === 'Escape') {
         if (consoleOpen.value) return;
@@ -280,7 +343,22 @@ export function createHud(ctx: HudContext): Hud {
     if (document.hidden) autoPause();
   });
 
-  render(h(HudApp, { s, play, pause: { resume, restart, tick: () => ctx.audio.play('uiClick') } }), root);
+  render(
+    h(HudApp, {
+      s,
+      play,
+      pause: { resume, restart, tick: () => ctx.audio.play('uiClick') },
+      loom,
+      closeLoom,
+    }),
+    root,
+  );
+
+  // The loadout is re-read when something changed it through the UI, and twice a second anyway
+  // (the runtime may change it too, e.g. a replay).
+  let view: LoadoutView = getLoadout(ctx.session);
+  let viewRev = loadoutRev.peek();
+  let viewAge = 0;
 
   return {
     handleEvents(events) {
@@ -290,7 +368,16 @@ export function createHud(ctx: HudContext): Hud {
       }
     },
     frame(state) {
-      const next = readSnap(state);
+      if (viewRev !== loadoutRev.peek() || ++viewAge >= 30) {
+        view = getLoadout(ctx.session);
+        viewRev = loadoutRev.peek();
+        viewAge = 0;
+      }
+      if (s.screen.peek() === 'loom') ctx.input.enabled = false;
+      const next = readSnap(
+        state,
+        slotSnaps(view, state.player, (i) => slotTimers(state, i)),
+      );
       if (!snapEqual(s.snap.peek(), next)) s.snap.value = next;
       const w = watcher.update(readArena(state));
       if (w.transition === 'cleared') showBanner(`Wave ${w.wave} cleared`, 'Catch your breath');
