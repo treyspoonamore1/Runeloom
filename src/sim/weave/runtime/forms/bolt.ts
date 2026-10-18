@@ -58,7 +58,14 @@ function gather(state: GameState, b: SpellInstance, cx: number, cy: number, r: n
 
 /** Seeker: turn toward the nearest enemy it may hit by at most `rot` this tick; snap when closer. */
 function steer(state: GameState, b: SpellInstance, rot: Rotation, speed: number): void {
-  const t = nearestEnemy(state, b.x, b.y, Infinity, (e: Enemy) => canTarget(b, e) && !b.hitIds.includes(e.id), false);
+  const t = nearestEnemy(
+    state,
+    b.x,
+    b.y,
+    Infinity,
+    (e: Enemy) => canTarget(b, e) && !b.hitIds.includes(e.id),
+    false,
+  );
   if (t === null) return;
   const dx = t.x - b.x;
   const dy = t.y - b.y;

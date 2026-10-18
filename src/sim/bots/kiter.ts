@@ -44,7 +44,11 @@ const goal = { x: 0, y: 0, on: false };
 let bestHitSoon = false;
 
 /** The root spell and mana of `slot` if it is a working Cast weave whose root is `form`. */
-function slotSpell(state: GameState, slot: number, form: SpellSpec['form']): { spec: SpellSpec; mana: number } | null {
+function slotSpell(
+  state: GameState,
+  slot: number,
+  form: SpellSpec['form'],
+): { spec: SpellSpec; mana: number } | null {
   const prog = state.weaves.slots[slot]?.program;
   if (!prog || prog.trigger.event !== 'press' || prog.root.form !== form) return null;
   return { spec: prog.root, mana: prog.mana };

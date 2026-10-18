@@ -9,7 +9,9 @@ export function hashPacket(h: Hasher, d: DamagePacket): void {
   for (const t of damageTypes) h.num(d.base[t]);
   h.num(d.critChance).num(d.critMultiplier).num(d.increased).u32(d.more.length);
   for (const m of d.more) h.num(m);
-  h.num(d.ailmentDuration ?? 1).num(d.chillGain ?? 1).bool(d.increasedByType !== undefined);
+  h.num(d.ailmentDuration ?? 1)
+    .num(d.chillGain ?? 1)
+    .bool(d.increasedByType !== undefined);
   if (d.increasedByType) for (const t of damageTypes) h.num(d.increasedByType[t]);
 }
 
@@ -35,7 +37,10 @@ export function hashWeaveState(h: Hasher, state: GameState): void {
     str(h, s.notation);
     h.num(s.cooldownLeft).num(s.periodLeft);
   }
-  h.bool(state.cheats.infiniteMana === true).u32(state.triggerForcing).u32(state.nextCastId);
+  h.bool(state.cheats.infiniteMana === true)
+    .u32(state.triggerForcing)
+    .num(state.triggerForcingLeft);
+  h.u32(state.nextCastId);
   for (const x of state.spellRng.getState()) h.u32(x);
 
   h.u32(state.triggerQueue.length);
@@ -50,7 +55,10 @@ export function hashWeaveState(h: Hasher, state: GameState): void {
     str(h, c.trigger);
     str(h, c.notation);
     str(h, c.spindleId);
-    h.num(c.capacity ?? -1).u32(c.spawned).u32(c.dropped).u32(c.refs);
+    h.num(c.capacity ?? -1)
+      .u32(c.spawned)
+      .u32(c.dropped)
+      .u32(c.refs);
   }
 
   h.u32(state.pendingSpells.length);

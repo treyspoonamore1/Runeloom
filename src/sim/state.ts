@@ -77,10 +77,13 @@ export interface GameState {
   /** Next CastRecord id (fires counted from 1). */
   nextCastId: number;
   /**
-   * DPS readout hook: when > 0, On Dodge, On Hurt and On Crit events are synthesized every this
-   * many ticks (from tick 1) and natural ones are ignored (DESIGN §5.5). 0 in play.
+   * DPS readout hook (DESIGN §5.5): when > 0, natural On Dodge, On Hurt and On Crit events are
+   * ignored and one of each is synthesized every this many trigger phases (ticks outside
+   * hitstop, so ICDs see the same clock), starting with the first. 0 in play.
    */
   triggerForcing: number;
+  /** Trigger phases until the next synthesized event while triggerForcing > 0. */
+  triggerForcingLeft: number;
   /** Debug counters for the overlay. Not hashed. */
   stats: SpellStats;
   /** Live enemies in spawn order (dead ones are removed at the end of each step). */
@@ -152,6 +155,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     triggerQueue: [],
     nextCastId: 1,
     triggerForcing: 0,
+    triggerForcingLeft: 0,
     stats: { spells: 0, dropped: 0, evicted: 0, fires: 0 },
     enemies: [],
     projectiles: [],

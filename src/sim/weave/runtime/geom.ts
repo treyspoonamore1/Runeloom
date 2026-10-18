@@ -94,7 +94,14 @@ export function enemiesTouching(state: GameState, x: number, y: number, r: numbe
  * Distance along the unit ray from (x0, y0) to the first cell that blocks shots (or the room
  * edge), at most maxLen. 0 if it starts inside one. A DDA walk like world/los.ts.
  */
-export function rayWallDistance(room: Room, x0: number, y0: number, dx: number, dy: number, maxLen: number): number {
+export function rayWallDistance(
+  room: Room,
+  x0: number,
+  y0: number,
+  dx: number,
+  dy: number,
+  maxLen: number,
+): number {
   const w = room.width;
   const h = room.height;
   const mask = room.shotSolid;

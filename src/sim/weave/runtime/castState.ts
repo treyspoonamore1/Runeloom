@@ -20,6 +20,7 @@ export function endCast(state: GameState): void {
 export function cancelCast(state: GameState): void {
   const p = state.player;
   if (p.castSlot < 0) return;
-  if (!p.castReleased) emit(state, { type: 'castCancel', slot: p.castSlot, spell: slotSpellName(state, p.castSlot) });
+  if (!p.castReleased)
+    emit(state, { type: 'castCancel', slot: p.castSlot, spell: slotSpellName(state, p.castSlot) });
   endCast(state);
 }

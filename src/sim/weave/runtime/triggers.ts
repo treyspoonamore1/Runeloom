@@ -78,8 +78,8 @@ export function fireProgram(
 }
 
 /**
- * Order: slot timers count down → Cast flow (M1 casting) → Pulse → queued events in arrival
- * order, each offered to slots 0–3.
+ * Order: ICDs count down → Cast flow (M1 casting) → Pulse → queued events in arrival order,
+ * each offered to slots 0–3.
  */
 export function stepWeaves(state: GameState, input: InputFrame): void {
   const p = state.player;
@@ -89,7 +89,6 @@ export function stepWeaves(state: GameState, input: InputFrame): void {
       s.cooldownLeft -= DT;
       if (s.cooldownLeft <= TIME_EPSILON) s.cooldownLeft = 0;
     }
-    if (s.program?.trigger.event === 'interval') s.periodLeft -= DT;
   }
   const blocked = p.dead || isFrozen(p);
   if (!p.dead) {
@@ -153,21 +152,34 @@ function advanceCast(state: GameState, input: InputFrame): void {
         return;
       }
       p.castReleased = true;
-      emit(state, { type: 'cast', slot, spell: prog.root.form, x: p.x, y: p.y, dirX: p.aimDirX, dirY: p.aimDirY });
+      emit(state, {
+        type: 'cast',
+        slot,
+        spell: prog.root.form,
+        x: p.x,
+        y: p.y,
+        dirX: p.aimDirX,
+        dirY: p.aimDirY,
+      });
       fireProgram(state, slot, prog, p.x, p.y, p.aimDirX, p.aimDirY, input.aimX, input.aimY, -1, true);
     }
   }
   if (p.castLeft <= TIME_EPSILON) endCast(state);
 }
 
-/** Pulse: when its period elapses, fire at the nearest visible enemy in range; skip (period restarts) if none or short of mana. */
+/**
+ * Pulse: when its period is up, fire at the nearest visible enemy in range; skip (the period
+ * restarts) if there is none or mana is short. A period of d seconds fires every 60d ticks.
+ */
 function stepPulse(state: GameState, blocked: boolean): void {
   const p = state.player;
   state.weaves.slots.forEach((s, slot) => {
     const prog = s.program;
-    if (prog === null || prog.trigger.event !== 'interval' || s.periodLeft > TIME_EPSILON) return;
-    s.periodLeft += prog.trigger.period ?? 0;
-    if (blocked) return;
+    if (prog === null || prog.trigger.event !== 'interval') return;
+    const due = s.periodLeft <= TIME_EPSILON;
+    if (due) s.periodLeft += prog.trigger.period ?? 0;
+    s.periodLeft -= DT;
+    if (!due || blocked) return;
     const t = nearestEnemy(state, p.x, p.y, prog.trigger.aimRange ?? Infinity, null, true);
     if (t === null || !payMana(state, prog.mana)) return;
     const [dx, dy] = directionOr(p.x, p.y, t.x, t.y, p.aimDirX, p.aimDirY);
@@ -182,7 +194,11 @@ function stepQueue(state: GameState, input: InputFrame, blocked: boolean): void 
   const q = state.triggerQueue;
   if (state.triggerForcing > 0) {
     for (let i = q.length - 1; i >= 0; i--) if (FORCED.includes(q[i]!.event)) q.splice(i, 1);
-    if ((state.tick - 1) % state.triggerForcing === 0) for (const ev of FORCED) forceEvent(state, ev);
+    if (state.triggerForcingLeft <= 0) {
+      state.triggerForcingLeft = state.triggerForcing;
+      for (const ev of FORCED) forceEvent(state, ev);
+    }
+    state.triggerForcingLeft--;
   }
   if (q.length === 0) return;
   // Entries queued while these fire (crits from their hits) wait for the next tick.

@@ -17,7 +17,12 @@ import { fireOnExpire } from './procs';
 import type { CastRecord, SpawnAt, SpellEndReason, SpellInstance } from './types';
 
 /** Opens the record for one fire of a weave slot (or of a program outside the slots: slot -1). */
-export function openCast(state: GameState, slot: number, trigger: TriggerId, program: SpellProgram): CastRecord {
+export function openCast(
+  state: GameState,
+  slot: number,
+  trigger: TriggerId,
+  program: SpellProgram,
+): CastRecord {
   const w = state.weaves;
   const cast: CastRecord = {
     id: state.nextCastId++,
@@ -70,7 +75,13 @@ export function spawnSpell(state: GameState, cast: CastRecord, spec: SpellSpec, 
     if (cast.spawned >= cast.program.spawnCap) {
       cast.dropped++;
       state.stats.dropped++;
-      emit(state, { type: 'spawnDropped', castId: cast.id, slot: cast.slot, form: spec.form, depth: spec.depth });
+      emit(state, {
+        type: 'spawnDropped',
+        castId: cast.id,
+        slot: cast.slot,
+        form: spec.form,
+        depth: spec.depth,
+      });
       continue;
     }
     cast.spawned++;
@@ -214,7 +225,12 @@ const PROJECTILE_REASON: Record<SpellEndReason, ProjectileEndReason> = {
  * bolts), then fires its On Expire branches from there, unless the global cap evicted it.
  * `stoppedOn`: the enemy it stopped on, which its On Expire spells spawn from.
  */
-export function endSpell(state: GameState, inst: SpellInstance, reason: SpellEndReason, stoppedOn = -1): void {
+export function endSpell(
+  state: GameState,
+  inst: SpellInstance,
+  reason: SpellEndReason,
+  stoppedOn = -1,
+): void {
   if (inst.ended) return;
   inst.ended = true;
   inst.endReason = reason;

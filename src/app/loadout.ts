@@ -109,7 +109,12 @@ export function setWeave(session: Session, slot: number, notation: string | null
   if (out.preview.parseError) result.parseError = out.preview.parseError;
   if (out.preview.compiled) result.compiled = out.preview.compiled;
   if (out.applied)
-    session.recordLoadoutEdit({ tick: state.tick, kind: 'weave', slot, value: state.weaves.slots[slot]!.notation });
+    session.recordLoadoutEdit({
+      tick: state.tick,
+      kind: 'weave',
+      slot,
+      value: state.weaves.slots[slot]!.notation,
+    });
   return result;
 }
 

@@ -32,7 +32,14 @@ export function noteKill(state: GameState, id: number, x: number, y: number): vo
 }
 
 /** A player hit crit enemy `id` at (x, y), travelling along unit (dirX, dirY). */
-export function noteCrit(state: GameState, id: number, x: number, y: number, dirX: number, dirY: number): void {
+export function noteCrit(
+  state: GameState,
+  id: number,
+  x: number,
+  y: number,
+  dirX: number,
+  dirY: number,
+): void {
   push(state, 'crit', id, x, y, dirX, dirY, 0);
 }
 

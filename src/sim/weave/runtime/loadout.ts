@@ -46,7 +46,7 @@ export interface WeaveSlot {
   error: string | null;
   /** Seconds left on the trigger's internal cooldown. Hashed. */
   cooldownLeft: number;
-  /** Pulse: seconds until the next pulse. Hashed. */
+  /** Pulse: seconds until the next pulse (0 or less: on the next tick). Hashed. */
   periodLeft: number;
 }
 
@@ -134,9 +134,10 @@ function compileSlot(w: WeaveLoadout, tuning: Tuning, slot: WeaveSlot): void {
   else slot.error = c.error.message;
 }
 
+/** A new weave is ready at once: no ICD, and a Pulse fires on the next tick it finds a target. */
 function resetTimers(slot: WeaveSlot): void {
   slot.cooldownLeft = 0;
-  slot.periodLeft = slot.program?.trigger.period ?? 0;
+  slot.periodLeft = 0;
 }
 
 /**
@@ -178,8 +179,7 @@ export interface SetWeaveOutcome {
  * Resets the slot's trigger timers and cancels a cast from that slot. Otherwise changes nothing.
  */
 export function setSlotWeave(state: GameState, slot: number, notation: string | null): SetWeaveOutcome {
-  if (!Number.isInteger(slot) || slot < 0 || slot >= LOADOUT_SLOTS)
-    throw new Error(`No weave slot ${slot}`);
+  if (!Number.isInteger(slot) || slot < 0 || slot >= LOADOUT_SLOTS) throw new Error(`No weave slot ${slot}`);
   const preview: WeavePreview = notation === null ? {} : previewWeave(state, notation);
   if (notation !== null && (preview.parseError || !preview.compiled!.ok)) return { applied: false, preview };
   if (state.player.castSlot === slot) cancelCast(state);
@@ -195,7 +195,11 @@ export function setSlotWeave(state: GameState, slot: number, notation: string | 
  * Switches spindle (and Capacity override). Every slot is recompiled; weaves that no longer fit
  * keep their notation and error and don't fire. Cancels any cast. Timers keep running.
  */
-export function setLoadoutSpindle(state: GameState, spindleId: SpindleId, capacity: number | null = null): void {
+export function setLoadoutSpindle(
+  state: GameState,
+  spindleId: SpindleId,
+  capacity: number | null = null,
+): void {
   cancelCast(state);
   const w = state.weaves;
   w.spindleId = spindleId;

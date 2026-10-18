@@ -10,7 +10,13 @@ import { initOrb, initSigil, stepOrb, stepSigil } from './orbit';
  * Sets a new instance's geometry. (aimX, aimY) is its aim point after the fan rotation; dirX/dirY
  * are already set. Runs before 'spellSpawn' is sent.
  */
-export function initForm(state: GameState, inst: SpellInstance, at: SpawnAt, aimX: number, aimY: number): void {
+export function initForm(
+  state: GameState,
+  inst: SpellInstance,
+  at: SpawnAt,
+  aimX: number,
+  aimY: number,
+): void {
   switch (inst.form) {
     case 'bolt':
       return initBolt(inst);

@@ -74,7 +74,15 @@ export type SimEvent =
       params: FormParams;
     }
   /** A player spell instance ended at (x, y). Every spellSpawn gets exactly one, possibly in the same step. */
-  | { type: 'spellEnd'; id: number; castId: number; form: FormId; x: number; y: number; reason: SpellEndReason }
+  | {
+      type: 'spellEnd';
+      id: number;
+      castId: number;
+      form: FormId;
+      x: number;
+      y: number;
+      reason: SpellEndReason;
+    }
   /**
    * A Beam fired (instant): the line from (fromX, fromY) to where it stopped (a wall, its full
    * length, or the last target it hit), `width` cells wide. hits: the targets it hit directly, in
@@ -93,7 +101,15 @@ export type SimEvent =
       hits: { target: number; x: number; y: number }[];
     }
   /** A Lob landed at (x, y) and bursts with `radius` (its hits follow as 'hit' events). */
-  | { type: 'lobLand'; id: number; castId: number; elements: ElementId[]; x: number; y: number; radius: number }
+  | {
+      type: 'lobLand';
+      id: number;
+      castId: number;
+      elements: ElementId[];
+      x: number;
+      y: number;
+      radius: number;
+    }
   /** A Chain jump from (fromX, fromY) to enemy `target` at (toX, toY); its hit follows. */
   | {
       type: 'chainJump';

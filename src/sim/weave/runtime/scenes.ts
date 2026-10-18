@@ -38,7 +38,12 @@ export function createReferenceScene(
   opts: { seed: number; tuning?: Tuning; distance?: number },
 ): ReferenceScene {
   const d = referenceScenes[id];
-  const state = createGame({ seed: opts.seed, roomText: roomText(id), tuning: opts.tuning, spawnRoomEnemies: false });
+  const state = createGame({
+    seed: opts.seed,
+    roomText: roomText(id),
+    tuning: opts.tuning,
+    spawnRoomEnemies: false,
+  });
   const p = state.player;
   p.x = p.prevX = d.playerX;
   p.y = p.prevY = d.playerY;

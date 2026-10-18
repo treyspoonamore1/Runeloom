@@ -24,7 +24,8 @@ export function fireStrike(state: GameState, s: SpellInstance): void {
   for (const idx of enemiesTouching(state, s.x, s.y, p.reach)) {
     const e = state.enemies[idx]!;
     if (!canTarget(s, e)) continue;
-    if (!circleIntersectsSector(e.x, e.y, e.radius, s.x, s.y, s.dirX, s.dirY, p.halfAngleCos, p.reach)) continue;
+    if (!circleIntersectsSector(e.x, e.y, e.radius, s.x, s.y, s.dirX, s.dirY, p.halfAngleCos, p.reach))
+      continue;
     s.hitIds.push(e.id);
     const [kx, ky] = directionOr(s.x, s.y, e.x, e.y, s.dirX, s.dirY);
     spellHit(state, s, e, kx, ky, s.dirX, s.dirY);
@@ -96,7 +97,14 @@ export function initLob(state: GameState, l: SpellInstance, aimX: number, aimY: 
       ux = state.spellRng.range(-1, 1);
       uy = state.spellRng.range(-1, 1);
     } while (ux * ux + uy * uy > 1);
-    [tx, ty] = clampPoint(state.room, l.x, l.y, l.x + ux * p.randomLandRadius, l.y + uy * p.randomLandRadius, Infinity);
+    [tx, ty] = clampPoint(
+      state.room,
+      l.x,
+      l.y,
+      l.x + ux * p.randomLandRadius,
+      l.y + uy * p.randomLandRadius,
+      Infinity,
+    );
   } else [tx, ty] = clampPoint(state.room, l.x, l.y, aimX, aimY, p.range);
   l.fromX = l.x;
   l.fromY = l.y;
