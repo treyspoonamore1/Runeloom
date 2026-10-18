@@ -5,7 +5,10 @@ import {
   circleOverlapsSolid,
   createGame,
   edgeSpawnTiles,
+  kiterInput,
   pickSpawnPoint,
+  SIM_HZ,
+  spawnGroup,
   NEUTRAL_INPUT,
   startArenaWave,
   step,
@@ -72,4 +75,21 @@ describe('test/wilds', () => {
     expect(state.enemies.length).toBe(6);
     for (const e of state.enemies) expect(e.ai.mode).not.toBe('idle');
   });
+
+  it('stays fair to the kiter bot: it clears the 20-enemy wave in arena mode without dying', () => {
+    const state = createGame({
+      seed: 1,
+      roomText: loadRoomText('test/wilds'),
+      mode: 'arena',
+      spawnRoomEnemies: false,
+    });
+    spawnGroup(state, { tinderling: 12, ember_archer: 5, shieldbearer: 3 }, 1);
+    let deaths = 0;
+    for (let i = 0; i < 90 * SIM_HZ && state.enemies.length > 0; i++) {
+      step(state, kiterInput(state));
+      for (const e of state.events) if (e.type === 'playerDeath') deaths++;
+    }
+    expect(deaths).toBe(0);
+    expect(state.enemies).toHaveLength(0);
+  }, 30_000);
 });
