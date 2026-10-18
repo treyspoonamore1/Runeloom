@@ -40,6 +40,8 @@ Base damage is at rune level 1. Terrain footprint is where the form applies its 
 | Swath | 1 | 8 | 0.40 s | 4 | 0% | Paints a 14×3-cell strip from the caster toward the aim. Hits each entity in the strip once | The strip | M2 |
 | Sigil | 2 | 12 | 0.50 s | 0 | — | Places a sigil at the aim point (max 30 cells) for 4 s. Deals no damage itself and needs an Emit branch | None | M2 |
 
+Mana on hit (DESIGN §2.1, "Closer pays more"): Strike restores 2 mana and Nova restores 1 mana for each enemy it hits within 8 cells of the player, up to 6 mana per spell instance. This applies however the spell was cast (a trigger or a branch), as long as the enemy is close to the player when hit. All three numbers are tunable.
+
 Validation:
 
 - Every form except Strike needs at least one element, unless it is a branch spell inheriting one.

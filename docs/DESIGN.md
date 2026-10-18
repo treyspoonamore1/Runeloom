@@ -30,6 +30,12 @@ Use these to settle any design question the docs don't answer.
 4. **Numbers climb.** An ARPG power curve plus an incremental meta layer. Something is always getting bigger.
 5. **Everything is testable.** Every rule is deterministic and runs headless. If a rule can't be tested, redesign it.
 
+### 2.1 Guidelines
+
+Guidelines steer balance. Unlike pillars, they can bend when a build needs them to.
+
+- **Closer pays more.** Anything that puts the player within reach of enemies pays back, in damage, mana or defense. The axis is distance, not melee versus magic: a close-range Nova caster is rewarded the same way as a Strike build. Ranged play stays fully viable, but it reaches the same efficiency through investment (passive tree, gear, keystones like Living Loom) rather than by default. The default character therefore plays hybrid, and specializing away from that is a build choice. First lever, tested in M2: close-range forms restore mana on hit (CONTENT §1.2).
+
 ## 3. Setting and tone
 
 The world was woven on a great Loom. The Loom snapped (the Unraveling), and raw elements now spill through the tears as wild fire, frost and storm. You are a Loomwright apprentice who pulls runes out of the frayed lands and weaves them into spells.
