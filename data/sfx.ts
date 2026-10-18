@@ -537,6 +537,8 @@ export const hitSfx = {
 export const castSfx: Record<string, SfxId> = {
   fire_bolt: 'boltCast',
   strike: 'strikeSwing',
+  /** Since M2 the 'cast' event names the weave's root form ('bolt', 'strike', …). */
+  bolt: 'boltCast',
 };
 
 /** Sound when an ailment takes hold or gets stronger, by ailment. */

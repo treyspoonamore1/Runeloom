@@ -2,9 +2,12 @@
  * Headless runner.
  *   npm run sim -- --scenario wander --ticks 10000 --seed 1 [--every 1000] [--json]
  *   npm run sim -- --replay replays/foo.json
+ *   npm run sim -- --weave "<notation>" [--scene dummy_pack] [--seconds 10] [--runs 50] [--seed 1]
+ *                  [--spindle heartwood] [--capacity 22] [--json]
  *   npm run sim -- --list
  */
 import { findScenario, hashHex, hashState, createScenarioGame, step, scenarios } from '../src/sim';
+import { printReadout, readoutFromArgs } from './lib/readout';
 import { parseArgs, requireInt, runCli } from './lib/args';
 import { checkReplay, readReplay } from './lib/replay';
 import { loadRoomText } from './lib/rooms';
@@ -18,7 +21,21 @@ runCli(() => {
     every: { kind: 'number' },
     json: { kind: 'boolean' },
     list: { kind: 'boolean' },
+    weave: { kind: 'string' },
+    scene: { kind: 'string', default: 'dummy_pack' },
+    seconds: { kind: 'number', default: 10 },
+    runs: { kind: 'number', default: 50 },
+    spindle: { kind: 'string', default: 'heartwood' },
+    capacity: { kind: 'number' },
   });
+
+  if (a.weave !== undefined) {
+    const { input, result } = readoutFromArgs(a);
+    if (a.json) console.log(JSON.stringify(result));
+    else printReadout(input, result);
+    if (!result.ok) process.exitCode = 1;
+    return;
+  }
 
   if (a.list) {
     if (a.json)

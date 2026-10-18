@@ -80,18 +80,11 @@ export {
 export {
   spawnProjectile,
   circleHitsShotWall,
+  anyShotSolid,
   type Projectile,
   type SpawnProjectileOptions,
 } from './combat/projectiles';
-export {
-  LOADOUT_SLOTS,
-  SLOT_BUTTONS,
-  defaultLoadout,
-  castDuration,
-  cancelCast,
-  spellPacket,
-  type Loadout,
-} from './combat/casting';
+export * from './weave/runtime';
 export { stepEnemyAI, prepareEnemyAI, aggro } from './ai';
 export { hasLineOfSight, hasWalkLine, segmentClear } from './world/los';
 export {

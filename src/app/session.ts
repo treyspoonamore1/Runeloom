@@ -1,7 +1,11 @@
 import {
   createGame,
+  DEFAULT_LOADOUT,
+  loadoutSpecOf,
   step,
   type Cheats,
+  type LoadoutEdit,
+  type LoadoutSpec,
   type GameMode,
   type GameState,
   type InputFrame,
@@ -33,6 +37,13 @@ export class Session {
   startTuning: Tuning;
   /** Cheats at the last reset; replays start from them. */
   startCheats: Cheats = { god: false };
+  /** Weaves and spindle at the last reset; a reset keeps the current ones. Replays start from them. */
+  startLoadout: LoadoutSpec = DEFAULT_LOADOUT;
+  /**
+   * Loom edits since the last reset (src/app/loadout.ts), each applied between ticks at
+   * `state.tick === tick`. Replays apply them at the same ticks; they don't mark the session edited.
+   */
+  loadoutEdits: LoadoutEdit[] = [];
   /**
    * Sim events from every step since the last drainEvents(), in order. A frame can run several
    * steps (or none), so render and audio drain this once per frame instead of reading state.events.
@@ -69,15 +80,18 @@ export class Session {
     if (opts.roomId !== undefined) this.roomId = opts.roomId;
     if (opts.mode !== undefined) this.mode = opts.mode;
     const cheats = { ...this.state.cheats };
+    this.startLoadout = loadoutSpecOf(this.state.weaves);
     this.state = createGame({
       seed: this.seed,
       roomText: roomText(this.roomId),
       tuning: this.state.tuning,
       mode: this.mode,
+      loadout: this.startLoadout,
     });
     this.state.cheats = cheats;
     this.startCheats = { ...cheats };
     this.frames = [];
+    this.loadoutEdits = [];
     this.pendingEvents = [];
     this.edited = false;
     this.startTuning = cloneTuning(this.state.tuning);
@@ -90,6 +104,16 @@ export class Session {
    */
   markEdited(): void {
     this.edited = true;
+    for (const e of this.state.events) this.pendingEvents.push(e);
+    this.state.events.length = 0;
+  }
+
+  /**
+   * Records a Loom edit already applied to the state between ticks, and queues any events it
+   * caused (a cancelled cast) for render and audio. Does not mark the session edited.
+   */
+  recordLoadoutEdit(edit: LoadoutEdit): void {
+    this.loadoutEdits.push(edit);
     for (const e of this.state.events) this.pendingEvents.push(e);
     this.state.events.length = 0;
   }

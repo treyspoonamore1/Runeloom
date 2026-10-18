@@ -51,7 +51,7 @@ describe('casting', () => {
     const events = ticks(state, 10, BOLT);
     expect(ofType(events, 'castStart')).toHaveLength(0);
     expect(ofType(events, 'castFailed')).toEqual([
-      { type: 'castFailed', slot: 0, spell: 'fire_bolt', reason: 'mana' },
+      { type: 'castFailed', slot: 0, spell: 'bolt', reason: 'mana' },
     ]);
     // Strike (4 mana) is still affordable.
     expect(ofType(ticks(state, 1, STRIKE), 'castStart')).toHaveLength(1);
@@ -59,7 +59,7 @@ describe('casting', () => {
 
   it('the lowest held slot wins', () => {
     const state = arena();
-    expect(ofType(tick(state, BOLT | STRIKE), 'castStart')[0]!.spell).toBe('fire_bolt');
+    expect(ofType(tick(state, BOLT | STRIKE), 'castStart')[0]!.spell).toBe('bolt');
   });
 
   it('the player keeps moving while casting', () => {

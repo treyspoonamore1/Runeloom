@@ -1,11 +1,12 @@
 import { enemyDef } from '../../../data/enemies';
 import { addKnockback } from '../actors/knockback';
-import type { Enemy } from '../actors/enemies';
+import { PLAYER_ID, type Enemy } from '../actors/enemies';
 import { isInvulnerable, type PlayerState } from '../actors/player';
 import { killPlayer } from '../actors/playerVitals';
 import { emit, type DeathCause } from '../events';
 import type { GameState } from '../state';
 import { applyHitAilments, isFrozen, type AilmentTarget } from './ailments';
+import { noteHurt, noteKill } from '../weave/runtime/queue';
 import { resolveHit, type DamagePacket, type DamageTarget, type HitResult } from './damage';
 
 /** How a hit was delivered, besides its damage. */
@@ -19,6 +20,8 @@ export interface HitInfo {
   knockback: number;
   /** Hitstop seconds if this hit kills (Strike: feel.hitstopStrikeKill). */
   killHitstop?: number;
+  /** The player spell instance dealing it, for the 'hit' event. */
+  spellId?: number;
 }
 
 /**
@@ -48,7 +51,8 @@ function damageTarget(t: AilmentTarget): DamageTarget {
  * Player hits during i-frames are evaded: no damage, no knockback, no ailments, an 'evaded'
  * event, null. Hits on dead targets do nothing and return null. Dummies (immortal) reset to full
  * life at 0 instead of dying. A crit adds feel.hitstopCrit; killing a Frozen enemy shatters it
- * and adds feel.hitstopShatter.
+ * and adds feel.hitstopShatter. Player kills and hits on the player are noted for the Harvest
+ * and On Hurt triggers (weave/runtime/queue.ts).
  */
 export function applyHit(
   state: GameState,
@@ -78,6 +82,8 @@ function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInf
     y: e.y,
     kbX: kb > 0 ? info.dirX : 0,
     kbY: kb > 0 ? info.dirY : 0,
+    byType: res.byType,
+    spellId: info.spellId,
   });
   if (res.crit) addHitstop(state, state.tuning.feel.hitstopCrit);
   if (e.life <= 0 && killEnemy(state, e, info.sourceId, 'hit')) {
@@ -103,6 +109,7 @@ export function killEnemy(state: GameState, e: Enemy, killerId: number, cause: D
   e.dead = true;
   e.vx = e.vy = e.kbX = e.kbY = 0;
   emit(state, { type: 'death', id: e.id, kind: e.kind, x: e.x, y: e.y, killerId, cause, shattered });
+  if (killerId === PLAYER_ID) noteKill(state, e.id, e.x, e.y);
   if (shattered && cause === 'hit') addHitstop(state, state.tuning.feel.hitstopShatter);
   return true;
 }
@@ -127,8 +134,10 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
     y: p.y,
     kbX: kb > 0 ? info.dirX : 0,
     kbY: kb > 0 ? info.dirY : 0,
+    byType: res.byType,
   });
   if (res.crit) addHitstop(state, state.tuning.feel.hitstopCrit);
+  if (p.maxLife > 0) noteHurt(state, res.total / p.maxLife);
   if (p.life <= 0) killPlayer(state);
   else applyHitAilments(state, p, packet, res, info.sourceId);
   return res;

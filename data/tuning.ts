@@ -47,6 +47,21 @@ export const defaultTuning = {
     playerManaPerLevel: 4,
     /** Mana regenerated per second, as a fraction of max mana. */
     manaRegen: 0.08,
+    /**
+     * "Closer pays more" (DESIGN §2.1, CONTENT §1.2): Strike and Nova restore mana for each enemy
+     * they hit within `range` cells of the player (centers, at hit time), at most
+     * `capPerInstance` per spell instance, however the spell was cast.
+     */
+    manaOnHit: {
+      /** Mana per enemy a Strike hits. */
+      strike: 2,
+      /** Mana per enemy a Nova hits. */
+      nova: 1,
+      /** The enemy must be within this many cells of the player. */
+      range: 8,
+      /** Most mana one spell instance restores. */
+      capPerInstance: 6,
+    },
   },
   /** Hit feel (DESIGN §4). */
   feel: {

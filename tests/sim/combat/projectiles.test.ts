@@ -33,13 +33,13 @@ describe('projectiles', () => {
     const spawn = ofType(events, 'projectileSpawn')[0]!;
     expect(spawn.vx).toBeCloseTo(70, 9);
     expect(spawn.vy).toBe(0);
-    const p = state.projectiles[0]!;
+    const p = state.spells[0]!;
     const end = ofType(ticks(state, 60), 'projectileEnd');
     expect(end).toHaveLength(1);
     expect(end[0]!.reason).toBe('expired');
     expect(end[0]!.x - 20).toBeCloseTo(70 * 0.9, 6);
     expect(p.ended).toBe(true);
-    expect(state.projectiles).toHaveLength(0);
+    expect(state.spells).toHaveLength(0);
   });
 
   it('stops at walls at its last clear position', () => {

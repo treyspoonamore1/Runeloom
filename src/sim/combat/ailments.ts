@@ -158,7 +158,7 @@ function chillGain(_t: AilmentTarget, _A: AilmentTuning): number {
 /**
  * Applies the ailments a resolved hit carries (DESIGN §6.4) to a live target: Ignite from its
  * fire part, Chill (and maybe Freeze) from its frost part, Shock from its storm part. Durations
- * are scaled by packet.ailmentDuration.
+ * are scaled by packet.ailmentDuration; chill points by packet.chillGain (spindle implicit).
  */
 export function applyHitAilments(
   state: GameState,
@@ -176,7 +176,7 @@ export function applyHitAilments(
   if (fire > 0) applyIgnite(state, t, fire * A.igniteDpsFraction, A.igniteDuration * durMul, sourceId);
   if (frost > 0) {
     const points = isBoss(t) ? A.bossChillPerHit : (frost / t.maxLife) * A.chillPerLifeFraction;
-    addChill(state, t, points * chillGain(t, A), durMul, sourceId);
+    addChill(state, t, points * chillGain(t, A) * (packet.chillGain ?? 1), durMul, sourceId);
   }
   if (storm > 0) {
     const raw = (storm / t.maxLife) * A.shockPerLifeFraction;

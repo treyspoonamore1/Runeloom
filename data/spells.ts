@@ -1,11 +1,16 @@
 /**
- * M1 hardcoded spells (CONTENT §1.2). M2 replaces these with compiled weaves; until then the
- * player's loadout names these ids. Damage is at rune level 1.
+ * LEGACY display shim. M1 hardcoded these two spells; since M2 the sim runs compiled weaves
+ * (src/sim/weave/runtime) and never reads these numbers. Only the M1 HUD (src/ui/hudModel.ts) and
+ * the player's cast glow (src/render/playerView.ts) still use them, through the derived
+ * `GameState.loadout` and `PlayerState.castSpell`. Delete this file once those read the weave
+ * slots (`GameState.weaves`, src/app/loadout.ts) instead.
  */
 import type { DamageAmounts, ProjectileDef } from './combatTypes';
 
 export interface SpellDef {
   name: string;
+  /** The weave this M1 spell became; a slot holding exactly this notation shows as this spell. */
+  notation: string;
   form: 'bolt' | 'strike';
   /** Form base damage at rune level 1. */
   baseDamage: number;
@@ -31,6 +36,7 @@ export const spells = {
   /** `Cast > Bolt[Fire]`: 12 Fire, 6 mana × 1.10 (Fire), 0.45 s, 6% crit. */
   fire_bolt: {
     name: 'Fire Bolt',
+    notation: 'Cast > Bolt[Fire]',
     form: 'bolt',
     baseDamage: 12,
     shares: { fire: 1 },
@@ -44,6 +50,7 @@ export const spells = {
   /** `Cast > Strike[]`: 16 Physical (the Twig Spindle adds no Strike bonus), 4 mana, 0.40 s, 7% crit. */
   strike: {
     name: 'Strike',
+    notation: 'Cast > Strike[]',
     form: 'strike',
     baseDamage: 16,
     shares: { physical: 1 },

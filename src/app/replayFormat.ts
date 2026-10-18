@@ -1,4 +1,4 @@
-import type { Cheats, GameMode, InputFrame } from '../sim';
+import type { Cheats, GameMode, InputFrame, LoadoutEdit, LoadoutSpec } from '../sim';
 import type { Tuning } from '../../data/tuning';
 
 /**
@@ -17,6 +17,10 @@ export interface ReplayFile {
   cheats?: Cheats;
   /** True if cheats or console commands changed the state during the recording, so it may not reproduce. */
   cheatsEdited?: boolean;
+  /** Weaves and spindle at the start of the recording; absent (pre-M2) means the default loadout. */
+  loadout?: LoadoutSpec;
+  /** Loom edits during the recording, applied between ticks (LoadoutEdit); absent means none. */
+  loadoutEdits?: LoadoutEdit[];
   /** Tuning the recording started with. */
   tuning: Tuning;
   /** True if tuning was edited during the recording, in which case it may not reproduce. */

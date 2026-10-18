@@ -3,7 +3,7 @@ import { DT } from '../core/constants';
 import { emit } from '../events';
 import type { GameState } from '../state';
 import type { PlayerState } from './player';
-import { cancelCast } from '../combat/casting';
+import { cancelCast } from '../weave/runtime/castState';
 import { clearAilments } from '../combat/ailments';
 
 type CombatTuning = Tuning['combat'];
