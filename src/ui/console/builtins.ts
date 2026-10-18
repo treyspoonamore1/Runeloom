@@ -5,6 +5,7 @@ import type { DebugContext } from '../debug';
 import { CommandError, numArg, type CommandRegistry } from './commands';
 import { registerM1Commands } from './m1';
 import { registerM2Commands } from './m2';
+import { registerLabCommands } from './lab';
 
 /** Context for console commands: the debug context plus actions owned by the UI layer. */
 export interface ConsoleEnv extends DebugContext {
@@ -108,6 +109,7 @@ export function registerBuiltins(reg: CommandRegistry<ConsoleEnv>): void {
   reg.register({ name: 'replay', summary: 'Save a replay (same as F9).', run: (_a, c) => c.saveReplay() });
   registerM1Commands(reg);
   registerM2Commands(reg);
+  registerLabCommands(reg);
   for (const [name, usage, ms] of STUBS)
     reg.register({ name, usage, summary: `(${ms})`, run: () => `"${name}" is available in ${ms}.` });
 }

@@ -14,6 +14,7 @@ import { OverlayMenu } from './overlayMenu';
 import { createTuningPanel } from './tuningPanel';
 import { injectStyle } from './style';
 import { showToast } from './toast';
+import { installLabControls } from './labHint';
 
 export interface DebugContext {
   session: Session;
@@ -131,6 +132,8 @@ export function createDebugUI(ctx: DebugContext): DebugUI {
     },
     true,
   );
+
+  installLabControls(ctx);
 
   return { frame: (s) => stats.update(s), commands };
 }
