@@ -8,7 +8,7 @@ export function StartScreen(p: { onPlay(): void }) {
       <div class="rl-col">
         <Emblem />
         <h1 class="rl-title">Runeloom</h1>
-        <p class="rl-sub">Combat prototype (M1)</p>
+        <p class="rl-sub">Spell weaving prototype (M2)</p>
         <div class="rl-rule">
           <i />
         </div>

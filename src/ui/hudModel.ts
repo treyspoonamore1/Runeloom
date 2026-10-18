@@ -4,8 +4,10 @@
  * No DOM here, so it runs in Node tests.
  */
 import type { GameState } from '../sim';
-import { spells, spellManaCost, type SpellId } from '../../data/spells';
 import { enemiesRemaining, readArena, type ArenaView } from './arena';
+import type { SlotSnap } from './hudSlots';
+
+export type { SlotSnap } from './hudSlots';
 
 export const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -57,20 +59,6 @@ export function castProgress(castSlot: number, castLeft: number, castTime: numbe
   return quantize(1 - castLeft / castTime, 40);
 }
 
-export const SLOT_KEYS = ['LMB', 'RMB', 'Q', 'E'] as const;
-
-export interface SlotSnap {
-  slot: number;
-  key: string;
-  spell: SpellId;
-  name: string;
-  cost: number;
-  affordable: boolean;
-  /** 0..1 cast sweep. */
-  progress: number;
-  casting: boolean;
-}
-
 export interface WaveSnap {
   wave: number;
   phase: ArenaView['phase'];
@@ -94,24 +82,9 @@ export interface HudSnap {
   god: boolean;
 }
 
-export function readSnap(state: GameState): HudSnap {
+/** Vitals, dodge and wave from the state; `slots` come from hudSlots.slotSnaps (the loadout contract). */
+export function readSnap(state: GameState, slots: SlotSnap[] = []): HudSnap {
   const p = state.player;
-  const slots: SlotSnap[] = [];
-  state.loadout.forEach((id, slot) => {
-    if (id === null) return;
-    const def = spells[id];
-    const cost = spellManaCost(def);
-    slots.push({
-      slot,
-      key: SLOT_KEYS[slot] ?? String(slot + 1),
-      spell: id,
-      name: def.name,
-      cost,
-      affordable: p.mana >= cost,
-      progress: castProgress(p.castSlot, p.castLeft, p.castTime, slot),
-      casting: p.castSlot === slot,
-    });
-  });
   const a = readArena(state);
   const t = state.tuning.player;
   return {
