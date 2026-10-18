@@ -175,6 +175,87 @@ export const sfx = {
     ],
   },
 
+  // --- Ailments (DESIGN §6.4) -------------------------------------------------------------------
+  // Quiet and short: ailments fire often, so none of these may become fatiguing in a crowd.
+  /** Ignite took hold: a soft low "whoomp" of catching flame. */
+  igniteApply: {
+    gain: 0.38,
+    pitchVar: 0.08,
+    minGapMs: 90,
+    layers: [
+      { volume: 0.8, frequency: 105, shape: 'sine', slide: 1.4, attack: 0.012, release: 0.17 },
+      { volume: 0.6, frequency: 320, shape: 'noise', noise: 1, slide: 1.2, attack: 0.02, release: 0.24, filter: 650 },
+    ],
+  },
+  /** A burning target's damage tick (every 0.5 s per target): a faint crackle, lowest priority. */
+  burnTick: {
+    gain: 0.1,
+    pitchVar: 0.25,
+    minGapMs: 140,
+    priority: 0,
+    layers: [
+      { volume: 1, frequency: 1700, shape: 'noise', noise: 2, release: 0.03, filter: -1400 },
+      { at: 0.045, volume: 0.6, frequency: 2300, shape: 'noise', noise: 2, release: 0.025, filter: -1600 },
+    ],
+  },
+  /** Chill added by a frost hit: a tiny icy tinkle under the frost hit sound. */
+  chillApply: {
+    gain: 0.18,
+    pitchVar: 0.06,
+    minGapMs: 110,
+    priority: 0,
+    layers: [
+      { volume: 0.7, frequency: NOTE(31), shape: 'sine', release: 0.1 },
+      { at: 0.035, volume: 0.6, frequency: NOTE(36), shape: 'sine', release: 0.12 },
+    ],
+  },
+  /** Frozen solid: a crisp crack with a crystalline shimmer. */
+  freeze: {
+    gain: 0.45,
+    pitchVar: 0.05,
+    minGapMs: 60,
+    priority: 2,
+    layers: [
+      { volume: 1, frequency: 900, shape: 'noise', noise: 3, release: 0.05, filter: -2000 },
+      { at: 0.02, volume: 0.6, frequency: NOTE(26), shape: 'sine', release: 0.22, repeatTime: 0.03 },
+      { at: 0.035, volume: 0.45, frequency: NOTE(33), shape: 'sine', release: 0.26 },
+    ],
+  },
+  /** Thawed: a soft slushy crack and a drip. */
+  thaw: {
+    gain: 0.26,
+    pitchVar: 0.08,
+    minGapMs: 80,
+    layers: [
+      { volume: 0.6, frequency: 520, shape: 'noise', noise: 1.5, release: 0.12, filter: 900 },
+      { volume: 0.5, frequency: 640, shape: 'sine', slide: -2, release: 0.1 },
+      { at: 0.09, volume: 0.5, frequency: 1250, shape: 'sine', slide: 4, release: 0.05 },
+    ],
+  },
+  /** A frozen enemy shattered: a glassy burst over a small thump. */
+  shatter: {
+    gain: 0.6,
+    pitchVar: 0.06,
+    minGapMs: 40,
+    priority: 3,
+    layers: [
+      { volume: 1, frequency: 2000, shape: 'noise', noise: 2, release: 0.22, filter: -1800 },
+      { volume: 0.55, frequency: NOTE(31), shape: 'sine', release: 0.3, repeatTime: 0.04 },
+      { at: 0.025, volume: 0.45, frequency: NOTE(38), shape: 'sine', release: 0.28 },
+      { volume: 0.6, frequency: 150, shape: 'sine', slide: -0.5, release: 0.13 },
+    ],
+  },
+  /** Shocked: a short electric zap. */
+  shockApply: {
+    gain: 0.34,
+    pitchVar: 0.1,
+    minGapMs: 80,
+    layers: [
+      { volume: 0.7, frequency: 880, shape: 'saw', slide: -6, modulation: 90, release: 0.11, filter: 3400 },
+      { volume: 0.4, frequency: 2100, shape: 'square', shapeCurve: 0.3, tremolo: 0.6, release: 0.06, filter: 4000 },
+    ],
+  },
+
   // --- Enemy deaths (one per kind) -------------------------------------------------------------
   /** Tinderling: a fizzling puff of ash. */
   deathTinderling: {
@@ -457,6 +538,13 @@ export const castSfx: Record<string, SfxId> = {
   fire_bolt: 'boltCast',
   strike: 'strikeSwing',
 };
+
+/** Sound when an ailment takes hold or gets stronger, by ailment. */
+export const ailmentSfx = {
+  ignite: 'igniteApply',
+  chill: 'chillApply',
+  shock: 'shockApply',
+} as const satisfies Record<string, SfxId>;
 
 /** Projectile impact sound by projectile kind (player projectiles only). */
 export const impactSfx: Record<string, SfxId> = {
