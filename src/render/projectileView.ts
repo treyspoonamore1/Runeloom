@@ -1,7 +1,9 @@
 import { Container } from 'pixi.js';
+import type { DamageType } from '../../data/combatTypes';
 import type { GameState, Projectile } from '../sim';
 import type { Atlas } from './atlas';
 import { PROJ } from './combatPalette';
+import { boltLook, dominantType, type ElementLook } from './elementLook';
 import type { FxLayer, FxParticle } from './particles';
 import { ParticlePool } from './particles';
 
@@ -9,6 +11,8 @@ interface ProjView {
   id: number;
   seen: number;
   isArrow: boolean;
+  element: DamageType;
+  look: ElementLook;
   glow: FxParticle | null;
   trail: FxParticle | null;
   core: FxParticle | null;
@@ -65,6 +69,11 @@ export class ProjectileView {
     return this.live.length;
   }
 
+  /** Element of a projectile seen last frame (for its impact burst), or null. */
+  elementOf(id: number): DamageType | null {
+    return this.byId.get(id)?.element ?? null;
+  }
+
   reset(): void {
     for (const v of this.live) this.release(v);
     this.live.length = 0;
@@ -84,11 +93,15 @@ export class ProjectileView {
       const ang = Math.atan2(p.vy, p.vx);
       v.phase += dt;
       const flick = 0.5 + 0.5 * Math.sin(v.phase * 31 + v.id);
+      const crackle = !v.isArrow && v.look.crackle;
       if (v.glow) {
         v.glow.x = x;
         v.glow.y = y;
         v.glow.rotation = ang;
-        if (!v.isArrow) v.glow.scaleX = v.glow.scaleY = PROJ.boltGlowR * p.radius * (0.92 + 0.12 * flick);
+        if (!v.isArrow) {
+          const f = crackle ? 0.8 + 0.4 * Math.random() : 0.92 + 0.12 * flick;
+          v.glow.scaleX = v.glow.scaleY = PROJ.boltGlowR * p.radius * f;
+        }
       }
       if (v.trail) {
         v.trail.x = x;
@@ -101,24 +114,14 @@ export class ProjectileView {
       if (v.core) {
         v.core.x = x;
         v.core.y = y;
-        v.core.rotation = ang;
+        // Storm sparks spin and flicker; other cores face their flight.
+        v.core.rotation = crackle ? v.phase * 25 + Math.random() * 0.8 : ang;
       }
       if (!v.isArrow && shed) {
         v.emberTimer -= dt;
         if (v.emberTimer <= 0) {
           v.emberTimer = 0.03 + Math.random() * 0.04;
-          const e = this.embers.spawn(
-            this.atlas.get('dot'),
-            x - Math.cos(ang) * p.radius + (Math.random() - 0.5) * p.radius,
-            y - Math.sin(ang) * p.radius + (Math.random() - 0.5) * p.radius,
-            p.vx * 0.08 + (Math.random() - 0.5) * 4,
-            p.vy * 0.08 + (Math.random() - 0.5) * 4 - 2,
-            0.2 + Math.random() * 0.15,
-            Math.random() < 0.5 ? PROJ.boltCore : PROJ.boltRim,
-            0.22,
-            0.05,
-          );
-          if (e) e.drag = 4;
+          this.shed(v.look, p, x, y, ang);
         }
       }
     }
@@ -132,11 +135,39 @@ export class ProjectileView {
     }
   }
 
+  /** One in-flight particle behind a player projectile, by its element's style. */
+  private shed(L: ElementLook, p: Projectile, x: number, y: number, ang: number): void {
+    const r = p.radius;
+    const sx = x - Math.cos(ang) * r + (Math.random() - 0.5) * r;
+    const sy = y - Math.sin(ang) * r + (Math.random() - 0.5) * r;
+    const c = L.sparks[Math.floor(Math.random() * L.sparks.length)]!;
+    if (L.shed === 'spark') {
+      const a = Math.random() * Math.PI * 2;
+      const e = this.embers.spawn(this.atlas.get('spark'), sx, sy, Math.cos(a) * 14 + p.vx * 0.1, Math.sin(a) * 14 + p.vy * 0.1, 0.07 + Math.random() * 0.07, c, 0.7, 0.3);
+      if (e) {
+        e.align = true;
+        e.stretch = 0.03;
+        e.drag = 6;
+      }
+    } else if (L.shed === 'flake') {
+      const e = this.embers.spawn(this.atlas.get('frost_crystal'), sx, sy, p.vx * 0.05 + (Math.random() - 0.5) * 3, p.vy * 0.05 + (Math.random() - 0.5) * 3, 0.3 + Math.random() * 0.2, c, 0.32, 0.1);
+      if (e) {
+        e.drag = 3;
+        e.spin = (Math.random() - 0.5) * 8;
+      }
+    } else {
+      const e = this.embers.spawn(this.atlas.get('dot'), sx, sy, p.vx * 0.08 + (Math.random() - 0.5) * 4, p.vy * 0.08 + (Math.random() - 0.5) * 4 - 2, 0.2 + Math.random() * 0.15, c, 0.22, 0.05);
+      if (e) e.drag = 4;
+    }
+  }
+
   private create(p: Projectile): ProjView {
     const v = this.spare.pop() ?? {
       id: 0,
       seen: 0,
       isArrow: false,
+      element: 'fire' as DamageType,
+      look: boltLook('fire'),
       glow: null,
       trail: null,
       core: null,
@@ -148,6 +179,8 @@ export class ProjectileView {
     v.emberTimer = 0;
     const enemy = p.team === 'enemy';
     v.isArrow = enemy;
+    v.element = dominantType(p.damage.base);
+    v.look = boltLook(v.element);
     const P = enemy ? this.theirs : this.mine;
     const a = this.atlas;
     if (enemy) {
@@ -166,16 +199,16 @@ export class ProjectileView {
       }
       v.core = P.core.alloc(a.get('arrow'));
     } else {
+      // Player bolt, in its element's look (elementLook.ts).
+      const L = v.look;
       v.glow = P.glow.alloc(a.get('glow'));
-      if (v.glow) {
-        v.glow.paint(PROJ.boltGlow, 0.45);
-      }
+      if (v.glow) v.glow.paint(L.glow, L.glowAlpha);
       v.trail = P.trail.alloc(a.get('streak'));
       if (v.trail) {
-        v.trail.paint(PROJ.boltTrail, 0.9);
+        v.trail.paint(L.trail, L.trailAlpha);
         v.trail.scaleY = p.radius * 1.7;
       }
-      v.core = P.core.alloc(a.get('bolt_core'));
+      v.core = P.core.alloc(a.get(L.boltCore));
       if (v.core) v.core.scaleX = v.core.scaleY = p.radius * 0.85;
     }
     this.byId.set(p.id, v);

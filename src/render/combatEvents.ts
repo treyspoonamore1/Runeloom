@@ -1,10 +1,13 @@
 import { PLAYER_ID, type GameState, type SimEvent } from '../sim';
 import { enemies as enemyDefs } from '../../data/enemies';
+import type { AilmentFx } from './ailmentFx';
 import { FX, SHAKE } from './combatPalette';
 import type { DamageNumbers } from './damageNumbers';
+import { spellElement } from './elementLook';
 import type { EnemyLayer } from './enemyLayer';
 import type { FxView } from './fxView';
 import type { PlayerView } from './playerView';
+import type { ProjectileView } from './projectileView';
 import type { Shake } from './shake';
 import type { TelegraphView } from './telegraphView';
 
@@ -18,6 +21,8 @@ for (const d of Object.values(enemyDefs)) {
 export interface CombatEventDeps {
   enemies: EnemyLayer;
   fx: FxView;
+  ailments: AilmentFx;
+  projectiles: ProjectileView;
   player: PlayerView;
   numbers: DamageNumbers;
   telegraphs: TelegraphView;
@@ -38,7 +43,7 @@ export class CombatEvents {
   constructor(private readonly d: CombatEventDeps) {}
 
   handle(events: readonly SimEvent[]): void {
-    const { enemies, fx, player, numbers, telegraphs, shake } = this.d;
+    const { enemies, fx, ailments, projectiles, player, numbers, telegraphs, shake } = this.d;
     const s = this.d.state();
     let strikeRun = false;
     for (const ev of events) {
@@ -48,7 +53,7 @@ export class CombatEvents {
             fx.strike(ev.x, ev.y, ev.dirX, ev.dirY);
             strikeRun = true;
           } else {
-            fx.castFlash(player.tip.x, player.tip.y, ev.dirX, ev.dirY);
+            fx.castFlash(player.tip.x, player.tip.y, ev.dirX, ev.dirY, spellElement(ev.spell));
             strikeRun = false;
           }
           break;
@@ -64,21 +69,32 @@ export class CombatEvents {
             numbers.damage(-1, ev.x, ev.y, ev.amount, ev.crit, ev.damageType, true);
           } else {
             const v = enemies.view(ev.target);
-            v?.hit(ev.kbX, ev.kbY, s.player.x, s.player.y);
+            v?.hit(ev.kbX, ev.kbY, s.player.x, s.player.y, ev.damageType);
             fx.hitEnemy(ev.x, ev.y, v?.kind ?? '', ev.damageType, ev.crit, ev.kbX, ev.kbY);
             numbers.damage(ev.target, ev.x, ev.y, ev.amount, ev.crit, ev.damageType, false);
             if (ev.crit && ev.sourceId === PLAYER_ID) shake.kick(SHAKE.crit);
           }
           break;
         case 'death':
-          fx.death(ev.x, ev.y, ev.kind);
-          enemies.view(ev.id)?.die();
+          if (ev.shattered) {
+            // Frozen: burst into ice, no corpse (DESIGN §4 shakes on Shatter).
+            ailments.shatter(ev.x, ev.y, ev.kind);
+            enemies.view(ev.id)?.die(true);
+            shake.kick(SHAKE.shatter);
+          } else {
+            fx.death(ev.x, ev.y, ev.kind);
+            enemies.view(ev.id)?.die();
+          }
           if (strikeRun) shake.kick(SHAKE.strikeKill);
+          break;
+        case 'dot':
+          // Batched damage over time: its own small slanted numbers, no flash, sparks or shake.
+          numbers.dot(ev.x, ev.y, ev.amount, ev.damageType, ev.target === 'player');
           break;
         case 'hitstop':
           break;
         case 'projectileEnd':
-          fx.projectileEnd(ev.x, ev.y, ENEMY_SHOTS.has(ev.kind), ev.reason);
+          fx.projectileEnd(ev.x, ev.y, ENEMY_SHOTS.has(ev.kind), ev.reason, projectiles.elementOf(ev.id) ?? 'fire');
           strikeRun = false;
           break;
         case 'shieldBlock': {
