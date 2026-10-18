@@ -4,6 +4,7 @@ import type { AttackShape } from './combat/shapes';
 import type { Ailments } from './combat/ailments';
 import type { DamagePacket } from './combat/damage';
 import type { GameState } from './state';
+import { hashPacket, hashWeaveState } from './weave/runtime/hash';
 
 /**
  * Hash of all simulation state that affects the future. Two runs with the same
@@ -12,7 +13,8 @@ import type { GameState } from './state';
  *
  * Not hashed: `events` (output only), `enemyHash` (rebuilt from `enemies` every step),
  * prevX/prevY (render interpolation only), `flow.cost` (a pure function of the room and the
- * hashed `flow.goalTile`).
+ * hashed `flow.goalTile`), `stats` (counters), the legacy `loadout` and compiled weave programs
+ * (derived from the hashed notations and spindle).
  */
 export function hashState(state: GameState): number {
   const h = new Hasher();
@@ -31,8 +33,7 @@ export function hashState(state: GameState): number {
   for (const q of ar.queue) h.string(q.kind).byte(0).u32(q.areaLevel).num(q.delay);
   h.string(state.room.id);
   h.u32(state.nextId).num(state.hitstopLeft);
-  h.u32(state.loadout.length);
-  for (const s of state.loadout) h.string(s ?? '-').byte(0);
+  hashWeaveState(h, state);
 
   const p = state.player;
   h.num(p.x).num(p.y).num(p.vx).num(p.vy);
@@ -84,10 +85,7 @@ function amounts(h: Hasher, a: DamageAmounts): void {
 }
 
 function packet(h: Hasher, d: DamagePacket): void {
-  amounts(h, d.base);
-  h.num(d.critChance).num(d.critMultiplier).num(d.increased).u32(d.more.length);
-  for (const m of d.more) h.num(m);
-  h.num(d.ailmentDuration ?? 1);
+  hashPacket(h, d);
 }
 
 function ailments(h: Hasher, a: Ailments): void {

@@ -4,7 +4,8 @@ import { DT, GRID_EVERY } from './core/constants';
 import { stepPlayer } from './actors/player';
 import { stepEnemies } from './actors/enemyMovement';
 import { compactEnemies } from './actors/enemies';
-import { stepCasting } from './combat/casting';
+import { compactSpells, holdSpells, stepSpells } from './weave/runtime/step';
+import { stepWeaves } from './weave/runtime/triggers';
 import { compactProjectiles, stepProjectiles } from './combat/projectiles';
 import { prepareEnemyAI } from './ai';
 import { stepArena } from './world/waves';
@@ -18,9 +19,11 @@ const TIME_EPSILON = 1e-9;
  * Replays, bots, tests and the app loop all call this.
  *
  * Order: clear events → (hitstop: count down, freeze, stop) → player (vitals, dodge, walk,
- * knockback) → AI flow field → enemies (AI, attacks, separation, movement, knockback) → casting
- * (spells see the moved enemies) → projectiles → ailments (ignite damage, decay, timers) → arena
- * (count kills, spawn, waves) → remove dead enemies and ended projectiles → grid (M3).
+ * knockback) → AI flow field → enemies (AI, attacks, separation, movement, knockback) → triggers
+ * (Cast flow, Pulse, queued events; spells see the moved enemies) → spell instances (Echo
+ * repeats, then every instance in spawn order) → enemy projectiles → ailments (ignite damage,
+ * decay, timers) → arena (count kills, spawn, waves) → remove dead enemies, ended projectiles and
+ * spells → grid (M3).
  */
 export function step(state: GameState, input: InputFrame): void {
   state.tick++;
@@ -33,12 +36,14 @@ export function step(state: GameState, input: InputFrame): void {
   stepPlayer(state, input);
   prepareEnemyAI(state);
   stepEnemies(state);
-  stepCasting(state, input);
+  stepWeaves(state, input);
+  stepSpells(state);
   stepProjectiles(state);
   stepAilments(state);
   stepArena(state);
   compactEnemies(state);
   compactProjectiles(state);
+  compactSpells(state);
   if (state.tick % GRID_EVERY === 0) {
     // Chemistry grid tick (M3).
   }
@@ -62,4 +67,5 @@ function stepHitstop(state: GameState): void {
     pr.prevX = pr.x;
     pr.prevY = pr.y;
   }
+  holdSpells(state);
 }

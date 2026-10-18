@@ -13,6 +13,8 @@ export interface Scenario {
   roomId: string;
   /** Game mode to create the game in (default 'sandbox'). */
   mode?: GameMode;
+  /** Runs once on the fresh game (weaves, cheats), before the first tick. */
+  setup?(state: GameState): void;
   input(tick: number, state: GameState): InputFrame;
 }
 

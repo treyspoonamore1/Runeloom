@@ -8,7 +8,8 @@ import { emit } from '../events';
 import { clipToContacts, moveCircle } from './collision';
 import { stepKnockback } from './knockback';
 import { resetPlayerVitals, stepPlayerVitals } from './playerVitals';
-import { cancelCast } from '../combat/casting';
+import { cancelCast } from '../weave/runtime/castState';
+import { noteDodge } from '../weave/runtime/queue';
 import { actionSpeed, createAilments, isFrozen, type Ailments } from '../combat/ailments';
 
 /** All player state lives here as plain data, so it hashes, saves and replays. */
@@ -56,9 +57,12 @@ export interface PlayerState {
   /** Seconds until respawn while dead, else 0. */
   respawnLeft: number;
 
-  /** Loadout slot (0–3) being cast, or -1 when not casting. */
+  /** Weave slot (0–3) whose Cast-trigger weave is winding up or recovering, or -1 when not casting. */
   castSlot: number;
-  /** Spell being cast (null when not casting). */
+  /**
+   * LEGACY (M1 render): the M1 spell id of the slot being cast when its weave is exactly an M1
+   * spell (`GameState.loadout`), else null. Read `castSlot` and the slot's weave instead.
+   */
   castSpell: SpellId | null;
   /** Seconds left in the current cast. */
   castLeft: number;
@@ -175,6 +179,7 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
     // A dodge cancels a cast that hasn't released yet.
     if (p.castSlot >= 0 && !p.castReleased) cancelCast(state);
     emit(state, { type: 'dodge', x: p.x, y: p.y, dirX: p.dodgeDirX, dirY: p.dodgeDirY });
+    noteDodge(state, p.x, p.y, p.dodgeDirX, p.dodgeDirY);
   }
 
   let walkTime = DT;

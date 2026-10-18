@@ -1,6 +1,8 @@
-import type { DamageType } from '../../data/combatTypes';
-import type { SpellId } from '../../data/spells';
+import type { DamageAmounts, DamageType } from '../../data/combatTypes';
+import type { ElementId, FormId, TriggerId } from '../../data/runes';
 import type { GameState } from './state';
+import type { FormParams } from './weave/program';
+import type { SpellEndReason } from './weave/runtime/types';
 
 /**
  * Things that happened during one step, for render and audio (hit flash, damage numbers,
@@ -9,18 +11,104 @@ import type { GameState } from './state';
  * step's events (Session.drainEvents) because one frame can run several steps.
  *
  * Conventions: positions in cells, times in seconds. Entity ids are stable for an entity's
- * life (`Enemy.id`, `Projectile.id`); the player is id PLAYER_ID (0) and appears as 'player'
- * in `target`.
+ * life (`Enemy.id`, `Projectile.id`, `SpellInstance.id`, one id space); the player is id
+ * PLAYER_ID (0) and appears as 'player' in `target`. Player Bolts also send the M1
+ * 'projectileSpawn' / 'projectileEnd' events (kind '<element>_bolt', e.g. 'fire_bolt'), but live
+ * in `state.spells`, not `state.projectiles`.
  */
 export type SimEvent =
-  /** A cast began winding up. The spell releases after castRelease seconds, the cast ends after castTime. */
-  | { type: 'castStart'; slot: number; spell: SpellId; castTime: number; castRelease: number }
-  /** A cast released its spell (mana paid). dir is the unit aim direction it was released along. */
-  | { type: 'cast'; slot: number; spell: SpellId; x: number; y: number; dirX: number; dirY: number }
-  /** An unreleased cast was cancelled (dodge or death). */
-  | { type: 'castCancel'; slot: number; spell: SpellId }
+  /**
+   * A Cast-trigger weave began winding up. The spell releases after castRelease seconds, the cast
+   * ends after castTime. `spell` (in all four cast events) is the weave's root form id: 'bolt',
+   * 'strike', 'nova', … (M1 sent spell ids 'fire_bolt' and 'strike').
+   */
+  | { type: 'castStart'; slot: number; spell: string; castTime: number; castRelease: number }
+  /**
+   * A Cast-trigger weave released (mana paid), from the player along the unit aim direction.
+   * Automatic triggers send only 'triggerFired'. Sent just before that release's 'triggerFired'.
+   */
+  | { type: 'cast'; slot: number; spell: string; x: number; y: number; dirX: number; dirY: number }
+  /** An unreleased cast was cancelled (dodge, death, freeze, or a Loom edit to its slot). */
+  | { type: 'castCancel'; slot: number; spell: string }
   /** A cast button was pressed but the cast couldn't start. Sent on the press only, not while held. */
-  | { type: 'castFailed'; slot: number; spell: SpellId; reason: 'mana' }
+  | { type: 'castFailed'; slot: number; spell: string; reason: 'mana' }
+  /**
+   * A weave slot fired (any trigger): its root spell spawns from (x, y) along unit (dirX, dirY).
+   * castId groups every instance of this fire's tree. mana: what it cost (paid even with
+   * cheats.infiniteMana in the count, not from the bar).
+   */
+  | {
+      type: 'triggerFired';
+      slot: number;
+      trigger: TriggerId;
+      castId: number;
+      x: number;
+      y: number;
+      dirX: number;
+      dirY: number;
+      mana: number;
+    }
+  /**
+   * A player spell instance appeared (state.spells; see SpellInstance in weave/runtime/types.ts
+   * for what to draw per form). elements: in slot order, empty for physical. params: the form's
+   * shape numbers (radius, length, width, orbitRadius, reach, …), shared, never mutate.
+   * (toX, toY): Lob landing point or Sigil position, else (x, y). followsPlayer: an Orb circling
+   * the player (else it circles (x, y) minus its offset). echo: an Echo repeat.
+   */
+  | {
+      type: 'spellSpawn';
+      id: number;
+      castId: number;
+      slot: number;
+      form: FormId;
+      elements: ElementId[];
+      depth: number;
+      echo: boolean;
+      x: number;
+      y: number;
+      dirX: number;
+      dirY: number;
+      toX: number;
+      toY: number;
+      followsPlayer: boolean;
+      params: FormParams;
+    }
+  /** A player spell instance ended at (x, y). Every spellSpawn gets exactly one, possibly in the same step. */
+  | { type: 'spellEnd'; id: number; castId: number; form: FormId; x: number; y: number; reason: SpellEndReason }
+  /**
+   * A Beam fired (instant): the line from (fromX, fromY) to where it stopped (a wall, its full
+   * length, or the last target it hit), `width` cells wide. hits: the targets it hit directly, in
+   * order along the beam (Chain jumps come as 'chainJump').
+   */
+  | {
+      type: 'beamFire';
+      id: number;
+      castId: number;
+      elements: ElementId[];
+      fromX: number;
+      fromY: number;
+      toX: number;
+      toY: number;
+      width: number;
+      hits: { target: number; x: number; y: number }[];
+    }
+  /** A Lob landed at (x, y) and bursts with `radius` (its hits follow as 'hit' events). */
+  | { type: 'lobLand'; id: number; castId: number; elements: ElementId[]; x: number; y: number; radius: number }
+  /** A Chain jump from (fromX, fromY) to enemy `target` at (toX, toY); its hit follows. */
+  | {
+      type: 'chainJump';
+      id: number;
+      castId: number;
+      target: number;
+      fromX: number;
+      fromY: number;
+      toX: number;
+      toY: number;
+    }
+  /** A spawn was dropped because its cast already created program.spawnCap (64) instances. */
+  | { type: 'spawnDropped'; castId: number; slot: number; form: FormId; depth: number }
+  /** "Closer pays more": a Strike or Nova hit near the player restored `amount` mana; (x, y) is the enemy hit. */
+  | { type: 'manaRefund'; amount: number; instanceId: number; x: number; y: number }
   | {
       type: 'projectileSpawn';
       id: number;
@@ -37,8 +125,10 @@ export type SimEvent =
   | { type: 'projectileEnd'; id: number; kind: string; x: number; y: number; reason: ProjectileEndReason }
   /**
    * Damage landed. amount is after every multiplier (fractional; round for display).
-   * damageType is the type that dealt the most. kbX, kbY is the unit knockback direction, 0 if none.
-   * x, y is the target's position. sourceId is the attacker (PLAYER_ID for the player).
+   * damageType is the type that dealt the most; byType splits amount by type (shared, never
+   * mutate). kbX, kbY is the unit knockback direction, 0 if none. x, y is the target's position.
+   * sourceId is the attacker (PLAYER_ID for the player). spellId: the player spell instance
+   * that dealt it, when there is one.
    */
   | {
       type: 'hit';
@@ -51,6 +141,8 @@ export type SimEvent =
       y: number;
       kbX: number;
       kbY: number;
+      byType?: DamageAmounts;
+      spellId?: number;
     }
   /** A hit on the player was ignored because of i-frames. */
   | { type: 'evaded'; x: number; y: number; sourceId: number }

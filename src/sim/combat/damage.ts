@@ -21,6 +21,13 @@ export interface DamagePacket {
    * Lingering). Missing means 1. Chill decay and boss freeze immunity are not scaled.
    */
   ailmentDuration?: number;
+  /**
+   * Extra "increased" per damage type, added to `increased` for that type only (Ashwood: 10%
+   * increased Fire damage). Missing means none.
+   */
+  increasedByType?: DamageAmounts;
+  /** Multiplier on the chill points this hit adds (Rimeglass 1.2). Missing means 1. */
+  chillGain?: number;
 }
 
 /** The target side of the formula. */
@@ -69,7 +76,8 @@ export function makePacket(
  * critChance ≤ 0, so hits that can't crit don't shift later rolls.
  */
 export function resolveHit(packet: DamagePacket, target: DamageTarget, rng: Rng): HitResult {
-  let common = 1 + packet.increased;
+  const byTypeInc = packet.increasedByType;
+  let common = byTypeInc ? 1 : 1 + packet.increased;
   for (const m of packet.more) common *= 1 + m;
   const crit = packet.critChance > 0 && rng.float() < packet.critChance;
   if (crit) common *= packet.critMultiplier;
@@ -82,7 +90,8 @@ export function resolveHit(packet: DamagePacket, target: DamageTarget, rng: Rng)
   for (const t of damageTypes) {
     const base = packet.base[t];
     if (base === 0) continue;
-    const dmg = base * common * (1 - target.resist[t]);
+    const inc = byTypeInc ? 1 + packet.increased + byTypeInc[t] : 1;
+    const dmg = base * inc * common * (1 - target.resist[t]);
     byType[t] = dmg;
     total += dmg;
     if (dmg > best) {

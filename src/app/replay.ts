@@ -14,6 +14,8 @@ export function makeReplay(session: Session): ReplayFile {
     cheats: session.startCheats,
     cheatsEdited:
       session.edited || JSON.stringify(session.state.cheats) !== JSON.stringify(session.startCheats),
+    loadout: session.startLoadout,
+    loadoutEdits: session.loadoutEdits.map((e) => ({ ...e })),
     tuning: session.startTuning,
     tuningEdited: JSON.stringify(session.state.tuning) !== JSON.stringify(session.startTuning),
     ticks: session.frames.length,

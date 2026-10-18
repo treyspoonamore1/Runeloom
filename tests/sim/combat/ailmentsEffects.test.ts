@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Button, castDuration, freezeTarget, isFrozen, startEnemyAttack } from '../../../src/sim';
-import { spells } from '../../../data/spells';
+import { Button, freezeTarget, isFrozen, startEnemyAttack } from '../../../src/sim';
 import { addEnemy, arena, BOLT, hitWith, ofType, STRIKE, tick, ticks, ticksFor } from './helpers';
 
 /** What ailments do to enemies and the player: Freeze, Chill slow, limits, Shatter, dot events. */
@@ -118,7 +117,7 @@ describe('ailments on the player', () => {
     expect(p.vx).toBeCloseTo(26 * 0.85, 9);
     p.vx = 0;
     tick(state, BOLT);
-    const full = castDuration(state, spells.fire_bolt);
+    const full = state.weaves.slots[0]!.program!.castTime / state.tuning.player.castSpeed;
     expect(p.castLeft).toBeCloseTo(full - 0.85 / 60, 12);
   });
 

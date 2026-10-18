@@ -21,6 +21,8 @@ export function checkReplay(file: ReplayFile): ReplayCheck {
     tuning: file.tuning,
     mode: file.mode ?? 'sandbox',
     cheats: file.cheats,
+    loadout: file.loadout,
+    loadoutEdits: file.loadoutEdits,
   });
   const h = hashHex(hash);
   return {
