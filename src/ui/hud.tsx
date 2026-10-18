@@ -354,10 +354,11 @@ export function createHud(ctx: HudContext): Hud {
     root,
   );
 
-  // The loadout is re-read when something changed it through the UI, and twice a second anyway
-  // (the runtime may change it too, e.g. a replay).
+  // The loadout is re-read when the UI or anything else recorded a loadout edit (console, replays,
+  // scripts), and twice a second anyway.
   let view: LoadoutView = getLoadout(ctx.session);
   let viewRev = loadoutRev.peek();
+  let viewEdits = ctx.session.loadoutEdits.length;
   let viewAge = 0;
 
   return {
@@ -368,9 +369,11 @@ export function createHud(ctx: HudContext): Hud {
       }
     },
     frame(state) {
-      if (viewRev !== loadoutRev.peek() || ++viewAge >= 30) {
+      const edits = ctx.session.loadoutEdits.length;
+      if (viewRev !== loadoutRev.peek() || edits !== viewEdits || ++viewAge >= 30) {
         view = getLoadout(ctx.session);
         viewRev = loadoutRev.peek();
+        viewEdits = edits;
         viewAge = 0;
       }
       if (s.screen.peek() === 'loom') ctx.input.enabled = false;
