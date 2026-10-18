@@ -110,3 +110,4 @@ export {
   type PendingSpawn,
 } from './world/waves';
 export { kiterInput } from './bots/kiter';
+export * from './weave';
