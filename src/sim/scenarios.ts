@@ -95,7 +95,8 @@ export const scenarios: Scenario[] = [
   },
   {
     id: 'arena_bot',
-    description: 'Arena waves against the kiter bot (bots/kiter.ts): kites, Strikes packs, dodges telegraphs.',
+    description:
+      'Arena waves against the kiter bot (bots/kiter.ts): kites, Strikes packs, dodges telegraphs.',
     roomId: 'test/arena',
     mode: 'arena',
     input: (_tick, state) => kiterInput(state),

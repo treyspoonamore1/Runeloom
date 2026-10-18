@@ -75,6 +75,8 @@ export const defaultTuning = {
   ai: {
     /** Aggroed enemies farther than this many cells from the player give up and go idle. */
     leashRange: 200,
+    /** An enemy that notices the player alerts idle enemies within this many cells of it. */
+    alertRadius: 12,
     /** Each enemy re-checks line of sight every this many ticks (staggered by id). */
     losCheckTicks: 4,
     /** The flow field toward the player is rebuilt at least every this many ticks. */

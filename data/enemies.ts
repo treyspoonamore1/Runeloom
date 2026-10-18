@@ -62,12 +62,14 @@ export type BehaviorDef =
   | { kind: 'shield'; turnRate: number; bashArcCos: number }
   /**
    * Holds `preferredRange` with line of sight: backs off at `retreatSpeed` when the player is
-   * closer than its min, strafes sideways at `strafeSpeed` inside the band (switching side every
-   * strafeFlipMin–strafeFlipMax s, or when a wall is within `wallProbe` cells ahead), closes in
-   * when farther, and follows the flow field to regain line of sight.
+   * closer than its min (without stopping to shoot inside `panicRange`, unless a wall is behind
+   * it), strafes sideways at `strafeSpeed` inside the band while drifting toward its middle
+   * (switching side every strafeFlipMin–strafeFlipMax s, or when a wall is within `wallProbe`
+   * cells ahead), closes in when farther, and follows the flow field to regain line of sight.
    */
   | {
       kind: 'kite';
+      panicRange: number;
       strafeSpeed: number;
       retreatSpeed: number;
       strafeFlipMin: number;
@@ -145,8 +147,8 @@ export const enemies = {
       shape: { kind: 'cone', r: 5.5, halfAngleCos: 0.7071067811865476, offset: 0 },
     },
     // ~86°/s: a player circling at run speed within ~15 cells outpaces it. Bash only if the
-    // player is within ±60° (cos 60°) of the shield's facing.
-    behavior: { kind: 'shield', turnRate: 1.5, bashArcCos: 0.5 },
+    // player is within ±37° (cos 0.8) of the shield's facing, inside the bash cone's ±45°.
+    behavior: { kind: 'shield', turnRate: 1.5, bashArcCos: 0.8 },
     // 100° front arc (cos 50°). 4 s of total burning destroys it (M3).
     shield: { halfAngleCos: 0.6427876096865394, burnTime: 4 },
   },
@@ -175,6 +177,7 @@ export const enemies = {
     },
     behavior: {
       kind: 'kite',
+      panicRange: 8,
       strafeSpeed: 0.6,
       retreatSpeed: 1,
       strafeFlipMin: 1.2,

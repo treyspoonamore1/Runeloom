@@ -149,7 +149,9 @@ export function pickSpawnPoint(state: GameState, out: { x: number; y: number }):
   const room = state.room;
   const tiles = edgeSpawnTiles(room, t.spawnEdgeTiles);
   const p = state.player;
-  const min2 = t.minSpawnDistance * t.minSpawnDistance;
+  // Pad by the jitter's longest reach (both axes: under 2 × jitter), so jittered points stay far.
+  const min = t.minSpawnDistance + 2 * t.spawnJitter;
+  const min2 = min * min;
   far.length = 0;
   let best = -1;
   let bestD2 = -1;

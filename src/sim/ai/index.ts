@@ -29,7 +29,7 @@ export function prepareEnemyAI(state: GameState): void {
  *
  * The state machine (`enemy.ai.mode`, human-readable for the AI-targets overlay):
  * - 'idle': stands still until the player is within aggroRange with line of sight, or it is hurt
- *   (in arena mode: aggroes at once).
+ *   (in arena mode: aggroes at once). Noticing the player alerts idle enemies within alertRadius.
  * - aggroed ('chase', 'hold', 'kite', 'retreat', 'reposition'): the kind's behavior (swarm.ts,
  *   shield.ts, kite.ts) picks a velocity and facing and starts attacks with startEnemyAttack.
  *   Beyond tuning.ai.leashRange it gives up and goes idle.
@@ -69,6 +69,7 @@ export function stepEnemyAI(state: GameState, e: Enemy): void {
     if (sightDue(state, e)) refreshSight(state, e);
     if (!alert && !ai.los) return;
     aggro(state, e);
+    alertPack(state, e);
   } else if (toPlayer.dist > state.tuning.ai.leashRange) {
     deaggro(e);
     return;
@@ -86,5 +87,18 @@ export function stepEnemyAI(state: GameState, e: Enemy): void {
     case 'kite':
       stepKite(state, e, b, def.attack, def);
       break;
+  }
+}
+
+// Scratch for the pack-alert query.
+const packmates: number[] = [];
+
+/** Aggroes idle enemies within tuning.ai.alertRadius of `e` (a pack wakes up together). */
+function alertPack(state: GameState, e: Enemy): void {
+  const n = state.enemyHash.queryCircle(e.x, e.y, state.tuning.ai.alertRadius, packmates);
+  for (let k = 0; k < n; k++) {
+    const o = state.enemies[packmates[k]!]!;
+    if (o.dead || o.ai.mode !== 'idle' || enemyDef(o.kind).behavior.kind === 'none') continue;
+    aggro(state, o);
   }
 }

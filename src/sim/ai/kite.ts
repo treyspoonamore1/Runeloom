@@ -10,11 +10,12 @@ type Kite = Extract<BehaviorDef, { kind: 'kite' }>;
 /**
  * Ember Archer: keeps `preferredRange` from the player with line of sight and shoots.
  * - No line of sight: 'reposition', following the flow field until it sees the player again.
- * - Sees the player within attack range and off cooldown: draws (windup) and fires.
+ * - Sees the player within attack range and off cooldown: draws (windup) and fires, except when
+ *   the player is inside panicRange and it has room to back off.
  * - Closer than the band: 'retreat' straight away, sliding sideways when a wall is behind it.
  * - Farther than the band: 'chase'.
- * - In the band: 'kite', strafing sideways and switching sides every strafeFlipMin–Max s or when
- *   a wall is ahead.
+ * - In the band: 'kite', strafing sideways while drifting toward the band's middle, switching
+ *   sides every strafeFlipMin–Max s or when a wall is ahead.
  */
 export function stepKite(state: GameState, e: Enemy, b: Kite, def: AttackDef, kind: EnemyDef): void {
   const ai = e.ai;
@@ -25,16 +26,18 @@ export function stepKite(state: GameState, e: Enemy, b: Kite, def: AttackDef, ki
     faceVelocity(e);
     return;
   }
-  if (toPlayer.gap <= def.range && ai.cooldown <= 0) {
-    attack(state, e, def, toPlayer.ux, toPlayer.uy);
+  const band = kind.preferredRange!;
+  const ux = toPlayer.ux;
+  const uy = toPlayer.uy;
+  const cornered = wallAhead(state, e, -ux, -uy, b.wallProbe);
+  const panic = toPlayer.dist < b.panicRange && !cornered;
+  if (toPlayer.gap <= def.range && ai.cooldown <= 0 && !panic) {
+    attack(state, e, def, ux, uy);
     return;
   }
 
   ai.strafeLeft -= DT;
   if (ai.strafeLeft <= 0) flipStrafe(state, e, b);
-  const band = kind.preferredRange!;
-  const ux = toPlayer.ux;
-  const uy = toPlayer.uy;
   if (toPlayer.dist > band.max) {
     steerTo(state, e, p.x, p.y, 1);
     setMode(e, 'chase');
@@ -43,12 +46,12 @@ export function stepKite(state: GameState, e: Enemy, b: Kite, def: AttackDef, ki
   }
   if (toPlayer.dist < band.min) {
     setMode(e, 'retreat');
-    if (!wallAhead(state, e, -ux, -uy, b.wallProbe)) {
+    if (!cornered) {
       moveAlong(e, -ux, -uy, b.retreatSpeed);
       faceVelocity(e);
       return;
     }
-    // Backed against a wall: slide along it, away from the player's side.
+    // Backed against a wall: slide along it.
   } else {
     setMode(e, 'kite');
   }
@@ -59,7 +62,17 @@ export function stepKite(state: GameState, e: Enemy, b: Kite, def: AttackDef, ki
     sx = -sx;
     sy = -sy;
   }
-  moveAlong(e, sx, sy, ai.mode === 'retreat' ? b.retreatSpeed : b.strafeSpeed);
+  if (ai.mode === 'retreat') {
+    moveAlong(e, sx, sy, b.retreatSpeed);
+  } else {
+    // Drift toward the band's middle: full speed away at its min edge, toward at its max edge.
+    const half = (band.max - band.min) / 2;
+    const pull = (band.min + half - toPlayer.dist) / half;
+    const mx = sx - ux * pull;
+    const my = sy - uy * pull;
+    const m = Math.sqrt(mx * mx + my * my);
+    moveAlong(e, mx / m, my / m, b.strafeSpeed);
+  }
   faceVelocity(e);
 }
 
