@@ -168,12 +168,12 @@ function HudApp({
     <>
       {screen !== 'start' ? (
         <>
-          {s.hurt.value > 0 && !v.dead ? <div class="rl-hurt" key={s.hurt.value} /> : null}
+          {s.hurt.value > 0 && !v.dead ? <div class="rl-hurt" key={`hurt-${s.hurt.value}`} /> : null}
           {v.lifeFrac < 0.3 && !v.dead ? <div class="rl-lowlife" /> : null}
           <Bar s={s} />
           <WavePanel s={s} />
           {banner ? (
-            <div class="rl-banner" key={banner.id}>
+            <div class="rl-banner" key={`banner-${banner.id}`}>
               <h2>{banner.title}</h2>
               {banner.sub ? <p>{banner.sub}</p> : null}
             </div>
