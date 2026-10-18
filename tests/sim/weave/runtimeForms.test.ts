@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Button, rotationDeg } from '../../../src/sim';
+import { addHitstop, Button, rotationDeg } from '../../../src/sim';
 import {
   addEnemy,
   baseAmount,
@@ -176,6 +176,19 @@ describe('spell forms', () => {
     expect(spawnsOf(ev, 'beam')).toHaveLength(8);
     expect(hitsByTarget(ev)).toEqual(new Map([[d.id, 8]]));
     expect(ofType(ev, 'spellEnd').filter((e) => e.form === 'sigil')).toMatchObject([{ reason: 'expired' }]);
+  });
+});
+
+describe('hitstop', () => {
+  it('freezes spell instances in place', () => {
+    const state = weaveArena(['Cast > Bolt[Fire]']);
+    ticks(state, releaseTick(0.45) + 2, Button.Cast1);
+    const b = state.spells[0]!;
+    const at = [b.x, b.y, b.lifeLeft];
+    addHitstop(state, 0.05);
+    ticks(state, 3);
+    expect([b.x, b.y, b.lifeLeft]).toEqual(at);
+    expect([b.prevX, b.prevY]).toEqual([b.x, b.y]);
   });
 });
 
