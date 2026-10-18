@@ -15,7 +15,7 @@ export interface ReplayFile {
   mode?: GameMode;
   /** Cheats at the start of the recording; absent means none. */
   cheats?: Cheats;
-  /** True if cheats were toggled during the recording, in which case it may not reproduce. */
+  /** True if cheats or console commands changed the state during the recording, so it may not reproduce. */
   cheatsEdited?: boolean;
   /** Tuning the recording started with. */
   tuning: Tuning;

@@ -38,6 +38,8 @@ export class Session {
    * steps (or none), so render and audio drain this once per frame instead of reading state.events.
    */
   pendingEvents: SimEvent[] = [];
+  /** True once something outside `step` changed the state (console cheats) since the last reset. */
+  edited = false;
   private resetListeners: Array<(s: GameState) => void> = [];
 
   constructor(opts: SessionOptions) {
@@ -77,8 +79,14 @@ export class Session {
     this.startCheats = { ...cheats };
     this.frames = [];
     this.pendingEvents = [];
+    this.edited = false;
     this.startTuning = cloneTuning(this.state.tuning);
     for (const fn of this.resetListeners) fn(this.state);
+  }
+
+  /** Call when the console or a tool changes sim state outside `step`, so replays warn. */
+  markEdited(): void {
+    this.edited = true;
   }
 
   onReset(fn: (s: GameState) => void): void {

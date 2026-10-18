@@ -13,6 +13,8 @@ export interface Overlays {
   grid: boolean;
   /** Collision circles and dodge state. */
   hitboxes: boolean;
+  /** Enemy AI targets, modes and attack ranges. */
+  aiTargets: boolean;
 }
 
 export interface Renderer {
@@ -66,7 +68,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   app.stage.addChild(world);
 
   const camera = new Camera();
-  const overlays: Overlays = { grid: false, hitboxes: false };
+  const overlays: Overlays = { grid: false, hitboxes: false, aiTargets: false };
   let time = 0;
 
   const setRoom = (s: GameState): void => {

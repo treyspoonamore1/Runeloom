@@ -12,7 +12,8 @@ export function makeReplay(session: Session): ReplayFile {
     sceneId: session.sceneId,
     mode: session.mode,
     cheats: session.startCheats,
-    cheatsEdited: JSON.stringify(session.state.cheats) !== JSON.stringify(session.startCheats),
+    cheatsEdited:
+      session.edited || JSON.stringify(session.state.cheats) !== JSON.stringify(session.startCheats),
     tuning: session.startTuning,
     tuningEdited: JSON.stringify(session.state.tuning) !== JSON.stringify(session.startTuning),
     ticks: session.frames.length,
