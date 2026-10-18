@@ -3,6 +3,7 @@ import type { JSX } from 'preact';
 import { SLOT_LABELS } from '../../app/loadout';
 import { getRune, type RuneDef, type RuneId } from '../../../data/runes';
 import { listSpells, type SpellVisit, type WeavePath } from '../../sim/weave/tree';
+import { weaveStory } from './describe';
 import { RuneGlyph } from './glyphs';
 import type { LoomState, SlotStatus } from './loomState';
 import { isBlank, placementMap, samePath, type Placement } from './model';
@@ -305,6 +306,17 @@ export function WeaveTreeView({ st }: { st: LoomState }) {
     >
       <Node c={c} visits={visits} at={0} />
       {none ? <p class="lm-nospot">No spot in this weave takes {getRune(active)?.name}.</p> : null}
+      {!isBlank(tree) ? (
+        <div class="lm-story" aria-label="What this weave does">
+          <h5>Reads as</h5>
+          {weaveStory(tree, SLOT_LABELS[st.slot.value]!).map((l, i) => (
+            <p key={i} style={`padding-left:calc(var(--u) * ${l.depth * 2.6})`}>
+              {l.depth > 0 ? '↳ ' : ''}
+              {l.text}
+            </p>
+          ))}
+        </div>
+      ) : null}
       <div class="lm-legend" aria-hidden="true">
         <span class="k-trigger">
           <i /> Trigger

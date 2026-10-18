@@ -200,3 +200,55 @@ export function compiledLine(c: CompileResult | null): string {
   if (!c.ok) return `doesn't work: ${c.error.message}`;
   return `cx ${c.costs.complexity}/${c.costs.capacity}, ${fmtNum(c.costs.mana)} mana`;
 }
+
+const TRIGGER_STORY: Record<string, (slot: string) => string> = {
+  cast: (slot) => `Press ${slot}`,
+  pulse: () => 'Every 2 s, at the nearest enemy',
+  on_dodge: () => 'When you dodge',
+  harvest: () => 'When you kill an enemy',
+  on_crit: () => 'When you crit',
+  on_hurt: () => 'When a big hit hurts you',
+  channel: (slot) => `While you hold ${slot}`,
+  shatter: () => 'When you shatter an enemy',
+};
+const BRANCH_STORY: Record<string, string> = {
+  on_hit: 'On hit',
+  on_expire: 'When it ends',
+  on_kill: 'On each kill',
+  emit: 'Every 0.5 s while it lives',
+};
+
+/**
+ * The weave in plain words, one line per spell, for predicting what it does:
+ * ["Press LMB → a Fire Lob", "When it ends → a Fire Nova (Wide)"]. Works on drafts with empty
+ * spots ("?"). Branch lines carry their depth for indenting.
+ */
+export function weaveStory(
+  tree: { trigger: string; root: StorySpell },
+  slot: string,
+): Array<{ depth: number; text: string }> {
+  const out: Array<{ depth: number; text: string }> = [];
+  const isEl = (id: string) => getRune(id)?.kind === 'element';
+  const go = (spell: StorySpell, depth: number, lead: string, inherited: string[]) => {
+    const own = spell.items.filter(isEl);
+    const els = own.length > 0 ? own : inherited;
+    const mods = spell.items.filter((id) => !isEl(id)).map(nameOf);
+    const split = spell.items.includes('split') ? '3 × ' : 'a ';
+    const form = spell.form ? nameOf(spell.form) : '?';
+    const elText = els.length > 0 ? `${els.map(nameOf).join('/')} ` : '';
+    const inh = own.length === 0 && inherited.length > 0 ? ' (inherited element)' : '';
+    const modText = mods.length > 0 ? ` (${mods.join(', ')})` : '';
+    out.push({ depth, text: `${lead} → ${split}${elText}${form}${modText}${inh}` });
+    for (const b of spell.branches)
+      go(b.spell, depth + 1, b.branch ? (BRANCH_STORY[b.branch] ?? nameOf(b.branch)) : '?', els);
+  };
+  const t = tree.trigger ? (TRIGGER_STORY[tree.trigger]?.(slot) ?? nameOf(tree.trigger)) : '?';
+  go(tree.root, 0, t, []);
+  return out;
+}
+
+interface StorySpell {
+  form: string;
+  items: readonly string[];
+  branches: ReadonlyArray<{ branch: string; spell: StorySpell }>;
+}

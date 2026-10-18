@@ -12,6 +12,7 @@ import {
   timingText,
   weaveGlyph,
   weaveShortName,
+  weaveStory,
   weaveSummary,
 } from '../../src/ui/loom/describe';
 
@@ -93,5 +94,32 @@ describe('timingText', () => {
     expect(timingText(program('OnDodge > Nova[Frost, Saturate]')).value).toBe(
       'Fires automatically · at most every 0.5 s',
     );
+  });
+});
+
+describe('weaveStory', () => {
+  const story = (n: string, slot = 'LMB') => {
+    const p = parseWeave(n);
+    if (!p.ok) throw new Error(n);
+    return weaveStory(p.tree, slot).map((l) => `${'  '.repeat(l.depth)}${l.text}`);
+  };
+
+  it('reads weaves in plain words, one line per spell', () => {
+    expect(story('Cast > Lob[Fire] > OnExpire > Nova[Fire, Wide]', 'Q')).toEqual([
+      'Press Q → a Fire Lob',
+      '  When it ends → a Fire Nova (Wide)',
+    ]);
+    expect(story('Cast > Bolt[Storm] { OnHit > Nova[Storm]; OnExpire > Lob[Fire] }')).toEqual([
+      'Press LMB → a Storm Bolt',
+      '  On hit → a Storm Nova',
+      '  When it ends → a Fire Lob',
+    ]);
+    expect(story('Cast > Sigil[Storm] > Emit > Beam[Chain]')).toEqual([
+      'Press LMB → a Storm Sigil',
+      '  Every 0.5 s while it lives → a Storm Beam (Chain) (inherited element)',
+    ]);
+    expect(story('OnDodge > Bolt[Fire, Split, Pierce]')).toEqual([
+      'When you dodge → 3 × Fire Bolt (Split, Pierce)',
+    ]);
   });
 });

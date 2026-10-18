@@ -120,6 +120,9 @@ h4.k-trigger, h4.k-form, h4.k-element, h4.k-modifier, h4.k-branch { color: var(-
 .lm-chipacts { position: absolute; top: calc(var(--u) * -1.6); right: calc(var(--u) * -1.2); display: flex; gap: calc(var(--u) * 0.4); z-index: 2; }
 .lm-act { font: inherit; cursor: pointer; border: 0; width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6); padding: 0; border-radius: 50%; font-size: calc(var(--u) * 1.6); font-weight: 700; line-height: 1; color: var(--ink); background: var(--sand); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink); }
 .lm-act.del { color: var(--cream); background: #c43c30; }
+.lm-story { margin-top: calc(var(--u) * 2.4); padding: calc(var(--u) * 0.8) calc(var(--u) * 1.2); border-left: calc(var(--u) * 0.3) solid rgba(242, 195, 91, 0.35); color: #c9c0e8; font-size: calc(var(--u) * 1.65); }
+.lm-story h5 { margin: 0 0 calc(var(--u) * 0.4); font-size: calc(var(--u) * 1.3); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+.lm-story p { margin: calc(var(--u) * 0.15) 0; }
 .lm-nospot { color: #ffb3a8; margin: calc(var(--u) * 1.2) 0 0; }
 
 .lm-notation label { display: block; font-size: calc(var(--u) * 1.4); letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: calc(var(--u) * 0.4); }
