@@ -12,6 +12,9 @@ interface Snapshot {
   y: number;
   charges: number;
   hash: string;
+  /** Live player spell instances and spawns dropped by the per-cast cap (cumulative). */
+  spells: number;
+  dropped: number;
   paused: boolean;
   timescale: number;
 }
@@ -42,6 +45,8 @@ export function createStats(ctx: DebugContext) {
         y: st.player.y,
         charges: st.player.dodgeCharges,
         hash,
+        spells: st.stats.spells,
+        dropped: st.stats.dropped,
         paused: ctx.loop.paused,
         timescale: ctx.loop.timescale,
       };
@@ -76,8 +81,8 @@ export function StatsOverlay(p: {
       <Row k="dodges" v={String(s.charges)} />
       <Row k="hash" v={s.hash} />
       <Row k="grid ms" v="—" dim />
-      <Row k="spells" v="—" dim />
-      <Row k="dropped" v="—" dim />
+      <Row k="spells" v={String(s.spells)} />
+      <Row k="dropped" v={String(s.dropped)} />
     </div>
   );
 }
