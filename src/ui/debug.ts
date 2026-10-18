@@ -45,7 +45,8 @@ export function createDebugUI(ctx: DebugContext): DebugUI {
   const { uiRoot } = ctx;
   const toast = (msg: string): void => showToast(uiRoot, msg);
 
-  const statsVisible = signal(true);
+  // On in dev builds, off in release builds (F3 toggles it either way).
+  const statsVisible = signal(import.meta.env.DEV);
   const menuVisible = signal(false);
   const menuRev = signal(0);
   const stats = createStats(ctx);
