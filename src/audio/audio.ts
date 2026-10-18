@@ -100,8 +100,12 @@ export function createAudio(): AudioSystem {
     return buf;
   };
 
+  // Sounds requested while the engine is still loading (the first click) play once it's ready.
+  let pending: Array<[SfxId, { pan?: number; gain?: number }]> = [];
+
   const play = (id: SfxId, opts: { pan?: number; gain?: number } = {}): void => {
     const e = engine;
+    if (!e && loading && pending.length < 4) pending.push([id, opts]);
     if (!e || volume <= 0 || e.ctx.state !== 'running') return;
     try {
       const def: { pitchVar?: number; minGapMs?: number; priority?: number } = sfx[id];
@@ -183,8 +187,14 @@ export function createAudio(): AudioSystem {
       }
     },
     unlock() {
-      if (!engine && !loading) void boot().then(resume);
-      else resume();
+      if (!engine && !loading) {
+        void boot().then(() => {
+          resume();
+          const queued = pending;
+          pending = [];
+          for (const [id, opts] of queued) play(id, opts);
+        });
+      } else resume();
     },
     setVolume(v) {
       volume = clamp01(v);

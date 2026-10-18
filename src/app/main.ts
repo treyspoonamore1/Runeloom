@@ -40,7 +40,7 @@ async function boot(): Promise<void> {
     },
   });
   const audio = createAudio();
-  const hud = createHud({ session, loop, input, uiRoot, audio });
+  const hud = createHud({ session, loop, input, uiRoot, audio, renderer });
   const debug = createDebugUI({ session, loop, renderer, input, uiRoot });
 
   if (params.get('paused') === '1') loop.paused = true;
