@@ -1,5 +1,6 @@
 import type { GameState, SimEvent } from '../sim';
 import {
+  ailmentSfx,
   attackSfx,
   audioTuning,
   castSfx,
@@ -42,7 +43,19 @@ export function cuesForEvent(e: SimEvent, state: GameState): Cue[] {
     case 'evaded':
       return [{ id: 'evaded' }];
     case 'death':
+      if (e.shattered) return [{ id: 'shatter', x: e.x, y: e.y }];
       return [{ id: deathSfx[e.kind] ?? 'deathDefault', x: e.x, y: e.y }];
+    case 'ailmentApplied': {
+      // Chill comes with every frost hit: its tinkle grows with the chill total.
+      const gain = e.ailment === 'chill' ? 0.4 + 0.6 * Math.min(1, e.magnitude / 100) : 1;
+      return [at({ id: ailmentSfx[e.ailment], gain }, e)];
+    }
+    case 'freeze':
+      return [at({ id: 'freeze' }, e)];
+    case 'thaw':
+      return [at({ id: 'thaw' }, e)];
+    case 'dot':
+      return e.amount > 0 ? [at({ id: 'burnTick' }, e)] : [];
     case 'playerDeath':
       return [{ id: 'playerDeath' }];
     case 'playerRespawn':
@@ -62,6 +75,15 @@ export function cuesForEvent(e: SimEvent, state: GameState): Cue[] {
     default:
       return [];
   }
+}
+
+/** Places a cue at the event's position, unless it happened to the player (then it's centered). */
+function at(c: Cue, e: { target: number | 'player'; x: number; y: number }): Cue {
+  if (e.target !== 'player') {
+    c.x = e.x;
+    c.y = e.y;
+  }
+  return c;
 }
 
 /** Stereo pan (-1 left … 1 right) and loudness factor for a sound `dx, dy` cells from the player. */

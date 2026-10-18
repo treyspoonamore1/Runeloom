@@ -203,6 +203,62 @@ describe('cuesForEvent', () => {
   });
 });
 
+describe('ailment cues', () => {
+  const s = state();
+  const cues = (e: SimEvent) => cuesForEvent(e, s);
+
+  it('plays a sound per ailment, centered on the player and placed on enemies', () => {
+    const applied = (target: number | 'player', ailment: 'ignite' | 'chill' | 'shock', magnitude: number): SimEvent => ({
+      type: 'ailmentApplied',
+      target,
+      ailment,
+      magnitude,
+      duration: 3,
+      sourceId: 0,
+      x: 5,
+      y: 6,
+    });
+    expect(cues(applied(3, 'ignite', 4))).toEqual([{ id: 'igniteApply', gain: 1, x: 5, y: 6 }]);
+    expect(cues(applied(3, 'shock', 0.2)).map((c) => c.id)).toEqual(['shockApply']);
+    expect(cues(applied('player', 'ignite', 4))).toEqual([{ id: 'igniteApply', gain: 1 }]);
+    // The chill tinkle grows with the chill total.
+    const low = cues(applied(3, 'chill', 10))[0]!;
+    const high = cues(applied(3, 'chill', 90))[0]!;
+    expect(low.id).toBe('chillApply');
+    expect(high.gain!).toBeGreaterThan(low.gain!);
+  });
+
+  it('cracks on freeze, drips on thaw, crackles on burn ticks and shatters frozen deaths', () => {
+    expect(cues({ type: 'freeze', target: 4, duration: 1.2, sourceId: 0, x: 1, y: 2 }).map((c) => c.id)).toEqual([
+      'freeze',
+    ]);
+    expect(cues({ type: 'thaw', target: 'player', x: 1, y: 2 })).toEqual([{ id: 'thaw' }]);
+    const dot = (amount: number): SimEvent => ({
+      type: 'dot',
+      target: 4,
+      sourceId: 0,
+      amount,
+      damageType: 'fire',
+      x: 1,
+      y: 2,
+    });
+    expect(cues(dot(3)).map((c) => c.id)).toEqual(['burnTick']);
+    // God mode ignites deal nothing: no crackle.
+    expect(cues(dot(0))).toEqual([]);
+    const death = { type: 'death', id: 1, kind: 'tinderling', x: 0, y: 0, killerId: 0, cause: 'hit' } as const;
+    expect(cues({ ...death, shattered: true }).map((c) => c.id)).toEqual(['shatter']);
+    expect(cues({ ...death, shattered: false }).map((c) => c.id)).toEqual(['deathTinderling']);
+  });
+
+  it('keeps the frequent ailment sounds quiet, rate-limited and low priority', () => {
+    for (const id of ['burnTick', 'chillApply'] as const) {
+      expect(sfx[id].gain, id).toBeLessThanOrEqual(0.2);
+      expect(sfx[id].minGapMs, id).toBeGreaterThanOrEqual(100);
+      expect(sfx[id].priority, id).toBe(0);
+    }
+  });
+});
+
 describe('spatialize', () => {
   it('pans toward the source and fades with distance', () => {
     expect(spatialize(0, 0)).toEqual({ pan: 0, gain: 1 });

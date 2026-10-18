@@ -37,8 +37,8 @@ export class PlayerView {
   /** Stretch axis: rotated to the dodge direction and scaled along it. */
   private readonly axis = new Container();
   private readonly unaxis = new Container();
-  /** Everything that bobs and leans. */
-  private readonly lift = new Container();
+  /** Everything that bobs and leans (ailment parts attach here). */
+  readonly lift = new Container();
   private readonly staffBack: Graphics;
   private readonly staffFront: Graphics;
   private readonly cloakRim: Graphics;
@@ -51,6 +51,8 @@ export class PlayerView {
   private readonly flash: Graphics;
   private readonly flashHood: Graphics;
   private readonly castGlow: Graphics;
+  /** Animation speed from the sim's actionSpeed: chill slows the idle motion, Freeze stops it. */
+  animSpeed = 1;
   /** Staff tip in world cells, for cast flashes (updated every frame). */
   readonly tip = { x: 0, y: 0 };
 
@@ -135,7 +137,7 @@ export class PlayerView {
 
   /** x, y: interpolated position in cells. */
   update(p: PlayerState, x: number, y: number, tuning: Tuning['player'], dt: number): void {
-    this.time += dt;
+    this.time += dt * this.animSpeed;
     this.root.position.set(x, y);
     const dodging = p.dodgeLeft > 0;
 

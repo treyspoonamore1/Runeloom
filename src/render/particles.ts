@@ -186,3 +186,41 @@ export class FxLayer extends ParticlePool {
     }
   }
 }
+
+/**
+ * A pool redrawn from scratch every frame: begin(), next() per item in draw order, end().
+ * Particles are reused in place and the unused tail is released, so steady frames allocate
+ * nothing and keep their order. For per-frame overlays (status icons, ailment glows).
+ */
+export class ImmediatePool extends ParticlePool {
+  private n = 0;
+
+  begin(): void {
+    this.n = 0;
+  }
+
+  /** The next particle showing `texture` (anchor from the texture), or null when full. */
+  next(texture: Texture): FxParticle | null {
+    const list = this.items;
+    let p: FxParticle | null;
+    if (this.n < list.length) {
+      p = list[this.n]!;
+      if (p.texture !== texture) {
+        p.texture = texture;
+        p.anchorX = texture.defaultAnchor?.x ?? 0.5;
+        p.anchorY = texture.defaultAnchor?.y ?? 0.5;
+      }
+      p.rotation = 0;
+    } else {
+      p = this.alloc(texture);
+      if (!p) return null;
+    }
+    this.n++;
+    return p;
+  }
+
+  end(): void {
+    const list = this.items;
+    while (list.length > this.n) this.release(list[list.length - 1]!);
+  }
+}

@@ -1,13 +1,16 @@
 import { Application, Container } from 'pixi.js';
-import type { GameState, SimEvent } from '../sim';
+import { actionSpeed, type GameState, type SimEvent } from '../sim';
 import { settings } from '../app/settings';
 import { AiOverlay } from './aiOverlay';
+import { AilmentFx } from './ailmentFx';
+import { ailmentAtlasEntries } from './ailmentShapes';
 import { AmbientView } from './ambientView';
 import { Atlas } from './atlas';
 import { Camera } from './camera';
 import { CombatEvents } from './combatEvents';
 import { FX } from './combatPalette';
 import { DamageNumbers } from './damageNumbers';
+import { elementAtlasEntries } from './elementLook';
 import { EnemyLayer } from './enemyLayer';
 import { enemyAtlasEntries } from './enemyShapes';
 import { fxAtlasEntries } from './fxShapes';
@@ -81,7 +84,12 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   });
   host.appendChild(app.canvas);
 
-  const atlas = new Atlas(app.renderer, [...enemyAtlasEntries(), ...fxAtlasEntries()]);
+  const atlas = new Atlas(app.renderer, [
+    ...enemyAtlasEntries(),
+    ...fxAtlasEntries(),
+    ...ailmentAtlasEntries(),
+    ...elementAtlasEntries(),
+  ]);
   const world = new Container();
   const room = new RoomView();
   const ambient = new AmbientView();
@@ -92,6 +100,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const projectiles = new ProjectileView(atlas, fx.pNorm);
   const telegraphs = new TelegraphView(app.renderer);
   const numbers = new DamageNumbers();
+  const ailments = new AilmentFx(atlas);
   const ai = new AiOverlay();
   const shake = new Shake();
   world.addChild(
@@ -103,15 +112,20 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     fx.player,
     telegraphs.root,
     enemies.glows.container,
+    ailments.glows.container,
     enemies.bodies,
+    ailments.over.container,
+    ailments.fx,
     player.ghostLayer,
     player.root,
+    ailments.threat,
     projectiles.enemy,
     fx.top,
+    ailments.icons.pool.container,
     ai.world,
     overlay.root,
   );
-  app.stage.addChild(world, numbers.root, ai.labels, fx.vignette);
+  app.stage.addChild(world, ailments.edge, numbers.root, ai.labels, ailments.debug.labels, fx.vignette);
   ai.hide();
 
   const camera = new Camera();
@@ -119,7 +133,17 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   let time = 0;
   let current = state;
   let dim = 1;
-  const events = new CombatEvents({ enemies, fx, player, numbers, telegraphs, shake, state: () => current });
+  const events = new CombatEvents({
+    enemies,
+    fx,
+    ailments,
+    projectiles,
+    player,
+    numbers,
+    telegraphs,
+    shake,
+    state: () => current,
+  });
 
   const setRoom = (s: GameState): void => {
     current = s;
@@ -131,6 +155,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     projectiles.reset();
     telegraphs.reset();
     fx.reset();
+    ailments.reset();
     numbers.reset();
     shake.reset();
     camera.snap();
@@ -158,8 +183,11 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       world.position.set(ox, oy);
 
       ambient.update(time);
+      player.animSpeed = actionSpeed(s, p);
       player.update(p, x, y, s.tuning.player, dt);
       enemies.update(s, alpha, dt);
+      const xf = { scale: camera.scale, ox, oy, screenScale };
+      ailments.update(s, enemies, player, dt, xf, screen.width, screen.height, overlays.hitboxes);
       projectiles.update(s, alpha, dt);
       telegraphs.update(s, dt);
       fx.update(dt, screen.width, screen.height);
@@ -167,11 +195,12 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       numbers.update(dt, camera.scale, ox, oy, screenScale);
 
       // Busy screens dim the player's own effects toward the effect-density setting (DESIGN §14).
-      const busy = enemies.count + projectiles.count / 4 + fx.particleCount / 40;
+      const busy = enemies.count + projectiles.count / 4 + (fx.particleCount + ailments.particleCount) / 40;
       const target = 1 - smoothstep(FX.busyStart, FX.busyFull, busy) * (1 - settings.effectDensity);
       dim += (target - dim) * (1 - Math.exp(-dt / 0.3));
       projectiles.player.alpha = dim;
       fx.player.alpha = dim;
+      ailments.fx.alpha = dim;
 
       if (overlays.aiTargets) ai.update(s, enemies, camera.scale, ox, oy, screenScale);
       else ai.hide();
@@ -190,7 +219,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     stats: () => ({
       enemies: enemies.count,
       projectiles: projectiles.count,
-      particles: fx.particleCount,
+      particles: fx.particleCount + ailments.particleCount,
       playerFxAlpha: dim,
     }),
     destroy() {
