@@ -19,6 +19,7 @@ async function boot(): Promise<void> {
   const renderer = await createRenderer(gameEl, session.state);
   session.onReset((s) => renderer.setRoom(s));
   const input = new InputSampler(renderer.app.canvas);
+  renderer.app.canvas.addEventListener('mousemove', (e) => renderer.setCursor(e.offsetX, e.offsetY));
 
   const loop = new GameLoop({
     sampleInput: () => input.sample((sx, sy) => renderer.screenToWorld(sx, sy)),
