@@ -9,7 +9,7 @@ export { hashState, hashHex } from './hashState';
 export { parseRoom, buildRoom, isSolidCell, RoomParseError, type Room, type RoomData } from './world/room';
 export type { PlayerState } from './actors/player';
 export { scenarios, findScenario, type Scenario } from './scenarios';
-export { runScenario, runFrames, type RunResult } from './run';
+export { runScenario, runFrames, createScenarioGame, type RunResult } from './run';
 export { isDodging, isInvulnerable, dodgeSpeed } from './actors/player';
 export { moveCircle, circleOverlapsSolid, type CircleBody } from './actors/collision';
 export { SPATIAL_BUCKET_CELLS } from './core/constants';
@@ -70,4 +70,21 @@ export {
   spellPacket,
   type Loadout,
 } from './combat/casting';
-export { stepEnemyAI } from './ai';
+export { stepEnemyAI, prepareEnemyAI, aggro } from './ai';
+export { hasLineOfSight, hasWalkLine, segmentClear } from './world/los';
+export {
+  createArenaState,
+  waveComposition,
+  waveAreaLevel,
+  compositionSize,
+  edgeSpawnTiles,
+  pickSpawnPoint,
+  spawnGroup,
+  spawnWave,
+  startArenaWave,
+  killAllEnemies,
+  stepArena,
+  type ArenaState,
+  type PendingSpawn,
+} from './world/waves';
+export { kiterInput } from './bots/kiter';

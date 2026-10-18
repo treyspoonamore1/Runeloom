@@ -36,14 +36,44 @@ export interface EnemyAttackState {
  * agent can give them any meaning; the comments are the intended use.
  */
 export interface EnemyAI {
-  /** State-machine mode, e.g. 'idle', 'aggro', 'attack', 'recover'. Starts as 'idle'. */
+  /**
+   * State-machine mode, human-readable for the AI-targets overlay: 'idle', 'chase', 'hold',
+   * 'kite', 'retreat', 'reposition', 'windup', 'attack', 'recover'. Starts as 'idle'.
+   */
   mode: string;
-  /** Seconds in or left in the current mode, as the AI defines it. */
+  /** Seconds spent in the current mode. */
   timer: number;
   /** Entity id being targeted (PLAYER_ID for the player), -1 for none. */
   targetId: number;
   /** Seconds until the enemy may start another attack. */
   cooldown: number;
+  /** Line of sight (shots) to the target at the last check. */
+  los: boolean;
+  /** A straight walkable path to the target at the last check. */
+  walkLine: boolean;
+  /** Unit approach offset direction, rolled on aggro (swarmers surround with it). */
+  offsetX: number;
+  offsetY: number;
+  /** Strafe side for kiters: 1 (counterclockwise around the target) or -1. */
+  strafe: number;
+  /** Seconds until the strafe side flips. */
+  strafeLeft: number;
+}
+
+/** A fresh, idle AI record. */
+export function createEnemyAI(): EnemyAI {
+  return {
+    mode: 'idle',
+    timer: 0,
+    targetId: -1,
+    cooldown: 0,
+    los: false,
+    walkLine: false,
+    offsetX: 0,
+    offsetY: 0,
+    strafe: 1,
+    strafeLeft: 0,
+  };
 }
 
 /** Shieldbearer's shield (CONTENT §5). Blocks projectiles from within its front arc. */
@@ -143,7 +173,7 @@ export function spawnEnemy(
     areaLevel,
     rarity: 'normal',
     dead: false,
-    ai: { mode: 'idle', timer: 0, targetId: -1, cooldown: 0 },
+    ai: createEnemyAI(),
     attack: {
       phase: 'none',
       timeLeft: 0,

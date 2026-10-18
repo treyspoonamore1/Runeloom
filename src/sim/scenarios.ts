@@ -1,5 +1,6 @@
+import { kiterInput } from './bots/kiter';
 import { Button, type InputFrame } from './core/input';
-import type { GameState } from './state';
+import type { GameMode, GameState } from './state';
 
 /**
  * Scripted input sources. Used by the headless runner, the determinism tests
@@ -10,6 +11,8 @@ export interface Scenario {
   id: string;
   description: string;
   roomId: string;
+  /** Game mode to create the game in (default 'sandbox'). */
+  mode?: GameMode;
   input(tick: number, state: GameState): InputFrame;
 }
 
@@ -89,6 +92,14 @@ export const scenarios: Scenario[] = [
         buttons,
       };
     },
+  },
+  {
+    id: 'arena_bot',
+    description:
+      'Arena waves against the kiter bot (bots/kiter.ts): kites, Strikes packs, dodges telegraphs.',
+    roomId: 'test/arena',
+    mode: 'arena',
+    input: (_tick, state) => kiterInput(state),
   },
 ];
 

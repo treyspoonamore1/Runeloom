@@ -10,14 +10,24 @@ import type { GameState } from './state';
  * of sim state here when you add it to GameState.
  *
  * Not hashed: `events` (output only), `enemyHash` (rebuilt from `enemies` every step),
- * prevX/prevY (render interpolation only).
+ * prevX/prevY (render interpolation only), `flow.cost` (a pure function of the room and the
+ * hashed `flow.goalTile`).
  */
 export function hashState(state: GameState): number {
   const h = new Hasher();
   h.u32(state.tick).u32(state.seed).u32(state.prevButtons);
-  h.string(state.mode).byte(0).bool(state.cheats.god);
+  h.string(state.mode)
+    .byte(0)
+    .bool(state.cheats.god)
+    .bool(state.cheats.noAI === true);
   for (const w of state.rng.getState()) h.u32(w);
   for (const w of state.combatRng.getState()) h.u32(w);
+  for (const w of state.aiRng.getState()) h.u32(w);
+  h.num(state.flow.goalTile).num(state.flow.builtTick);
+  const ar = state.arena;
+  h.u32(ar.wave).string(ar.phase).byte(0).num(ar.timer).u32(ar.waveSize).u32(ar.remaining);
+  h.u32(ar.areaLevel).u32(ar.spawnedTotal).u32(ar.killedTotal).u32(ar.queue.length);
+  for (const q of ar.queue) h.string(q.kind).byte(0).u32(q.areaLevel).num(q.delay);
   h.string(state.room.id);
   h.u32(state.nextId).num(state.hitstopLeft);
   h.u32(state.loadout.length);
@@ -44,7 +54,9 @@ export function hashState(state: GameState): number {
     h.num(e.radius).num(e.facingX).num(e.facingY).num(e.life).num(e.maxLife);
     amounts(h, e.resist);
     h.num(e.shock).u32(e.areaLevel).string(e.rarity).bool(e.dead);
-    h.string(e.ai.mode).byte(0).num(e.ai.timer).num(e.ai.targetId).num(e.ai.cooldown);
+    const ai = e.ai;
+    h.string(ai.mode).byte(0).num(ai.timer).num(ai.targetId).num(ai.cooldown);
+    h.bool(ai.los).bool(ai.walkLine).num(ai.offsetX).num(ai.offsetY).num(ai.strafe).num(ai.strafeLeft);
     const a = e.attack;
     h.string(a.phase).byte(0).num(a.timeLeft).string(a.name).byte(0).num(a.originX).num(a.originY);
     shape(h, a.shape);

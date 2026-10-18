@@ -71,6 +71,36 @@ export const defaultTuning = {
     /** Grid spacing in cells when a room @spawn places several enemies on one marker. */
     spawnSpacing: 3,
   },
+  /** Enemy AI shared by every kind (per-kind behavior lives in data/enemies.ts). */
+  ai: {
+    /** Aggroed enemies farther than this many cells from the player give up and go idle. */
+    leashRange: 200,
+    /** An enemy that notices the player alerts idle enemies within this many cells of it. */
+    alertRadius: 12,
+    /** Each enemy re-checks line of sight every this many ticks (staggered by id). */
+    losCheckTicks: 4,
+    /** The flow field toward the player is rebuilt at least every this many ticks. */
+    flowRecomputeTicks: 10,
+    /** Most seconds of random delay added to the first attack after aggro (reaction time). */
+    reactionJitter: 0.3,
+    /** Most seconds of random delay added to every attack cooldown, so packs don't sync up. */
+    cooldownJitter: 0.2,
+  },
+  /** Arena waves (src/sim/world/waves.ts); composition tables are in data/waves.ts. */
+  arena: {
+    /** Seconds from the start of an arena game to wave 1. */
+    firstWaveDelay: 2,
+    /** Seconds between clearing a wave and the next one starting. */
+    intermission: 3,
+    /** Seconds over which a wave's enemies trickle in. */
+    spawnStagger: 1.5,
+    /** Spawn points are at least this many cells from the player. */
+    minSpawnDistance: 25,
+    /** Spawn points lie within this many tiles of the room's outer edge. */
+    spawnEdgeTiles: 4,
+    /** Most cells a spawn is jittered from its tile center, each axis. */
+    spawnJitter: 1,
+  },
   camera: {
     /** Look-ahead toward the cursor as a fraction of the screen size. */
     lookAhead: 0.15,
