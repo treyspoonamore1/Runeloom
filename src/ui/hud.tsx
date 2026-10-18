@@ -8,7 +8,6 @@ import type { Renderer } from '../render/renderer';
 import type { AudioSystem } from '../audio/audio';
 import { fmtCost, readSnap, snapEqual, waveText, type HudSnap } from './hudModel';
 import { readArena, WaveWatcher } from './arena';
-import { startArenaWave } from './console/arenaAdapters';
 import { consoleOpen } from './console/Console';
 import { injectHudStyle } from './hudStyle';
 import { SpellIcon } from './icons';
@@ -208,12 +207,8 @@ export function createHud(ctx: HudContext): Hud {
     c.focus({ preventScroll: true });
   };
 
-  /** Starts the arena's first wave at once (clicking "play" or restarting), if the sim has waves. */
-  const beginRun = (): void => {
-    const st = ctx.session.state;
-    const a = readArena(st);
-    if (st.mode === 'arena' && a && a.wave === 0 && startArenaWave(st, 1)) ctx.session.markEdited();
-  };
+  /** The arena starts its first wave by itself (tuning.arena.firstWaveDelay), so nothing to do. */
+  const beginRun = (): void => {};
 
   const play = (): void => {
     if (s.screen.value !== 'start') return;

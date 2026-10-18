@@ -84,9 +84,14 @@ export class Session {
     for (const fn of this.resetListeners) fn(this.state);
   }
 
-  /** Call when the console or a tool changes sim state outside `step`, so replays warn. */
+  /**
+   * Call after the console or a tool changes sim state outside `step`: replays will warn, and any
+   * events that change emitted (e.g. deaths from killall) are queued for render and audio.
+   */
   markEdited(): void {
     this.edited = true;
+    for (const e of this.state.events) this.pendingEvents.push(e);
+    this.state.events.length = 0;
   }
 
   onReset(fn: (s: GameState) => void): void {

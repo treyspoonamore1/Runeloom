@@ -14,8 +14,8 @@ export interface ArenaView {
 }
 
 export function readArena(state: GameState): ArenaView | null {
-  const a = (state as { arena?: Partial<ArenaView> }).arena;
-  if (!a || typeof a.wave !== 'number') return null;
+  if (state.mode !== 'arena') return null;
+  const a = state.arena;
   return {
     wave: a.wave,
     phase: a.phase === 'fighting' ? 'fighting' : 'intermission',

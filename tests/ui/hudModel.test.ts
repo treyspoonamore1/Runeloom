@@ -101,11 +101,22 @@ describe('readSnap', () => {
   });
 
   it('reads the arena defensively and counts enemies except dummies', () => {
-    const g = game() as GameState & { arena?: unknown };
+    const g = game();
+    g.mode = 'arena';
     spawnEnemy(g, 'tinderling', 30, 30);
     spawnEnemy(g, 'dummy', 40, 30);
     expect(enemiesRemaining(g)).toBe(1);
-    g.arena = { wave: 2, phase: 'fighting', timer: 0, spawnedTotal: 4, killedTotal: 3 };
+    g.arena = {
+      wave: 2,
+      phase: 'fighting',
+      timer: 0,
+      spawnedTotal: 4,
+      killedTotal: 3,
+      waveSize: 0,
+      remaining: 0,
+      areaLevel: 1,
+      queue: [],
+    };
     expect(readSnap(g).wave).toEqual({ wave: 2, phase: 'fighting', countdown: 0, remaining: 1 });
   });
 });
@@ -125,7 +136,17 @@ describe('snapEqual', () => {
     g2.player.dodgeRechargeLeft = 0.7;
     expect(snapEqual(a, readSnap(g2))).toBe(false);
     const g3 = game() as GameState & { arena?: unknown };
-    g3.arena = { wave: 1, phase: 'fighting', timer: 0, spawnedTotal: 0, killedTotal: 0 };
+    g3.arena = {
+      wave: 1,
+      phase: 'fighting',
+      timer: 0,
+      spawnedTotal: 0,
+      killedTotal: 0,
+      waveSize: 0,
+      remaining: 0,
+      areaLevel: 1,
+      queue: [],
+    };
     expect(snapEqual(a, readSnap(g3))).toBe(false);
     expect(snapEqual(readSnap(g3), readSnap(g3))).toBe(true);
   });

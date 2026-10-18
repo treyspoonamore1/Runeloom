@@ -46,7 +46,7 @@ export const defaultTuning = {
     playerBaseMana: 50,
     playerManaPerLevel: 4,
     /** Mana regenerated per second, as a fraction of max mana. */
-    manaRegen: 0.03,
+    manaRegen: 0.08,
   },
   /** Hit feel (DESIGN §4). */
   feel: {

@@ -105,7 +105,7 @@ const NO_RESIST: DamageAmounts = { physical: 0, fire: 0, frost: 0, storm: 0 };
 export const enemies = {
   tinderling: {
     name: 'Tinderling',
-    life: 18,
+    life: 14,
     speed: 22,
     radius: 1,
     resist: { physical: 0, fire: 0.75, frost: -0.25, storm: 0 },

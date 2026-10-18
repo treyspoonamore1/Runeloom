@@ -213,8 +213,19 @@ describe('WaveWatcher', () => {
 
   it('readArena tolerates a missing arena', () => {
     expect(readArena(state())).toBeNull();
-    const s = state() as GameState & { arena?: unknown };
-    s.arena = { wave: 2, phase: 'fighting', timer: 0, spawnedTotal: 5, killedTotal: 1 };
+    const s = state();
+    s.mode = 'arena';
+    s.arena = {
+      wave: 2,
+      phase: 'fighting',
+      timer: 0,
+      spawnedTotal: 5,
+      killedTotal: 1,
+      waveSize: 0,
+      remaining: 0,
+      areaLevel: 1,
+      queue: [],
+    };
     expect(readArena(s)?.wave).toBe(2);
   });
 });

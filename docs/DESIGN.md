@@ -262,7 +262,7 @@ The player suffers the same ailments from enemy and world hazards, with player-s
 - Crit chance = form base crit + modifiers. Base crit multiplier 150%.
 - Rune base damage at level L = level-1 base × 1.11^(L−1).
 - Enemy resistances range from −50% to 75%. Player resistances cap at 75%.
-- Player life = 80 + 12 × (level − 1), so 80 at level 1. Mana = 50 + 4 × (level − 1). Mana regen = 3% of max per second.
+- Player life = 80 + 12 × (level − 1), so 80 at level 1. Mana = 50 + 4 × (level − 1). Mana regen = 8% of max per second (raised from 3% after the M1 bot test; see DECISIONS).
 - Enemy life = base life × 1.12^(area level − 1). Magic ×1.7, Rare ×4.
 - Enemy damage = base damage × 1.09^(area level − 1). Boss numbers in CONTENT §5 are absolute.
 - `refLife(L) = 50 × 1.12^(L − 1)`: the life of a reference enemy at area level L. Terrain hazards scale from it.

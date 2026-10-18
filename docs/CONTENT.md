@@ -175,7 +175,7 @@ Life is at area level 1 and scales per DESIGN §7. Speed is in cells per second.
 
 | Id | Name | Life | Speed | Resist | Behavior | Chemistry | Ships |
 |---|---|---|---|---|---|---|---|
-| `tinderling` | Tinderling | 18 | 22 | 75 / −25 / 0 | Swarms in packs of 6–10. Melee nip for 4 after a 0.3 s windup | Always burning and immune to Ignite. Ignites flammable cells it crosses (rule 22). On death leaves 3×3 enemy-owned fire. If Wet, it goes out: stunned for 2 s and takes 50% more damage | M1 |
+| `tinderling` | Tinderling | 14 | 22 | 75 / −25 / 0 | Swarms in packs of 6–10. Melee nip for 4 after a 0.3 s windup | Always burning and immune to Ignite. Ignites flammable cells it crosses (rule 22). On death leaves 3×3 enemy-owned fire. If Wet, it goes out: stunned for 2 s and takes 50% more damage | M1 |
 | `shieldbearer` | Shieldbearer | 90 | 15 | 25 / 25 / 25 | Wooden shield blocks projectiles and beams in a 100° front arc. Shield bash for 12 after a 0.5 s windup | The shield is wood: 4 s of total burning destroys it | M1 |
 | `ember_archer` | Ember Archer | 40 | 16 | 50 / 0 / 0 | Kites at 20–30 cells. Fire arrow for 10 every 1.4 s after a 0.4 s draw | Missed arrows ignite flammable cells where they land | M1 |
 | `bog_lurker` | Bog Lurker | 60 | 14, lunge 32 | 0 / 0 / −30 | Lurks submerged. Lunges at the player within 10 cells after a 1.2 s ripple telegraph. Bite for 14 | Always Wet. Can't leave water. Freezing its water traps it until the ice thaws | M4 |
