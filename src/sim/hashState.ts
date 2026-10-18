@@ -4,6 +4,7 @@ import type { AttackShape } from './combat/shapes';
 import type { Ailments } from './combat/ailments';
 import type { DamagePacket } from './combat/damage';
 import type { GameState } from './state';
+import type { Grid } from './grid/grid';
 import { hashPacket, hashWeaveState } from './weave/runtime/hash';
 
 /**
@@ -32,6 +33,7 @@ export function hashState(state: GameState): number {
   h.u32(ar.areaLevel).u32(ar.spawnedTotal).u32(ar.killedTotal).u32(ar.queue.length);
   for (const q of ar.queue) h.string(q.kind).byte(0).u32(q.areaLevel).num(q.delay);
   h.string(state.room.id);
+  hashGrid(h, state.grid);
   h.u32(state.nextId).num(state.hitstopLeft);
   hashWeaveState(h, state);
 
@@ -111,4 +113,22 @@ function shape(h: Hasher, s: AttackShape): void {
 
 export function hashHex(n: number): string {
   return (n >>> 0).toString(16).padStart(8, '0');
+}
+
+function hashGrid(h: Hasher, g: Grid): void {
+  h.u32(g.width).u32(g.height).u32(g.tick);
+  for (const a of [
+    g.ground,
+    g.surface,
+    g.air,
+    g.fire,
+    g.fuel,
+    g.charge,
+    g.airTimer,
+    g.timer,
+    g.wet,
+    g.under,
+    g.owner,
+  ])
+    h.bytes(a);
 }

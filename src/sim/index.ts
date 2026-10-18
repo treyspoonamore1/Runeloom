@@ -104,3 +104,5 @@ export {
 } from './world/waves';
 export { kiterInput } from './bots/kiter';
 export * from './weave';
+export { createGrid, cellIndex, inGrid, gridWalkable, materialOf, type Grid } from './grid/grid';
+export { applyElement, type TerrainElement, type Footprint, type ElementApplication } from './grid/paint';
