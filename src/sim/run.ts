@@ -4,6 +4,7 @@ import { createGame, type GameState } from './state';
 import { step } from './step';
 import type { Scenario } from './scenarios';
 import type { Tuning } from '../../data/tuning';
+import type { Cheats, GameMode } from './state';
 
 export interface RunResult {
   state: GameState;
@@ -25,9 +26,10 @@ export function runScenario(
 export function runFrames(
   frames: readonly InputFrame[],
   roomText: string,
-  opts: { seed: number; tuning?: Tuning },
+  opts: { seed: number; tuning?: Tuning; mode?: GameMode; cheats?: Cheats },
 ): RunResult {
-  const state = createGame({ seed: opts.seed, roomText, tuning: opts.tuning });
+  const state = createGame({ seed: opts.seed, roomText, tuning: opts.tuning, mode: opts.mode });
+  if (opts.cheats) state.cheats = { ...opts.cheats };
   for (const f of frames) step(state, f);
   return { state, hash: hashState(state) };
 }

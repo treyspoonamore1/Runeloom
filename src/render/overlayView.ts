@@ -69,10 +69,17 @@ export class OverlayView {
     }
   }
 
-  private drawHitboxes(s: GameState, px: number, py: number, aim: { x: number; y: number }, scale: number): void {
+  private drawHitboxes(
+    s: GameState,
+    px: number,
+    py: number,
+    aim: { x: number; y: number },
+    scale: number,
+  ): void {
     const p = s.player;
     const px1 = 1.5 / scale;
-    const color = p.iframesLeft > 0 ? OVERLAY.hitboxIframes : p.dodgeLeft > 0 ? OVERLAY.hitboxDodge : OVERLAY.hitbox;
+    const color =
+      p.iframesLeft > 0 ? OVERLAY.hitboxIframes : p.dodgeLeft > 0 ? OVERLAY.hitboxDodge : OVERLAY.hitbox;
     const g = this.hitboxes.clear();
     // Input aim: player to the cursor's world point.
     g.moveTo(px, py).lineTo(aim.x, aim.y).stroke({ width: px1, color: OVERLAY.aimLine, alpha: 0.45 });
@@ -82,7 +89,9 @@ export class OverlayView {
     g.moveTo(px, py)
       .lineTo(px + p.aimDirX * (r + 3), py + p.aimDirY * (r + 3))
       .stroke({ width: 2 * px1, color, alpha: 0.95 });
-    g.circle(px, py, r).fill({ color, alpha: 0.12 }).stroke({ width: 2 * px1, color, alpha: 0.95 });
+    g.circle(px, py, r)
+      .fill({ color, alpha: 0.12 })
+      .stroke({ width: 2 * px1, color, alpha: 0.95 });
     g.circle(px, py, 2 * px1).fill(color);
   }
 }

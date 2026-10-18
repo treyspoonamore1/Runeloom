@@ -43,7 +43,8 @@ export class AmbientView {
     if (!this.glowCtx) {
       // Soft falloff from stacked additive discs.
       this.glowCtx = new GraphicsContext();
-      for (let i = 0; i < 6; i++) this.glowCtx.circle(0, 0, 1 - i * 0.15).fill({ color: PAL.flameOuter, alpha: 0.2 });
+      for (let i = 0; i < 6; i++)
+        this.glowCtx.circle(0, 0, 1 - i * 0.15).fill({ color: PAL.flameOuter, alpha: 0.2 });
     }
     for (let ty = 0; ty < map.h; ty++) {
       for (let tx = 0; tx < map.w; tx++) {
@@ -148,7 +149,9 @@ function buildFlame(): GraphicsContext {
       .bezierCurveTo(0.8 * s, 0.5 * s + oy, -0.8 * s, 0.5 * s + oy, -1.0 * s, -0.1 * s + oy)
       .bezierCurveTo(-1.25 * s, -0.9 * s + oy, -0.5 * s, -1.6 * s + oy, 0, -2.6 * s + oy)
       .closePath();
-  tongue(1, 0).fill(PAL.flameOuter).stroke({ width: LINE.detail * 1.4, color: PAL.ink, join: 'round' });
+  tongue(1, 0)
+    .fill(PAL.flameOuter)
+    .stroke({ width: LINE.detail * 1.4, color: PAL.ink, join: 'round' });
   tongue(0.62, 0.05).fill(PAL.flameInner);
   tongue(0.3, 0.05).fill(PAL.flameCore);
   return ctx;

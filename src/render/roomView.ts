@@ -71,8 +71,10 @@ export class RoomView {
         switch (t.ground) {
           case 'stone':
             base.add(pick(PAL.stone, h), rect);
-            if (map.groundAt(tx + 1, ty) === 'stone') grout.push({ x0: tx + 1, y0: ty, x1: tx + 1, y1: ty + 1 });
-            if (map.groundAt(tx, ty + 1) === 'stone') grout.push({ x0: tx, y0: ty + 1, x1: tx + 1, y1: ty + 1 });
+            if (map.groundAt(tx + 1, ty) === 'stone')
+              grout.push({ x0: tx + 1, y0: ty, x1: tx + 1, y1: ty + 1 });
+            if (map.groundAt(tx, ty + 1) === 'stone')
+              grout.push({ x0: tx, y0: ty + 1, x1: tx + 1, y1: ty + 1 });
             if (h2 > 0.88) {
               const px = x + 1 + h * 2;
               const py = y + 1 + hash2(tx, ty, 9) * 2;
@@ -85,7 +87,10 @@ export class RoomView {
               const hx = hash2(tx, ty, 11 + i);
               const hy = hash2(tx, ty, 21 + i);
               if (hx < 0.3) continue;
-              detail.add(PAL.dirtPebble, (gg) => void gg.ellipse(x + 0.6 + hx * 2.8, y + 0.6 + hy * 2.8, 0.3, 0.2));
+              detail.add(
+                PAL.dirtPebble,
+                (gg) => void gg.ellipse(x + 0.6 + hx * 2.8, y + 0.6 + hy * 2.8, 0.3, 0.2),
+              );
             }
             break;
           case 'grass':
@@ -99,7 +104,8 @@ export class RoomView {
             break;
           case 'deep':
             base.add(PAL.deep, rect);
-            if (map.groundAt(tx, ty - 1) !== 'deep') detail.add(PAL.deepShade, (gg) => void gg.rect(x, y, T, 1.1));
+            if (map.groundAt(tx, ty - 1) !== 'deep')
+              detail.add(PAL.deepShade, (gg) => void gg.rect(x, y, T, 1.1));
             break;
           case 'flat':
             base.add(FLAT_GROUND[t.id] ?? PAL.stone[0], rect);
@@ -166,12 +172,23 @@ export class RoomView {
     };
     const edgesOf = (runs: ReturnType<typeof edgeRuns>): Edge[] => runs.map((r) => r.edge);
     strokeEdges(g, edgesOf(edgeRuns(map, isG('grass'), walkableLand)), LINE.groundEdge, PAL.grassEdge);
-    strokeEdges(g, edgesOf(edgeRuns(map, isG('dirt'), (x, y) => walkableLand(x, y) && !isG('grass')(x, y))), LINE.groundEdge, PAL.dirtEdge);
+    strokeEdges(
+      g,
+      edgesOf(edgeRuns(map, isG('dirt'), (x, y) => walkableLand(x, y) && !isG('grass')(x, y))),
+      LINE.groundEdge,
+      PAL.dirtEdge,
+    );
     const water = (tx: number, ty: number): boolean => {
       const gr = map.groundAt(tx, ty);
       return gr === 'shallow' || gr === 'deep';
     };
-    strokeEdges(g, edgesOf(edgeRuns(map, water, (x, y) => !map.isRaised(x, y))), LINE.groundEdge * 1.3, PAL.ink, 0.9);
+    strokeEdges(
+      g,
+      edgesOf(edgeRuns(map, water, (x, y) => !map.isRaised(x, y))),
+      LINE.groundEdge * 1.3,
+      PAL.ink,
+      0.9,
+    );
     strokeEdges(g, edgesOf(edgeRuns(map, isG('deep'))), LINE.outline, PAL.ink);
   }
 
@@ -230,7 +247,14 @@ export class RoomView {
         const y = ty * T;
         if (t.prop === 'crate' || t.prop === 'box') {
           const crate = t.prop === 'crate';
-          drawBox(g, x, y, crate ? PAL.crateTop : PAL.blockTop, crate ? PAL.crateFront : PAL.blockFront, crate);
+          drawBox(
+            g,
+            x,
+            y,
+            crate ? PAL.crateTop : PAL.blockTop,
+            crate ? PAL.crateFront : PAL.blockFront,
+            crate,
+          );
         } else if (t.prop === 'brazier') {
           drawBrazierBowl(g, x + T / 2, y + T / 2 + 0.3);
         } else if (t.prop === 'loomstone') {
@@ -260,7 +284,9 @@ function drawBox(g: Graphics, x: number, y: number, top: number, front: number, 
     g.moveTo(bx + w * 0.66, by + h - fh).lineTo(bx + w * 0.66, by + h);
     g.stroke({ width: LINE.detail, color: darken(front, 0.75), cap: 'round' });
   }
-  g.moveTo(bx, by + h - fh).lineTo(bx + w, by + h - fh).stroke({ width: LINE.detail, color: PAL.ink });
+  g.moveTo(bx, by + h - fh)
+    .lineTo(bx + w, by + h - fh)
+    .stroke({ width: LINE.detail, color: PAL.ink });
   g.rect(bx, by, w, h).stroke({ width: LINE.outline * 0.85, color: PAL.ink, join: 'round' });
 }
 
@@ -269,16 +295,39 @@ function drawBrazierBowl(g: Graphics, cx: number, cy: number): void {
   // Three stubby legs peeking out under the bowl.
   for (const dx of [-1.1, 0, 1.1]) g.roundRect(cx + dx - 0.25, cy + 0.6, 0.5, 0.9, 0.2);
   g.fill(PAL.brazierRim).stroke({ width: LINE.detail, color: PAL.ink });
-  g.ellipse(cx, cy, 1.6, 1.3).fill(PAL.brazierStone).stroke({ width: LINE.outline * 0.85, color: PAL.ink });
-  g.ellipse(cx, cy - 0.15, 1.1, 0.8).fill(PAL.brazierCoal).stroke({ width: LINE.detail, color: PAL.brazierRim });
+  g.ellipse(cx, cy, 1.6, 1.3)
+    .fill(PAL.brazierStone)
+    .stroke({ width: LINE.outline * 0.85, color: PAL.ink });
+  g.ellipse(cx, cy - 0.15, 1.1, 0.8)
+    .fill(PAL.brazierCoal)
+    .stroke({ width: LINE.detail, color: PAL.brazierRim });
 }
 
 function drawLoomStone(g: Graphics, cx: number, cy: number): void {
   g.circle(cx, cy, 1.85).fill({ color: PAL.loomStoneRune, alpha: 0.18 });
-  g.circle(cx, cy, 1.35).fill(PAL.loomStone).stroke({ width: LINE.outline * 0.8, color: PAL.ink });
+  g.circle(cx, cy, 1.35)
+    .fill(PAL.loomStone)
+    .stroke({ width: LINE.outline * 0.8, color: PAL.ink });
   g.circle(cx, cy, 0.95).stroke({ width: LINE.detail, color: darken(PAL.loomStone, 0.75) });
   // A four-point rune.
-  g.poly([cx, cy - 0.7, cx + 0.22, cy - 0.22, cx + 0.7, cy, cx + 0.22, cy + 0.22, cx, cy + 0.7, cx - 0.22, cy + 0.22, cx - 0.7, cy, cx - 0.22, cy - 0.22]);
+  g.poly([
+    cx,
+    cy - 0.7,
+    cx + 0.22,
+    cy - 0.22,
+    cx + 0.7,
+    cy,
+    cx + 0.22,
+    cy + 0.22,
+    cx,
+    cy + 0.7,
+    cx - 0.22,
+    cy + 0.22,
+    cx - 0.7,
+    cy,
+    cx - 0.22,
+    cy - 0.22,
+  ]);
   g.fill(PAL.loomStoneRune).stroke({ width: LINE.detail * 0.8, color: PAL.ink });
 }
 

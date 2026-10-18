@@ -88,7 +88,7 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
     return null;
   }
   const res = resolveHit(packet, p, state.combatRng);
-  p.life -= res.total;
+  if (!state.cheats.god) p.life -= res.total;
   const kb = info.knockback;
   if (kb > 0) addKnockback(p, info.dirX, info.dirY, kb, state.tuning.feel);
   emit(state, {

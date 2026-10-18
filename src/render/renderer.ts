@@ -1,5 +1,5 @@
 import { Application, Container } from 'pixi.js';
-import type { GameState } from '../sim';
+import type { GameState, SimEvent } from '../sim';
 import { AmbientView } from './ambientView';
 import { Camera } from './camera';
 import { OverlayView } from './overlayView';
@@ -29,6 +29,11 @@ export interface Renderer {
   setCursor(sx: number, sy: number): void;
   /** Rebuilds static room graphics after a reset or room change. */
   setRoom(state: GameState): void;
+  /**
+   * Sim events since the last frame (Session.drainEvents), delivered once per frame before
+   * render(): hit flashes, damage numbers, particles, screen shake.
+   */
+  handleEvents(events: readonly SimEvent[]): void;
   destroy(): void;
 }
 
@@ -99,6 +104,9 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     screenToWorld: (sx, sy) => camera.screenToWorld(sx, sy),
     setCursor: (sx, sy) => camera.setCursor(sx, sy),
     setRoom,
+    handleEvents() {
+      // M1 render task: hit flash, damage numbers, death particles, screen shake.
+    },
     destroy() {
       app.destroy(true, { children: true });
     },

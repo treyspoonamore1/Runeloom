@@ -62,7 +62,9 @@ export function buildPlayerShapes(): PlayerShapes {
     .circle(0, 0, P.hoodR)
     .stroke({ width: P.outline, color: P.ink });
 
-  const hoodRim = new GraphicsContext().circle(0, 0, P.hoodR).stroke({ width: P.outline * 0.75, color: P.iframeRim });
+  const hoodRim = new GraphicsContext()
+    .circle(0, 0, P.hoodR)
+    .stroke({ width: P.outline * 0.75, color: P.iframeRim });
 
   const hoodPeak = new GraphicsContext()
     .moveTo(0.3, -0.62)

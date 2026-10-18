@@ -19,6 +19,8 @@ export function checkReplay(file: ReplayFile): ReplayCheck {
   const { state, hash } = runFrames(frames, loadRoomText(file.roomId), {
     seed: file.seed,
     tuning: file.tuning,
+    mode: file.mode ?? 'sandbox',
+    cheats: file.cheats,
   });
   const h = hashHex(hash);
   return {

@@ -9,11 +9,25 @@ import { SPATIAL_BUCKET_CELLS } from './core/constants';
 import type { SimEvent } from './events';
 import { cloneTuning, type Tuning } from '../../data/tuning';
 
+/**
+ * How the room plays. 'sandbox': only the room's @spawn enemies. 'arena': endless waves of
+ * enemies (src/sim/world/waves.ts).
+ */
+export type GameMode = 'sandbox' | 'arena';
+
+/** Debug toggles that change the simulation. Hashed, so replays record them. */
+export interface Cheats {
+  /** The player takes no damage (hits still land and show). */
+  god: boolean;
+}
+
 /** The complete simulation state. Everything the sim needs to continue lives here. */
 export interface GameState {
   /** Ticks stepped since creation (hitstop ticks included). */
   tick: number;
   seed: number;
+  mode: GameMode;
+  cheats: Cheats;
   /** General stream. Systems that roll often should fork their own (see combatRng). */
   rng: Rng;
   /** Crit rolls only, forked from the seed at creation, so other randomness never shifts crits. */
@@ -49,6 +63,8 @@ export interface CreateGameOptions {
   tuning?: Tuning;
   /** Spawn the room's `@spawn enemy:` entries (default true). */
   spawnRoomEnemies?: boolean;
+  /** Default 'sandbox'. */
+  mode?: GameMode;
 }
 
 export function createGame(opts: CreateGameOptions): GameState {
@@ -59,6 +75,8 @@ export function createGame(opts: CreateGameOptions): GameState {
   const state: GameState = {
     tick: 0,
     seed: opts.seed,
+    mode: opts.mode ?? 'sandbox',
+    cheats: { god: false },
     rng,
     combatRng,
     tuning,

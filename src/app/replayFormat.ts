@@ -1,4 +1,4 @@
-import type { InputFrame } from '../sim';
+import type { Cheats, GameMode, InputFrame } from '../sim';
 import type { Tuning } from '../../data/tuning';
 
 /**
@@ -11,6 +11,12 @@ export interface ReplayFile {
   seed: number;
   roomId: string;
   sceneId: string;
+  /** Game mode; absent in M0 replays, meaning 'sandbox'. */
+  mode?: GameMode;
+  /** Cheats at the start of the recording; absent means none. */
+  cheats?: Cheats;
+  /** True if cheats were toggled during the recording, in which case it may not reproduce. */
+  cheatsEdited?: boolean;
   /** Tuning the recording started with. */
   tuning: Tuning;
   /** True if tuning was edited during the recording, in which case it may not reproduce. */

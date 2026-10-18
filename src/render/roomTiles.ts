@@ -2,13 +2,7 @@ import type { Room } from '../sim';
 import { tileForChar } from '../../data/tiles';
 
 /** How a tile is drawn. Render-side only; the sim cares about walkability, not looks. */
-export type Ground =
-  | 'stone'
-  | 'dirt'
-  | 'grass'
-  | 'shallow'
-  | 'deep'
-  | 'flat'; // single flat color from FLAT_GROUND (fallback looks)
+export type Ground = 'stone' | 'dirt' | 'grass' | 'shallow' | 'deep' | 'flat'; // single flat color from FLAT_GROUND (fallback looks)
 
 export type Prop = 'crate' | 'brazier' | 'loomstone' | 'box' | null;
 

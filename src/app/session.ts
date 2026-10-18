@@ -1,4 +1,12 @@
-import { createGame, step, type GameState, type InputFrame, type SimEvent } from '../sim';
+import {
+  createGame,
+  step,
+  type Cheats,
+  type GameMode,
+  type GameState,
+  type InputFrame,
+  type SimEvent,
+} from '../sim';
 import { roomText } from './rooms';
 import { cloneTuning, type Tuning } from '../../data/tuning';
 
@@ -6,6 +14,7 @@ export interface SessionOptions {
   seed: number;
   roomId: string;
   sceneId: string;
+  mode?: GameMode;
 }
 
 /**
@@ -17,10 +26,13 @@ export class Session {
   seed: number;
   roomId: string;
   readonly sceneId: string;
+  mode: GameMode;
   /** Every input frame stepped since the last reset, for F9 replays. */
   frames: InputFrame[] = [];
   /** Tuning at the last reset; replays start from it. */
   startTuning: Tuning;
+  /** Cheats at the last reset; replays start from them. */
+  startCheats: Cheats = { god: false };
   /**
    * Sim events from every step since the last drainEvents(), in order. A frame can run several
    * steps (or none), so render and audio drain this once per frame instead of reading state.events.
@@ -32,7 +44,8 @@ export class Session {
     this.seed = opts.seed;
     this.roomId = opts.roomId;
     this.sceneId = opts.sceneId;
-    this.state = createGame({ seed: opts.seed, roomText: roomText(opts.roomId) });
+    this.mode = opts.mode ?? 'sandbox';
+    this.state = createGame({ seed: opts.seed, roomText: roomText(opts.roomId), mode: this.mode });
     this.startTuning = cloneTuning(this.state.tuning);
   }
 
@@ -49,10 +62,19 @@ export class Session {
     return out;
   }
 
-  reset(opts: { seed?: number; roomId?: string } = {}): void {
+  reset(opts: { seed?: number; roomId?: string; mode?: GameMode } = {}): void {
     if (opts.seed !== undefined) this.seed = opts.seed >>> 0;
     if (opts.roomId !== undefined) this.roomId = opts.roomId;
-    this.state = createGame({ seed: this.seed, roomText: roomText(this.roomId), tuning: this.state.tuning });
+    if (opts.mode !== undefined) this.mode = opts.mode;
+    const cheats = { ...this.state.cheats };
+    this.state = createGame({
+      seed: this.seed,
+      roomText: roomText(this.roomId),
+      tuning: this.state.tuning,
+      mode: this.mode,
+    });
+    this.state.cheats = cheats;
+    this.startCheats = { ...cheats };
     this.frames = [];
     this.pendingEvents = [];
     this.startTuning = cloneTuning(this.state.tuning);

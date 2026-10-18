@@ -6,6 +6,7 @@
 import { parseRoom, RoomParseError, scenarios, type RoomData } from '../src/sim';
 import { scenes } from '../src/app/scenes';
 import { defaultTuning } from '../data/tuning';
+import { isEnemyKind } from '../data/enemies';
 import { checkPositiveNumbers, missingRefs, spawnMarkerDiffs } from './lib/checks';
 import { listRoomIds, loadRoomText } from './lib/rooms';
 
@@ -41,6 +42,12 @@ errors.push(
 for (const p of checkPositiveNumbers(defaultTuning)) errors.push(`data/tuning.ts: ${p}`);
 
 for (const [id, data] of parsed) {
+  for (const sp of data.header.spawns) {
+    if (sp.kind === 'enemy' && !isEnemyKind(sp.id))
+      errors.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} is not in data/enemies.ts`);
+    if (sp.kind === 'pack')
+      warnings.push(`rooms/${id}.txt: @spawn ${sp.marker} pack:${sp.id} (packs arrive in M4)`);
+  }
   const d = spawnMarkerDiffs(data);
   for (const m of d.usedNotDeclared)
     warnings.push(`rooms/${id}.txt: spawn marker ${m} is in the grid but has no @spawn header`);

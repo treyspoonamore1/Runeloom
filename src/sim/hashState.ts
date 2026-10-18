@@ -15,6 +15,7 @@ import type { GameState } from './state';
 export function hashState(state: GameState): number {
   const h = new Hasher();
   h.u32(state.tick).u32(state.seed).u32(state.prevButtons);
+  h.string(state.mode).byte(0).bool(state.cheats.god);
   for (const w of state.rng.getState()) h.u32(w);
   for (const w of state.combatRng.getState()) h.u32(w);
   h.string(state.room.id);
