@@ -9,6 +9,9 @@
  * Pitch variation is applied at playback (playbackRate), not baked in, so buffers are cached.
  */
 
+import type { DamageType } from './combatTypes';
+import type { FormId } from './runes';
+
 export type ZzfxShape = 'sine' | 'triangle' | 'saw' | 'tan' | 'noise' | 'square';
 
 export interface ZzfxLayer {
@@ -253,6 +256,137 @@ export const sfx = {
     layers: [
       { volume: 0.7, frequency: 880, shape: 'saw', slide: -6, modulation: 90, release: 0.11, filter: 3400 },
       { volume: 0.4, frequency: 2100, shape: 'square', shapeCurve: 0.3, tremolo: 0.6, release: 0.06, filter: 4000 },
+    ],
+  },
+
+  // --- Spell forms (M2 runtime) --------------------------------------------------------------
+  // Spawn sounds play per instance (branches and Echo repeats softer), so keep them short.
+  /** Nova: a low thump and an outward rush of air. */
+  novaBurst: {
+    gain: 0.5,
+    pitchVar: 0.06,
+    minGapMs: 50,
+    layers: [
+      { volume: 0.8, frequency: 90, shape: 'sine', slide: 0.5, attack: 0.005, release: 0.24 },
+      { volume: 0.7, frequency: 600, shape: 'noise', noise: 1.5, slide: 2, attack: 0.01, release: 0.28, filter: 1500 },
+    ],
+  },
+  /** Fire beam: a short hot buzz. */
+  beamFire: {
+    gain: 0.42,
+    pitchVar: 0.06,
+    layers: [
+      { volume: 0.8, frequency: 220, shape: 'saw', slide: -1, release: 0.15, filter: 1200 },
+      { volume: 0.5, frequency: 900, shape: 'noise', noise: 1, release: 0.12, filter: 1400 },
+    ],
+  },
+  /** Frost beam: a glassy zing. */
+  beamFrost: {
+    gain: 0.38,
+    pitchVar: 0.05,
+    layers: [
+      { volume: 0.7, frequency: NOTE(20), shape: 'sine', slide: -2, release: 0.17 },
+      { at: 0.02, volume: 0.5, frequency: NOTE(27), shape: 'sine', release: 0.13 },
+      { volume: 0.4, frequency: 3000, shape: 'noise', noise: 2, release: 0.05, filter: -2500 },
+    ],
+  },
+  /** Storm beam: a crackling zap. */
+  beamStorm: {
+    gain: 0.4,
+    pitchVar: 0.08,
+    layers: [
+      { volume: 0.7, frequency: 1200, shape: 'saw', modulation: 120, slide: -6, release: 0.13, filter: 4000 },
+      { volume: 0.4, frequency: 3000, shape: 'square', shapeCurve: 0.3, tremolo: 0.7, release: 0.05, filter: 4500 },
+    ],
+  },
+  /** Lob thrown: a soft rising "fwoop". */
+  lobThrow: {
+    gain: 0.34,
+    pitchVar: 0.08,
+    minGapMs: 50,
+    layers: [{ volume: 0.8, frequency: 260, shape: 'triangle', slide: 3, attack: 0.01, release: 0.14 }],
+  },
+  /** Lob landed: a thud and a sizzle. */
+  lobLand: {
+    gain: 0.55,
+    pitchVar: 0.07,
+    minGapMs: 50,
+    layers: [
+      { volume: 0.9, frequency: 110, shape: 'sine', slide: -0.6, attack: 0.003, release: 0.2 },
+      { volume: 0.6, frequency: 500, shape: 'noise', noise: 1.2, release: 0.24, filter: 900 },
+    ],
+  },
+  /** Orb summoned: a soft humming swell. */
+  orbHum: {
+    gain: 0.3,
+    pitchVar: 0.03,
+    minGapMs: 80,
+    layers: [
+      { volume: 0.8, frequency: G4 / 2, shape: 'sine', attack: 0.05, sustain: 0.1, release: 0.25, tremolo: 0.3 },
+      { volume: 0.3, frequency: G4, shape: 'triangle', attack: 0.05, release: 0.25 },
+    ],
+  },
+  /** Orb hit something: a tiny tick, lowest priority. */
+  orbTick: {
+    gain: 0.15,
+    pitchVar: 0.1,
+    minGapMs: 70,
+    priority: 0,
+    layers: [{ volume: 0.8, frequency: 1300, shape: 'sine', release: 0.04 }],
+  },
+  /** Swath painted: a broad swish. */
+  swathSwish: {
+    gain: 0.45,
+    pitchVar: 0.08,
+    layers: [
+      { volume: 0.8, frequency: 420, shape: 'sine', noise: 2.5, slide: -0.6, attack: 0.03, release: 0.2, filter: 2600 },
+    ],
+  },
+  /** Sigil placed: a two-note chime over a soft low tone. */
+  sigilPlace: {
+    gain: 0.38,
+    pitchVar: 0.02,
+    minGapMs: 80,
+    layers: [
+      { volume: 0.7, frequency: C5, shape: 'sine', release: 0.28 },
+      { at: 0.05, volume: 0.6, frequency: G5, shape: 'sine', release: 0.32 },
+      { volume: 0.5, frequency: 130, shape: 'sine', release: 0.15 },
+    ],
+  },
+  /** Sigil emitted: a soft pulse, lowest priority. */
+  sigilPulse: {
+    gain: 0.16,
+    pitchVar: 0.03,
+    minGapMs: 120,
+    priority: 0,
+    layers: [{ volume: 0.7, frequency: E5, shape: 'sine', release: 0.12 }],
+  },
+  /** Chain jump: a thin snapping zap. */
+  chainZap: {
+    gain: 0.3,
+    pitchVar: 0.12,
+    minGapMs: 40,
+    layers: [
+      { volume: 0.7, frequency: 1500, shape: 'saw', modulation: 150, slide: -10, release: 0.07, filter: 4500 },
+      { volume: 0.3, frequency: 3000, shape: 'noise', noise: 2, release: 0.04, filter: -2500 },
+    ],
+  },
+  /** Mana restored by a close hit: a faint high chime, lowest priority. */
+  manaChime: {
+    gain: 0.13,
+    pitchVar: 0.04,
+    minGapMs: 120,
+    priority: 0,
+    layers: [{ volume: 0.8, frequency: NOTE(19), shape: 'sine', release: 0.1 }],
+  },
+  /** An automatic trigger fired: a small two-step tick. */
+  triggerTick: {
+    gain: 0.22,
+    pitchVar: 0.03,
+    minGapMs: 60,
+    layers: [
+      { volume: 0.7, frequency: NOTE(14), shape: 'triangle', release: 0.05 },
+      { at: 0.03, volume: 0.6, frequency: NOTE(21), shape: 'sine', release: 0.06 },
     ],
   },
 
@@ -533,13 +667,27 @@ export const hitSfx = {
   storm: 'hitStorm',
 } as const satisfies Record<string, SfxId>;
 
-/** Cast sound by spell id. */
-export const castSfx: Record<string, SfxId> = {
-  fire_bolt: 'boltCast',
-  strike: 'strikeSwing',
-  /** Since M2 the 'cast' event names the weave's root form ('bolt', 'strike', …). */
+/** Spawn sound by form, for every instance (Beam plays on 'beamFire' instead). */
+export const castSfx = {
   bolt: 'boltCast',
-};
+  strike: 'strikeSwing',
+  nova: 'novaBurst',
+  lob: 'lobThrow',
+  orb: 'orbHum',
+  swath: 'swathSwish',
+  sigil: 'sigilPlace',
+} as const satisfies Partial<Record<FormId, SfxId>>;
+
+/** Beam sound by its first element's damage type. */
+export const beamSfx = {
+  physical: 'beamStorm',
+  fire: 'beamFire',
+  frost: 'beamFrost',
+  storm: 'beamStorm',
+} as const satisfies Record<DamageType, SfxId>;
+
+/** Loudness of a spawn sound for branch spells and for Echo repeats (a softer copy). */
+export const spawnGain = { branch: 0.55, echo: 0.5 } as const;
 
 /** Sound when an ailment takes hold or gets stronger, by ailment. */
 export const ailmentSfx = {
@@ -551,6 +699,11 @@ export const ailmentSfx = {
 /** Projectile impact sound by projectile kind (player projectiles only). */
 export const impactSfx: Record<string, SfxId> = {
   fire_bolt: 'boltImpact',
+  frost_bolt: 'boltImpact',
+  storm_bolt: 'boltImpact',
+  tide_bolt: 'boltImpact',
+  gale_bolt: 'boltImpact',
+  physical_bolt: 'boltImpact',
 };
 
 /** Global tuning for the audio system (DESIGN §13). */

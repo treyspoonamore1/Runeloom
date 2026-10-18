@@ -3,13 +3,17 @@ import {
   ailmentSfx,
   attackSfx,
   audioTuning,
+  beamSfx,
   castSfx,
   deathSfx,
   hitSfx,
   impactSfx,
+  spawnGain,
   telegraphSfx,
   type SfxId,
 } from '../../data/sfx';
+import type { DamageType } from '../../data/combatTypes';
+import type { ElementId } from '../../data/runes';
 
 /** One sound to play: which preset, where it happened (cells; omit for non-positional), and a loudness factor. */
 export interface Cue {
@@ -22,10 +26,25 @@ export interface Cue {
 /** Sounds for one sim event. Pure: reads state only to find where a telegraphing enemy stands. */
 export function cuesForEvent(e: SimEvent, state: GameState): Cue[] {
   switch (e.type) {
-    case 'cast': {
-      const id = castSfx[e.spell];
-      return id ? [{ id }] : [];
+    // Spell sounds come per instance from 'spellSpawn' (Echo, branches and triggers included),
+    // so the 'cast' release itself is silent.
+    case 'spellSpawn': {
+      const id = (castSfx as Partial<Record<string, SfxId>>)[e.form];
+      if (!id) return [];
+      const gain = e.echo ? spawnGain.echo : e.depth > 0 ? spawnGain.branch : 1;
+      // Root spells start at the player: centered. Branches sound where they spawn.
+      return [e.depth > 0 ? { id, gain, x: e.x, y: e.y } : { id, gain }];
     }
+    case 'beamFire':
+      return [{ id: beamSfx[damageTypeOf(e.elements[0])], x: e.fromX, y: e.fromY }];
+    case 'lobLand':
+      return [{ id: 'lobLand', x: e.x, y: e.y }];
+    case 'chainJump':
+      return [{ id: 'chainZap', x: e.toX, y: e.toY }];
+    case 'manaRefund':
+      return [{ id: 'manaChime' }];
+    case 'triggerFired':
+      return e.trigger === 'cast' ? [] : [{ id: 'triggerTick', x: e.x, y: e.y }];
     case 'castFailed':
       return [{ id: 'castFailed' }];
     case 'projectileEnd': {
@@ -74,6 +93,45 @@ export function cuesForEvent(e: SimEvent, state: GameState): Cue[] {
       return [{ id: 'shieldBlock', x: e.x, y: e.y }];
     default:
       return [];
+  }
+}
+
+function damageTypeOf(id: ElementId | undefined): DamageType {
+  return id === 'fire' || id === 'frost' || id === 'storm' ? id : 'physical';
+}
+
+/**
+ * Spell sounds that need memory across events: a quiet tick when an Orb hits (hits name their
+ * spell instance) and a pulse when a Sigil emits (an emitted spell spawns exactly at the sigil).
+ * Tracks only live orbs and sigils, from their spawn and end events.
+ */
+export class SpellCueTracker {
+  private readonly orbs = new Set<number>();
+  private readonly sigils = new Map<number, { x: number; y: number }>();
+
+  reset(): void {
+    this.orbs.clear();
+    this.sigils.clear();
+  }
+
+  cues(e: SimEvent): Cue[] {
+    switch (e.type) {
+      case 'spellSpawn':
+        if (e.form === 'orb') this.orbs.add(e.id);
+        else if (e.form === 'sigil') this.sigils.set(e.id, { x: e.toX, y: e.toY });
+        if (e.depth > 0 && this.sigils.size > 0)
+          for (const sg of this.sigils.values())
+            if (Math.abs(sg.x - e.x) < 1e-6 && Math.abs(sg.y - e.y) < 1e-6) return [{ id: 'sigilPulse', x: e.x, y: e.y }];
+        return [];
+      case 'spellEnd':
+        this.orbs.delete(e.id);
+        this.sigils.delete(e.id);
+        return [];
+      case 'hit':
+        return e.spellId !== undefined && this.orbs.has(e.spellId) ? [{ id: 'orbTick', x: e.x, y: e.y }] : [];
+      default:
+        return [];
+    }
   }
 }
 
