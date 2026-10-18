@@ -108,9 +108,8 @@ describe('registry', () => {
   });
 
   it('stubs name their milestone', () => {
-    const r = reg().execute('spawn goblin 3', fakeEnv().env);
-    expect(r.lines[0]).toContain('M1');
     expect(reg().execute('give fire', fakeEnv().env).lines[0]).toContain('M2');
+    expect(reg().execute('weave 1 x', fakeEnv().env).lines[0]).toContain('M2');
   });
 
   it('allows later milestones to register commands', () => {
