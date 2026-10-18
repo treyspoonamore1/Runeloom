@@ -41,6 +41,40 @@ export interface AttackDef {
   projectile?: ProjectileDef;
 }
 
+/**
+ * How the AI (src/sim/ai) drives a kind. Distances in cells, times in seconds, speeds as a
+ * fraction of the kind's `speed`, turn rates in radians per second.
+ */
+export type BehaviorDef =
+  /** Never moves or attacks (dummies). */
+  | { kind: 'none' }
+  /**
+   * Rushes the player. Each enemy aims at the player plus its own random offset of
+   * min(distance × offsetPerCell, offsetMax) cells, so a pack fans out and surrounds instead of
+   * queueing in a line.
+   */
+  | { kind: 'swarm'; offsetPerCell: number; offsetMax: number }
+  /**
+   * Advances with its shield up. Facing turns toward the player at most `turnRate`, so a player
+   * circling fast enough gets behind it. Bashes only when the player is in range and within
+   * ±acos(bashArcCos) of its facing; never turns while attacking.
+   */
+  | { kind: 'shield'; turnRate: number; bashArcCos: number }
+  /**
+   * Holds `preferredRange` with line of sight: backs off at `retreatSpeed` when the player is
+   * closer than its min, strafes sideways at `strafeSpeed` inside the band (switching side every
+   * strafeFlipMin–strafeFlipMax s, or when a wall is within `wallProbe` cells ahead), closes in
+   * when farther, and follows the flow field to regain line of sight.
+   */
+  | {
+      kind: 'kite';
+      strafeSpeed: number;
+      retreatSpeed: number;
+      strafeFlipMin: number;
+      strafeFlipMax: number;
+      wallProbe: number;
+    };
+
 export interface EnemyDef {
   name: string;
   /** Max life at area level 1. */
@@ -57,6 +91,7 @@ export interface EnemyDef {
   /** AI hint for kiters: preferred distance band to the player, cells. */
   preferredRange?: { min: number; max: number };
   attack: AttackDef | null;
+  behavior: BehaviorDef;
   /** Front-arc shield that blocks projectiles (Shieldbearer). */
   shield?: { halfAngleCos: number; burnTime: number };
   /** Training dummies: at 0 life they reset to full instead of dying (DESIGN §5.5). */
@@ -86,6 +121,7 @@ export const enemies = {
       knockback: 0,
       shape: { kind: 'circle', r: 1.5, offset: 1.5 },
     },
+    behavior: { kind: 'swarm', offsetPerCell: 0.35, offsetMax: 7 },
   },
   shieldbearer: {
     name: 'Shieldbearer',
@@ -108,6 +144,9 @@ export const enemies = {
       // 90° cone (cos 45°).
       shape: { kind: 'cone', r: 5.5, halfAngleCos: 0.7071067811865476, offset: 0 },
     },
+    // ~86°/s: a player circling at run speed within ~15 cells outpaces it. Bash only if the
+    // player is within ±60° (cos 60°) of the shield's facing.
+    behavior: { kind: 'shield', turnRate: 1.5, bashArcCos: 0.5 },
     // 100° front arc (cos 50°). 4 s of total burning destroys it (M3).
     shield: { halfAngleCos: 0.6427876096865394, burnTime: 4 },
   },
@@ -134,6 +173,14 @@ export const enemies = {
       shape: { kind: 'line', length: 45, width: 1.2, offset: 1.4 },
       projectile: { kind: 'ember_arrow', speed: 45, radius: 0.6, life: 1, pierce: 0 },
     },
+    behavior: {
+      kind: 'kite',
+      strafeSpeed: 0.6,
+      retreatSpeed: 1,
+      strafeFlipMin: 1.2,
+      strafeFlipMax: 2.8,
+      wallProbe: 4,
+    },
   },
   dummy: {
     name: 'Training Dummy',
@@ -144,6 +191,7 @@ export const enemies = {
     knockbackScale: 0,
     aggroRange: 0,
     attack: null,
+    behavior: { kind: 'none' },
     immortal: true,
   },
 } satisfies Record<string, EnemyDef>;

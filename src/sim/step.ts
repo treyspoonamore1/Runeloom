@@ -6,6 +6,8 @@ import { stepEnemies } from './actors/enemyMovement';
 import { compactEnemies } from './actors/enemies';
 import { stepCasting } from './combat/casting';
 import { compactProjectiles, stepProjectiles } from './combat/projectiles';
+import { prepareEnemyAI } from './ai';
+import { stepArena } from './world/waves';
 
 /** Hitstop timers within this many seconds of zero count as expired (absorbs 1/60 rounding). */
 const TIME_EPSILON = 1e-9;
@@ -15,8 +17,9 @@ const TIME_EPSILON = 1e-9;
  * Replays, bots, tests and the app loop all call this.
  *
  * Order: clear events → (hitstop: count down, freeze, stop) → player (vitals, dodge, walk,
- * knockback) → enemies (AI, attacks, separation, movement, knockback) → casting (spells see the
- * moved enemies) → projectiles → remove dead enemies and ended projectiles → grid (M3).
+ * knockback) → AI flow field → enemies (AI, attacks, separation, movement, knockback) → casting
+ * (spells see the moved enemies) → projectiles → arena (count kills, spawn, waves) → remove dead
+ * enemies and ended projectiles → grid (M3).
  */
 export function step(state: GameState, input: InputFrame): void {
   state.tick++;
@@ -27,9 +30,11 @@ export function step(state: GameState, input: InputFrame): void {
     return;
   }
   stepPlayer(state, input);
+  prepareEnemyAI(state);
   stepEnemies(state);
   stepCasting(state, input);
   stepProjectiles(state);
+  stepArena(state);
   compactEnemies(state);
   compactProjectiles(state);
   if (state.tick % GRID_EVERY === 0) {

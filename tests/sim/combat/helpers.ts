@@ -3,10 +3,14 @@ import { openRoom, place } from '../actors/helpers';
 
 export { place };
 
-/** Open 40×30-tile room (interior cells 4..156 × 4..116), player at (80, 60) aiming +x. */
-export function arena(): GameState {
+/**
+ * Open 40×30-tile room (interior cells 4..156 × 4..116), player at (80, 60) aiming +x.
+ * Enemy AI is frozen (cheats.noAI) unless `ai` is true, so tests can drive enemies by hand.
+ */
+export function arena(ai = false): GameState {
   const state = openRoom(40, 30);
   place(state, 80, 60);
+  state.cheats.noAI = !ai;
   return state;
 }
 
