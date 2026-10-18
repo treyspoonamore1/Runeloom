@@ -120,6 +120,12 @@ export interface Room {
   tiles: Uint8Array;
   /** 1 where a cell blocks walking, row-major, width × height. */
   solid: Uint8Array;
+  /** 1 where a cell stops projectiles and beams (tile `blocksShots`), row-major, width × height. */
+  shotSolid: Uint8Array;
+  /** Spawn-marker tiles (`1`–`9`) in row-major order, at tile centers in cells. */
+  spawnMarkers: { marker: string; x: number; y: number }[];
+  /** `@spawn` headers, in file order. */
+  spawns: RoomHeader['spawns'];
   /** Player start in cells: the first Loom Stone `x`, else the room center. */
   spawnX: number;
   spawnY: number;
@@ -131,6 +137,8 @@ export function buildRoom(data: RoomData): Room {
   const height = tilesH * TILE_CELLS;
   const tiles = new Uint8Array(tilesW * tilesH);
   const solid = new Uint8Array(width * height);
+  const shotSolid = new Uint8Array(width * height);
+  const spawnMarkers: Room['spawnMarkers'] = [];
   let spawnX = width / 2;
   let spawnY = height / 2;
   let foundSpawn = false;
@@ -141,14 +149,10 @@ export function buildRoom(data: RoomData): Room {
       const ch = row[tx]!;
       tiles[ty * tilesW + tx] = ch.charCodeAt(0);
       const def = tileForChar(ch)!;
-      if (!def.walk) {
-        for (let cy = 0; cy < TILE_CELLS; cy++) {
-          solid.fill(
-            1,
-            (ty * TILE_CELLS + cy) * width + tx * TILE_CELLS,
-            (ty * TILE_CELLS + cy) * width + (tx + 1) * TILE_CELLS,
-          );
-        }
+      if (!def.walk) fillTile(solid, width, tx, ty);
+      if (def.blocksShots) fillTile(shotSolid, width, tx, ty);
+      if (ch >= '1' && ch <= '9') {
+        spawnMarkers.push({ marker: ch, x: (tx + 0.5) * TILE_CELLS, y: (ty + 0.5) * TILE_CELLS });
       }
       if (ch === 'x' && !foundSpawn) {
         foundSpawn = true;
@@ -168,13 +172,30 @@ export function buildRoom(data: RoomData): Room {
     height,
     tiles,
     solid,
+    shotSolid,
+    spawnMarkers,
+    spawns: data.header.spawns,
     spawnX,
     spawnY,
   };
+}
+
+/** Sets every cell of tile (tx, ty) in a width-wide cell mask. */
+function fillTile(mask: Uint8Array, width: number, tx: number, ty: number): void {
+  for (let cy = 0; cy < TILE_CELLS; cy++) {
+    const row = (ty * TILE_CELLS + cy) * width;
+    mask.fill(1, row + tx * TILE_CELLS, row + (tx + 1) * TILE_CELLS);
+  }
 }
 
 /** True if the cell blocks walking. Everything outside the room is solid. */
 export function isSolidCell(room: Room, cx: number, cy: number): boolean {
   if (cx < 0 || cy < 0 || cx >= room.width || cy >= room.height) return true;
   return room.solid[cy * room.width + cx] === 1;
+}
+
+/** True if the cell stops projectiles. Everything outside the room does. */
+export function isShotSolidCell(room: Room, cx: number, cy: number): boolean {
+  if (cx < 0 || cy < 0 || cx >= room.width || cy >= room.height) return true;
+  return room.shotSolid[cy * room.width + cx] === 1;
 }

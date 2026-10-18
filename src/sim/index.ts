@@ -12,3 +12,62 @@ export { scenarios, findScenario, type Scenario } from './scenarios';
 export { runScenario, runFrames, type RunResult } from './run';
 export { isDodging, isInvulnerable, dodgeSpeed } from './actors/player';
 export { moveCircle, circleOverlapsSolid, type CircleBody } from './actors/collision';
+export { SPATIAL_BUCKET_CELLS } from './core/constants';
+export { isShotSolidCell } from './world/room';
+export { SpatialHash, type HashBody } from './core/spatialHash';
+export type { SimEvent, SimEventType, Team, ProjectileEndReason } from './events';
+export {
+  PLAYER_ID,
+  spawnEnemy,
+  spawnRoomEnemies,
+  type Enemy,
+  type EnemyAI,
+  type EnemyAttackState,
+  type EnemyShield,
+  type AttackPhase,
+  type EnemyRarity,
+  type SpawnOptions,
+} from './actors/enemies';
+export { addKnockback, stepKnockback } from './actors/knockback';
+export { playerMaxLife, playerMaxMana, killPlayer, respawnPlayer } from './actors/playerVitals';
+export {
+  resolveHit,
+  makePacket,
+  scaleByLevel,
+  zeroAmounts,
+  type DamagePacket,
+  type DamageTarget,
+  type HitResult,
+} from './combat/damage';
+export { applyHit, addHitstop, type HitInfo } from './combat/hits';
+export { isBlockedByShield } from './combat/shield';
+export {
+  circleHitsShape,
+  pointInAttackShape,
+  circleIntersectsSector,
+  circleIntersectsLine,
+  type AttackShape,
+} from './combat/shapes';
+export {
+  startEnemyAttack,
+  stepEnemyAttack,
+  resolveEnemyAttack,
+  enemyAttackPacket,
+  attackDefFor,
+} from './combat/enemyAttacks';
+export {
+  spawnProjectile,
+  circleHitsShotWall,
+  type Projectile,
+  type SpawnProjectileOptions,
+} from './combat/projectiles';
+export {
+  LOADOUT_SLOTS,
+  SLOT_BUTTONS,
+  defaultLoadout,
+  castDuration,
+  cancelCast,
+  spellPacket,
+  type Loadout,
+} from './combat/casting';
+export { stepEnemyAI } from './ai';
