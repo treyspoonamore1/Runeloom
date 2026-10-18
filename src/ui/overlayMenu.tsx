@@ -2,7 +2,7 @@ import type { Renderer } from '../render/renderer';
 
 type Flags = Renderer['overlays'];
 
-const FUTURE = ['material, fire, charge, wet, owner (M3)', 'AI targets (M1)'];
+const FUTURE = ['material, fire, charge, wet, owner (M3)'];
 
 export function OverlayMenu(p: { overlays: Flags; visible: { value: boolean }; rev: { value: number } }) {
   if (!p.visible.value) return null;
@@ -26,6 +26,7 @@ export function OverlayMenu(p: { overlays: Flags; visible: { value: boolean }; r
       <h4>Overlays (F1)</h4>
       {row('grid', 'grid')}
       {row('hitboxes', 'hitboxes')}
+      {row('aiTargets', 'AI targets')}
       {FUTURE.map((t) => (
         <label class="dis" key={t}>
           <input type="checkbox" disabled />

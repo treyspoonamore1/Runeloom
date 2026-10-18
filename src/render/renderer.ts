@@ -1,6 +1,7 @@
 import { Application, Container } from 'pixi.js';
 import type { GameState, SimEvent } from '../sim';
 import { settings } from '../app/settings';
+import { AiOverlay } from './aiOverlay';
 import { AmbientView } from './ambientView';
 import { Atlas } from './atlas';
 import { Camera } from './camera';
@@ -65,7 +66,7 @@ function smoothstep(a: number, b: number, v: number): number {
  * World layers, bottom to top (1 unit = 1 cell): baked room → ambient → corpses → enemy
  * shadows → player bolts and effects (dimmed when busy) → enemy telegraphs → ember glows →
  * enemies → afterimages → player → enemy shots → readable effects (clanks, hurt) → debug.
- * Screen layers: damage numbers, hurt vignette.
+ * Screen layers: damage numbers, AI labels, hurt vignette.
  */
 export async function createRenderer(host: HTMLElement, state: GameState): Promise<Renderer> {
   const app = new Application();
@@ -91,6 +92,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const projectiles = new ProjectileView(atlas, fx.pNorm);
   const telegraphs = new TelegraphView(app.renderer);
   const numbers = new DamageNumbers();
+  const ai = new AiOverlay();
   const shake = new Shake();
   world.addChild(
     room.root,
@@ -106,9 +108,11 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     player.root,
     projectiles.enemy,
     fx.top,
+    ai.world,
     overlay.root,
   );
-  app.stage.addChild(world, numbers.root, fx.vignette);
+  app.stage.addChild(world, numbers.root, ai.labels, fx.vignette);
+  ai.hide();
 
   const camera = new Camera();
   const overlays: Overlays = { grid: false, hitboxes: false, aiTargets: false };
@@ -169,6 +173,8 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       projectiles.player.alpha = dim;
       fx.player.alpha = dim;
 
+      if (overlays.aiTargets) ai.update(s, enemies, camera.scale, ox, oy, screenScale);
+      else ai.hide();
       if (overlays.grid || overlays.hitboxes || overlay.root.visible) {
         overlay.root.visible = overlays.grid || overlays.hitboxes;
         overlay.update(s, overlays, x, y, camera.cursorWorld(), camera.scale);
