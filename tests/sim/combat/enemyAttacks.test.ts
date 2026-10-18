@@ -74,7 +74,11 @@ describe('enemy attacks', () => {
     const hit = ofType(ev, 'hit')[0]!;
     expect(hit.target).toBe('player');
     expect(hit.damageType).toBe('fire');
-    expect(state.player.life).toBe(70);
+    expect(hit.amount).toBe(10);
+    // The fire arrow also ignites the player: 50% of 10 per second, burning since the hit.
+    expect(state.player.ailments.ignite.dps).toBe(5);
+    const burnt = ofType(ev, 'dot').reduce((s, d) => s + d.amount, 0) + state.player.ailments.dotPending;
+    expect(state.player.life).toBeCloseTo(70 - burnt, 9);
   });
 
   it('dummies have no attack', () => {

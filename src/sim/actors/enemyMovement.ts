@@ -1,5 +1,6 @@
 import { enemyDef } from '../../../data/enemies';
 import { stepEnemyAI } from '../ai';
+import { actionSpeed, isFrozen } from '../combat/ailments';
 import { stepEnemyAttack } from '../combat/enemyAttacks';
 import { DT } from '../core/constants';
 import type { GameState } from '../state';
@@ -20,9 +21,11 @@ let accY = 0;
  * The enemy phase of a tick:
  * 1. prevX/prevY ← position; rebuild state.enemyHash.
  * 2. Per enemy in array order: stepEnemyAI (decisions; may start attacks), then stepEnemyAttack
- *    (phase timers; attacks land on entering 'active').
+ *    (phase timers; attacks land on entering 'active'). Frozen enemies skip both and stand still.
  * 3. Soft separation from overlapping neighbors and the player, from positions before anyone moves.
- * 4. Per enemy: move by (AI velocity + separation) through moveCircle, then by knockback.
+ *    Frozen enemies aren't pushed (they still push others).
+ * 4. Per enemy: move by (AI velocity × actionSpeed + separation) through moveCircle, so Chill
+ *    slows walking, then by knockback (Frozen enemies are still knocked back).
  * 5. Rebuild state.enemyHash at the new positions for spells and projectiles.
  * Dead enemies are skipped throughout.
  */
@@ -37,6 +40,10 @@ export function stepEnemies(state: GameState): void {
   for (let i = 0; i < list.length; i++) {
     const e = list[i]!;
     if (e.dead) continue;
+    if (isFrozen(e)) {
+      e.vx = e.vy = 0;
+      continue;
+    }
     stepEnemyAI(state, e);
     if (!e.dead) stepEnemyAttack(state, e);
   }
@@ -47,8 +54,9 @@ export function stepEnemies(state: GameState): void {
   for (let i = 0; i < list.length; i++) {
     const e = list[i]!;
     if (e.dead) continue;
-    const mvx = e.vx + sepX[i]!;
-    const mvy = e.vy + sepY[i]!;
+    const speed = actionSpeed(state, e);
+    const mvx = e.vx * speed + sepX[i]!;
+    const mvy = e.vy * speed + sepY[i]!;
     if (mvx !== 0 || mvy !== 0) {
       body.x = e.x;
       body.y = e.y;
@@ -86,7 +94,7 @@ function computeSeparation(state: GameState): void {
   const pr = state.tuning.player.radius;
   for (let i = 0; i < n; i++) {
     const e = list[i]!;
-    if (e.dead || enemyDef(e.kind).knockbackScale === 0) continue;
+    if (e.dead || enemyDef(e.kind).knockbackScale === 0 || isFrozen(e)) continue;
     accX = 0;
     accY = 0;
     const count = state.enemyHash.queryCircle(e.x, e.y, e.radius, near);

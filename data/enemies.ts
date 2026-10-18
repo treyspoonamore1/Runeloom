@@ -5,7 +5,7 @@
  * Values CONTENT doesn't give (radii, recover, cooldown, attack shapes and ranges, knockback,
  * arrow speed and radius) are first guesses, listed in the M1 report.
  */
-import type { DamageAmounts, DamageType, ProjectileDef } from './combatTypes';
+import type { AilmentKind, DamageAmounts, DamageType, ProjectileDef } from './combatTypes';
 
 /**
  * Attack area relative to the attacker. `offset` is how far forward of the enemy's center the
@@ -98,6 +98,10 @@ export interface EnemyDef {
   shield?: { halfAngleCos: number; burnTime: number };
   /** Training dummies: at 0 life they reset to full instead of dying (DESIGN §5.5). */
   immortal?: boolean;
+  /** Ailments this kind never suffers (CONTENT §5), e.g. Tinderlings can't be ignited. */
+  immune?: readonly AilmentKind[];
+  /** Bosses use the boss chill rule (DESIGN §6.4): flat chill per frost hit, freeze immunity. */
+  isBoss?: boolean;
 }
 
 const NO_RESIST: DamageAmounts = { physical: 0, fire: 0, frost: 0, storm: 0 };
@@ -124,6 +128,8 @@ export const enemies = {
       shape: { kind: 'circle', r: 1.5, offset: 1.5 },
     },
     behavior: { kind: 'swarm', offsetPerCell: 0.35, offsetMax: 7 },
+    // Always burning (CONTENT §5).
+    immune: ['ignite'],
   },
   shieldbearer: {
     name: 'Shieldbearer',

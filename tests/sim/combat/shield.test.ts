@@ -52,7 +52,7 @@ describe('Shieldbearer shield (100° front arc)', () => {
     const ev = ticks(state, 30);
     expect(ofType(ev, 'shieldBlock')).toHaveLength(0);
     expect(ofType(ev, 'hit').map((h) => h.target)).toEqual([sb.id]);
-    // 12 fire × (1 − 25%) = 9.
-    expect(sb.maxLife - sb.life).toBeCloseTo(9, 9);
+    // 12 fire × (1 − 25%) = 9 (plus the Ignite it starts).
+    expect(ofType(ev, 'hit')[0]!.amount).toBeCloseTo(9, 9);
   });
 });

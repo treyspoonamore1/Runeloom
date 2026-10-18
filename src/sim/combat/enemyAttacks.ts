@@ -3,6 +3,7 @@ import type { Enemy } from '../actors/enemies';
 import { DT } from '../core/constants';
 import { emit } from '../events';
 import type { GameState } from '../state';
+import { actionSpeed, isFrozen } from './ailments';
 import { makePacket, scaleByLevel, type DamagePacket } from './damage';
 import { applyHit, directionOr } from './hits';
 import { spawnProjectile } from './projectiles';
@@ -38,12 +39,13 @@ export function orientShape(def: AttackDef, dirX: number, dirY: number): AttackS
 /**
  * Starts the enemy's attack toward the unit direction (dirX, dirY): locks the shape and origin
  * (center + dir × shape offset), faces that way, enters 'windup' and emits 'telegraph'.
- * Returns false (and does nothing) if the kind has no attack or an attack is already running.
+ * Returns false (and does nothing) if the kind has no attack, an attack is already running, or
+ * the enemy is Frozen.
  * The AI calls this; cooldowns are the AI's business (EnemyAI.cooldown).
  */
 export function startEnemyAttack(state: GameState, e: Enemy, dirX: number, dirY: number): boolean {
   const def = attackDefFor(e);
-  if (!def || e.dead || e.attack.phase !== 'none') return false;
+  if (!def || e.dead || e.attack.phase !== 'none' || isFrozen(e)) return false;
   const a = e.attack;
   a.phase = 'windup';
   a.timeLeft = def.windup;
@@ -58,7 +60,8 @@ export function startEnemyAttack(state: GameState, e: Enemy, dirX: number, dirY:
 }
 
 /**
- * Advances the attack phases by one tick, carrying leftover time across phases. On entering
+ * Advances the attack phases by one tick of the enemy's action speed (Chill slows every phase;
+ * a Frozen enemy's attack doesn't advance), carrying leftover time across phases. On entering
  * 'active' the attack resolves once (resolveEnemyAttack).
  */
 export function stepEnemyAttack(state: GameState, e: Enemy): void {
@@ -70,7 +73,9 @@ export function stepEnemyAttack(state: GameState, e: Enemy): void {
     a.timeLeft = 0;
     return;
   }
-  a.timeLeft -= DT;
+  const speed = actionSpeed(state, e);
+  if (speed <= 0) return;
+  a.timeLeft -= DT * speed;
   while (a.phase !== 'none' && a.timeLeft <= TIME_EPSILON) {
     if (a.phase === 'windup') {
       a.phase = 'active';

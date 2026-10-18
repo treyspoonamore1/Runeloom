@@ -122,6 +122,7 @@ describe('projectiles', () => {
     const hits = ofType(ev, 'hit');
     expect(hits).toHaveLength(1);
     expect(hits[0]!.target).toBe('player');
-    expect(state.player.life).toBe(70);
+    expect(hits[0]!.amount).toBe(10);
+    expect(state.player.ailments.ignite.timeLeft).toBeGreaterThan(0);
   });
 });

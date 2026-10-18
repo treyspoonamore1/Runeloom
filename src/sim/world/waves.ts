@@ -228,7 +228,16 @@ export function killAllEnemies(state: GameState): number {
     e.life = 0;
     e.dead = true;
     e.vx = e.vy = e.kbX = e.kbY = 0;
-    emit(state, { type: 'death', id: e.id, kind: e.kind, x: e.x, y: e.y });
+    emit(state, {
+      type: 'death',
+      id: e.id,
+      kind: e.kind,
+      x: e.x,
+      y: e.y,
+      killerId: -1,
+      cause: 'console',
+      shattered: false,
+    });
     n++;
   }
   if (state.mode === 'arena') state.arena.killedTotal += n;
