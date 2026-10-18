@@ -100,6 +100,18 @@ export function spawnProjectile(state: GameState, o: SpawnProjectileOptions): Pr
   return p;
 }
 
+/** True if any cell in the inclusive cell rectangle blocks shots. Cells outside the room do. */
+function anyShotSolid(room: Room, x0: number, y0: number, x1: number, y1: number): boolean {
+  if (x0 < 0 || y0 < 0 || x1 >= room.width || y1 >= room.height) return true;
+  const mask = room.shotSolid;
+  const w = room.width;
+  for (let cy = y0; cy <= y1; cy++) {
+    const row = cy * w;
+    for (let cx = x0; cx <= x1; cx++) if (mask[row + cx] === 1) return true;
+  }
+  return false;
+}
+
 /** True if a circle overlaps (not just touches) a cell that blocks shots. */
 export function circleHitsShotWall(room: Room, x: number, y: number, r: number): boolean {
   const x0 = Math.floor(x - r);
@@ -125,33 +137,18 @@ function endProjectile(state: GameState, p: Projectile, reason: ProjectileEndRea
   emit(state, { type: 'projectileEnd', id: p.id, kind: p.kind, x: p.x, y: p.y, reason });
 }
 
-// Scratch for enemy queries and their sort keys; the sim is single-threaded.
+// Scratch for the per-tick enemy candidates and their sort keys; the sim is single-threaded.
 const found: number[] = [];
 const order: number[] = [];
 const dist2: number[] = [];
 
 /**
- * Hits along one substep ending at (x, y): enemies (team 'player', nearest to the substep start
- * first) or the player (team 'enemy'). Returns true if the projectile ended.
+ * Broad phase for a player projectile: enemies not yet hit that touch the circle (cx, cy, r)
+ * around this tick's sweep, into `order`, nearest to the projectile's start first (insertion
+ * sort; ties keep array order). Returns how many.
  */
-function hitBodies(state: GameState, p: Projectile, x: number, y: number): boolean {
-  if (p.team === 'enemy') {
-    const pl = state.player;
-    if (pl.dead || p.hitIds.includes(PLAYER_ID)) return false;
-    const rr = p.radius + state.tuning.player.radius;
-    const dx = pl.x - x;
-    const dy = pl.y - y;
-    if (dx * dx + dy * dy > rr * rr) return false;
-    p.hitIds.push(PLAYER_ID);
-    const res = applyHit(state, pl, p.damage, hitInfo(p));
-    // Evaded (i-frames): the projectile flies on.
-    if (res === null) return false;
-    return useHit(p);
-  }
-
-  const n = state.enemyHash.queryCircle(x, y, p.radius, found);
-  if (n === 0) return false;
-  // Candidates nearest to the substep start first (insertion sort; ties keep array order).
+function gatherCandidates(state: GameState, p: Projectile, cx: number, cy: number, r: number): number {
+  const n = state.enemyHash.queryCircle(cx, cy, r, found);
   let m = 0;
   for (let k = 0; k < n; k++) {
     const idx = found[k]!;
@@ -169,10 +166,38 @@ function hitBodies(state: GameState, p: Projectile, x: number, y: number): boole
     dist2[j] = d2;
     order[j] = idx;
   }
-  for (let k = 0; k < m; k++) {
+  return m;
+}
+
+/**
+ * Hits at the end (x, y) of one substep: candidate enemies (team 'player', from
+ * gatherCandidates) or the player (team 'enemy'). Returns true if the projectile ended.
+ */
+function hitBodies(state: GameState, p: Projectile, x: number, y: number, candidates: number): boolean {
+  if (p.team === 'enemy') {
+    const pl = state.player;
+    if (pl.dead || p.hitIds.includes(PLAYER_ID)) return false;
+    const rr = p.radius + state.tuning.player.radius;
+    const dx = pl.x - x;
+    const dy = pl.y - y;
+    if (dx * dx + dy * dy > rr * rr) return false;
+    p.hitIds.push(PLAYER_ID);
+    const res = applyHit(state, pl, p.damage, hitInfo(p));
+    // Evaded (i-frames): the projectile flies on.
+    if (res === null) return false;
+    return useHit(p);
+  }
+
+  for (let k = 0; k < candidates; k++) {
     const idx = order[k]!;
+    if (idx < 0) continue;
     const e: Enemy = state.enemies[idx]!;
     if (e.dead) continue;
+    const dx = e.x - x;
+    const dy = e.y - y;
+    const rr = e.radius + p.radius;
+    if (dx * dx + dy * dy > rr * rr) continue;
+    order[k] = -1;
     p.hitIds.push(e.id);
     if (isBlockedByShield(e, x, y)) {
       p.x = x;
@@ -209,20 +234,34 @@ function hitInfo(p: Projectile) {
 /**
  * Moves one projectile for a tick in substeps. Each substep checks bodies first (so a target
  * pressed against a wall is still hit), then walls; a wall stops it at its last clear position.
+ * Broad phase once per tick: enemies near the whole sweep, and whether any shot-blocking cell is
+ * near it, so open-ground flight skips the per-substep work.
  */
 function stepProjectile(state: GameState, p: Projectile): void {
   p.prevX = p.x;
   p.prevY = p.y;
   const dx = p.vx * DT;
   const dy = p.vy * DT;
+  const r = p.radius;
   const dist = Math.sqrt(dx * dx + dy * dy);
   const steps = Math.max(1, Math.ceil(dist / MAX_SUBSTEP));
   const sx = dx / steps;
   const sy = dy / steps;
+  const ex = p.x + dx;
+  const ey = p.y + dy;
+  const wallsNear = anyShotSolid(
+    state.room,
+    Math.floor((p.x < ex ? p.x : ex) - r),
+    Math.floor((p.y < ey ? p.y : ey) - r),
+    Math.floor((p.x > ex ? p.x : ex) + r),
+    Math.floor((p.y > ey ? p.y : ey) + r),
+  );
+  const candidates =
+    p.team === 'player' ? gatherCandidates(state, p, p.x + dx / 2, p.y + dy / 2, dist / 2 + r) : 0;
   for (let i = 0; i < steps; i++) {
     const nx = p.x + sx;
     const ny = p.y + sy;
-    if (hitBodies(state, p, nx, ny)) {
+    if ((p.team === 'enemy' || candidates > 0) && hitBodies(state, p, nx, ny, candidates)) {
       if (!p.ended) {
         p.x = nx;
         p.y = ny;
@@ -230,7 +269,7 @@ function stepProjectile(state: GameState, p: Projectile): void {
       }
       return;
     }
-    if (circleHitsShotWall(state.room, nx, ny, p.radius)) {
+    if (wallsNear && circleHitsShotWall(state.room, nx, ny, r)) {
       endProjectile(state, p, 'wall');
       return;
     }
