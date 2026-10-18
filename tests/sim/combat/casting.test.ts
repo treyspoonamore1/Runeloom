@@ -46,6 +46,7 @@ describe('casting', () => {
 
   it('a press with too little mana does nothing but report castFailed once', () => {
     const state = arena();
+    state.tuning.combat.manaRegen = 0; // keep mana pinned below the cost
     state.player.mana = 6; // Fire Bolt costs 6.6
     const events = ticks(state, 10, BOLT);
     expect(ofType(events, 'castStart')).toHaveLength(0);
@@ -95,11 +96,11 @@ describe('casting', () => {
     expect(ofType(ticks(s2, 30, BOLT), 'castStart')).toHaveLength(0);
   });
 
-  it('mana regenerates 3% of max per second', () => {
+  it('mana regenerates tuning.combat.manaRegen of max per second', () => {
     const state = arena();
     state.player.mana = 10;
     ticks(state, 60);
-    expect(state.player.mana).toBeCloseTo(10 + 0.03 * 50, 9);
+    expect(state.player.mana).toBeCloseTo(10 + state.tuning.combat.manaRegen * 50, 9);
   });
 });
 
@@ -145,6 +146,7 @@ describe('Strike', () => {
   it('knocks back about 3 cells, away from the player', () => {
     const state = arena();
     const e = addEnemy(state, 'tinderling', 84, 60);
+    e.life = e.maxLife = 1000; // survive the Strike so the knockback plays out
     ticks(state, 6, STRIKE, [100, 60]);
     expect(e.kbX).toBeGreaterThan(0);
     ticks(state, 60);

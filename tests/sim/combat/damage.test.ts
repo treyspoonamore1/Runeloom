@@ -93,8 +93,9 @@ describe('enemy level scaling', () => {
     const state = arena();
     const e1 = addEnemy(state, 'tinderling', 100, 60, [-1, 0], 1);
     const e5 = addEnemy(state, 'tinderling', 110, 60, [-1, 0], 5);
-    expect(e1.maxLife).toBe(18);
-    expect(e5.maxLife).toBeCloseTo(18 * 1.12 ** 4, 10);
+    const base = enemies.tinderling.life;
+    expect(e1.maxLife).toBe(base);
+    expect(e5.maxLife).toBeCloseTo(base * 1.12 ** 4, 10);
     expect(e5.life).toBe(e5.maxLife);
     const atk = enemies.tinderling.attack;
     expect(enemyAttackPacket(state, e1, atk).base.physical).toBe(4);
