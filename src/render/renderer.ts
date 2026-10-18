@@ -1,5 +1,11 @@
-import { Application, Container, Graphics } from 'pixi.js';
-import { CELL_PX, TILE_CELLS, type GameState } from '../sim';
+import { Application, Container } from 'pixi.js';
+import type { GameState } from '../sim';
+import { AmbientView } from './ambientView';
+import { Camera } from './camera';
+import { OverlayView } from './overlayView';
+import { PAL } from './palette';
+import { PlayerView } from './playerView';
+import { RoomView } from './roomView';
 
 /** Debug overlay switches, toggled from the debug UI (F1). */
 export interface Overlays {
@@ -16,73 +22,85 @@ export interface Renderer {
   render(state: GameState, alpha: number, frameDt: number): void;
   /** Converts CSS pixels on the canvas to world cells, using the current camera. */
   screenToWorld(sx: number, sy: number): { x: number; y: number };
+  /**
+   * Cursor position in CSS pixels on the canvas. Drives the camera look-ahead,
+   * which uses the cursor's screen offset (not the world aim) so it can't feed back on itself.
+   */
+  setCursor(sx: number, sy: number): void;
   /** Rebuilds static room graphics after a reset or room change. */
   setRoom(state: GameState): void;
   destroy(): void;
 }
 
 /**
- * SCAFFOLD STUB: flat tiles and a circle, camera centered on the player.
- * The M0 render task replaces this with the real renderer.
+ * M0 renderer. Reads sim state and never writes it (CLAUDE.md rule 2). All
+ * animation state (camera, springs, trails, water phase) lives here, driven by frameDt.
+ *
+ * Layers, bottom to top, all in world space (1 unit = 1 cell):
+ * baked room → ambient (water, flames) → afterimages → player → debug overlays.
  */
 export async function createRenderer(host: HTMLElement, state: GameState): Promise<Renderer> {
   const app = new Application();
-  await app.init({ resizeTo: host, background: '#10171a', antialias: true });
+  await app.init({
+    resizeTo: host,
+    background: PAL.void,
+    antialias: true,
+    resolution: window.devicePixelRatio || 1,
+    autoDensity: true,
+    // The game loop renders once per frame after updating; no second rAF loop.
+    autoStart: false,
+  });
   host.appendChild(app.canvas);
-  const world = new Container();
-  const roomGfx = new Graphics();
-  const playerGfx = new Graphics();
-  world.addChild(roomGfx, playerGfx);
-  app.stage.addChild(world);
-  let scale = 1;
-  let camX = 0;
-  let camY = 0;
 
-  const drawRoom = (s: GameState): void => {
-    roomGfx.clear();
-    const { room } = s;
-    for (let ty = 0; ty < room.tilesH; ty++) {
-      for (let tx = 0; tx < room.tilesW; tx++) {
-        const ch = String.fromCharCode(room.tiles[ty * room.tilesW + tx]!);
-        const color =
-          ch === '#'
-            ? 0x2b3a3f
-            : ch === '"'
-              ? 0x4f8a3c
-              : ch === '~'
-                ? 0x3f88c5
-                : ch === 'w'
-                  ? 0x1f4f8a
-                  : 0x8c8f86;
-        roomGfx.rect(tx * TILE_CELLS, ty * TILE_CELLS, TILE_CELLS, TILE_CELLS).fill(color);
-      }
-    }
+  const world = new Container();
+  const room = new RoomView();
+  const ambient = new AmbientView();
+  const player = new PlayerView();
+  const overlay = new OverlayView();
+  world.addChild(room.root, ambient.root, player.ghostLayer, player.root, overlay.root);
+  app.stage.addChild(world);
+
+  const camera = new Camera();
+  const overlays: Overlays = { grid: false, hitboxes: false };
+  let time = 0;
+
+  const setRoom = (s: GameState): void => {
+    const map = room.build(s.room);
+    ambient.build(map);
+    player.reset();
+    overlay.invalidate();
+    camera.snap();
   };
-  drawRoom(state);
+  setRoom(state);
 
   return {
     app,
-    overlays: { grid: false, hitboxes: false },
-    render(s, alpha) {
+    overlays,
+    render(s, alpha, frameDt) {
+      const dt = Math.max(0, frameDt);
+      time += dt;
       const p = s.player;
       const x = p.prevX + (p.x - p.prevX) * alpha;
       const y = p.prevY + (p.y - p.prevY) * alpha;
-      playerGfx.clear().circle(x, y, s.tuning.player.radius).fill(0xf2e6c9);
-      scale = (CELL_PX * app.screen.height) / 720;
-      camX = x;
-      camY = y;
-      world.scale.set(scale);
-      world.position.set(app.screen.width / 2 - camX * scale, app.screen.height / 2 - camY * scale);
+
+      const screen = app.screen;
+      camera.update(x, y, s.room, screen.width, screen.height, app.renderer.resolution, s.tuning.camera, dt);
+      world.scale.set(camera.scale);
+      world.position.set(camera.offsetX, camera.offsetY);
+
+      ambient.update(time);
+      player.update(p, x, y, s.tuning.player, dt);
+      if (overlays.grid || overlays.hitboxes || overlay.root.visible) {
+        overlay.root.visible = overlays.grid || overlays.hitboxes;
+        overlay.update(s, overlays, x, y, camera.cursorWorld(), camera.scale);
+      }
+      app.render();
     },
-    screenToWorld(sx, sy) {
-      return {
-        x: (sx - app.screen.width / 2) / scale + camX,
-        y: (sy - app.screen.height / 2) / scale + camY,
-      };
-    },
-    setRoom: drawRoom,
+    screenToWorld: (sx, sy) => camera.screenToWorld(sx, sy),
+    setCursor: (sx, sy) => camera.setCursor(sx, sy),
+    setRoom,
     destroy() {
-      app.destroy(true);
+      app.destroy(true, { children: true });
     },
   };
 }

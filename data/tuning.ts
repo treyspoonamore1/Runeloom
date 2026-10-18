@@ -26,10 +26,15 @@ export const defaultTuning = {
   camera: {
     /** Look-ahead toward the cursor as a fraction of the screen size. */
     lookAhead: 0.15,
-    /** Seconds for the camera to close most of the gap to its target (lower is snappier). */
+    /**
+     * Follow smoothing time constant in seconds: the camera closes 63% of the gap
+     * to its target in this time, 95% in three times it (lower is snappier, 0 locks on).
+     */
     smoothing: 0.1,
     /** Extra zoom on top of resolution scaling. */
     zoom: 1,
+    /** Cells of void the view may show beyond the room edge when the room is larger than the view. */
+    edgeMargin: 2,
   },
 };
 
