@@ -127,7 +127,8 @@ export function edgeSpawnTiles(room: Room, band: number): Int32Array {
       const edge = Math.min(tx, ty, tilesW - 1 - tx, tilesH - 1 - ty);
       if (edge > band) continue;
       let ok = true;
-      for (let oy = -1; oy <= 1 && ok; oy++) for (let ox = -1; ox <= 1 && ok; ox++) ok = walk(tx + ox, ty + oy);
+      for (let oy = -1; oy <= 1 && ok; oy++)
+        for (let ox = -1; ox <= 1 && ok; ox++) ok = walk(tx + ox, ty + oy);
       if (ok) out.push(ty * tilesW + tx);
     }
   }

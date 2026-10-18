@@ -4,7 +4,7 @@
  *   npm run sim -- --replay replays/foo.json
  *   npm run sim -- --list
  */
-import { findScenario, hashHex, hashState, createGame, step, scenarios } from '../src/sim';
+import { findScenario, hashHex, hashState, createScenarioGame, step, scenarios } from '../src/sim';
 import { parseArgs, requireInt, runCli } from './lib/args';
 import { checkReplay, readReplay } from './lib/replay';
 import { loadRoomText } from './lib/rooms';
@@ -62,7 +62,7 @@ runCli(() => {
   const seed = requireInt('seed', a.seed, 0);
   const every = a.every === undefined ? 0 : requireInt('every', a.every, 1);
 
-  const state = createGame({ seed, roomText: loadRoomText(scenario.roomId) });
+  const state = createScenarioGame(scenario, loadRoomText(scenario.roomId), { seed });
   const checkpoints: { tick: number; hash: string }[] = [];
   for (let i = 0; i < ticks; i++) {
     step(state, scenario.input(state.tick, state));

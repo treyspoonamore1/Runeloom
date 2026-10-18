@@ -2,16 +2,7 @@ import { enemyDef } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
 import { DT } from '../core/constants';
 import type { GameState } from '../state';
-import {
-  aggro,
-  deaggro,
-  measurePlayer,
-  refreshSight,
-  setMode,
-  sightDue,
-  stop,
-  toPlayer,
-} from './common';
+import { aggro, deaggro, measurePlayer, refreshSight, setMode, sightDue, stop, toPlayer } from './common';
 import { buildFlowField, tileAt } from './flowField';
 import { stepKite } from './kite';
 import { stepShield } from './shield';

@@ -11,13 +11,22 @@ export interface RunResult {
   hash: number;
 }
 
+/** A fresh game set up the way `scenario` expects (its room text, seed and mode). */
+export function createScenarioGame(
+  scenario: Scenario,
+  roomText: string,
+  opts: { seed: number; tuning?: Tuning },
+): GameState {
+  return createGame({ seed: opts.seed, roomText, tuning: opts.tuning, mode: scenario.mode });
+}
+
 /** Runs a scenario headlessly for `ticks` ticks and returns the final state and hash. */
 export function runScenario(
   scenario: Scenario,
   roomText: string,
   opts: { seed: number; ticks: number; tuning?: Tuning },
 ): RunResult {
-  const state = createGame({ seed: opts.seed, roomText, tuning: opts.tuning });
+  const state = createScenarioGame(scenario, roomText, opts);
   for (let i = 0; i < opts.ticks; i++) step(state, scenario.input(state.tick, state));
   return { state, hash: hashState(state) };
 }
