@@ -1,5 +1,5 @@
 import type { DamageAmounts, DamageType } from '../../data/combatTypes';
-import { spells } from '../../data/spells';
+import type { ElementId } from '../../data/runes';
 import type { AtlasEntry } from './atlas';
 import { ELEMENT, FX, INK, PROJ } from './combatPalette';
 import type { Pen } from './pen';
@@ -97,13 +97,34 @@ export function dominantType(amounts: DamageAmounts): DamageType {
   return best;
 }
 
-/** Element of a spell by id, from its damage shares (fire for unknown ids). */
-export function spellElement(id: string): DamageType {
-  const def = (spells as Record<string, { shares?: Partial<DamageAmounts> }>)[id];
-  if (!def?.shares) return 'fire';
-  const s = def.shares;
-  return dominantType({ physical: s.physical ?? 0, fire: s.fire ?? 0, frost: s.frost ?? 0, storm: s.storm ?? 0 });
+/** Damage type an element deals (Tide and Gale deal physical, CONTENT §1.3). */
+export function elementType(id: ElementId | undefined): DamageType {
+  return id === 'fire' || id === 'frost' || id === 'storm' ? id : 'physical';
 }
+
+/** Something that names an element: an ElementId (events) or an ElementShare (specs). */
+type ElementRef = ElementId | { element: ElementId };
+
+function refId(r: ElementRef | undefined): ElementId | undefined {
+  return r === undefined ? undefined : typeof r === 'string' ? r : r.element;
+}
+
+/** The look of a spell with these elements (its first one; physical when it has none). */
+export function spellLook(elements: readonly ElementRef[]): ElementLook {
+  return LOOKS[elementType(refId(elements[0]))];
+}
+
+/** A multi-element spell's second look (its trail or rim), or null when it has one element. */
+export function secondLook(elements: readonly ElementRef[]): ElementLook | null {
+  if (elements.length < 2) return null;
+  const a = elementType(refId(elements[0]));
+  const b = elementType(refId(elements[1]));
+  return a === b ? null : LOOKS[b];
+}
+
+/** Echo repeats are drawn ghostly: their colors pale toward this and their alpha drops. */
+export const ECHO_TINT = 0xd6dcff;
+export const ECHO_ALPHA = 0.6;
 
 // ---- Baked cores for the non-fire bolts ------------------------------------------------------
 
