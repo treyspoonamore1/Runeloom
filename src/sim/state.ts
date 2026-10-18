@@ -25,6 +25,7 @@ import { cloneTuning, type Tuning } from '../../data/tuning';
 import { createFlowField, type FlowField } from './ai/flowField';
 import { createArenaState, type ArenaState } from './world/waves';
 import { createGrid, type Grid } from './grid/grid';
+import { createLabState, type LabState } from './world/lab';
 
 /**
  * How the room plays. 'sandbox': only the room's @spawn enemies. 'arena': endless waves of
@@ -59,6 +60,8 @@ export interface GameState {
   room: Room;
   /** The chemistry grid (DESIGN §6): materials, fire, charge, water, smoke per cell. */
   grid: Grid;
+  /** Chemistry Lab scripts waiting to fire (world/lab.ts). Hashed. */
+  lab: LabState;
   player: PlayerState;
   /** Spell-runtime stream: Lob branch landing points (and later spell randomness). */
   spellRng: Rng;
@@ -149,6 +152,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     tuning,
     room,
     grid: createGrid(room),
+    lab: createLabState(),
     player: createPlayer(room.spawnX, room.spawnY, tuning),
     spellRng,
     weaves,
