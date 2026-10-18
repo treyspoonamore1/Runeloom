@@ -1,5 +1,6 @@
 import { enemyDef } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
+import { actionSpeed } from '../combat/ailments';
 import { DT } from '../core/constants';
 import type { GameState } from '../state';
 import { aggro, deaggro, measurePlayer, refreshSight, setMode, sightDue, stop, toPlayer } from './common';
@@ -38,6 +39,10 @@ export function prepareEnemyAI(state: GameState): void {
  * The player being dead sends everyone idle. `state.cheats.noAI` freezes the AI entirely
  * (velocity and facing are left as they are), for tests that drive enemies by hand.
  *
+ * Chill slows thinking with the body: the mode timer and attack cooldown advance at
+ * actionSpeed (the kiter's strafe timer and the Shieldbearer's turning too). Frozen enemies are
+ * skipped before this is called (actors/enemyMovement.ts).
+ *
  * Contract with the core: writes only `enemy.vx/vy` (at most enemyDef(kind).speed),
  * `enemy.facingX/facingY` (unit) and `enemy.ai`; randomness comes from `state.aiRng`.
  */
@@ -47,8 +52,9 @@ export function stepEnemyAI(state: GameState, e: Enemy): void {
   const b = def.behavior;
   if (b.kind === 'none' || !def.attack) return;
   const ai = e.ai;
-  ai.timer += DT;
-  ai.cooldown = ai.cooldown > DT ? ai.cooldown - DT : 0;
+  const dt = DT * actionSpeed(state, e);
+  ai.timer += dt;
+  ai.cooldown = ai.cooldown > dt ? ai.cooldown - dt : 0;
 
   const phase = e.attack.phase;
   if (phase !== 'none') {

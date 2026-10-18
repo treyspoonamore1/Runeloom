@@ -14,6 +14,14 @@ export const ELEMENT = {
 
 export const INK = 0x2a1c1f;
 
+/** Enemy hit-flash tint by damage type: white for physical, a pale wash of the element otherwise. */
+export const HIT_FLASH = {
+  physical: 0xffffff,
+  fire: 0xffe0c2,
+  frost: 0xd6f6ff,
+  storm: 0xfff6b8,
+} as const;
+
 export const ENEMY = {
   outline: 0.3,
   /** Hit flash duration (DESIGN §4: 0.08 s) and the white silhouette's peak alpha. */
@@ -181,6 +189,15 @@ export const NUMBERS = {
   crit: 0xffd23f,
   player: 0xff4a4a,
   colors: { physical: 0xfff4e0, fire: 0xff9a52, frost: ELEMENT.frost, storm: ELEMENT.storm },
+  /** Damage over time: smaller, slanted, slower; drawn beside the target instead of above. */
+  dotSize: 12.5,
+  dotLife: 0.7,
+  dotRise: 1.6,
+  dotSkew: -0.28,
+  dotDx: 1.5,
+  dotDy: -1.2,
+  dotColors: { physical: 0xe8dccb, fire: ELEMENT.fire, frost: 0x7fd6f5, storm: 0xe8d23a },
+  dotPlayer: 0xff6a4a,
 } as const;
 
 /** Screen shake (render only). Pixels at 720p, scaled with screen height; max 3 px (DESIGN §4). */
@@ -189,6 +206,7 @@ export const SHAKE = {
   strikeKill: 3,
   crit: 1.2,
   playerHurt: 1.6,
+  shatter: 2.4,
   /** Seconds for a kick to decay to zero, and noise frequency (Hz). */
   decay: 0.18,
   hz: 38,

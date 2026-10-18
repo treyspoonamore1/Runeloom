@@ -101,7 +101,7 @@ export function spawnProjectile(state: GameState, o: SpawnProjectileOptions): Pr
 }
 
 /** True if any cell in the inclusive cell rectangle blocks shots. Cells outside the room do. */
-function anyShotSolid(room: Room, x0: number, y0: number, x1: number, y1: number): boolean {
+export function anyShotSolid(room: Room, x0: number, y0: number, x1: number, y1: number): boolean {
   if (x0 < 0 || y0 < 0 || x1 >= room.width || y1 >= room.height) return true;
   const mask = room.shotSolid;
   const w = room.width;

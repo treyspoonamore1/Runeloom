@@ -1,4 +1,15 @@
-import { Button, spawnEnemy, step, type Enemy, type GameState, type SimEvent } from '../../../src/sim';
+import {
+  applyHit,
+  Button,
+  makePacket,
+  PLAYER_ID,
+  spawnEnemy,
+  step,
+  type Enemy,
+  type GameState,
+  type SimEvent,
+} from '../../../src/sim';
+import type { DamageType } from '../../../data/combatTypes';
 import { openRoom, place } from '../actors/helpers';
 
 export { place };
@@ -58,3 +69,27 @@ export function ofType<T extends SimEvent['type']>(events: SimEvent[], type: T) 
 
 export const BOLT = Button.Cast1;
 export const STRIKE = Button.Cast2;
+
+/**
+ * Hits `target` with `amount` of one damage type (no crit, no knockback unless given), from the
+ * player by default. `ailmentDuration` sets DamagePacket.ailmentDuration (Lingering).
+ */
+export function hitWith(
+  state: GameState,
+  target: Enemy | GameState['player'],
+  amount: number,
+  type: DamageType,
+  opts: { sourceId?: number; ailmentDuration?: number; knockback?: number } = {},
+) {
+  const packet = makePacket(amount, { [type]: 1 }, 0, 1.5);
+  if (opts.ailmentDuration !== undefined) packet.ailmentDuration = opts.ailmentDuration;
+  return applyHit(state, target, packet, {
+    sourceId: opts.sourceId ?? PLAYER_ID,
+    dirX: 1,
+    dirY: 0,
+    knockback: opts.knockback ?? 0,
+  });
+}
+
+/** Ticks that a duration of `seconds` covers at 60 Hz. */
+export const ticksFor = (seconds: number): number => Math.round(seconds * 60);

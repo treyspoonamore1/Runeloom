@@ -8,7 +8,9 @@ import { emit } from '../events';
 import { clipToContacts, moveCircle } from './collision';
 import { stepKnockback } from './knockback';
 import { resetPlayerVitals, stepPlayerVitals } from './playerVitals';
-import { cancelCast } from '../combat/casting';
+import { cancelCast } from '../weave/runtime/castState';
+import { noteDodge } from '../weave/runtime/queue';
+import { actionSpeed, createAilments, isFrozen, type Ailments } from '../combat/ailments';
 
 /** All player state lives here as plain data, so it hashes, saves and replays. */
 export interface PlayerState {
@@ -45,8 +47,8 @@ export interface PlayerState {
   maxMana: number;
   /** Resistances, already capped at combat.resistCap. 0 until gear (M4). */
   resist: DamageAmounts;
-  /** Shock: increased damage taken as a fraction. 0 until ailments. */
-  shock: number;
+  /** Ignite, Chill, Freeze and Shock (combat/ailments.ts), with player-side limits. */
+  ailments: Ailments;
   /** Knockback velocity, cells/s, on top of walking. Decays each tick. */
   kbX: number;
   kbY: number;
@@ -55,9 +57,12 @@ export interface PlayerState {
   /** Seconds until respawn while dead, else 0. */
   respawnLeft: number;
 
-  /** Loadout slot (0–3) being cast, or -1 when not casting. */
+  /** Weave slot (0–3) whose Cast-trigger weave is winding up or recovering, or -1 when not casting. */
   castSlot: number;
-  /** Spell being cast (null when not casting). */
+  /**
+   * LEGACY (M1 render): the M1 spell id of the slot being cast when its weave is exactly an M1
+   * spell (`GameState.loadout`), else null. Read `castSlot` and the slot's weave instead.
+   */
   castSpell: SpellId | null;
   /** Seconds left in the current cast. */
   castLeft: number;
@@ -103,7 +108,7 @@ export function createPlayer(x: number, y: number, tuning: Tuning): PlayerState 
     mana: 0,
     maxMana: 0,
     resist: { physical: 0, fire: 0, frost: 0, storm: 0 },
-    shock: 0,
+    ailments: createAilments(),
     kbX: 0,
     kbY: 0,
     dead: false,
@@ -134,6 +139,7 @@ export function dodgeSpeed(t: PlayerTuning): number {
 /**
  * One 60 Hz player tick: vitals (respawn countdown, mana regen), timers, aim, dodge start, then
  * dodge and/or walk movement, then knockback. A dead player only counts down to respawn.
+ * Frozen: no walking or dodging (a dodge in progress ends), only knockback; Chill slows walking.
  */
 export function stepPlayer(state: GameState, input: InputFrame): void {
   const p = state.player;
@@ -144,6 +150,12 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
 
   tickTimers(p, t);
   updateAim(p, input);
+  if (isFrozen(p)) {
+    p.vx = p.vy = 0;
+    p.dodgeLeft = 0;
+    stepKnockback(state.room, p, t.radius, state.tuning.feel);
+    return;
+  }
 
   // Move input, clamped to length 1 so diagonals aren't faster; analog magnitudes below 1 are kept.
   let mx = input.moveX;
@@ -167,6 +179,7 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
     // A dodge cancels a cast that hasn't released yet.
     if (p.castSlot >= 0 && !p.castReleased) cancelCast(state);
     emit(state, { type: 'dodge', x: p.x, y: p.y, dirX: p.dodgeDirX, dirY: p.dodgeDirY });
+    noteDodge(state, p.x, p.y, p.dodgeDirX, p.dodgeDirY);
   }
 
   let walkTime = DT;
@@ -240,8 +253,8 @@ function startDodge(p: PlayerState, t: PlayerTuning, mx: number, my: number, mle
 }
 
 /**
- * Accelerates the velocity vector toward the input's target velocity (at
- * moveSpeed/accelTime), or toward rest with no input (at moveSpeed/decelTime),
+ * Accelerates the velocity vector toward the input's target velocity (moveSpeed slowed by
+ * Chill, at moveSpeed/accelTime), or toward rest with no input (at moveSpeed/decelTime),
  * then moves with collision for `dt` seconds.
  */
 function walk(state: GameState, p: PlayerState, t: PlayerTuning, mx: number, my: number, dt: number): void {
@@ -251,8 +264,9 @@ function walk(state: GameState, p: PlayerState, t: PlayerTuning, mx: number, my:
     p.faceX = mx / l;
     p.faceY = my / l;
   }
-  target.x = mx * t.moveSpeed;
-  target.y = my * t.moveSpeed;
+  const speed = t.moveSpeed * actionSpeed(state, p);
+  target.x = mx * speed;
+  target.y = my * speed;
   clipToContacts(state.room, p.x, p.y, t.radius, target);
   const tx = target.x;
   const ty = target.y;

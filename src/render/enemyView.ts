@@ -1,27 +1,14 @@
 import { Container, Sprite } from 'pixi.js';
-import { PLAYER_ID, type Enemy, type GameState } from '../sim';
+import { actionSpeed, PLAYER_ID, type Enemy, type GameState } from '../sim';
+import type { DamageType } from '../../data/combatTypes';
 import { enemyDef, type EnemyKind } from '../../data/enemies';
 import type { Atlas } from './atlas';
-import { ENEMY as C } from './combatPalette';
+import type { AilmentParts } from './ailmentParts';
+import { mixRgb } from './ailmentPalette';
+import { ENEMY as C, HIT_FLASH } from './combatPalette';
+import { angleDelta, clamp, smoothstep, TAU } from './mathx';
 import { BOW_TIP_X, BOW_TIP_Y } from './enemyShapes';
 import type { FxParticle } from './particles';
-
-const TAU = Math.PI * 2;
-
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
-}
-function smoothstep(a: number, b: number, v: number): number {
-  const t = clamp((v - a) / (b - a), 0, 1);
-  return t * t * (3 - 2 * t);
-}
-/** Shortest signed angle from a to b. */
-function angleDelta(a: number, b: number): number {
-  let d = (b - a) % TAU;
-  if (d > Math.PI) d -= TAU;
-  if (d < -Math.PI) d += TAU;
-  return d;
-}
 
 /** Per-kind layout: shadow size, feet height (lift pivot), face offset scale. */
 const LAYOUT: Record<EnemyKind, { shadowRx: number; shadowRy: number; shadowY: number; foot: number }> = {
@@ -43,8 +30,8 @@ const FLAME_POS = [
  */
 export class EnemyView {
   readonly root = new Container();
-  /** Bobs, leans and squashes around the feet. */
-  private readonly lift = new Container();
+  /** Bobs, leans and squashes around the feet (ailment parts attach here). */
+  readonly lift = new Container();
   private readonly flash: Sprite;
   private readonly face: Sprite | null = null;
   private readonly flames: Sprite[] = [];
@@ -59,6 +46,12 @@ export class EnemyView {
   enemy: Enemy | null = null;
   shadow: FxParticle | null = null;
   glow: FxParticle | null = null;
+  /** Ailment visuals, created by AilmentFx the first time this view's enemy suffers one. */
+  ailParts: AilmentParts | null = null;
+  /** Ember glow strength (dimmed while frozen). */
+  glowMul = 1;
+  /** Died frozen: burst into shards (AilmentFx), no corpse. */
+  private shattered = false;
   /** Frame stamp of the last update that saw this enemy alive. */
   seen = 0;
   /** -1 while alive; seconds since death otherwise. */
@@ -163,14 +156,18 @@ export class EnemyView {
     this.recoilX = this.recoilY = this.lungeT = this.pull = 0;
     this.wobble = this.wobbleVel = this.topple = 0;
     this.popT = 0;
+    this.glowMul = 1;
+    this.shattered = false;
+    this.ailParts?.reset();
     this.root.alpha = 1;
     this.root.tint = 0xffffff;
     this.root.visible = true;
     for (const f of this.flames) f.visible = true;
   }
 
-  hit(kbX: number, kbY: number, fromX: number, fromY: number): void {
+  hit(kbX: number, kbY: number, fromX: number, fromY: number, type: DamageType = 'physical'): void {
     this.flashT = C.flashTime;
+    this.flash.tint = HIT_FLASH[type];
     this.deformVel += C.hitKick;
     let dx = kbX;
     let dy = kbY;
@@ -197,9 +194,15 @@ export class EnemyView {
     this.deformVel -= 2;
   }
 
-  die(): void {
+  /** shattered: died frozen; the body vanishes at once (the shatter burst replaces the corpse). */
+  die(shattered = false): void {
     if (this.dying >= 0) return;
     this.dying = 0;
+    if (this.ailParts) this.ailParts.root.visible = false;
+    if (shattered) {
+      this.shattered = true;
+      this.root.visible = false;
+    }
     this.flashT = C.flashTime * 1.5;
     this.topple = (this.recoilX >= 0 ? 1 : -1) * (0.9 + Math.random() * 0.4);
     for (const f of this.flames) f.visible = false;
@@ -209,7 +212,10 @@ export class EnemyView {
   /** Per-frame update of a live enemy at interpolated (x, y). */
   update(state: GameState, x: number, y: number, dt: number): void {
     const e = this.enemy!;
-    this.time += dt;
+    // Chill slows the procedural animation by the sim's action speed; Freeze stops it.
+    const sp = actionSpeed(state, e);
+    const adt = dt * sp;
+    this.time += adt;
     this.x = x;
     this.y = y;
     // Velocity from the last tick's actual motion (walls and knockback included).
@@ -239,7 +245,7 @@ export class EnemyView {
       }
     }
     const target = Math.atan2(fy, fx);
-    this.face0 += angleDelta(this.face0, target) * (1 - Math.exp(-dt / C.turnSmoothing));
+    this.face0 += angleDelta(this.face0, target) * (1 - Math.exp(-adt / C.turnSmoothing));
     const cx = Math.cos(this.face0);
     const cy = Math.sin(this.face0);
 
@@ -256,7 +262,8 @@ export class EnemyView {
     const hop = b * C.bobHeight * this.run * (e.kind === 'shieldbearer' ? 0.7 : 1);
     const waddle = Math.sin(this.bobPhase + this.phase) * 0.12 * this.run;
 
-    this.stepSprings(dt);
+    if (sp === 0) this.deformVel = this.wobbleVel = 0;
+    this.stepSprings(adt);
     const decay = Math.exp(-dt / C.recoilDecay);
     this.recoilX *= decay;
     this.recoilY *= decay;
@@ -356,7 +363,7 @@ export class EnemyView {
     if (this.glow) {
       this.glow.x = this.root.x;
       this.glow.y = this.root.y - 0.3;
-      this.glow.fade(0.5 * this.root.alpha * (this.dying >= 0 ? Math.max(0, 1 - this.dying * 4) : 1));
+      this.glow.fade(0.5 * this.glowMul * this.root.alpha * (this.dying >= 0 ? Math.max(0, 1 - this.dying * 4) : 1));
     }
   }
 
@@ -378,6 +385,7 @@ export class EnemyView {
 
   /** Death topple then corpse fade. Returns false once fully faded. */
   updateDeath(dt: number): boolean {
+    if (this.shattered) return false;
     this.dying += dt;
     this.time += dt;
     const d = this.dying;
@@ -390,11 +398,7 @@ export class EnemyView {
     this.lift.scale.set(1 + 0.2 * ease, 1 - 0.4 * ease);
     this.lift.position.y = LAYOUT[this.kind].foot + ease * 0.3;
     // Lerp toward the corpse tint.
-    const g = 1 - ease * 0.45;
-    const tr = Math.round(((C.corpseTint >> 16) & 255) + (255 - ((C.corpseTint >> 16) & 255)) * g);
-    const tg = Math.round(((C.corpseTint >> 8) & 255) + (255 - ((C.corpseTint >> 8) & 255)) * g);
-    const tb = Math.round((C.corpseTint & 255) + (255 - (C.corpseTint & 255)) * g);
-    this.root.tint = (tr << 16) | (tg << 8) | tb;
+    this.root.tint = mixRgb(0xffffff, C.corpseTint, ease * 0.45);
     const fadeStart = C.dieTime + C.corpseHold;
     this.root.alpha = d < fadeStart ? 1 : Math.max(0, 1 - (d - fadeStart) / C.corpseFade);
     this.placeShadow(this.x, this.y, 0);

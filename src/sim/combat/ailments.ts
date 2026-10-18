@@ -1,0 +1,298 @@
+import type { AilmentKind } from '../../../data/combatTypes';
+import { enemyDef } from '../../../data/enemies';
+import type { Tuning } from '../../../data/tuning';
+import type { Enemy } from '../actors/enemies';
+import type { PlayerState } from '../actors/player';
+import { emit } from '../events';
+import type { GameState } from '../state';
+import type { DamagePacket, HitResult } from './damage';
+
+/**
+ * Entity ailments (DESIGN §6.4): Ignite, Chill, Freeze and Shock on enemies and the player.
+ * This file holds the state, the queries other systems use (isFrozen, actionSpeed, shockEffect)
+ * and the apply functions. Per-tick decay and ignite damage are in ailmentTick.ts.
+ *
+ * Every ailment record is always present (no nulls) and inactive when its timer is 0, so state
+ * hashes and copies stay flat. Magnitudes from a hit use that hit's damage of the matching type
+ * after resistance and before Shock (Shock never feeds itself or double-dips into Ignite).
+ *
+ * M3 extension points: terrain sources call applyIgnite / addChill / applyShock / freezeTarget
+ * directly (terrain-fire DPS, freezing water); Wet plugs into igniteBlocked and chillGain.
+ */
+
+/** Damage over time from a fire hit. Active while timeLeft > 0. */
+export interface IgniteState {
+  /** Fire damage per second, the target's fire resistance already applied, before Shock. */
+  dps: number;
+  /** Seconds left; 0 when not ignited. */
+  timeLeft: number;
+  /** Who applied it (PLAYER_ID for the player): its damage and kills are credited to them. -1 if none. */
+  sourceId: number;
+}
+
+/** Can't act. Active while timeLeft > 0. */
+export interface FreezeState {
+  /** Seconds left frozen; 0 when not frozen. */
+  timeLeft: number;
+  /** Seconds left during which the target can't be frozen (boss rule; 0 for everyone else). */
+  immuneLeft: number;
+}
+
+/** Increased damage taken. Active while timeLeft > 0. */
+export interface ShockState {
+  /** Increased damage taken as a fraction (0.2 = 20%); 0 when not shocked. */
+  effect: number;
+  /** Seconds left; 0 when not shocked. */
+  timeLeft: number;
+}
+
+/** All ailments on one entity (Enemy.ailments, PlayerState.ailments). Hashed. */
+export interface Ailments {
+  ignite: IgniteState;
+  /** Chill points, 0 to tuning.ailments.freezeThreshold. Slows movement and actions. */
+  chill: number;
+  freeze: FreezeState;
+  shock: ShockState;
+  /** Ignite damage dealt since the last 'dot' event (damage-number batching). */
+  dotPending: number;
+  /** Seconds until the next 'dot' event while ignited. */
+  dotReportLeft: number;
+}
+
+/** Anything that can suffer ailments. */
+export type AilmentTarget = Enemy | PlayerState;
+
+type AilmentTuning = Tuning['ailments'];
+
+/** Timers and thresholds within this of their limit count as reached (absorbs float rounding). */
+export const AILMENT_EPSILON = 1e-9;
+
+export function createAilments(): Ailments {
+  return {
+    ignite: { dps: 0, timeLeft: 0, sourceId: -1 },
+    chill: 0,
+    freeze: { timeLeft: 0, immuneLeft: 0 },
+    shock: { effect: 0, timeLeft: 0 },
+    dotPending: 0,
+    dotReportLeft: 0,
+  };
+}
+
+/** Clears every ailment in place (death, respawn). Sends no events. */
+export function clearAilments(a: Ailments): void {
+  a.ignite.dps = a.ignite.timeLeft = 0;
+  a.ignite.sourceId = -1;
+  a.chill = 0;
+  a.freeze.timeLeft = a.freeze.immuneLeft = 0;
+  a.shock.effect = a.shock.timeLeft = 0;
+  a.dotPending = a.dotReportLeft = 0;
+}
+
+/** The enemy, or null for the player. */
+export function asEnemy(t: AilmentTarget): Enemy | null {
+  return 'kind' in t ? t : null;
+}
+
+/** How events name the target: the enemy's id, or 'player'. */
+export function targetRef(t: AilmentTarget): number | 'player' {
+  return 'kind' in t ? t.id : 'player';
+}
+
+/** True if the target uses the boss chill rule. */
+export function isBoss(t: AilmentTarget): boolean {
+  const e = asEnemy(t);
+  return e !== null && enemyDef(e.kind).isBoss === true;
+}
+
+/** True if the target never suffers `kind`. Chill immunity also prevents Freeze. Player immunities come with gear (M4+). */
+export function isImmune(t: AilmentTarget, kind: AilmentKind): boolean {
+  const e = asEnemy(t);
+  if (e === null) return false;
+  const immune = enemyDef(e.kind).immune;
+  if (immune === undefined) return false;
+  return immune.includes(kind) || (kind === 'freeze' && immune.includes('chill'));
+}
+
+export function isFrozen(t: AilmentTarget): boolean {
+  return t.ailments.freeze.timeLeft > 0;
+}
+
+export function isIgnited(t: AilmentTarget): boolean {
+  return t.ailments.ignite.timeLeft > 0;
+}
+
+/** Shock as a fraction of increased damage taken (0 when not shocked). */
+export function shockEffect(t: AilmentTarget): number {
+  return t.ailments.shock.effect;
+}
+
+/** Slow from chill: 0.3% per point, at most 30% (bosses 15%). */
+export function chillSlow(state: GameState, t: AilmentTarget): number {
+  const A = state.tuning.ailments;
+  const max = isBoss(t) ? A.bossChillSlowMax : A.chillSlowMax;
+  const s = t.ailments.chill * A.chillSlowPerPoint;
+  return s < max ? s : max;
+}
+
+/**
+ * Multiplier on how fast the target moves and acts this tick: 0 while frozen, else 1 − chill
+ * slow. The single place chill and freeze change speed: enemy movement, AI timers and turning,
+ * attack phases, player walking and casting all scale by it.
+ */
+export function actionSpeed(state: GameState, t: AilmentTarget): number {
+  if (isFrozen(t)) return 0;
+  const a = t.ailments;
+  return a.chill > 0 ? 1 - chillSlow(state, t) : 1;
+}
+
+/** M3 hook: Wet extinguishes and prevents Ignite (rule 15). No Wet yet. */
+function igniteBlocked(_t: AilmentTarget): boolean {
+  return false;
+}
+
+/** M3 hook: chill gain multiplier (tuning.ailments.wetChillMultiplier while Wet). No Wet yet. */
+function chillGain(_t: AilmentTarget, _A: AilmentTuning): number {
+  return 1;
+}
+
+/**
+ * Applies the ailments a resolved hit carries (DESIGN §6.4) to a live target: Ignite from its
+ * fire part, Chill (and maybe Freeze) from its frost part, Shock from its storm part. Durations
+ * are scaled by packet.ailmentDuration; chill points by packet.chillGain (spindle implicit).
+ */
+export function applyHitAilments(
+  state: GameState,
+  t: AilmentTarget,
+  packet: DamagePacket,
+  res: HitResult,
+  sourceId: number,
+): void {
+  const A = state.tuning.ailments;
+  const durMul = packet.ailmentDuration ?? 1;
+  const unshock = 1 + res.shock;
+  const fire = res.byType.fire / unshock;
+  const frost = res.byType.frost / unshock;
+  const storm = res.byType.storm / unshock;
+  if (fire > 0) applyIgnite(state, t, fire * A.igniteDpsFraction, A.igniteDuration * durMul, sourceId);
+  if (frost > 0) {
+    const points = isBoss(t) ? A.bossChillPerHit : (frost / t.maxLife) * A.chillPerLifeFraction;
+    addChill(state, t, points * chillGain(t, A) * (packet.chillGain ?? 1), durMul, sourceId);
+  }
+  if (storm > 0) {
+    const raw = (storm / t.maxLife) * A.shockPerLifeFraction;
+    const effect = raw < A.shockMin ? A.shockMin : raw > A.shockMax ? A.shockMax : raw;
+    applyShock(state, t, effect, A.shockDuration * durMul, sourceId);
+  }
+}
+
+/**
+ * Ignites the target for `dps` (resistance already applied) over `duration` seconds, unless it
+ * is immune or already burning at least as strongly. A replacing ignite keeps the dot report timer.
+ */
+export function applyIgnite(
+  state: GameState,
+  t: AilmentTarget,
+  dps: number,
+  duration: number,
+  sourceId: number,
+): boolean {
+  if (dps <= 0 || duration <= 0 || isImmune(t, 'ignite') || igniteBlocked(t)) return false;
+  const a = t.ailments;
+  const ig = a.ignite;
+  if (ig.timeLeft > 0 && dps <= ig.dps) return false;
+  if (ig.timeLeft <= 0) a.dotReportLeft = state.tuning.ailments.dotReportInterval;
+  ig.dps = dps;
+  ig.timeLeft = duration;
+  ig.sourceId = sourceId;
+  emitApplied(state, t, 'ignite', dps, duration, sourceId);
+  return true;
+}
+
+/**
+ * Adds chill points (capped at freezeThreshold). Nothing builds while frozen. Reaching the
+ * threshold freezes the target, unless it is immune to Freeze or in its boss immunity window;
+ * `freezeDurationMul` scales that freeze. Sends 'ailmentApplied' with the new chill total and
+ * the seconds it takes to decay.
+ */
+export function addChill(
+  state: GameState,
+  t: AilmentTarget,
+  points: number,
+  freezeDurationMul: number,
+  sourceId: number,
+): void {
+  if (points <= 0 || isImmune(t, 'chill') || isFrozen(t)) return;
+  const A = state.tuning.ailments;
+  const a = t.ailments;
+  const boss = isBoss(t);
+  const sum = a.chill + points;
+  a.chill = sum < A.freezeThreshold ? sum : A.freezeThreshold;
+  emitApplied(state, t, 'chill', a.chill, a.chill / (boss ? A.bossChillDecay : A.chillDecay), sourceId);
+  if (a.chill < A.freezeThreshold - AILMENT_EPSILON) return;
+  if (isImmune(t, 'freeze') || a.freeze.immuneLeft > 0) return;
+  const base = boss ? A.bossFreezeDuration : A.freezeDuration;
+  freezeTarget(state, t, base * freezeDurationMul, sourceId);
+}
+
+/**
+ * Freezes the target for `duration` seconds (at most playerFreezeMax on the player). Consumes
+ * its chill. An enemy stops and loses an attack still in windup; the player's cast and dodge
+ * end on their next tick (actors/player.ts, combat/casting.ts).
+ */
+export function freezeTarget(state: GameState, t: AilmentTarget, duration: number, sourceId: number): void {
+  if (duration <= 0 || isImmune(t, 'freeze')) return;
+  const A = state.tuning.ailments;
+  const e = asEnemy(t);
+  const d = e === null && duration > A.playerFreezeMax ? A.playerFreezeMax : duration;
+  const a = t.ailments;
+  a.chill = 0;
+  a.freeze.timeLeft = d;
+  t.vx = t.vy = 0;
+  if (e !== null && e.attack.phase === 'windup') {
+    e.attack.phase = 'none';
+    e.attack.timeLeft = 0;
+  }
+  emit(state, { type: 'freeze', target: targetRef(t), duration: d, sourceId, x: t.x, y: t.y });
+}
+
+/**
+ * Shocks the target for `duration` seconds with `effect` increased damage taken (at most
+ * playerShockMax on the player), unless immune or already shocked at least as strongly.
+ */
+export function applyShock(
+  state: GameState,
+  t: AilmentTarget,
+  effect: number,
+  duration: number,
+  sourceId: number,
+): boolean {
+  if (effect <= 0 || duration <= 0 || isImmune(t, 'shock')) return false;
+  const A = state.tuning.ailments;
+  const eff = asEnemy(t) === null && effect > A.playerShockMax ? A.playerShockMax : effect;
+  const sh = t.ailments.shock;
+  if (sh.timeLeft > 0 && eff <= sh.effect) return false;
+  sh.effect = eff;
+  sh.timeLeft = duration;
+  emitApplied(state, t, 'shock', eff, duration, sourceId);
+  return true;
+}
+
+function emitApplied(
+  state: GameState,
+  t: AilmentTarget,
+  ailment: 'ignite' | 'chill' | 'shock',
+  magnitude: number,
+  duration: number,
+  sourceId: number,
+): void {
+  emit(state, {
+    type: 'ailmentApplied',
+    target: targetRef(t),
+    ailment,
+    magnitude,
+    duration,
+    sourceId,
+    x: t.x,
+    y: t.y,
+  });
+}

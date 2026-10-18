@@ -1,8 +1,10 @@
 import { damageTypes, type DamageAmounts } from '../../data/combatTypes';
 import { Hasher } from './core/hash';
 import type { AttackShape } from './combat/shapes';
+import type { Ailments } from './combat/ailments';
 import type { DamagePacket } from './combat/damage';
 import type { GameState } from './state';
+import { hashPacket, hashWeaveState } from './weave/runtime/hash';
 
 /**
  * Hash of all simulation state that affects the future. Two runs with the same
@@ -11,7 +13,8 @@ import type { GameState } from './state';
  *
  * Not hashed: `events` (output only), `enemyHash` (rebuilt from `enemies` every step),
  * prevX/prevY (render interpolation only), `flow.cost` (a pure function of the room and the
- * hashed `flow.goalTile`).
+ * hashed `flow.goalTile`), `stats` (counters), the legacy `loadout` and compiled weave programs
+ * (derived from the hashed notations and spindle).
  */
 export function hashState(state: GameState): number {
   const h = new Hasher();
@@ -30,8 +33,7 @@ export function hashState(state: GameState): number {
   for (const q of ar.queue) h.string(q.kind).byte(0).u32(q.areaLevel).num(q.delay);
   h.string(state.room.id);
   h.u32(state.nextId).num(state.hitstopLeft);
-  h.u32(state.loadout.length);
-  for (const s of state.loadout) h.string(s ?? '-').byte(0);
+  hashWeaveState(h, state);
 
   const p = state.player;
   h.num(p.x).num(p.y).num(p.vx).num(p.vy);
@@ -40,7 +42,8 @@ export function hashState(state: GameState): number {
   h.num(p.dodgeDirX).num(p.dodgeDirY).num(p.iframesLeft);
   h.u32(p.level).num(p.life).num(p.maxLife).num(p.mana).num(p.maxMana);
   amounts(h, p.resist);
-  h.num(p.shock).num(p.kbX).num(p.kbY).bool(p.dead).num(p.respawnLeft);
+  ailments(h, p.ailments);
+  h.num(p.kbX).num(p.kbY).bool(p.dead).num(p.respawnLeft);
   h.u32(p.castSlot + 1)
     .string(p.castSpell ?? '-')
     .num(p.castLeft)
@@ -53,7 +56,8 @@ export function hashState(state: GameState): number {
     h.num(e.x).num(e.y).num(e.vx).num(e.vy).num(e.kbX).num(e.kbY);
     h.num(e.radius).num(e.facingX).num(e.facingY).num(e.life).num(e.maxLife);
     amounts(h, e.resist);
-    h.num(e.shock).u32(e.areaLevel).string(e.rarity).bool(e.dead);
+    ailments(h, e.ailments);
+    h.u32(e.areaLevel).string(e.rarity).bool(e.dead);
     const ai = e.ai;
     h.string(ai.mode).byte(0).num(ai.timer).num(ai.targetId).num(ai.cooldown);
     h.bool(ai.los).bool(ai.walkLine).num(ai.offsetX).num(ai.offsetY).num(ai.strafe).num(ai.strafeLeft);
@@ -81,9 +85,13 @@ function amounts(h: Hasher, a: DamageAmounts): void {
 }
 
 function packet(h: Hasher, d: DamagePacket): void {
-  amounts(h, d.base);
-  h.num(d.critChance).num(d.critMultiplier).num(d.increased).u32(d.more.length);
-  for (const m of d.more) h.num(m);
+  hashPacket(h, d);
+}
+
+function ailments(h: Hasher, a: Ailments): void {
+  h.num(a.ignite.dps).num(a.ignite.timeLeft).num(a.ignite.sourceId).num(a.chill);
+  h.num(a.freeze.timeLeft).num(a.freeze.immuneLeft).num(a.shock.effect).num(a.shock.timeLeft);
+  h.num(a.dotPending).num(a.dotReportLeft);
 }
 
 function shape(h: Hasher, s: AttackShape): void {

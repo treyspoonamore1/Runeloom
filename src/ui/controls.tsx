@@ -2,8 +2,9 @@
 export const CONTROLS: ReadonlyArray<{ keys: string[]; label: string }> = [
   { keys: ['WASD'], label: 'Move' },
   { keys: ['Mouse'], label: 'Aim' },
-  { keys: ['LMB'], label: 'Fire Bolt' },
-  { keys: ['RMB'], label: 'Strike' },
+  { keys: ['LMB', 'RMB'], label: 'Weave slots 1–2' },
+  { keys: ['Q', 'E'], label: 'Weave slots 3–4' },
+  { keys: ['Tab'], label: 'Loom (spell editor)' },
   { keys: ['Space'], label: 'Dodge' },
   { keys: ['Esc'], label: 'Pause' },
   { keys: ['`'], label: 'Dev console' },

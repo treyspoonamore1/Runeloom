@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { audioTuning, sfx, type SfxId } from '../../data/sfx';
 import { layerToArgs, mixSfx } from '../../src/audio/synth';
 import { VoiceLimiter } from '../../src/audio/voices';
-import { cuesForEvent, spatialize } from '../../src/audio/cues';
+import { cuesForEvent, spatialize, SpellCueTracker } from '../../src/audio/cues';
+import type { FormId } from '../../data/runes';
 import { WaveWatcher, readArena } from '../../src/ui/arena';
 import { createGame, type GameState, type SimEvent } from '../../src/sim';
 import arenaText from '../../data/rooms/test/arena.txt?raw';
@@ -129,13 +130,9 @@ describe('cuesForEvent', () => {
   const ids = (e: SimEvent) => cuesForEvent(e, s).map((c) => c.id);
 
   it('maps casts, failures and impacts', () => {
-    expect(ids({ type: 'cast', slot: 0, spell: 'fire_bolt', x: 0, y: 0, dirX: 1, dirY: 0 })).toEqual([
-      'boltCast',
-    ]);
-    expect(ids({ type: 'cast', slot: 1, spell: 'strike', x: 0, y: 0, dirX: 1, dirY: 0 })).toEqual([
-      'strikeSwing',
-    ]);
-    expect(ids({ type: 'castFailed', slot: 0, spell: 'fire_bolt', reason: 'mana' })).toEqual(['castFailed']);
+    // Spell sounds come from spellSpawn; the cast release itself is silent.
+    expect(ids({ type: 'cast', slot: 0, spell: 'bolt', x: 0, y: 0, dirX: 1, dirY: 0 })).toEqual([]);
+    expect(ids({ type: 'castFailed', slot: 0, spell: 'bolt', reason: 'mana' })).toEqual(['castFailed']);
     expect(ids({ type: 'projectileEnd', id: 1, kind: 'fire_bolt', x: 1, y: 1, reason: 'wall' })).toEqual([
       'boltImpact',
     ]);
@@ -164,8 +161,30 @@ describe('cuesForEvent', () => {
   });
 
   it('picks death, telegraph and attack sounds by kind or attack name', () => {
-    expect(ids({ type: 'death', id: 1, kind: 'shieldbearer', x: 0, y: 0 })).toEqual(['deathShieldbearer']);
-    expect(ids({ type: 'death', id: 1, kind: 'dummy', x: 0, y: 0 })).toEqual(['deathDefault']);
+    expect(
+      ids({
+        type: 'death',
+        id: 1,
+        kind: 'shieldbearer',
+        x: 0,
+        y: 0,
+        killerId: 0,
+        cause: 'hit' as const,
+        shattered: false,
+      }),
+    ).toEqual(['deathShieldbearer']);
+    expect(
+      ids({
+        type: 'death',
+        id: 1,
+        kind: 'dummy',
+        x: 0,
+        y: 0,
+        killerId: 0,
+        cause: 'hit' as const,
+        shattered: false,
+      }),
+    ).toEqual(['deathDefault']);
     expect(ids({ type: 'telegraph', id: 99, attack: 'fire_arrow', windup: 0.4 })).toEqual([
       'telegraphRanged',
     ]);
@@ -178,6 +197,167 @@ describe('cuesForEvent', () => {
     expect(ids({ type: 'playerDeath', x: 0, y: 0 })).toEqual(['playerDeath']);
     expect(ids({ type: 'playerRespawn', x: 0, y: 0 })).toEqual(['respawn']);
     expect(ids({ type: 'hitstop', seconds: 0.03 })).toEqual([]);
+  });
+});
+
+describe('ailment cues', () => {
+  const s = state();
+  const cues = (e: SimEvent) => cuesForEvent(e, s);
+
+  it('plays a sound per ailment, centered on the player and placed on enemies', () => {
+    const applied = (target: number | 'player', ailment: 'ignite' | 'chill' | 'shock', magnitude: number): SimEvent => ({
+      type: 'ailmentApplied',
+      target,
+      ailment,
+      magnitude,
+      duration: 3,
+      sourceId: 0,
+      x: 5,
+      y: 6,
+    });
+    expect(cues(applied(3, 'ignite', 4))).toEqual([{ id: 'igniteApply', gain: 1, x: 5, y: 6 }]);
+    expect(cues(applied(3, 'shock', 0.2)).map((c) => c.id)).toEqual(['shockApply']);
+    expect(cues(applied('player', 'ignite', 4))).toEqual([{ id: 'igniteApply', gain: 1 }]);
+    // The chill tinkle grows with the chill total.
+    const low = cues(applied(3, 'chill', 10))[0]!;
+    const high = cues(applied(3, 'chill', 90))[0]!;
+    expect(low.id).toBe('chillApply');
+    expect(high.gain!).toBeGreaterThan(low.gain!);
+  });
+
+  it('cracks on freeze, drips on thaw, crackles on burn ticks and shatters frozen deaths', () => {
+    expect(cues({ type: 'freeze', target: 4, duration: 1.2, sourceId: 0, x: 1, y: 2 }).map((c) => c.id)).toEqual([
+      'freeze',
+    ]);
+    expect(cues({ type: 'thaw', target: 'player', x: 1, y: 2 })).toEqual([{ id: 'thaw' }]);
+    const dot = (amount: number): SimEvent => ({
+      type: 'dot',
+      target: 4,
+      sourceId: 0,
+      amount,
+      damageType: 'fire',
+      x: 1,
+      y: 2,
+    });
+    expect(cues(dot(3)).map((c) => c.id)).toEqual(['burnTick']);
+    // God mode ignites deal nothing: no crackle.
+    expect(cues(dot(0))).toEqual([]);
+    const death = { type: 'death', id: 1, kind: 'tinderling', x: 0, y: 0, killerId: 0, cause: 'hit' } as const;
+    expect(cues({ ...death, shattered: true }).map((c) => c.id)).toEqual(['shatter']);
+    expect(cues({ ...death, shattered: false }).map((c) => c.id)).toEqual(['deathTinderling']);
+  });
+
+  it('keeps the frequent ailment sounds quiet, rate-limited and low priority', () => {
+    for (const id of ['burnTick', 'chillApply'] as const) {
+      expect(sfx[id].gain, id).toBeLessThanOrEqual(0.2);
+      expect(sfx[id].minGapMs, id).toBeGreaterThanOrEqual(100);
+      expect(sfx[id].priority, id).toBe(0);
+    }
+  });
+});
+
+describe('spell form cues', () => {
+  const s = state();
+  const spawn = (form: FormId, extra: Partial<Extract<SimEvent, { type: 'spellSpawn' }>> = {}): SimEvent => ({
+    type: 'spellSpawn',
+    id: 10,
+    castId: 1,
+    slot: 0,
+    form,
+    elements: ['fire'],
+    depth: 0,
+    echo: false,
+    x: 4,
+    y: 5,
+    dirX: 1,
+    dirY: 0,
+    toX: 4,
+    toY: 5,
+    followsPlayer: false,
+    params: { form: 'nova', radius: 10, expandTime: 0.2 },
+    ...extra,
+  });
+
+  it('plays each form on spawn, softer for branches and Echo repeats', () => {
+    expect(cuesForEvent(spawn('bolt'), s)).toEqual([{ id: 'boltCast', gain: 1 }]);
+    expect(cuesForEvent(spawn('strike'), s).map((c) => c.id)).toEqual(['strikeSwing']);
+    expect(cuesForEvent(spawn('nova'), s).map((c) => c.id)).toEqual(['novaBurst']);
+    expect(cuesForEvent(spawn('beam'), s)).toEqual([]);
+    const branch = cuesForEvent(spawn('lob', { depth: 1 }), s)[0]!;
+    expect(branch).toMatchObject({ id: 'lobThrow', x: 4, y: 5 });
+    expect(branch.gain!).toBeLessThan(1);
+    const echo = cuesForEvent(spawn('strike', { echo: true }), s)[0]!;
+    expect(echo.gain!).toBeLessThan(1);
+  });
+
+  it('maps beams by element, landings, chains, refunds and automatic triggers', () => {
+    const beam = (el: 'fire' | 'frost' | 'storm'): SimEvent => ({
+      type: 'beamFire',
+      id: 1,
+      castId: 1,
+      elements: [el],
+      fromX: 0,
+      fromY: 0,
+      toX: 9,
+      toY: 0,
+      width: 1.5,
+      hits: [],
+    });
+    const ids = (e: SimEvent) => cuesForEvent(e, s).map((c) => c.id);
+    expect(ids(beam('fire'))).toEqual(['beamFire']);
+    expect(ids(beam('frost'))).toEqual(['beamFrost']);
+    expect(ids(beam('storm'))).toEqual(['beamStorm']);
+    expect(ids({ type: 'lobLand', id: 1, castId: 1, elements: ['fire'], x: 0, y: 0, radius: 5 })).toEqual(['lobLand']);
+    expect(ids({ type: 'chainJump', id: 1, castId: 1, target: 3, fromX: 0, fromY: 0, toX: 1, toY: 1 })).toEqual([
+      'chainZap',
+    ]);
+    expect(ids({ type: 'manaRefund', amount: 2, instanceId: 1, x: 0, y: 0 })).toEqual(['manaChime']);
+    const fired = (trigger: 'cast' | 'pulse'): SimEvent => ({
+      type: 'triggerFired',
+      slot: 0,
+      trigger,
+      castId: 1,
+      x: 0,
+      y: 0,
+      dirX: 1,
+      dirY: 0,
+      mana: 5,
+    });
+    expect(ids(fired('cast'))).toEqual([]);
+    expect(ids(fired('pulse'))).toEqual(['triggerTick']);
+  });
+
+  it('ticks on orb hits and pulses when a sigil emits', () => {
+    const t = new SpellCueTracker();
+    const orbHit: SimEvent = {
+      type: 'hit',
+      target: 3,
+      sourceId: 0,
+      amount: 2,
+      crit: false,
+      damageType: 'fire',
+      x: 1,
+      y: 1,
+      kbX: 0,
+      kbY: 0,
+      spellId: 10,
+    };
+    expect(t.cues(orbHit)).toEqual([]);
+    t.cues(spawn('orb'));
+    expect(t.cues(orbHit).map((c) => c.id)).toEqual(['orbTick']);
+    t.cues({ type: 'spellEnd', id: 10, castId: 1, form: 'orb', x: 0, y: 0, reason: 'expired' });
+    expect(t.cues(orbHit)).toEqual([]);
+    t.cues(spawn('sigil', { id: 20, toX: 30, toY: 40 }));
+    expect(t.cues(spawn('beam', { id: 21, depth: 1, x: 30, y: 40 })).map((c) => c.id)).toEqual(['sigilPulse']);
+    expect(t.cues(spawn('beam', { id: 22, depth: 1, x: 31, y: 40 }))).toEqual([]);
+  });
+
+  it('keeps the frequent spell sounds quiet and rate-limited', () => {
+    for (const id of ['orbTick', 'sigilPulse', 'manaChime'] as const) {
+      expect(sfx[id].gain, id).toBeLessThanOrEqual(0.2);
+      expect(sfx[id].minGapMs, id).toBeGreaterThanOrEqual(70);
+      expect(sfx[id].priority, id).toBe(0);
+    }
   });
 });
 

@@ -94,7 +94,8 @@ Tasks:
 8. CLI: `npm run sim -- --weave "<notation>" --scene dummy_pack --seconds 10 --runs 50` prints DPS, hits, and mana per second.
 9. Console command `weave <slot> <notation>`.
 10. Reference scenes `dummy_single`, `dummy_pack` and `dummy_grid` (DESIGN §5.5) and the dev-only `test_spindle` with a settable Capacity (CONTENT §2).
-11. Sandbox loadout for the arena: Twig Spindle plus one of every M2 rune, dev builds only. The real new-game loadout comes in M4 (CONTENT §9.1).
+11. Sandbox loadout for the arena: unlimited copies of every M2 rune and a choice of spindle (Twig, Ashwood, Rimeglass, Ironbark, Heartwood), so every reference weave can be built. The real new-game loadout with limited runes comes in M4 (CONTENT §9.1).
+12. Closer pays more (DESIGN §2.1): Strike and Nova restore mana per enemy hit near the player (CONTENT §1.2), with the values in the tuning panel. The DPS readout shows mana per second net of these refunds.
 
 Acceptance:
 
@@ -107,6 +108,7 @@ Playtest:
 
 - Build 5 weaves of your own. Is the editor clear? Could you predict what a weave would do before trying it?
 - Which runes feel useless, and which feel mandatory?
+- Does the Strike and Nova mana refund make fighting up close feel rewarding? Is a pure ranged weave set still fun to play?
 
 ## M3: Kindling, the chemistry grid
 

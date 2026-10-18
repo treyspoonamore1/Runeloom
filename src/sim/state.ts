@@ -3,7 +3,21 @@ import { buildRoom, parseRoom, type Room } from './world/room';
 import { createPlayer, type PlayerState } from './actors/player';
 import { spawnRoomEnemies, type Enemy } from './actors/enemies';
 import type { Projectile } from './combat/projectiles';
-import { defaultLoadout, type Loadout } from './combat/casting';
+import {
+  createWeaveLoadout,
+  DEFAULT_LOADOUT,
+  legacyLoadout,
+  type Loadout,
+  type LoadoutSpec,
+  type WeaveLoadout,
+} from './weave/runtime/loadout';
+import type {
+  CastRecord,
+  PendingSpawn,
+  SpellInstance,
+  SpellStats,
+  TriggerQueueEntry,
+} from './weave/runtime/types';
 import { SpatialHash } from './core/spatialHash';
 import { SPATIAL_BUCKET_CELLS } from './core/constants';
 import type { SimEvent } from './events';
@@ -23,6 +37,8 @@ export interface Cheats {
   god: boolean;
   /** Enemy AI frozen: enemies keep whatever velocity and facing they have (tests, debugging). */
   noAI?: boolean;
+  /** Spells never cost mana (the DPS readout; the cost is still reported in 'triggerFired'). */
+  infiniteMana?: boolean;
 }
 
 /** The complete simulation state. Everything the sim needs to continue lives here. */
@@ -41,11 +57,38 @@ export interface GameState {
   tuning: Tuning;
   room: Room;
   player: PlayerState;
-  /** Spell in each weave slot (LMB, RMB, Q, E). M2 replaces it with compiled weaves. */
+  /** Spell-runtime stream: Lob branch landing points (and later spell randomness). */
+  spellRng: Rng;
+  /** Weave slots (LMB, RMB, Q, E), spindle and trigger timers (weave/runtime/loadout.ts). */
+  weaves: WeaveLoadout;
+  /**
+   * LEGACY, derived from `weaves` (not hashed): the M1 spell id per slot where the weave is
+   * exactly an M1 spell, for the M1 HUD. Use `weaves` / src/app/loadout.ts instead.
+   */
   loadout: Loadout;
+  /** Live player spell instances in spawn order (ended ones are removed at the end of each step). */
+  spells: SpellInstance[];
+  /** Open fires (per-cast spawn caps), while anything of their tree is alive. */
+  casts: CastRecord[];
+  /** Echo repeats waiting for their delay. */
+  pendingSpells: PendingSpawn[];
+  /** Events waiting for the next trigger phase (weave/runtime/queue.ts). */
+  triggerQueue: TriggerQueueEntry[];
+  /** Next CastRecord id (fires counted from 1). */
+  nextCastId: number;
+  /**
+   * DPS readout hook (DESIGN §5.5): when > 0, natural On Dodge, On Hurt and On Crit events are
+   * ignored and one of each is synthesized every this many trigger phases (ticks outside
+   * hitstop, so ICDs see the same clock), starting with the first. 0 in play.
+   */
+  triggerForcing: number;
+  /** Trigger phases until the next synthesized event while triggerForcing > 0. */
+  triggerForcingLeft: number;
+  /** Debug counters for the overlay. Not hashed. */
+  stats: SpellStats;
   /** Live enemies in spawn order (dead ones are removed at the end of each step). */
   enemies: Enemy[];
-  /** Live projectiles in spawn order (ended ones are removed at the end of each step). */
+  /** Live projectiles in spawn order (ended ones are removed at the end of each step). Enemy shots only since M2. */
   projectiles: Projectile[];
   /**
    * Path costs toward the player's tile for enemies without a straight path (ai/flowField.ts).
@@ -79,6 +122,8 @@ export interface CreateGameOptions {
   spawnRoomEnemies?: boolean;
   /** Default 'sandbox'. */
   mode?: GameMode;
+  /** Starting weaves and spindle (default DEFAULT_LOADOUT: Fire Bolt, Strike, Twig). */
+  loadout?: LoadoutSpec;
 }
 
 export function createGame(opts: CreateGameOptions): GameState {
@@ -87,7 +132,9 @@ export function createGame(opts: CreateGameOptions): GameState {
   const rng = new Rng(opts.seed);
   const combatRng = rng.fork('combat');
   const aiRng = rng.fork('ai');
+  const spellRng = rng.fork('spell');
   const mode = opts.mode ?? 'sandbox';
+  const weaves = createWeaveLoadout(opts.loadout ?? DEFAULT_LOADOUT, tuning);
   const state: GameState = {
     tick: 0,
     seed: opts.seed,
@@ -99,7 +146,17 @@ export function createGame(opts: CreateGameOptions): GameState {
     tuning,
     room,
     player: createPlayer(room.spawnX, room.spawnY, tuning),
-    loadout: defaultLoadout(),
+    spellRng,
+    weaves,
+    loadout: legacyLoadout(weaves),
+    spells: [],
+    casts: [],
+    pendingSpells: [],
+    triggerQueue: [],
+    nextCastId: 1,
+    triggerForcing: 0,
+    triggerForcingLeft: 0,
+    stats: { spells: 0, dropped: 0, evicted: 0, fires: 0 },
     enemies: [],
     projectiles: [],
     flow: createFlowField(room),

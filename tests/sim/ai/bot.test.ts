@@ -22,6 +22,7 @@ describe('kiter bot vs a 20-enemy wave (M1 acceptance)', () => {
           damageTaken += e.amount;
           hitsTaken++;
         }
+        if (e.type === 'dot' && e.target === 'player') damageTaken += e.amount;
         if (e.type === 'playerDeath') deaths++;
       }
       if (state.enemies.length === 0) {
@@ -31,7 +32,7 @@ describe('kiter bot vs a 20-enemy wave (M1 acceptance)', () => {
     }
     console.log(
       `kiter bot, seed ${SEED}: cleared in ${clearedAt.toFixed(2)} s, ` +
-        `took ${damageTaken.toFixed(1)} damage in ${hitsTaken} hits, ${deaths} deaths`,
+        `took ${damageTaken.toFixed(1)} damage (hits and ignite) in ${hitsTaken} hits, ${deaths} deaths`,
     );
     expect(deaths).toBe(0);
     expect(state.enemies).toHaveLength(0);

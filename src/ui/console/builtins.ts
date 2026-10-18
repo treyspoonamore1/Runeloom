@@ -4,6 +4,7 @@ import { assignDeep } from '../tuningRanges';
 import type { DebugContext } from '../debug';
 import { CommandError, numArg, type CommandRegistry } from './commands';
 import { registerM1Commands } from './m1';
+import { registerM2Commands } from './m2';
 
 /** Context for console commands: the debug context plus actions owned by the UI layer. */
 export interface ConsoleEnv extends DebugContext {
@@ -16,7 +17,6 @@ export interface ConsoleEnv extends DebugContext {
 
 const STUBS: Array<[string, string, string]> = [
   ['give', 'give <rune>', 'M2'],
-  ['weave', 'weave <slot> <notation>', 'M2'],
   ['level', 'level <n>', 'M2'],
 ];
 
@@ -107,6 +107,7 @@ export function registerBuiltins(reg: CommandRegistry<ConsoleEnv>): void {
   });
   reg.register({ name: 'replay', summary: 'Save a replay (same as F9).', run: (_a, c) => c.saveReplay() });
   registerM1Commands(reg);
+  registerM2Commands(reg);
   for (const [name, usage, ms] of STUBS)
     reg.register({ name, usage, summary: `(${ms})`, run: () => `"${name}" is available in ${ms}.` });
 }

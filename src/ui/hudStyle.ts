@@ -53,7 +53,7 @@ export const hudCss = `
 .rl-pip.full::after { background: radial-gradient(circle at 40% 35%, #fff6d0, var(--gold) 70%); }
 .rl-slots { display: flex; gap: calc(var(--u) * 3); }
 .rl-slotwrap { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 0.7); }
-.rl-slotwrap .rl-key { margin-top: calc(var(--u) * 0.9); }
+.rl-slotwrap .rl-key { margin-top: calc(var(--u) * 1.5); }
 .rl-slot { position: relative; width: calc(var(--u) * 8.6); height: calc(var(--u) * 8.6); border-radius: calc(var(--u) * 1.6);
   background: linear-gradient(160deg, var(--indigo-3), var(--indigo-2));
   box-shadow: 0 0 0 calc(var(--u) * 0.4) var(--ink), 0 0 0 calc(var(--u) * 0.8) var(--gold-lo), 0 0 0 calc(var(--u) * 1.2) var(--ink); transition: filter 0.15s; }
@@ -67,8 +67,18 @@ export const hudCss = `
   display: flex; align-items: center; justify-content: center; font-size: calc(var(--u) * 1.9); font-weight: 700; color: var(--cream);
   background: linear-gradient(180deg, var(--mana-2), var(--mana-3)); box-shadow: 0 0 0 calc(var(--u) * 0.3) var(--ink), 0 0 0 calc(var(--u) * 0.6) var(--mana-1); }
 .rl-slot.poor .rl-cost { background: linear-gradient(180deg, #e0523f, #8a1f26); box-shadow: 0 0 0 calc(var(--u) * 0.3) var(--ink), 0 0 0 calc(var(--u) * 0.6) #ff9a85; }
+.rl-slot.empty { background: rgba(26, 22, 56, 0.6); box-shadow: 0 0 0 calc(var(--u) * 0.4) var(--ink), 0 0 0 calc(var(--u) * 0.8) rgba(168, 120, 42, 0.45), 0 0 0 calc(var(--u) * 1.2) var(--ink); }
+.rl-slot.empty::after { content: ''; position: absolute; inset: calc(var(--u) * 1.4); border-radius: calc(var(--u) * 1); border: calc(var(--u) * 0.3) dashed rgba(185, 176, 216, 0.35); }
+.rl-slot.warn svg { filter: saturate(0.2) brightness(0.55); }
+.rl-cd { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: conic-gradient(from 0deg, rgba(12, 8, 30, 0.72) calc(var(--p) * 360deg), transparent 0); }
+.rl-cd.idle { display: none; }
+.rl-auto { position: absolute; left: 50%; bottom: calc(var(--u) * -1.1); transform: translateX(-50%); padding: calc(var(--u) * 0.15) calc(var(--u) * 0.7); border-radius: 999px; font-size: calc(var(--u) * 1.3); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1.1; color: var(--ink); background: #72dcc8; box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink); }
+.rl-warn { position: absolute; bottom: calc(var(--u) * -0.9); left: calc(var(--u) * -1.1); width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6); border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 calc(var(--u) * 0.3) var(--ink), 0 0 calc(var(--u) * 1) rgba(255, 90, 74, 0.8); }
+.rl-warn::after { content: '!'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: calc(var(--u) * 1.9); font-weight: 700; font-style: normal; color: var(--cream); }
+.rl-loomhint { position: absolute; right: calc(var(--u) * 2.2); top: calc(var(--u) * 1.3); display: flex; align-items: center; gap: calc(var(--u) * 0.6); font-size: calc(var(--u) * 1.5); color: var(--gold); letter-spacing: 0.08em; text-transform: uppercase; }
+.rl-loomhint .rl-cap { min-width: 0; margin: 0; padding: calc(var(--u) * 0.15) calc(var(--u) * 0.6); font-size: calc(var(--u) * 1.3); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink); }
 .rl-key { font-size: calc(var(--u) * 1.8); font-weight: 700; letter-spacing: 0.1em; color: var(--gold); text-transform: uppercase; line-height: 1; }
-.rl-spellname { font-size: calc(var(--u) * 1.6); color: var(--sand); line-height: 1; margin-top: calc(var(--u) * -0.1); }
+.rl-spellname { font-size: calc(var(--u) * 1.6); color: var(--sand); line-height: 1; margin-top: calc(var(--u) * -0.1); max-width: calc(var(--u) * 11); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rl-godtag { white-space: nowrap; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + var(--u) * 1.2); padding: calc(var(--u) * 0.3) calc(var(--u) * 1.2); border-radius: 999px; font-size: calc(var(--u) * 1.5); font-weight: 700; letter-spacing: 0.14em; color: var(--ink); background: var(--gold); box-shadow: 0 0 0 calc(var(--u) * 0.3) var(--ink); }
 
 /* ---- Top wave panel and banner ---- */

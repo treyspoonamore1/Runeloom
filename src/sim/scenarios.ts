@@ -1,6 +1,8 @@
 import { kiterInput } from './bots/kiter';
 import { Button, type InputFrame } from './core/input';
 import type { GameMode, GameState } from './state';
+import { applyLoadoutSpec } from './weave/runtime/loadout';
+import { referenceWeaves } from './weave/referenceWeaves';
 
 /**
  * Scripted input sources. Used by the headless runner, the determinism tests
@@ -13,6 +15,8 @@ export interface Scenario {
   roomId: string;
   /** Game mode to create the game in (default 'sandbox'). */
   mode?: GameMode;
+  /** Runs once on the fresh game (weaves, cheats), before the first tick. */
+  setup?(state: GameState): void;
   input(tick: number, state: GameState): InputFrame;
 }
 
@@ -68,30 +72,25 @@ export const scenarios: Scenario[] = [
     description:
       'Arena with dummies and enemies: strafes around the nearest one firing bolts, closes in to Strike, dodges.',
     roomId: 'test/arena',
-    input(tick, state) {
-      const p = state.player;
-      const target = nearestEnemy(state);
-      const tx = target ? target.x : p.x + 10;
-      const ty = target ? target.y : p.y;
-      const dx = tx - p.x;
-      const dy = ty - p.y;
-      const d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const ux = dx / d;
-      const uy = dy / d;
-      // Phases of 90 ticks: two of bolts while strafing, one of closing in to Strike.
-      const striking = Math.floor(tick / 90) % 3 === 2;
-      const side = Math.floor(tick / 150) % 2 === 0 ? 1 : -1;
-      const close = striking ? (d > 4 ? 1 : 0) : d < 15 ? -0.5 : 0.2;
-      let buttons = striking ? Button.Cast2 : Button.Cast1;
-      if (tick % 97 === 0) buttons |= Button.Dodge;
-      return {
-        moveX: ux * close - uy * side,
-        moveY: uy * close + ux * side,
-        aimX: tx,
-        aimY: ty,
-        buttons,
-      };
-    },
+    input: (tick, state) => strafeInput(tick, state, [Button.Cast1, Button.Cast1, Button.Cast2]),
+  },
+  {
+    id: 'weave_mix',
+    description:
+      'Arena waves, god mode, unlimited mana, Heartwood: Twin Fates, Echo Strike, Thunder Sigil, Ember Orbit (reference weaves 13, 12, 11, 10).',
+    roomId: 'test/arena',
+    mode: 'arena',
+    setup: (state) => mixSetup(state, [REF(13), REF(12), REF(11), REF(10)]),
+    input: (tick, state) => strafeInput(tick, state, [Button.Cast1, Button.Cast3, Button.Cast2]),
+  },
+  {
+    id: 'weave_events',
+    description:
+      'Arena waves, god mode, unlimited mana, Heartwood: Shatter Lance, Scatter Spark, Harvest Nova, Glacier Step (reference weaves 6, 4, 5).',
+    roomId: 'test/arena',
+    mode: 'arena',
+    setup: (state) => mixSetup(state, [REF(6), REF(4), 'Harvest > Nova[Fire]', REF(5)]),
+    input: (tick, state) => strafeInput(tick, state, [Button.Cast1, Button.Cast2, Button.Cast2]),
   },
   {
     id: 'arena_bot',
@@ -102,6 +101,47 @@ export const scenarios: Scenario[] = [
     input: (_tick, state) => kiterInput(state),
   },
 ];
+
+/** Reference weave n's notation (CONTENT §2). */
+function REF(n: number): string {
+  return referenceWeaves.find((w) => w.n === n)!.notation;
+}
+
+/** Weaves on Heartwood, god mode and unlimited mana, so the fight runs every form for the whole scenario. */
+function mixSetup(state: GameState, notations: string[]): void {
+  state.cheats.god = true;
+  state.cheats.infiniteMana = true;
+  applyLoadoutSpec(state, { spindleId: 'heartwood', notations });
+}
+
+/**
+ * Strafes around the nearest enemy (real ones before dummies) in phases of 90 ticks, holding
+ * `phases[k]` in phase k (cycling); the last phase closes in (for Strike). Dodges every 97 ticks.
+ */
+function strafeInput(tick: number, state: GameState, phases: readonly number[]): InputFrame {
+  const p = state.player;
+  const target = nearestEnemy(state);
+  const tx = target ? target.x : p.x + 10;
+  const ty = target ? target.y : p.y;
+  const dx = tx - p.x;
+  const dy = ty - p.y;
+  const d = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / d;
+  const uy = dy / d;
+  const phase = Math.floor(tick / 90) % phases.length;
+  const closing = phase === phases.length - 1;
+  const side = Math.floor(tick / 150) % 2 === 0 ? 1 : -1;
+  const close = closing ? (d > 4 ? 1 : 0) : d < 15 ? -0.5 : 0.2;
+  let buttons = phases[phase]!;
+  if (tick % 97 === 0) buttons |= Button.Dodge;
+  return {
+    moveX: ux * close - uy * side,
+    moveY: uy * close + ux * side,
+    aimX: tx,
+    aimY: ty,
+    buttons,
+  };
+}
 
 /** Nearest live enemy to the player, preferring non-dummies; undefined if none. Ties go to the earlier one. */
 function nearestEnemy(state: GameState) {

@@ -1,9 +1,9 @@
 import { enemyDef } from '../../../data/enemies';
-import { spellManaCost, spells } from '../../../data/spells';
 import type { Enemy } from '../actors/enemies';
 import { circleHitsShape, circleIntersectsSector } from '../combat/shapes';
 import { Button, type InputFrame } from '../core/input';
 import type { GameState } from '../state';
+import type { SpellSpec } from '../weave/program';
 import { hasLineOfSight } from '../world/los';
 import { kiterConfig as C } from './kiterConfig';
 import { wallDistanceAt, wallDistanceField } from './wallDistance';
@@ -20,6 +20,8 @@ import { wallDistanceAt, wallDistanceField } from './wallDistance';
  *   ~4× more damage per mana than Fire Bolt here, and mana (1.5/s) is what limits a wave clear.
  * - Fire Bolt (slot 1) at the best target in line of sight only with mana to spare: archers
  *   first, Shieldbearers only from outside the shield arc, with lead.
+ * It reads the numbers from the default weaves in slots 1 and 2 (a Strike and a Bolt root);
+ * a slot holding another form is left alone.
  * - Dodge when a telegraph or arrow lands within dodgeWithin and the best move can't clear it.
  */
 
@@ -41,6 +43,17 @@ const live: Enemy[] = [];
 const goal = { x: 0, y: 0, on: false };
 let bestHitSoon = false;
 
+/** The root spell and mana of `slot` if it is a working Cast weave whose root is `form`. */
+function slotSpell(
+  state: GameState,
+  slot: number,
+  form: SpellSpec['form'],
+): { spec: SpellSpec; mana: number } | null {
+  const prog = state.weaves.slots[slot]?.program;
+  if (!prog || prog.trigger.event !== 'press' || prog.root.form !== form) return null;
+  return { spec: prog.root, mana: prog.mana };
+}
+
 export function kiterInput(state: GameState): InputFrame {
   const p = state.player;
   const out: InputFrame = { moveX: 0, moveY: 0, aimX: p.x + p.aimDirX, aimY: p.y + p.aimDirY, buttons: 0 };
@@ -48,7 +61,9 @@ export function kiterInput(state: GameState): InputFrame {
   live.length = 0;
   for (const e of state.enemies) if (!e.dead && enemyDef(e.kind).behavior.kind !== 'none') live.push(e);
 
-  const canStrike = p.mana >= spellManaCost(spells.strike);
+  const strike = slotSpell(state, 1, 'strike');
+  const bolt = slotSpell(state, 0, 'bolt');
+  const canStrike = strike !== null && p.mana >= strike.mana;
   pickGoal(state, canStrike);
 
   // Movement: best of 16 directions and standing still.
@@ -68,9 +83,9 @@ export function kiterInput(state: GameState): InputFrame {
   out.moveX = bestX;
   out.moveY = bestY;
 
-  if (!aimStrike(state, out)) {
+  if (!aimStrike(state, out, strike)) {
     const spare = p.mana >= p.maxMana * C.boltManaFraction && meleeFarther(state, C.boltSafeDistance);
-    if (spare || p.mana >= spellManaCost(spells.fire_bolt)) aimBolt(state, out, !spare);
+    if (bolt && (spare || p.mana >= bolt.mana)) aimBolt(state, out, !spare, bolt.spec, strike?.spec ?? null);
   }
 
   const dodgeHeld = (state.prevButtons & Button.Dodge) !== 0;
@@ -192,11 +207,16 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
  * by and nothing about to hit, it waits until the swing is worth packMinDamage. Returns true if
  * it holds Strike.
  */
-function aimStrike(state: GameState, out: InputFrame): boolean {
+function aimStrike(
+  state: GameState,
+  out: InputFrame,
+  strike: { spec: SpellSpec; mana: number } | null,
+): boolean {
   const p = state.player;
-  if (p.mana < spellManaCost(spells.strike) && p.castSpell !== 'strike') return false;
-  const arc = spells.strike.arc;
-  const base = spells.strike.baseDamage;
+  if (strike === null || strike.spec.params.form !== 'strike') return false;
+  if (p.mana < strike.mana && p.castSlot !== 1) return false;
+  const arc = strike.spec.params;
+  const base = strike.spec.baseDamage;
   let bestV = 0;
   let bestD = Infinity;
   let ax = 0;
@@ -236,11 +256,17 @@ function aimStrike(state: GameState, out: InputFrame): boolean {
  * archer out of Strike reach that one bolt kills (saves chasing a kiter for its last few life).
  * Returns true if it did.
  */
-function aimBolt(state: GameState, out: InputFrame, finishOnly: boolean): boolean {
+function aimBolt(
+  state: GameState,
+  out: InputFrame,
+  finishOnly: boolean,
+  bolt: SpellSpec,
+  strike: SpellSpec | null,
+): boolean {
   const p = state.player;
-  const bolt = spells.fire_bolt;
-  const speed = bolt.projectile.speed;
-  const reach = spells.strike.arc.reach;
+  if (bolt.params.form !== 'bolt') return false;
+  const speed = bolt.params.speed;
+  const reach = strike?.params.form === 'strike' ? strike.params.reach : 0;
   let best: Enemy | null = null;
   let bestCost = Infinity;
   for (const e of live) {

@@ -2,6 +2,7 @@ import { Container, Sprite, Texture } from 'pixi.js';
 import type { DamageType } from '../../data/combatTypes';
 import type { Atlas } from './atlas';
 import { ENEMY, FX, INK, PROJ } from './combatPalette';
+import { boltLook } from './elementLook';
 import { FxLayer, type FxParticle } from './particles';
 
 const TAU = Math.PI * 2;
@@ -16,15 +17,11 @@ interface Swoosh {
   t: number;
   angle: number;
   dir: number;
+  /** Reach ÷ 5 cells (Wide strikes are bigger) and peak alpha (Echo repeats are fainter). */
+  size: number;
+  a: number;
 }
 
-/** Spark colors per damage type for hit bursts. */
-const HIT_COLORS: Record<DamageType, readonly number[]> = {
-  physical: [FX.ivory, 0xffffff, FX.spark],
-  fire: [PROJ.boltCore, PROJ.boltRim, 0xffe9a0],
-  frost: [0x8fe3ff, 0xe6fbff],
-  storm: [0xf5e04a, 0x9b7bff],
-};
 
 /**
  * Particles and one-shot effects driven by sim events. `player` holds the player's own
@@ -60,7 +57,7 @@ export class FxView {
       const echo = new Sprite(atlas.get('crescent'));
       main.visible = echo.visible = false;
       this.swooshLayer.addChild(echo, main);
-      this.swooshes.push({ main, echo, t: 1, angle: 0, dir: 1 });
+      this.swooshes.push({ main, echo, t: 1, angle: 0, dir: 1, size: 1, a: 1 });
     }
     this.vignette = new Sprite(makeVignette());
     this.vignette.alpha = 0;
@@ -96,10 +93,10 @@ export class FxView {
       const sweep = (1 - (1 - u) * (1 - u)) * 0.9 - 0.55;
       s.main.rotation = s.angle + sweep * s.dir;
       s.echo.rotation = s.angle + (sweep - 0.28) * s.dir;
-      const sc = 0.85 + 0.2 * u;
+      const sc = (0.85 + 0.2 * u) * s.size;
       s.main.scale.set(sc, sc * s.dir);
       s.echo.scale.set(sc * 0.96, sc * 0.96 * s.dir);
-      s.main.alpha = u < 0.35 ? 1 : 1 - (u - 0.35) / 0.65;
+      s.main.alpha = (u < 0.35 ? 1 : 1 - (u - 0.35) / 0.65) * s.a;
       s.echo.alpha = s.main.alpha * 0.4;
     }
     this.vignetteT = Math.max(0, this.vignetteT - dt);
@@ -172,11 +169,15 @@ export class FxView {
 
   // ---- events ---------------------------------------------------------------------------------
 
-  strike(x: number, y: number, dirX: number, dirY: number): void {
+  /** A Strike swoosh. size: reach ÷ 5 cells; tint: element wash (white for physical); alpha: Echo fades it. */
+  strike(x: number, y: number, dirX: number, dirY: number, size = 1, tint = 0xffffff, alpha = 1): void {
     let s = this.swooshes[0]!;
     for (const c of this.swooshes) if (c.t > s.t) s = c;
     this.swingDir = -this.swingDir;
     s.t = 0;
+    s.size = size;
+    s.a = alpha;
+    if (s.main.tint !== tint) s.main.tint = s.echo.tint = tint;
     s.angle = Math.atan2(dirY, dirX);
     s.dir = this.swingDir;
     s.main.position.set(x, y);
@@ -184,10 +185,11 @@ export class FxView {
     s.main.visible = s.echo.visible = true;
   }
 
-  castFlash(x: number, y: number, dirX: number, dirY: number): void {
-    this.one(this.pAdd, 'glow', x, y, FX.castFlashTime * 1.5, PROJ.boltGlow, 2.6, 1.2, 0.8);
-    this.glint(this.pNorm, x, y, 1.1, PROJ.boltCore, FX.castFlashTime, rand(0, 1));
-    this.burst(this.pNorm, 'spark', x, y, 4, [14, 26], [0.1, 0.18], [PROJ.boltCore, PROJ.boltRim], [1.1, 0.4], {
+  castFlash(x: number, y: number, dirX: number, dirY: number, element: DamageType = 'fire'): void {
+    const L = boltLook(element);
+    this.one(this.pAdd, 'glow', x, y, FX.castFlashTime * 1.5, L.glow, 2.6, 1.2, 0.8);
+    this.glint(this.pNorm, x, y, 1.1, L.core, FX.castFlashTime, rand(0, 1));
+    this.burst(this.pNorm, 'spark', x, y, 4, [14, 26], [0.1, 0.18], [L.core, L.rim], [1.1, 0.4], {
       dir: Math.atan2(dirY, dirX),
       spread: 0.7,
       align: 0.03,
@@ -199,24 +201,26 @@ export class FxView {
     this.burst(this.pNorm, 'puff', x, y, 3, [1, 3], [0.25, 0.4], [0x8a8090], [0.35, 0.7], { a0: 0.6, grav: -4 });
   }
 
-  /** A projectile ended. Player bolts fizz orange; enemy arrows spark in the danger color. */
-  projectileEnd(x: number, y: number, enemy: boolean, reason: string): void {
+  /** A projectile ended. Player bolts fizz in their element's colors; enemy arrows spark in the danger color. */
+  projectileEnd(x: number, y: number, enemy: boolean, reason: string, element: DamageType = 'fire'): void {
     const layer = enemy ? this.tNorm : this.pNorm;
     const add = enemy ? this.tAdd : this.pAdd;
-    const hot = enemy ? [PROJ.arrowDanger, 0xff8a4a, 0xffd27a] : [PROJ.boltCore, PROJ.boltRim, 0xfff3c6];
+    const look = boltLook(element);
+    const hot = enemy ? [PROJ.arrowDanger, 0xff8a4a, 0xffd27a] : look.sparks;
+    const glowC = enemy ? PROJ.arrowDanger : look.glow;
     if (reason === 'hit') {
-      this.one(add, 'glow', x, y, 0.16, enemy ? PROJ.arrowDanger : PROJ.boltGlow, 3.2, 1.5, 0.9);
+      this.one(add, 'glow', x, y, 0.16, glowC, 3.2, 1.5, 0.9);
       this.one(layer, 'ring', x, y, 0.2, hot[0]!, 0.6, 3.2, 0.9);
       this.burst(layer, 'spark', x, y, enemy ? 6 : 8, [14, 30], [0.12, 0.25], hot, [1.1, 0.4], { align: 0.025, drag: 5 });
       this.burst(layer, 'puff', x, y, 2, [1, 3], [0.3, 0.5], [FX.smoke], [0.4, 0.9], { a0: 0.45, grav: -5 });
     } else if (reason === 'wall') {
-      this.one(add, 'glow', x, y, 0.12, enemy ? PROJ.arrowDanger : PROJ.boltGlow, 2.2, 1, 0.7);
+      this.one(add, 'glow', x, y, 0.12, glowC, 2.2, 1, 0.7);
       this.burst(layer, 'puff', x, y, 4, [2, 6], [0.3, 0.55], [FX.dust, 0xe8d7b8], [0.5, 1.0], { a0: 0.8, drag: 4 });
       this.burst(layer, 'spark', x, y, 5, [10, 22], [0.1, 0.2], hot, [0.9, 0.3], { align: 0.025, drag: 5 });
       if (enemy) this.burst(layer, 'chip', x, y, 3, [6, 12], [0.3, 0.5], [ENEMY.ember_archer.arrowShaft], [0.45, 0.35], { spin: 12, drag: 4 });
     } else if (reason === 'expired') {
       this.burst(layer, 'puff', x, y, 3, [1, 3], [0.3, 0.5], [FX.smoke], [0.4, 0.8], { a0: 0.5, grav: -4 });
-      this.one(add, 'glow', x, y, 0.2, enemy ? PROJ.arrowDanger : PROJ.boltGlow, 1.6, 0.4, 0.6);
+      this.one(add, 'glow', x, y, 0.2, glowC, 1.6, 0.4, 0.6);
     } else {
       this.burst(layer, 'puff', x, y, 2, [1, 3], [0.25, 0.4], [FX.smoke], [0.4, 0.7], { a0: 0.5 });
     }
@@ -240,7 +244,7 @@ export class FxView {
   hitEnemy(x: number, y: number, kind: string, type: DamageType, crit: boolean, kbX: number, kbY: number): void {
     const dir = kbX !== 0 || kbY !== 0 ? Math.atan2(kbY, kbX) : undefined;
     const n = crit ? 9 : 5;
-    this.burst(this.pNorm, 'spark', x, y, n, [12, 26], [0.1, 0.22], HIT_COLORS[type], [crit ? 1.3 : 1, 0.35], {
+    this.burst(this.pNorm, 'spark', x, y, n, [12, 26], [0.1, 0.22], boltLook(type).sparks, [crit ? 1.3 : 1, 0.35], {
       dir,
       spread: dir === undefined ? 3.2 : 0.9,
       align: 0.03,
@@ -248,8 +252,22 @@ export class FxView {
       jitter: 0.4,
     });
     if (crit) this.glint(this.pNorm, x, y - 0.5, 1.7, 0xffd23f, 0.18, rand(0, 1));
+    this.elementHit(x, y, type, dir);
     if (kind === 'dummy') {
       this.burst(this.pNorm, 'straw', x, y - 0.3, 4, [5, 12], [0.4, 0.7], [0xffffff], [0.8, 0.7], { dir, spread: 1.4, spin: 10, drag: 3, grav: 10 });
+    }
+  }
+
+  /** Element accents on a hit: fire embers rise, frost chips fall, storm arcs snap. */
+  private elementHit(x: number, y: number, type: DamageType, dir: number | undefined): void {
+    const L = this.pNorm;
+    if (type === 'fire') {
+      this.burst(L, 'dot', x, y, 3, [3, 7], [0.3, 0.5], [PROJ.boltRim, 0xffc94a], [0.22, 0.05], { grav: -8, drag: 2, jitter: 0.5 });
+    } else if (type === 'frost') {
+      this.burst(L, 'shard', x, y, 4, [6, 13], [0.3, 0.5], [0xc8f2ff, 0xffffff], [0.5, 0.35], { dir, spread: 1.3, spin: 12, drag: 3, grav: 14 });
+      this.glint(L, x, y - 0.3, 1.1, 0xe6fbff, 0.14, rand(0, 1));
+    } else if (type === 'storm') {
+      for (let i = 0; i < 2; i++) this.one(L, i ? 'zap_b' : 'zap_a', x + rand(-0.6, 0.6), y + rand(-0.6, 0.6), 0.08, 0xffffff, rand(0.8, 1.3), 0.9, 1, rand(0, TAU));
     }
   }
 
@@ -322,7 +340,7 @@ export class FxView {
 }
 
 /** Red-edged radial vignette, transparent in the middle. */
-function makeVignette(): Texture {
+export function makeVignette(): Texture {
   const c = document.createElement('canvas');
   c.width = c.height = 256;
   const g = c.getContext('2d')!;
