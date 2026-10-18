@@ -50,7 +50,7 @@ export interface Renderer {
    */
   handleEvents(events: readonly SimEvent[]): void;
   /** Live view counts, for benchmarks and the debug overlay. */
-  stats(): { enemies: number; projectiles: number; particles: number };
+  stats(): { enemies: number; projectiles: number; particles: number; playerFxAlpha: number };
   destroy(): void;
 }
 
@@ -187,7 +187,12 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     handleEvents(list) {
       events.handle(list);
     },
-    stats: () => ({ enemies: enemies.count, projectiles: projectiles.count, particles: fx.particleCount }),
+    stats: () => ({
+      enemies: enemies.count,
+      projectiles: projectiles.count,
+      particles: fx.particleCount,
+      playerFxAlpha: dim,
+    }),
     destroy() {
       app.destroy(true, { children: true });
     },
