@@ -18,6 +18,11 @@ export interface PlayerShapes {
   /** Staff pointing +x from the hand. */
   staff: GraphicsContext;
   ghost: GraphicsContext;
+  /** Cloak and hood silhouettes in white, tinted for the hurt flash. */
+  flash: GraphicsContext;
+  flashHood: GraphicsContext;
+  /** Soft disc for the cast cue at the staff tip. */
+  castGlow: GraphicsContext;
 }
 
 /** Cloak outline: a bell, narrow at the shoulders, wide at the hem. */
@@ -104,5 +109,13 @@ export function buildPlayerShapes(): PlayerShapes {
   cloakPath(ghost).fill(P.ghost);
   ghost.circle(0, P.hoodY, P.hoodR).fill(P.ghost);
 
-  return { shadow, cloak, cloakRim, hood, hoodRim, hoodPeak, face, staff, ghost };
+  const flash = new GraphicsContext();
+  cloakPath(flash).fill(0xffffff).stroke({ width: P.outline, color: 0xffffff, join: 'round' });
+  const flashHood = new GraphicsContext().circle(0, 0, P.hoodR + P.outline / 2).fill(0xffffff);
+
+  const castGlow = new GraphicsContext();
+  for (let i = 0; i < 6; i++) castGlow.circle(0, 0, 1 - i * 0.15).fill({ color: 0xffffff, alpha: 0.2 });
+  castGlow.circle(0, 0, 0.32).fill(0xffffff);
+
+  return { shadow, cloak, cloakRim, hood, hoodRim, hoodPeak, face, staff, ghost, flash, flashHood, castGlow };
 }
