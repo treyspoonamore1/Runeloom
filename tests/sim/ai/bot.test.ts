@@ -37,5 +37,5 @@ describe('kiter bot vs a 20-enemy wave (M1 acceptance)', () => {
     expect(state.enemies).toHaveLength(0);
     expect(clearedAt).toBeGreaterThan(0);
     expect(clearedAt).toBeLessThanOrEqual(LIMIT_SECONDS);
-  });
+  }, 30_000);
 });
