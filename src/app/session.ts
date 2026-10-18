@@ -1,4 +1,4 @@
-import { createGame, step, type GameState, type InputFrame } from '../sim';
+import { createGame, step, type GameState, type InputFrame, type SimEvent } from '../sim';
 import { roomText } from './rooms';
 import { cloneTuning, type Tuning } from '../../data/tuning';
 
@@ -21,6 +21,11 @@ export class Session {
   frames: InputFrame[] = [];
   /** Tuning at the last reset; replays start from it. */
   startTuning: Tuning;
+  /**
+   * Sim events from every step since the last drainEvents(), in order. A frame can run several
+   * steps (or none), so render and audio drain this once per frame instead of reading state.events.
+   */
+  pendingEvents: SimEvent[] = [];
   private resetListeners: Array<(s: GameState) => void> = [];
 
   constructor(opts: SessionOptions) {
@@ -34,6 +39,14 @@ export class Session {
   step(input: InputFrame): void {
     this.frames.push({ ...input });
     step(this.state, input);
+    for (const e of this.state.events) this.pendingEvents.push(e);
+  }
+
+  /** Returns the events collected since the last call and clears them. */
+  drainEvents(): SimEvent[] {
+    const out = this.pendingEvents;
+    this.pendingEvents = [];
+    return out;
   }
 
   reset(opts: { seed?: number; roomId?: string } = {}): void {
@@ -41,6 +54,7 @@ export class Session {
     if (opts.roomId !== undefined) this.roomId = opts.roomId;
     this.state = createGame({ seed: this.seed, roomText: roomText(this.roomId), tuning: this.state.tuning });
     this.frames = [];
+    this.pendingEvents = [];
     this.startTuning = cloneTuning(this.state.tuning);
     for (const fn of this.resetListeners) fn(this.state);
   }
