@@ -2,8 +2,8 @@ import { TILE_CELLS } from '../core/constants';
 import type { Room } from '../world/room';
 
 /**
- * Path costs toward one goal tile (the player's), over the room's tile grid: Dijkstra with
- * 8-way moves (straight STRAIGHT_COST, diagonal DIAGONAL_COST, about √2 apart) and no corner
+ * Path costs toward one goal tile (the player's), over the room's tile grid: Dijkstra (by bucket
+ * queue) with 8-way moves (straight STRAIGHT_COST, diagonal DIAGONAL_COST, about √2 apart) and no corner
  * cutting, so a diagonal step needs both side tiles walkable. Walls in M1 are whole tiles, so
  * the tile grid loses nothing and keeps a rebuild at about 2,000 nodes for the test arena.
  *
@@ -66,95 +66,67 @@ export function tileAt(f: FlowField, x: number, y: number): number {
   return ty * f.tilesW + tx;
 }
 
-// Binary min-heap of (cost, tile) pairs ordered by cost then tile index, reused across rebuilds.
-let heapKey = new Int32Array(256);
-let heapTile = new Int32Array(256);
-let heapSize = 0;
+// Dial's algorithm: edge costs are only STRAIGHT_COST or DIAGONAL_COST, so while costs `c` are
+// being settled every queued cost lies in [c, c + DIAGONAL_COST]; BUCKETS circular buckets cover
+// that window. Buckets are reused across rebuilds and grow as needed.
+const BUCKETS = DIAGONAL_COST + 1;
+const bucket: Int32Array[] = Array.from({ length: BUCKETS }, () => new Int32Array(256));
+const bucketLen = new Int32Array(BUCKETS);
 
-function before(ka: number, ta: number, kb: number, tb: number): boolean {
-  return ka < kb || (ka === kb && ta < tb);
-}
-
-function push(key: number, t: number): void {
-  if (heapSize === heapKey.length) {
-    const k2 = new Int32Array(heapKey.length * 2);
-    const t2 = new Int32Array(heapKey.length * 2);
-    k2.set(heapKey);
-    t2.set(heapTile);
-    heapKey = k2;
-    heapTile = t2;
+function enqueue(c: number, t: number): void {
+  const b = c % BUCKETS;
+  let arr = bucket[b]!;
+  if (bucketLen[b] === arr.length) {
+    const bigger = new Int32Array(arr.length * 2);
+    bigger.set(arr);
+    bucket[b] = arr = bigger;
   }
-  let i = heapSize++;
-  while (i > 0) {
-    const parent = (i - 1) >> 1;
-    if (!before(key, t, heapKey[parent]!, heapTile[parent]!)) break;
-    heapKey[i] = heapKey[parent]!;
-    heapTile[i] = heapTile[parent]!;
-    i = parent;
-  }
-  heapKey[i] = key;
-  heapTile[i] = t;
-}
-
-// The key of the entry last popped.
-let poppedKey = 0;
-
-function pop(): number {
-  const top = heapTile[0]!;
-  poppedKey = heapKey[0]!;
-  heapSize--;
-  const lk = heapKey[heapSize]!;
-  const lt = heapTile[heapSize]!;
-  let i = 0;
-  for (;;) {
-    const l = 2 * i + 1;
-    if (l >= heapSize) break;
-    const r = l + 1;
-    const c = r < heapSize && before(heapKey[r]!, heapTile[r]!, heapKey[l]!, heapTile[l]!) ? r : l;
-    if (!before(heapKey[c]!, heapTile[c]!, lk, lt)) break;
-    heapKey[i] = heapKey[c]!;
-    heapTile[i] = heapTile[c]!;
-    i = c;
-  }
-  heapKey[i] = lk;
-  heapTile[i] = lt;
-  return top;
+  arr[bucketLen[b]!++] = t;
 }
 
 /**
- * Rebuilds costs toward `goalTile`. A tile is pushed again whenever its cost improves; entries
- * whose key is above the tile's current cost are stale and skipped when popped. With integer
- * costs and the (cost, index) order, the result depends only on the room and the goal.
+ * Rebuilds costs toward `goalTile` (Dijkstra by bucket queue). A tile is queued again whenever
+ * its cost improves; entries whose cost no longer matches are stale and skipped. Shortest-path
+ * costs are unique, so the result depends only on the room and the goal, not on queue order.
  */
 export function buildFlowField(f: FlowField, goalTile: number, tick: number): void {
   const { cost, walkable, tilesW, tilesH } = f;
   cost.fill(UNREACHABLE);
   f.goalTile = goalTile;
   f.builtTick = tick;
-  heapSize = 0;
+  bucketLen.fill(0);
   cost[goalTile] = 0;
-  push(0, goalTile);
-  while (heapSize > 0) {
-    const t = pop();
-    const base = cost[t]!;
-    if (poppedKey > base) continue;
-    const tx = t % tilesW;
-    const ty = (t - tx) / tilesW;
-    for (let k = 0; k < 8; k++) {
-      const nx = tx + NX[k]!;
-      const ny = ty + NY[k]!;
-      if (nx < 0 || ny < 0 || nx >= tilesW || ny >= tilesH) continue;
-      const nt = ny * tilesW + nx;
-      if (walkable[nt] !== 1) continue;
-      let step = STRAIGHT_COST;
-      if (k >= 4) {
-        if (walkable[ty * tilesW + nx] !== 1 || walkable[ny * tilesW + tx] !== 1) continue;
-        step = DIAGONAL_COST;
-      }
-      const c = base + step;
-      if (c < cost[nt]!) {
-        cost[nt] = c;
-        push(c, nt);
+  enqueue(0, goalTile);
+  let queued = 1;
+  for (let c = 0; queued > 0; c++) {
+    const b = c % BUCKETS;
+    // Settling cost c only queues costs c + 2 and c + 3, never into this bucket.
+    const arr = bucket[b]!;
+    const len = bucketLen[b]!;
+    bucketLen[b] = 0;
+    queued -= len;
+    for (let i = 0; i < len; i++) {
+      const t = arr[i]!;
+      if (cost[t] !== c) continue;
+      const tx = t % tilesW;
+      const ty = (t - tx) / tilesW;
+      for (let k = 0; k < 8; k++) {
+        const nx = tx + NX[k]!;
+        const ny = ty + NY[k]!;
+        if (nx < 0 || ny < 0 || nx >= tilesW || ny >= tilesH) continue;
+        const nt = ny * tilesW + nx;
+        if (walkable[nt] !== 1) continue;
+        let step = STRAIGHT_COST;
+        if (k >= 4) {
+          if (walkable[ty * tilesW + nx] !== 1 || walkable[ny * tilesW + tx] !== 1) continue;
+          step = DIAGONAL_COST;
+        }
+        const nc = c + step;
+        if (nc < cost[nt]!) {
+          cost[nt] = nc;
+          enqueue(nc, nt);
+          queued++;
+        }
       }
     }
   }
