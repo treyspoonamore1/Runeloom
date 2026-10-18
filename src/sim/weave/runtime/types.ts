@@ -140,7 +140,9 @@ export interface PendingSpawn {
   /** The record for castId (hashed in state.casts). */
   cast: CastRecord;
   spec: SpellSpec;
+  /** Seconds left; it starts counting down on the tick after `queuedTick`. */
   delayLeft: number;
+  queuedTick: number;
   at: SpawnAt;
 }
 

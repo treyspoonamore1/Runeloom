@@ -133,6 +133,7 @@ export function spawnSpell(state: GameState, cast: CastRecord, spec: SpellSpec, 
       cast,
       spec,
       delayLeft: spec.echo.delay,
+      queuedTick: state.tick,
       at: { ...at, echo: true, damageMult: at.damageMult * spec.echo.damageMult },
     });
   }

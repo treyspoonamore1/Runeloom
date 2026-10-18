@@ -63,7 +63,7 @@ export function hashWeaveState(h: Hasher, state: GameState): void {
 
   h.u32(state.pendingSpells.length);
   for (const ps of state.pendingSpells) {
-    h.u32(ps.castId).num(ps.delayLeft);
+    h.u32(ps.castId).num(ps.delayLeft).u32(ps.queuedTick);
     path(h, ps.spec.path);
     at(h, ps.at);
   }

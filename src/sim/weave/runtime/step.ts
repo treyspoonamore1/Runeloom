@@ -16,7 +16,8 @@ export function stepSpells(state: GameState): void {
     const due: PendingSpawn[] = [];
     let n = 0;
     for (const ps of pend) {
-      ps.delayLeft -= DT;
+      // A delay of d seconds queued on tick T spawns on tick T + 60d.
+      if (ps.queuedTick !== state.tick) ps.delayLeft -= DT;
       if (ps.delayLeft > TIME_EPSILON) pend[n++] = ps;
       else due.push(ps);
     }
