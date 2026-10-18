@@ -12,7 +12,11 @@ import { isSolidCell, type Room } from '../world/room';
  * into each contact normal, so bodies slide along walls and around corners.
  */
 
-/** Longest move between collision checks, in cells. Must stay well below any body radius. */
+/**
+ * Longest move between collision checks, in cells. A body can sink at most this far
+ * into a wall before being pushed out, and it always leaves by the nearer side, so
+ * keeping it under half a cell means no body of any radius skips a one-cell wall.
+ */
 const MAX_SUBSTEP = 0.4;
 /** Push-out passes per substep. Each pass resolves the single deepest overlap. */
 const RESOLVE_PASSES = 6;

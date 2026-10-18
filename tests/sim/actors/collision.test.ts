@@ -52,6 +52,11 @@ function roomWithBlocks(w: number, h: number, blocks: [number, number][]): GameS
   return gameFromRows(rows, MANY_DODGES);
 }
 
+/** Makes the one-cell column `cx` solid for the full room height. */
+function addCellColumn(state: GameState, cx: number): void {
+  for (let cy = 0; cy < state.room.height; cy++) state.room.solid[cy * state.room.width + cx] = 1;
+}
+
 function expectClear(state: GameState): void {
   const p = state.player;
   expect(penetration(state.room, p.x, p.y, state.tuning.player.radius)).toBeLessThan(OVERLAP_TOLERANCE);
@@ -79,35 +84,49 @@ describe('walls stop the player', () => {
     }
   }
 
-  it('does not tunnel through a one-cell-thick wall when dodging into it repeatedly from many angles', () => {
-    const state = openRoom(16, 12, MANY_DODGES);
-    const r = state.tuning.player.radius;
-    const wallX = 32;
-    for (let cy = 0; cy < state.room.height; cy++) state.room.solid[cy * state.room.width + wallX] = 1;
-    const maxStep = dodgeSpeed(state.tuning.player) * DT + 1e-9;
-    for (let k = -8; k <= 8; k++) {
-      place(state, wallX - 4, 24);
-      run(
-        state,
-        60,
-        (i) => input(1, k / 4, mashDodge(i)),
-        () => {
-          const p = state.player;
-          expect(p.x).toBeLessThanOrEqual(wallX - r + OVERLAP_TOLERANCE);
-          expect(Math.hypot(p.x - p.prevX, p.y - p.prevY)).toBeLessThanOrEqual(maxStep);
-          expectClear(state);
-        },
-      );
-    }
-  });
+  for (const [label, dodgeDistance] of [
+    ['default dodge', undefined],
+    ['5x dodge speed, over 5 cells per tick', 60],
+  ] as const) {
+    it(`does not tunnel through a one-cell-thick wall when dodging into it from many angles (${label})`, () => {
+      const state = openRoom(16, 12, { ...MANY_DODGES, ...(dodgeDistance ? { dodgeDistance } : {}) });
+      const r = state.tuning.player.radius;
+      const wallX = 32;
+      addCellColumn(state, wallX);
+      const maxStep = dodgeSpeed(state.tuning.player) * DT + 1e-9;
+      for (let k = -8; k <= 8; k++) {
+        place(state, wallX - 4, 24);
+        run(
+          state,
+          60,
+          (i) => input(1, k / 4, mashDodge(i)),
+          () => {
+            const p = state.player;
+            expect(p.x).toBeLessThanOrEqual(wallX - r + OVERLAP_TOLERANCE);
+            expect(Math.hypot(p.x - p.prevX, p.y - p.prevY)).toBeLessThanOrEqual(maxStep);
+            expectClear(state);
+          },
+        );
+      }
+    });
+  }
 
-  it('moveCircle stops a huge single move at a one-cell wall', () => {
+  it('moveCircle stops any large single move at a one-cell wall, for any start offset and radius', () => {
     const state = openRoom(16, 12);
     const wallX = 32;
-    for (let cy = 0; cy < state.room.height; cy++) state.room.solid[cy * state.room.width + wallX] = 1;
+    addCellColumn(state, wallX);
+    for (const r of [0.25, 0.5, 1.5, 3]) {
+      for (let off = 0; off < 1; off += 0.0625) {
+        for (const dist of [0.5, 1.7, 3.3, 50]) {
+          const body = { x: wallX - r - 2 + off, y: 24, vx: 3000, vy: 0 };
+          moveCircle(state.room, body, r, dist, dist / 7);
+          expect(body.x).toBeLessThanOrEqual(wallX - r + OVERLAP_TOLERANCE);
+          expect(penetration(state.room, body.x, body.y, r)).toBeLessThan(OVERLAP_TOLERANCE);
+        }
+      }
+    }
     const body = { x: 28, y: 24, vx: 3000, vy: 0 };
-    const touched = moveCircle(state.room, body, 1.5, 50, 0.25);
-    expect(touched).toBe(true);
+    expect(moveCircle(state.room, body, 1.5, 50, 0)).toBe(true);
     expect(body.x).toBeCloseTo(wallX - 1.5, 9);
     expect(body.vx).toBe(0);
   });
