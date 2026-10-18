@@ -15,7 +15,7 @@ export { moveCircle, circleOverlapsSolid, type CircleBody } from './actors/colli
 export { SPATIAL_BUCKET_CELLS } from './core/constants';
 export { isShotSolidCell } from './world/room';
 export { SpatialHash, type HashBody } from './core/spatialHash';
-export type { SimEvent, SimEventType, Team, ProjectileEndReason } from './events';
+export type { SimEvent, SimEventType, Team, ProjectileEndReason, DeathCause, TimedAilment } from './events';
 export {
   PLAYER_ID,
   spawnEnemy,
@@ -39,7 +39,29 @@ export {
   type DamageTarget,
   type HitResult,
 } from './combat/damage';
-export { applyHit, addHitstop, type HitInfo } from './combat/hits';
+export { applyHit, addHitstop, killEnemy, type HitInfo } from './combat/hits';
+export {
+  createAilments,
+  clearAilments,
+  applyHitAilments,
+  applyIgnite,
+  addChill,
+  freezeTarget,
+  applyShock,
+  actionSpeed,
+  chillSlow,
+  shockEffect,
+  isFrozen,
+  isIgnited,
+  isImmune,
+  isBoss,
+  type Ailments,
+  type AilmentTarget,
+  type IgniteState,
+  type FreezeState,
+  type ShockState,
+} from './combat/ailments';
+export { stepAilments } from './combat/ailmentTick';
 export { isBlockedByShield } from './combat/shield';
 export {
   circleHitsShape,

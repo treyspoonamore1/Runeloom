@@ -13,7 +13,17 @@ describe('combat determinism', () => {
       step(state, sc.input(state.tick, state));
       for (const e of state.events) seen.set(e.type, (seen.get(e.type) ?? 0) + 1);
     }
-    for (const t of ['cast', 'projectileSpawn', 'hit', 'death', 'dodge', 'hitstop', 'shieldBlock'])
+    for (const t of [
+      'cast',
+      'projectileSpawn',
+      'hit',
+      'death',
+      'dodge',
+      'hitstop',
+      'shieldBlock',
+      'ailmentApplied',
+      'dot',
+    ])
       expect(seen.get(t) ?? 0, t).toBeGreaterThan(0);
   });
 
@@ -42,6 +52,15 @@ describe('combat determinism', () => {
       (s) => s.combatRng.nextU32(),
       (s) => (s.loadout[2] = 'strike'),
       (s) => s.nextId++,
+      (s) => (s.enemies[0]!.ailments.ignite.dps += 1),
+      (s) => (s.enemies[0]!.ailments.ignite.sourceId = 9),
+      (s) => (s.enemies[0]!.ailments.chill += 1),
+      (s) => (s.enemies[0]!.ailments.freeze.timeLeft += 0.1),
+      (s) => (s.enemies[0]!.ailments.freeze.immuneLeft += 0.1),
+      (s) => (s.enemies[0]!.ailments.shock.effect += 0.1),
+      (s) => (s.enemies[0]!.ailments.dotPending += 1),
+      (s) => (s.player.ailments.shock.timeLeft += 0.1),
+      (s) => (s.player.ailments.dotReportLeft += 0.1),
     ];
     for (const m of mutations) {
       const s = base();

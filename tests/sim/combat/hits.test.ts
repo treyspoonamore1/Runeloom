@@ -108,7 +108,16 @@ describe('dummy', () => {
     });
     expect(e.dead).toBe(true);
     expect(ofType(state.events, 'death')).toEqual([
-      { type: 'death', id: e.id, kind: 'tinderling', x: 100, y: 60 },
+      {
+        type: 'death',
+        id: e.id,
+        kind: 'tinderling',
+        x: 100,
+        y: 60,
+        killerId: 0,
+        cause: 'hit',
+        shattered: false,
+      },
     ]);
     tick(state);
     expect(state.enemies).not.toContain(e);

@@ -1,6 +1,7 @@
 import { damageTypes, type DamageAmounts } from '../../data/combatTypes';
 import { Hasher } from './core/hash';
 import type { AttackShape } from './combat/shapes';
+import type { Ailments } from './combat/ailments';
 import type { DamagePacket } from './combat/damage';
 import type { GameState } from './state';
 
@@ -40,7 +41,8 @@ export function hashState(state: GameState): number {
   h.num(p.dodgeDirX).num(p.dodgeDirY).num(p.iframesLeft);
   h.u32(p.level).num(p.life).num(p.maxLife).num(p.mana).num(p.maxMana);
   amounts(h, p.resist);
-  h.num(p.shock).num(p.kbX).num(p.kbY).bool(p.dead).num(p.respawnLeft);
+  ailments(h, p.ailments);
+  h.num(p.kbX).num(p.kbY).bool(p.dead).num(p.respawnLeft);
   h.u32(p.castSlot + 1)
     .string(p.castSpell ?? '-')
     .num(p.castLeft)
@@ -53,7 +55,8 @@ export function hashState(state: GameState): number {
     h.num(e.x).num(e.y).num(e.vx).num(e.vy).num(e.kbX).num(e.kbY);
     h.num(e.radius).num(e.facingX).num(e.facingY).num(e.life).num(e.maxLife);
     amounts(h, e.resist);
-    h.num(e.shock).u32(e.areaLevel).string(e.rarity).bool(e.dead);
+    ailments(h, e.ailments);
+    h.u32(e.areaLevel).string(e.rarity).bool(e.dead);
     const ai = e.ai;
     h.string(ai.mode).byte(0).num(ai.timer).num(ai.targetId).num(ai.cooldown);
     h.bool(ai.los).bool(ai.walkLine).num(ai.offsetX).num(ai.offsetY).num(ai.strafe).num(ai.strafeLeft);
@@ -84,6 +87,13 @@ function packet(h: Hasher, d: DamagePacket): void {
   amounts(h, d.base);
   h.num(d.critChance).num(d.critMultiplier).num(d.increased).u32(d.more.length);
   for (const m of d.more) h.num(m);
+  h.num(d.ailmentDuration ?? 1);
+}
+
+function ailments(h: Hasher, a: Ailments): void {
+  h.num(a.ignite.dps).num(a.ignite.timeLeft).num(a.ignite.sourceId).num(a.chill);
+  h.num(a.freeze.timeLeft).num(a.freeze.immuneLeft).num(a.shock.effect).num(a.shock.timeLeft);
+  h.num(a.dotPending).num(a.dotReportLeft);
 }
 
 function shape(h: Hasher, s: AttackShape): void {

@@ -20,3 +20,11 @@ export interface ProjectileDef {
   /** Extra targets it passes through before stopping (0: stops on the first hit). */
   pierce: number;
 }
+
+/**
+ * Ailments an entity can suffer (DESIGN §6.4). Entity ailments ship in M2; Wet and Oiled come
+ * with the chemistry grid in M3. Being immune to 'chill' also prevents Freeze (Freeze comes
+ * from chill), while immunity to 'freeze' alone still allows the slow.
+ */
+export const ailmentKinds = ['ignite', 'chill', 'freeze', 'shock'] as const;
+export type AilmentKind = (typeof ailmentKinds)[number];

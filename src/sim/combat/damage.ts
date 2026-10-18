@@ -16,13 +16,18 @@ export interface DamagePacket {
   increased: number;
   /** Each "more" or "less" modifier as a fraction (0.3 = 30% more, -0.25 = 25% less). */
   more: readonly number[];
+  /**
+   * Multiplier on the durations of the Ignite, Shock and Freeze this hit applies (1.3 with
+   * Lingering). Missing means 1. Chill decay and boss freeze immunity are not scaled.
+   */
+  ailmentDuration?: number;
 }
 
 /** The target side of the formula. */
 export interface DamageTarget {
   /** Resistance per type (0.75 = 75%, negative takes extra). Caps are applied where it is set. */
   resist: DamageAmounts;
-  /** Shock: increased damage taken as a fraction (0.2 = 20%). 0 until ailments (M2). */
+  /** Shock: increased damage taken as a fraction (0.2 = 20%); see combat/ailments.ts. */
   shock: number;
 }
 
@@ -33,6 +38,11 @@ export interface HitResult {
   byType: DamageAmounts;
   /** The type that dealt the most (ties go to the earlier type in damageTypes). */
   mainType: DamageType;
+  /**
+   * The target's Shock that multiplied this hit (fraction). byType[t] / (1 + shock) is the
+   * damage before Shock, which ailment magnitudes use.
+   */
+  shock: number;
 }
 
 export function zeroAmounts(): DamageAmounts {
@@ -48,7 +58,7 @@ export function makePacket(
 ): DamagePacket {
   const base = zeroAmounts();
   for (const t of damageTypes) base[t] = baseDamage * (shares[t] ?? 0);
-  return { base, critChance, critMultiplier, increased: 0, more: [] };
+  return { base, critChance, critMultiplier, increased: 0, more: [], ailmentDuration: 1 };
 }
 
 /**
@@ -80,7 +90,7 @@ export function resolveHit(packet: DamagePacket, target: DamageTarget, rng: Rng)
       mainType = t;
     }
   }
-  return { total, crit, byType, mainType };
+  return { total, crit, byType, mainType, shock: target.shock };
 }
 
 /** base × growth^(level − 1), by repeated multiplication (exact for integer levels, no Math.pow). */

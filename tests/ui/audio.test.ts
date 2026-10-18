@@ -164,8 +164,30 @@ describe('cuesForEvent', () => {
   });
 
   it('picks death, telegraph and attack sounds by kind or attack name', () => {
-    expect(ids({ type: 'death', id: 1, kind: 'shieldbearer', x: 0, y: 0 })).toEqual(['deathShieldbearer']);
-    expect(ids({ type: 'death', id: 1, kind: 'dummy', x: 0, y: 0 })).toEqual(['deathDefault']);
+    expect(
+      ids({
+        type: 'death',
+        id: 1,
+        kind: 'shieldbearer',
+        x: 0,
+        y: 0,
+        killerId: 0,
+        cause: 'hit' as const,
+        shattered: false,
+      }),
+    ).toEqual(['deathShieldbearer']);
+    expect(
+      ids({
+        type: 'death',
+        id: 1,
+        kind: 'dummy',
+        x: 0,
+        y: 0,
+        killerId: 0,
+        cause: 'hit' as const,
+        shattered: false,
+      }),
+    ).toEqual(['deathDefault']);
     expect(ids({ type: 'telegraph', id: 99, attack: 'fire_arrow', windup: 0.4 })).toEqual([
       'telegraphRanged',
     ]);

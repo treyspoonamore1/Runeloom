@@ -1,5 +1,6 @@
 import type { AttackDef, BehaviorDef, EnemyDef } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
+import { actionSpeed } from '../combat/ailments';
 import { DT } from '../core/constants';
 import type { GameState } from '../state';
 import { isSolidCell } from '../world/room';
@@ -36,7 +37,7 @@ export function stepKite(state: GameState, e: Enemy, b: Kite, def: AttackDef, ki
     return;
   }
 
-  ai.strafeLeft -= DT;
+  ai.strafeLeft -= DT * actionSpeed(state, e);
   if (ai.strafeLeft <= 0) flipStrafe(state, e, b);
   if (toPlayer.dist > band.max) {
     steerTo(state, e, p.x, p.y, 1);

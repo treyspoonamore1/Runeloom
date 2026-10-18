@@ -1,5 +1,6 @@
 import type { AttackDef, BehaviorDef } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
+import { actionSpeed } from '../combat/ailments';
 import { DT } from '../core/constants';
 import { smallAngleCos, smallAngleSin, turnToward } from '../core/math';
 import type { GameState } from '../state';
@@ -42,7 +43,7 @@ export function stepShield(state: GameState, e: Enemy, b: Shield, def: AttackDef
     wantX = e.vx / v;
     wantY = e.vy / v;
   }
-  const step = b.turnRate * DT;
+  const step = b.turnRate * DT * actionSpeed(state, e);
   turnToward(e.facingX, e.facingY, wantX, wantY, smallAngleCos(step), smallAngleSin(step), turned);
   e.facingX = turned.x;
   e.facingY = turned.y;

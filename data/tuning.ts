@@ -54,6 +54,8 @@ export const defaultTuning = {
     hitstopCrit: 0.03,
     /** Seconds the sim freezes when Strike kills. */
     hitstopStrikeKill: 0.06,
+    /** Seconds the sim freezes when a Frozen enemy is killed by a hit (Shatter). Never from damage over time. */
+    hitstopShatter: 0.08,
     /**
      * Knockback decay time constant in seconds. Velocity loses DT/knockbackTime of itself per tick,
      * so an impulse of distance/knockbackTime travels the full knockback distance (CONTENT values
@@ -62,6 +64,55 @@ export const defaultTuning = {
     knockbackTime: 0.08,
     /** Knockback velocity (cells/s) below which it stops. Leaves at most this × knockbackTime untravelled. */
     knockbackStopSpeed: 0.5,
+  },
+  /**
+   * Entity ailments (DESIGN §6.4; src/sim/combat/ailments.ts). Magnitudes are computed from the
+   * hit's damage of the matching type after resistance and before Shock. Durations from hits are
+   * multiplied by the hit's DamagePacket.ailmentDuration (Lingering).
+   */
+  ailments: {
+    /** Ignite damage per second as a fraction of the triggering hit's fire damage. */
+    igniteDpsFraction: 0.5,
+    /** Seconds an Ignite lasts. */
+    igniteDuration: 3,
+    /** Chill points per (frost damage ÷ max life): 200 means a hit for 50% of max life adds 100. */
+    chillPerLifeFraction: 200,
+    /** Slow (fraction of movement and action speed) per chill point: 0.003 = 0.3%. */
+    chillSlowPerPoint: 0.003,
+    /** Highest slow from chill. */
+    chillSlowMax: 0.3,
+    /** Chill points lost per second. */
+    chillDecay: 25,
+    /** Chill points that freeze; chill never goes above this. Freezing consumes the chill. */
+    freezeThreshold: 100,
+    /** Seconds a Freeze lasts. */
+    freezeDuration: 1.2,
+    /** Boss chill rule: flat chill points per frost hit, whatever its damage. */
+    bossChillPerHit: 12,
+    /** Boss chill rule: chill points lost per second. */
+    bossChillDecay: 10,
+    /** Boss chill rule: highest slow from chill. */
+    bossChillSlowMax: 0.15,
+    /** Boss chill rule: seconds a Freeze lasts. */
+    bossFreezeDuration: 0.8,
+    /** Boss chill rule: seconds after a Freeze ends during which the boss can't be frozen. */
+    bossFreezeImmunity: 6,
+    /** Chill gain multiplier while Wet (M3 hook; Wet doesn't exist yet). */
+    wetChillMultiplier: 1.5,
+    /** Shock effect (fraction of increased damage taken) per (storm damage ÷ max life). */
+    shockPerLifeFraction: 1,
+    /** Weakest Shock: 5% increased damage taken. */
+    shockMin: 0.05,
+    /** Strongest Shock: 50% increased damage taken. */
+    shockMax: 0.5,
+    /** Seconds a Shock lasts. */
+    shockDuration: 4,
+    /** Player-side limit: longest Freeze on the player, seconds. */
+    playerFreezeMax: 0.6,
+    /** Player-side limit: strongest Shock on the player. */
+    playerShockMax: 0.3,
+    /** Seconds between 'dot' events per target while it burns (damage numbers without spam). */
+    dotReportInterval: 0.5,
   },
   enemies: {
     /** Soft separation: push speed (cells/s) per cell of overlap between two bodies. */
@@ -118,6 +169,23 @@ export const defaultTuning = {
 
 export type Tuning = typeof defaultTuning;
 
+/**
+ * A deep copy of `t`. Values missing from `t` (tuning saved before a section existed, e.g. an
+ * old replay) are filled in from the defaults.
+ */
 export function cloneTuning(t: Tuning = defaultTuning): Tuning {
-  return JSON.parse(JSON.stringify(t)) as Tuning;
+  const copy = JSON.parse(JSON.stringify(t)) as Tuning;
+  if (t !== defaultTuning) fillMissing(copy as unknown as Obj, defaultTuning as unknown as Obj);
+  return copy;
+}
+
+type Obj = Record<string, unknown>;
+
+function fillMissing(dst: Obj, defaults: Obj): void {
+  for (const [k, v] of Object.entries(defaults)) {
+    const cur = dst[k];
+    if (cur === undefined) dst[k] = JSON.parse(JSON.stringify(v)) as unknown;
+    else if (v !== null && typeof v === 'object' && cur !== null && typeof cur === 'object')
+      fillMissing(cur as Obj, v as Obj);
+  }
 }

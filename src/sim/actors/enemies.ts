@@ -1,6 +1,7 @@
 import type { DamageAmounts } from '../../../data/combatTypes';
 import { enemyDef, isEnemyKind, type EnemyKind } from '../../../data/enemies';
 import type { AttackShape } from '../combat/shapes';
+import { createAilments, type Ailments } from '../combat/ailments';
 import { scaleByLevel } from '../combat/damage';
 import { emit } from '../events';
 import type { GameState } from '../state';
@@ -110,8 +111,8 @@ export interface Enemy {
   life: number;
   maxLife: number;
   resist: DamageAmounts;
-  /** Shock: increased damage taken as a fraction. 0 until ailments (M2). */
-  shock: number;
+  /** Ignite, Chill, Freeze and Shock (combat/ailments.ts). */
+  ailments: Ailments;
   /** Area level its life and damage are scaled for. */
   areaLevel: number;
   rarity: EnemyRarity;
@@ -169,7 +170,7 @@ export function spawnEnemy(
     life,
     maxLife: life,
     resist: { ...def.resist },
-    shock: 0,
+    ailments: createAilments(),
     areaLevel,
     rarity: 'normal',
     dead: false,

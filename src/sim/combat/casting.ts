@@ -5,6 +5,7 @@ import { DT } from '../core/constants';
 import { Button, isHeld, wasPressed, type InputFrame } from '../core/input';
 import { emit } from '../events';
 import type { GameState } from '../state';
+import { actionSpeed, isFrozen } from './ailments';
 import { makePacket, type DamagePacket } from './damage';
 import { applyHit, directionOr } from './hits';
 import { spawnProjectile } from './projectiles';
@@ -42,10 +43,15 @@ export function castDuration(state: GameState, def: SpellDef): number {
  * - Otherwise, unless dead or dodging, the lowest held slot with a spell and enough mana starts a
  *   cast; its first tick counts toward the cast. Holding keeps recasting, one cast duration apart.
  * The player can move throughout. A press with too little mana sends 'castFailed'.
+ * Chill slows the cast (it advances at actionSpeed); Freeze cancels it and blocks new casts.
  */
 export function stepCasting(state: GameState, input: InputFrame): void {
   const p = state.player;
   if (p.dead) return;
+  if (isFrozen(p)) {
+    cancelCast(state);
+    return;
+  }
   if (p.castSlot >= 0) {
     advanceCast(state);
     return;
@@ -80,7 +86,7 @@ export function stepCasting(state: GameState, input: InputFrame): void {
 
 function advanceCast(state: GameState): void {
   const p = state.player;
-  p.castLeft -= DT;
+  p.castLeft -= DT * actionSpeed(state, p);
   if (!p.castReleased) {
     const releaseAt = p.castTime * state.tuning.player.castReleaseFraction;
     if (p.castTime - p.castLeft >= releaseAt - TIME_EPSILON) {
