@@ -97,7 +97,7 @@ export interface SpellInstance {
   followsPlayer: boolean;
   /** Ids hit so far (or blocked by), in order; nothing is hit twice except by an Orb after its interval. */
   hitIds: number[];
-  /** Orb only, parallel to hitIds: seconds until that target can be hit again. */
+  /** Orb only, parallel to hitIds: seconds until that target can be hit again (a shared empty list on other forms). */
   hitCooldowns: number[];
   /** Direct hits landed (area forms fire On Hit on the first only). */
   hitCount: number;

@@ -6,17 +6,21 @@
 import { performance } from 'node:perf_hooks';
 import {
   Rng,
+  applyLoadoutSpec,
   createGame,
+  createReferenceScene,
   createScenarioGame,
   findScenario,
+  fireProgram,
   makePacket,
+  openCast,
+  referenceWeaves,
   spawnGroup,
-  spawnProjectile,
+  spawnSpell,
   step,
   NEUTRAL_INPUT,
   type GameState,
 } from '../src/sim';
-import { spells } from '../data/spells';
 import { parseArgs, requireInt, runCli } from './lib/args';
 import { loadRoomText } from './lib/rooms';
 import { summarize, type Summary } from './lib/stats';
@@ -49,31 +53,33 @@ function scenarioBench(scenarioId: string): Bench {
 }
 
 const STRESS_ENEMIES = { tinderling: 180, ember_archer: 75, shieldbearer: 45 };
-const STRESS_PROJECTILES = 2000;
+const STRESS_BOLTS = 2000;
 
 /**
- * M1 stress (BUILD_PLAN M1 task 8): 300 aggroed enemies with AI (60% Tinderlings, 25% archers,
- * 15% Shieldbearers) closing on a god-mode player, and 2,000 player Fire Bolts flying in the arena.
- * Bolts deal no damage so the load stays constant; ended bolts are replaced each tick from random
- * open cells in random directions (a bench-only Rng, so sim streams are untouched). The top-up is
- * timed with the step.
+ * DESIGN §12 stress: 300 aggroed enemies with AI (60% Tinderlings, 25% archers, 15%
+ * Shieldbearers) closing on a god-mode player, and 2,000 live player Bolt instances (the spell
+ * runtime's `Cast > Bolt[Fire]`) flying in the arena. Bolts deal no damage and no knockback so
+ * the load stays constant (as the M1 projectile version); ended bolts are replaced each tick from random open cells in random directions (a
+ * bench-only Rng, so sim streams are untouched). The top-up is timed with the step.
  */
 function stressBench(): Bench {
   return {
     id: 'entity:stress_300_2000',
-    description: 'Entity step, 300 enemies with AI + 2,000 projectiles',
+    description: 'Entity step, 300 enemies with AI + 2,000 bolt spell instances',
     budgetMs: ENTITY_BUDGET_MS,
     setup() {
       const state = createGame({ seed: 1, roomText: loadRoomText('test/arena'), spawnRoomEnemies: false });
       state.cheats.god = true;
       spawnGroup(state, STRESS_ENEMIES, state.room.level);
       const rng = new Rng(7);
-      const bolt = spells.fire_bolt;
-      const packet = makePacket(0, bolt.shares, 0, state.tuning.combat.critMultiplier);
+      // One fire owns every bolt: a bench-only program copy without the per-cast cap.
+      const program = { ...state.weaves.slots[0]!.program!, spawnCap: Infinity };
+      const cast = openCast(state, -1, 'cast', program);
+      // Bench-only copy of the bolt spec without knockback, so hits don't scatter the crowd.
+      const spec = { ...program.root, knockback: 0 };
+      const harmless = makePacket(0, { fire: 1 }, 0, state.tuning.combat.critMultiplier);
       const topUp = (s: GameState) => {
-        let live = 0;
-        for (const p of s.projectiles) if (p.team === 'player' && !p.ended) live++;
-        for (; live < STRESS_PROJECTILES; live++) {
+        for (let live = s.stats.spells; live < STRESS_BOLTS; live++) {
           let x: number;
           let y: number;
           do {
@@ -89,17 +95,19 @@ function stressBench(): Bench {
             l2 = dx * dx + dy * dy;
           } while (l2 > 1 || l2 === 0);
           const l = Math.sqrt(l2);
-          spawnProjectile(s, {
-            team: 'player',
-            ownerId: 0,
+          spawnSpell(s, cast, spec, {
             x,
             y,
             dirX: dx / l,
             dirY: dy / l,
-            def: bolt.projectile,
-            damage: packet,
-            knockback: 0,
+            aimX: x,
+            aimY: y,
+            sourceId: -1,
+            echo: false,
+            damageMult: 1,
+            fromPlayer: false,
           });
+          s.spells[s.spells.length - 1]!.packet = harmless;
         }
       };
       return () => {
@@ -110,12 +118,61 @@ function stressBench(): Bench {
   };
 }
 
+/**
+ * BUILD_PLAN M2 acceptance: 4 copies of reference weave 14 (Recursion Stress) on a 22-Capacity
+ * test spindle in dummy_grid, all four slots firing at the grid every 0.45 s (its cast time),
+ * each fire hitting the 64-instance cap.
+ */
+function weave14Bench(): Bench {
+  return {
+    id: 'entity:weave14_x4',
+    description: 'Entity step, 4 × reference weave 14 firing in dummy_grid (22-Capacity test spindle)',
+    budgetMs: ENTITY_BUDGET_MS,
+    setup() {
+      const { state, centerX, centerY } = createReferenceScene('dummy_grid', { seed: 1 });
+      const notation = referenceWeaves.find((w) => w.n === 14)!.notation;
+      applyLoadoutSpec(state, {
+        spindleId: 'test_spindle',
+        capacity: 22,
+        notations: [notation, notation, notation, notation],
+      });
+      state.cheats.infiniteMana = true;
+      const p = state.player;
+      const len = Math.hypot(centerX - p.x, centerY - p.y);
+      const period = Math.round(state.weaves.slots[0]!.program!.castTime * 60);
+      const frame = { ...NEUTRAL_INPUT, aimX: centerX, aimY: centerY };
+      let t = 0;
+      return () => {
+        if (t++ % period === 0)
+          for (let slot = 0; slot < 4; slot++)
+            fireProgram(
+              state,
+              slot,
+              state.weaves.slots[slot]!.program!,
+              p.x,
+              p.y,
+              (centerX - p.x) / len,
+              (centerY - p.y) / len,
+              centerX,
+              centerY,
+              -1,
+              true,
+            );
+        step(state, frame);
+      };
+    },
+  };
+}
+
 export const benches: Bench[] = [
   scenarioBench('wander'),
   scenarioBench('wall_press'),
   scenarioBench('combat'),
   scenarioBench('arena_bot'),
+  scenarioBench('weave_mix'),
+  scenarioBench('weave_events'),
   stressBench(),
+  weave14Bench(),
   {
     id: 'grid',
     description: 'Chemistry grid tick (20 Hz)',
@@ -185,10 +242,10 @@ runCli(() => {
   else {
     for (const r of results) {
       if (r.budgetMs === null)
-        console.log(`${r.id.padEnd(24)} ${r.note ?? 'n/a'}  (budget ${GRID_BUDGET_MS} ms)`);
+        console.log(`${r.id.padEnd(26)} ${r.note ?? 'n/a'}  (budget ${GRID_BUDGET_MS} ms)`);
       else
         console.log(
-          `${r.id.padEnd(24)} mean ${r.mean.toFixed(4)} ms  p99 ${r.p99.toFixed(4)} ms  max ${r.max.toFixed(3)} ms  budget ${r.budgetMs} ms  ${r.ok ? 'OK' : 'OVER BUDGET'}`,
+          `${r.id.padEnd(26)} mean ${r.mean.toFixed(4)} ms  p99 ${r.p99.toFixed(4)} ms  max ${r.max.toFixed(3)} ms  budget ${r.budgetMs} ms  ${r.ok ? 'OK' : 'OVER BUDGET'}`,
         );
     }
   }

@@ -41,24 +41,42 @@ export function openCast(
   return cast;
 }
 
-/** The hit packet for `spec` on the current spindle, with an extra damage factor (Echo). */
+/** Packets are shared and never mutated, so one per (spec, spindle, damage factor) is cached. */
+const packetCache = new WeakMap<
+  SpellSpec,
+  { spindleId: string; damageMult: number; packet: DamagePacket }[]
+>();
+
+/** The hit packet for `spec` on the current spindle, with an extra damage factor (Echo). Shared; never mutate. */
 export function buildPacket(state: GameState, spec: SpellSpec, damageMult: number): DamagePacket {
+  const spindleId = state.weaves.spindleId;
+  let list = packetCache.get(spec);
+  if (list === undefined) packetCache.set(spec, (list = []));
+  for (const c of list) if (c.spindleId === spindleId && c.damageMult === damageMult) return c.packet;
   const packet = specPacket(spec, damageMult !== 1 ? [damageMult] : []);
   packet.ailmentDuration = spec.ailmentDurationMult;
-  const imp: SpindleImplicit = spindles[state.weaves.spindleId].implicit;
+  const imp: SpindleImplicit = spindles[spindleId].implicit;
   if (imp.increased) {
     const by = zeroAmounts();
     for (const t of damageTypes) by[t] = imp.increased[t] ?? 0;
     packet.increasedByType = by;
   }
   if (imp.chillGain) packet.chillGain = 1 + imp.chillGain;
+  list.push({ spindleId, damageMult, packet });
   return packet;
 }
 
-/** The elements a spec deals, in slot order (for events). */
+const elementCache = new WeakMap<SpellSpec, ElementId[]>();
+
+/** The elements a spec deals, in slot order (for events; shared, never mutate). */
 export function elementsOf(spec: SpellSpec): ElementId[] {
-  return spec.elements.map((e) => e.element);
+  let e = elementCache.get(spec);
+  if (e === undefined) elementCache.set(spec, (e = spec.elements.map((x) => x.element)));
+  return e;
 }
+
+/** Shared empty list for fields an instance never fills (no children; hit cooldowns off Orbs). */
+const NONE: number[] = [];
 
 const rot = { x: 0, y: 0 };
 
@@ -141,8 +159,17 @@ export function spawnSpell(state: GameState, cast: CastRecord, spec: SpellSpec, 
 
 /** M1 projectile kind for a player bolt, for render and audio: '<first element>_bolt'. */
 export function boltKind(spec: SpellSpec): string {
-  return `${spec.elements[0]?.element ?? 'physical'}_bolt`;
+  const el = spec.elements[0]?.element;
+  return el === undefined ? 'physical_bolt' : BOLT_KINDS[el];
 }
+
+const BOLT_KINDS: Record<ElementId, string> = {
+  fire: 'fire_bolt',
+  frost: 'frost_bolt',
+  storm: 'storm_bolt',
+  tide: 'tide_bolt',
+  gale: 'gale_bolt',
+};
 
 function createInstance(
   state: GameState,
@@ -186,10 +213,10 @@ function createInstance(
     cy: at.y,
     followsPlayer: false,
     hitIds: [],
-    hitCooldowns: [],
+    hitCooldowns: spec.form === 'orb' ? [] : NONE,
     hitCount: 0,
-    procs: new Array<number>(n).fill(0),
-    emitLeft: spec.children.map((c) => (c.proc.kind === 'emit' ? c.proc.interval : 0)),
+    procs: n === 0 ? NONE : new Array<number>(n).fill(0),
+    emitLeft: n === 0 ? NONE : spec.children.map((c) => (c.proc.kind === 'emit' ? c.proc.interval : 0)),
     refunded: 0,
     ended: false,
     endReason: null,
