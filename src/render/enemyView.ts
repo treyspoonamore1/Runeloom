@@ -351,12 +351,12 @@ export class EnemyView {
       this.shadow.y = y + L.shadowY;
       this.shadow.scaleX = L.shadowRx * s;
       this.shadow.scaleY = L.shadowRy * s;
-      this.shadow.alpha = this.root.alpha;
+      this.shadow.fade(this.root.alpha);
     }
     if (this.glow) {
       this.glow.x = this.root.x;
       this.glow.y = this.root.y - 0.3;
-      this.glow.alpha = 0.5 * this.root.alpha * (this.dying >= 0 ? Math.max(0, 1 - this.dying * 4) : 1);
+      this.glow.fade(0.5 * this.root.alpha * (this.dying >= 0 ? Math.max(0, 1 - this.dying * 4) : 1));
     }
   }
 

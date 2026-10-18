@@ -25,6 +25,20 @@ export class FxParticle extends Particle {
   hold = 0;
   /** Rotate to face the velocity. */
   align = false;
+  /** Tint as BGR, for writing `color` directly (the tint setter parses colors, slowly). */
+  bgr = 0xffffff;
+
+  /** Sets tint (0xRRGGBB) and alpha without going through Pixi's color parsing. */
+  paint(rgb: number, alpha: number): void {
+    this.bgr = ((rgb & 0xff) << 16) | (rgb & 0xff00) | ((rgb >>> 16) & 0xff);
+    this.fade(alpha);
+  }
+
+  /** Sets alpha, keeping the painted tint. */
+  fade(alpha: number): void {
+    const a = alpha <= 0 ? 0 : alpha >= 1 ? 255 : (alpha * 255) | 0;
+    this.color = (this.bgr + (a << 24)) >>> 0;
+  }
 }
 
 const ALL_DYNAMIC = { position: true, rotation: true, vertex: true, color: true, uvs: true };
@@ -52,6 +66,11 @@ export class ParticlePool {
     return this.live.length;
   }
 
+  /** Creates particles up to capacity into the free list. */
+  protected prewarm(texture: Texture): void {
+    while (this.free.length < this.capacity) this.free.push(new FxParticle(texture));
+  }
+
   /** A particle showing `texture` with its default anchor, or null when the pool is full. */
   alloc(texture: Texture): FxParticle | null {
     if (this.live.length >= this.capacity) return null;
@@ -62,8 +81,7 @@ export class ParticlePool {
     p.anchorY = texture.defaultAnchor?.y ?? 0.5;
     p.rotation = 0;
     p.scaleX = p.scaleY = 1;
-    p.tint = 0xffffff;
-    p.alpha = 1;
+    p.paint(0xffffff, 1);
     p.idx = this.live.length;
     this.live.push(p);
     return p;
@@ -96,6 +114,12 @@ export class ParticlePool {
 
 /** Free-flying particles that move, scale and fade on their own, then free themselves. */
 export class FxLayer extends ParticlePool {
+  constructor(texture: Texture, capacity: number, blend: 'normal' | 'add' = 'normal') {
+    super(texture, capacity, blend);
+    // Build every particle up front so a burst of deaths never constructs objects mid-fight.
+    this.prewarm(texture);
+  }
+
   spawn(
     tex: Texture,
     x: number,
@@ -114,7 +138,7 @@ export class FxLayer extends ParticlePool {
     p.vx = vx;
     p.vy = vy;
     p.life = p.maxLife = life;
-    p.tint = tint;
+    p.paint(tint, 1);
     p.s0 = s0;
     p.s1 = s1;
     p.drag = 0;
@@ -158,7 +182,7 @@ export class FxLayer extends ParticlePool {
       p.scaleX = sx;
       p.scaleY = s * p.aspect;
       const fade = t <= p.hold ? 1 : (1 - t) / (1 - p.hold);
-      p.alpha = p.a0 * fade;
+      p.fade(p.a0 * fade);
     }
   }
 }

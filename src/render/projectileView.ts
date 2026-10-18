@@ -154,30 +154,26 @@ export class ProjectileView {
       // Fire arrow: thin dark shaft and hot tip, wrapped in the danger color.
       v.glow = P.glow.alloc(a.get('elong_glow'));
       if (v.glow) {
-        v.glow.tint = PROJ.arrowDanger;
+        v.glow.paint(PROJ.arrowDanger, 0.75);
         v.glow.scaleX = PROJ.arrowLen * 0.85;
         v.glow.scaleY = 2.4;
-        v.glow.alpha = 0.75;
       }
       v.trail = P.trail.alloc(a.get('streak'));
       if (v.trail) {
-        v.trail.tint = 0xff6a3a;
+        v.trail.paint(0xff6a3a, 0.7);
         v.trail.scaleY = 0.45;
-        v.trail.alpha = 0.7;
         v.trail.anchorX = 1 - (PROJ.arrowLen * 0.35) / PROJ.arrowTrailLen;
       }
       v.core = P.core.alloc(a.get('arrow'));
     } else {
       v.glow = P.glow.alloc(a.get('glow'));
       if (v.glow) {
-        v.glow.tint = PROJ.boltGlow;
-        v.glow.alpha = 0.45;
+        v.glow.paint(PROJ.boltGlow, 0.45);
       }
       v.trail = P.trail.alloc(a.get('streak'));
       if (v.trail) {
-        v.trail.tint = PROJ.boltTrail;
+        v.trail.paint(PROJ.boltTrail, 0.9);
         v.trail.scaleY = p.radius * 1.7;
-        v.trail.alpha = 0.9;
       }
       v.core = P.core.alloc(a.get('bolt_core'));
       if (v.core) v.core.scaleX = v.core.scaleY = p.radius * 0.85;

@@ -90,7 +90,7 @@ export class EnemyLayer {
     v.shadow = this.shadows.alloc(this.atlas.get('shadow'));
     if (e.kind === 'tinderling') {
       v.glow = this.glows.alloc(this.atlas.get('glow'));
-      if (v.glow) v.glow.tint = ENEMY.tinderling.glow;
+      if (v.glow) v.glow.paint(ENEMY.tinderling.glow, 0.5);
     }
     this.bodies.addChild(v.root);
     this.byId.set(e.id, v);
