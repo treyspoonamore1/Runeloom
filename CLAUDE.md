@@ -25,6 +25,7 @@ src/
     core/      loop, rng, hash, math, spatial hash
     grid/      materials, chemistry rules, fields
     weave/     notation parser/printer, compiler, runtime
+    actors/    player and enemy bodies, movement, collision
     combat/    stats, damage, ailments
     ai/        enemy behaviors
     world/     room parser, puzzles, rifts

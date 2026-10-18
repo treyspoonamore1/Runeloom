@@ -1,0 +1,9 @@
+{
+  "//": "Typechecks src/sim and data/ without DOM or Node types, so browser and Node APIs can't leak into the deterministic sim.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src/sim", "data/**/*.ts"]
+}
