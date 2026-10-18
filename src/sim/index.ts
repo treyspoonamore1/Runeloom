@@ -10,3 +10,5 @@ export { parseRoom, buildRoom, isSolidCell, RoomParseError, type Room, type Room
 export type { PlayerState } from './actors/player';
 export { scenarios, findScenario, type Scenario } from './scenarios';
 export { runScenario, runFrames, type RunResult } from './run';
+export { isDodging, isInvulnerable, dodgeSpeed } from './actors/player';
+export { moveCircle, circleOverlapsSolid, type CircleBody } from './actors/collision';
