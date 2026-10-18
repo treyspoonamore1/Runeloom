@@ -36,3 +36,4 @@ export {
   type MustFailWeave,
 } from './referenceWeaves';
 export type * from './program';
+export { runReadout, type ReadoutInput, type ReadoutResult, type ReadoutScene } from './readout';
