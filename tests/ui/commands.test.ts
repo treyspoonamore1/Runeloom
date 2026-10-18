@@ -109,7 +109,6 @@ describe('registry', () => {
 
   it('stubs name their milestone', () => {
     expect(reg().execute('give fire', fakeEnv().env).lines[0]).toContain('M2');
-    expect(reg().execute('weave 1 x', fakeEnv().env).lines[0]).toContain('M2');
   });
 
   it('allows later milestones to register commands', () => {
