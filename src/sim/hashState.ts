@@ -6,6 +6,7 @@ import type { DamagePacket } from './combat/damage';
 import type { GameState } from './state';
 import type { Grid } from './grid/grid';
 import { hashPacket, hashWeaveState } from './weave/runtime/hash';
+import { hashLab } from './world/lab';
 
 /**
  * Hash of all simulation state that affects the future. Two runs with the same
@@ -34,6 +35,7 @@ export function hashState(state: GameState): number {
   for (const q of ar.queue) h.string(q.kind).byte(0).u32(q.areaLevel).num(q.delay);
   h.string(state.room.id);
   hashGrid(h, state.grid);
+  hashLab(h, state.lab);
   h.u32(state.nextId).num(state.hitstopLeft);
   hashWeaveState(h, state);
 

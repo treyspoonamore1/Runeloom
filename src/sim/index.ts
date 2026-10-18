@@ -105,4 +105,18 @@ export {
 export { kiterInput } from './bots/kiter';
 export * from './weave';
 export { createGrid, cellIndex, inGrid, gridWalkable, materialOf, type Grid } from './grid/grid';
+export {
+  createLabState,
+  runStation,
+  runAllStations,
+  stepLab,
+  nearestStation,
+  stationArea,
+  stationZone,
+  type LabState,
+  type LabTask,
+  type LabElementTask,
+  type LabActionTask,
+  type CellRect,
+} from './world/lab';
 export { applyElement, type TerrainElement, type Footprint, type ElementApplication } from './grid/paint';
