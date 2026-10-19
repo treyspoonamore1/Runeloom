@@ -31,7 +31,18 @@ export const scenes: SceneDef[] = [
     mode: 'arena',
   },
   { id: 'room', label: 'M0 test yard', short: 'Test yard', roomId: 'test/m0_room' },
+  {
+    id: 'adventure',
+    label: 'Adventure (M4): the real game, skipping the title',
+    short: 'Adventure',
+    // main.ts swaps in the region's start room once its files exist (saveFormat.adventureRoom).
+    roomId: 'test/wilds',
+    mode: 'adventure',
+  },
 ];
+
+/** Scenes the pause menu's place picker offers (adventures start from the title screen). */
+export const sandboxScenes = (): SceneDef[] => scenes.filter((s) => s.mode !== 'adventure');
 
 export const DEFAULT_SCENE = 'arena';
 

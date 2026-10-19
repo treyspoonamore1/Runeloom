@@ -121,6 +121,29 @@ export class Session {
     this.state.events.length = 0;
   }
 
+  /**
+   * Replaces the game with a prepared state: a new adventure or a loaded save (title screen).
+   * Keeps the live tuning and cheats. Like reset, it starts a fresh input log; a replay of it
+   * needs the save it started from.
+   */
+  adopt(state: GameState, sceneId: string): void {
+    state.tuning = cloneTuning(this.state.tuning);
+    state.cheats = { ...this.state.cheats };
+    this.sceneId = sceneId;
+    this.seed = state.seed;
+    this.roomId = state.room.id;
+    this.mode = state.mode;
+    this.state = state;
+    this.startTuning = cloneTuning(state.tuning);
+    this.startLoadout = loadoutSpecOf(state.weaves);
+    this.startCheats = { ...state.cheats };
+    this.frames = [];
+    this.loadoutEdits = [];
+    this.pendingEvents = [];
+    this.edited = false;
+    for (const fn of this.resetListeners) fn(this.state);
+  }
+
   /** Resets into another scene's room and mode (the pause menu's place picker). */
   switchScene(scene: SceneDef): void {
     this.sceneId = scene.id;
