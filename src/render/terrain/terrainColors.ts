@@ -153,3 +153,28 @@ export const DEBUG_MATERIAL_BY_CODE: readonly number[] = (() => {
 
 /** F1 owner overlay colors (world, player, enemy). */
 export const DEBUG_OWNER = [0xffffff, 0x3ad0ff, 0xff3050] as const;
+
+/** One-shot terrain effects from grid events (terrainFx.ts). Times in seconds, sizes in cells. */
+export const TERRAIN_ONESHOT = {
+  /** Particles per layer (four layers). */
+  capacity: 400,
+  /** Ignition flares per event, and ignited cells per flare (a big hit makes a few, not hundreds). */
+  igniteMax: 6,
+  ignitePerFlare: 3,
+  flareLife: 0.28,
+  burntMax: 4,
+  steamMax: 8,
+  bloomLife: 0.45,
+  glintMax: 6,
+  chipMax: 4,
+  shatterMax: 10,
+  shatterShake: 1.4,
+  /** Electrify pulse: lifetime, racing speed (cells/s), band width; networks this big pulse at full strength. */
+  pulseLife: 0.7,
+  pulseSpeed: 70,
+  pulseWidth: 2.5,
+  bigNetwork: 400,
+  flashLife: 0.22,
+  ringLife: 0.4,
+  explosionShake: 3,
+} as const;

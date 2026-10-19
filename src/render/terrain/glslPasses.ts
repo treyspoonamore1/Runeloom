@@ -1,5 +1,5 @@
 import { f1, c3 } from './glslLib';
-import { TERRAIN as C, TERRAIN_FX as FX, TERRAIN_LINE as L } from './terrainColors';
+import { TERRAIN as C, TERRAIN_FX as FX, TERRAIN_LINE as L, TERRAIN_ONESHOT as O } from './terrainColors';
 import { GRID_HZ } from './terrainPack';
 
 /**
@@ -32,8 +32,8 @@ vec3 applyOil(vec3 col, vec2 p, float oil, bool onWater, float aa) {
   float bandK = smoothstep(0.45, 0.75, vnoise(p * 0.18 + vec2(-uTime * 0.03, uTime * 0.02)));
   vec3 oc = mix(${c3(C.oil)}, rainbow * 0.7, 0.3 * bandK);
   if (onWater) oc = mix(oc, col, 0.18);
-  float spec = smoothstep(0.82, 0.88, vnoise(p * 0.45 + vec2(uTime * 0.02, 0.0)));
-  oc += spec * 0.18;
+  float spec = smoothstep(0.86, 0.9, vnoise(p * 0.45 + vec2(uTime * 0.02, 0.0)));
+  oc += spec * 0.08;
   float inside = smoothstep(-aa, aa, d);
   col = mix(col, oc, inside);
   return mix(col, ${c3(C.oilEdge)}, band(d, ${f1(L.detail * 0.55)}, aa) * 0.85);
@@ -58,6 +58,16 @@ vec3 applyCharge(vec3 col, vec2 p, float cs, float aa) {
   }
   col = mix(col, ${c3(C.stormGlow)}, halo * 0.75 * k);
   col = mix(col, ${c3(C.stormCore)}, arcs * k);
+  // Fresh electrify events: a bright front racing out from the origin across the charged cells.
+  for (int i = 0; i < 4; i++) {
+    vec4 pu = uPulses[i];
+    if (pu.w <= 0.0) continue;
+    float front = pu.z * ${f1(O.pulseSpeed)};
+    float d = length(p - pu.xy) - front;
+    float fade = 1.0 - pu.z / ${f1(O.pulseLife)};
+    float b = exp(-d * d / ${f1(O.pulseWidth * O.pulseWidth)}) * fade * pu.w;
+    col = mix(col, mix(${c3(C.stormCore)}, vec3(1.0), 0.5), clamp(b, 0.0, 1.0) * 0.85);
+  }
   return col;
 }
 `;
