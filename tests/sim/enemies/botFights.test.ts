@@ -13,10 +13,16 @@ import { loadRoomText } from '../../../tools/lib/rooms';
 
 /**
  * The kiter bot (src/sim/bots/kiter.ts, default Fire Bolt + Strike, level 1 runes) against every
- * M4 enemy at the area level it first appears around (CONTENT §9), with the player at that level.
- * God mode off, except the Cinder Warden (the bot has no Frost, so it can't break his Superheat;
- * its god-off result is logged).
+ * M4 enemy at the area level it first appears around (CONTENT §9), with the player at that level,
+ * god mode off. The Cinder Warden is fought with a Frost Bolt too (bots/kiterBoss.ts breaks his
+ * Superheat with it); without Frost the bot only wins in god mode.
  */
+
+/** The default weaves plus a Frost Bolt in Q, on Heartwood (Capacity for all three). */
+const FROST_LOADOUT = {
+  spindleId: 'heartwood' as const,
+  notations: ['Cast > Bolt[Fire]', 'Cast > Strike[]', 'Cast > Bolt[Frost]', null],
+};
 
 interface Result {
   clearedAt: number;
@@ -121,17 +127,22 @@ describe('kiter bot vs the M4 enemies', () => {
     expectWin(fight('Tar Matriarch (K5), L8', s, 180), 180);
   });
 
-  it('the Cinder Warden in K10 at level 10 (god mode; god-off logged)', () => {
-    const make = (god: boolean) => {
-      const s = createGame({ seed: 1, roomText: loadRoomText('kiln/k10_wardens_hearth') });
+  it('the Cinder Warden in K10 at level 10: with a Frost Bolt, god mode off; without, in god mode', () => {
+    const make = (god: boolean, frost: boolean) => {
+      const s = createGame({
+        seed: 1,
+        roomText: loadRoomText('kiln/k10_wardens_hearth'),
+        loadout: frost ? FROST_LOADOUT : undefined,
+      });
       setLevel(s, 10);
       s.player.x = 60;
       s.player.y = 72;
       s.cheats.god = god;
       return s;
     };
-    expectWin(fight('Cinder Warden (K10), L10', make(true), 400), 400);
-    const off = fight('Cinder Warden (K10), L10', make(false), 400);
-    expect(off.clearedAt).toBeGreaterThan(0);
+    // Frost breaks his Superheat when he stands in water (the bot fights from the water).
+    expectWin(fight('Cinder Warden (K10), L10, Frost Bolt in Q', make(false, true), 300), 300);
+    // Fire Bolt and Strike only: Superheat is never broken.
+    expectWin(fight('Cinder Warden (K10), L10, no Frost', make(true, false), 400), 400);
   });
 }, 120_000);

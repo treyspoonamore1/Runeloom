@@ -15,6 +15,8 @@ export const kiterConfig = {
   hazardPenalty: 600,
   /** M4: while Ignited, run to water within this many cells (Wet puts it out). */
   waterSearch: 16,
+  /** M4: against a Superheated Warden, fight from water within this many cells. */
+  bossWaterSearch: 40,
   /** Melee enemies closer than this are pushed away (centers, cells). */
   keepTinderling: 5,
   keepShieldbearer: 5,

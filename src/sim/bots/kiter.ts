@@ -1,5 +1,5 @@
 import { enemyDef } from '../../../data/enemies';
-import { MAT, OWNER } from '../../../data/materials';
+import { OWNER } from '../../../data/materials';
 import type { Enemy } from '../actors/enemies';
 import { circleHitsShape, circleIntersectsSector } from '../combat/shapes';
 import { Button, type InputFrame } from '../core/input';
@@ -7,6 +7,7 @@ import type { GameState } from '../state';
 import type { SpellSpec } from '../weave/program';
 import { hasLineOfSight } from '../world/los';
 import { kiterConfig as C } from './kiterConfig';
+import { bossIn, conducts, frostShot, nearestWater, stormSoon, wantsWater } from './kiterBoss';
 import { wallDistanceAt, wallDistanceField } from './wallDistance';
 
 /**
@@ -42,6 +43,7 @@ const BOLT_SLOT = Button.Cast1;
 // Scratch.
 const live: Enemy[] = [];
 const goal = { x: 0, y: 0, on: false, fixed: false };
+let boss: Enemy | null = null;
 let bestHitSoon = false;
 
 /** The root spell and mana of `slot` if it is a working Cast weave whose root is `form`. */
@@ -61,6 +63,7 @@ export function kiterInput(state: GameState): InputFrame {
   if (p.dead) return out;
   live.length = 0;
   for (const e of state.enemies) if (!e.dead && enemyDef(e.kind).behavior.kind !== 'none') live.push(e);
+  boss = bossIn(live);
 
   const strike = slotSpell(state, 1, 'strike');
   const bolt = slotSpell(state, 0, 'bolt');
@@ -89,6 +92,8 @@ export function kiterInput(state: GameState): InputFrame {
     if (bolt && (spare || p.mana >= bolt.mana)) aimBolt(state, out, !spare, bolt.spec, strike?.spec ?? null);
   }
 
+  frostShot(state, out, boss);
+
   const dodgeHeld = (state.prevButtons & Button.Dodge) !== 0;
   if (hitSoon && !dodgeHeld && p.dodgeCharges > 0 && (bestX !== 0 || bestY !== 0))
     out.buttons |= Button.Dodge;
@@ -106,8 +111,10 @@ function pickGoal(state: GameState, canStrike: boolean): void {
     goal.y = state.room.spawnY;
     return;
   }
-  // M4: burning, run for the nearest water to put it out (rule 15).
-  if (p.ailments.ignite.timeLeft > 0 && nearestWater(state, C.waterSearch)) return;
+  // M4: burning, run for the nearest water to put it out (rule 15); a Superheated Warden is
+  // fought from the water (bots/kiterBoss.ts).
+  if (p.ailments.ignite.timeLeft > 0 && nearestWater(state, C.waterSearch, goal)) return;
+  if (wantsWater(boss) && !stormSoon(boss) && nearestWater(state, C.bossWaterSearch, goal)) return;
   let best: Enemy | null = null;
   let bestCost = Infinity;
   for (const e of live) {
@@ -363,29 +370,7 @@ function hazardAt(state: GameState, x: number, y: number): boolean {
   const cy = Math.floor(y);
   if (cx < 0 || cy < 0 || cx >= g.width || cy >= g.height) return false;
   const i = cy * g.width + cx;
+  if (stormSoon(boss) && conducts(state, i)) return true;
   if (g.owner[i] === OWNER.player) return false;
   return (g.fire[i]! > 0 && state.player.terrain.wetLeft <= 0) || g.charge[i]! > 0;
-}
-
-/** Sets `goal` to the water cell nearest the player within `r` cells (not charged); false if none. */
-function nearestWater(state: GameState, r: number): boolean {
-  const g = state.grid;
-  const p = state.player;
-  const cx = Math.floor(p.x);
-  const cy = Math.floor(p.y);
-  let best = r * r;
-  let found = false;
-  for (let y = Math.max(0, cy - r); y <= Math.min(g.height - 1, cy + r); y++)
-    for (let x = Math.max(0, cx - r); x <= Math.min(g.width - 1, cx + r); x++) {
-      const i = y * g.width + x;
-      if (g.ground[i] !== MAT.shallow_water || g.charge[i]! > 0) continue;
-      const d = (x + 0.5 - p.x) ** 2 + (y + 0.5 - p.y) ** 2;
-      if (d >= best) continue;
-      best = d;
-      found = true;
-      goal.x = x + 0.5;
-      goal.y = y + 0.5;
-    }
-  goal.on = found;
-  return found;
 }
