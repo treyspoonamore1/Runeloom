@@ -77,6 +77,10 @@ Pass: at least one full column of bridge tiles (both rows) is deep water while t
 the east bank, and no Tinderling is east of x = 34. Note: Tinderlings that run onto the bridge
 light it themselves (rule 22), which also counts.
 
+Measured (tests/sim/world/emberwoodSolutions.test.ts, AI on): the wood's 6 s burn lets the front
+of a pack that is right behind the player across before the bridge drops; in the test 4 of the 8
+Tinderlings cross and 4 are cut off on the west bank.
+
 ## E4 Old Mill: barrels, and a Heart Seed behind crates
 
 Weave: LMB `Cast > Bolt[Fire]` (cx 2).
@@ -193,7 +197,7 @@ layers split by stone firebreaks, so each must be lit separately.
    bramble (x 31–41) burns around the stone dais.
 4. Walk to (35, 17) and open the chest `k` (36, 17): +1 Kiln small key.
 5. Leave by the vault entrance, go round by the north courtyard (y 11) to the east lane (43, 17),
-   then east to (52, 17). The locked door K (53, 17–18) opens with the key. Exit east at (57, 17).
+   then east to (52, 17). The one-tile locked door K (53, 17) opens with the key. Exit east at (57, 17).
 
 Pass: key taken, K opened, east exit reached.
 
@@ -270,16 +274,19 @@ lane's east wall:
 
 | Lane | Block    | Plate    | Lane rows | Lob[Frost] aims (cells)                   |
 | ---- | -------- | -------- | --------- | ----------------------------------------- |
-| A    | (16, 7)  | (41, 7)  | 6–8       | (92, 30), (100, 30), (108, 30), (115, 30) |
-| B    | (16, 24) | (41, 24) | 23–25     | (92, 98), (100, 98), (108, 98), (115, 98) |
+| A    | (16, 7)  | (41, 7)  | 6–8       | (92, 30), (100, 30), (108, 30), (116, 30) |
+| B    | (16, 24) | (41, 24) | 23–25     | (92, 98), (100, 98), (108, 98), (116, 98) |
 
 For each lane:
 
-1. Stand on the lane ice west of the block, at (14, 7) (lane B: (14, 24)).
+1. Stand at the east end of the lane's west runway, (20, 7) (lane B: (20, 24)). Lob reaches
+   40 cells, so the far aims are out of range from further back.
 2. Cast the four `Lob[Frost]` aims (each burst freezes about 10 cells; the pool is 32). The pool
    part of the lane becomes ice bridge.
-3. Push the block east (walk into it). It slides across the ice and the bridge and stops on the
-   plate against the wall. Do this within 8 s of the first lob.
+3. Walk back to the stone at (12, 7) (lane B: (12, 24)), stop on the lane's center line (ice is
+   slippery: an off-center push slides past the block), and walk east into the block. It slides
+   across the ice and the bridge and stops on the plate against the wall. Do this within 8 s of
+   the first lob.
 
 Then:
 
