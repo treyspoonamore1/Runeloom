@@ -81,6 +81,18 @@ export class TerrainPack {
   private readonly emberTick: Uint32Array;
   private readonly glowAcc: Float32Array;
   private readonly glowTmp: Float32Array;
+  /**
+   * Quiet-word fast path: per 4-cell word, how many packs in a row it was quiet (no fire,
+   * charge, air, wet, oil, timer or embers) with unchanged ground/owner/air/under (saturates at 2).
+   * A word quiet for 2 packs holds its values in both field buffers, so it can be skipped.
+   */
+  private readonly quiet: Uint8Array;
+  /** Ground, owner, air, under as of the last pack, to detect changes word by word. */
+  private readonly last: { ground: Uint8Array; owner: Uint8Array; air: Uint8Array; under: Uint8Array };
+  private readonly last32: { ground: Uint32Array; owner: Uint32Array; air: Uint32Array; under: Uint32Array };
+  private readonly prevFire32: Uint32Array;
+  private viewGrid: Grid | null = null;
+  private views: Uint32Array[] | null = null;
 
   constructor(width: number, height: number) {
     this.width = width;
@@ -99,6 +111,51 @@ export class TerrainPack {
     this.emberTick = new Uint32Array(n);
     this.glowAcc = new Float32Array(this.tilesW * this.tilesH * 4);
     this.glowTmp = new Float32Array(this.tilesW * this.tilesH * 4);
+    this.quiet = new Uint8Array(n >> 2);
+    this.last = {
+      ground: new Uint8Array(n),
+      owner: new Uint8Array(n),
+      air: new Uint8Array(n),
+      under: new Uint8Array(n),
+    };
+    this.last32 = {
+      ground: new Uint32Array(this.last.ground.buffer),
+      owner: new Uint32Array(this.last.owner.buffer),
+      air: new Uint32Array(this.last.air.buffer),
+      under: new Uint32Array(this.last.under.buffer),
+    };
+    this.prevFire32 = new Uint32Array(this.prevFire.buffer, 0, n >> 2);
+  }
+
+  /**
+   * 32-bit views of the grid's arrays (4 cells per word; timer 2 per word), or null when the
+   * layout doesn't allow them. Built once per grid object.
+   */
+  private wordViews(grid: Grid): Uint32Array[] | null {
+    if (grid === this.viewGrid) return this.views;
+    this.viewGrid = grid;
+    this.quiet.fill(0);
+    const n = this.width * this.height;
+    const arrays = [
+      grid.fire,
+      grid.charge,
+      grid.airTimer,
+      grid.wet,
+      grid.surface,
+      grid.ground,
+      grid.owner,
+      grid.air,
+      grid.under,
+    ];
+    const ok =
+      this.width % 4 === 0 && arrays.every((a) => a.byteOffset % 4 === 0) && grid.timer.byteOffset % 4 === 0;
+    this.views = ok
+      ? [
+          ...arrays.map((a) => new Uint32Array(a.buffer, a.byteOffset, n >> 2)),
+          new Uint32Array(grid.timer.buffer, grid.timer.byteOffset, n >> 1),
+        ]
+      : null;
+    return this.views;
   }
 
   /**
@@ -155,11 +212,45 @@ export class TerrainPack {
     const propLut = isProp;
     const blockLut = isBlock;
 
+    const views = this.wordViews(grid);
+    const quiet = this.quiet;
+    const last32 = this.last32;
+    const prevFire32 = this.prevFire32;
+    let quietNow = false;
+
     const h = this.height;
     let i = 0;
     for (let cy = 0; cy < h; cy++) {
       const rowTile = ((cy / tc) | 0) * tw;
       for (let cx = 0; cx < w; cx++, i++) {
+        if (views !== null && (cx & 3) === 0) {
+          // Fast path: a whole quiet, unchanged 4-cell word.
+          const j = i >> 2;
+          quietNow =
+            (views[0]![j]! |
+              views[1]![j]! |
+              views[2]![j]! |
+              views[3]![j]! |
+              views[4]![j]! |
+              prevFire32[j]!) ===
+              0 &&
+            (views[9]![j * 2]! | views[9]![j * 2 + 1]!) === 0 &&
+            (emberTick[i]! | emberTick[i + 1]! | emberTick[i + 2]! | emberTick[i + 3]!) === 0 &&
+            views[5]![j] === last32.ground[j] &&
+            views[6]![j] === last32.owner[j] &&
+            views[7]![j] === last32.air[j] &&
+            views[8]![j] === last32.under[j];
+          if (quietNow && quiet[j]! >= 2) {
+            blocks +=
+              blockLut[ground[i]!]! +
+              blockLut[ground[i + 1]!]! +
+              blockLut[ground[i + 2]!]! +
+              blockLut[ground[i + 3]!]!;
+            i += 3;
+            cx += 3;
+            continue;
+          }
+        }
         const g = ground[i]!;
         const f = fire[i]!;
         const ch = charge[i]!;
@@ -196,6 +287,16 @@ export class TerrainPack {
           }
         }
         prevFire[i] = f;
+        if (views !== null) {
+          if ((cx & 3) === 3) {
+            const j = i >> 2;
+            quiet[j] = quietNow ? Math.min(2, quiet[j]! + 1) : 0;
+            last32.ground[j] = views[5]![j]!;
+            last32.owner[j] = views[6]![j]!;
+            last32.air[j] = views[7]![j]!;
+            last32.under[j] = views[8]![j]!;
+          }
+        }
         const code = disp | (flags << 8) | (phase << 16) | (g << 24);
         if (codes32[i] !== code) {
           codes32[i] = code;
