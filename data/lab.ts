@@ -206,8 +206,9 @@ const entries: Entry[] = [
     script: [],
     spawns: [{ kind: 'shieldbearer', x: 10, y: 10 }],
     actions: [
-      { at: 0.4, do: 'freeze', kind: 'shieldbearer' },
-      { at: 1.2, do: 'kill', kind: 'shieldbearer' },
+      // Frozen at once, so it can't walk toward a player watching from the walkway first.
+      { at: 0.05, do: 'freeze', kind: 'shieldbearer' },
+      { at: 0.8, do: 'kill', kind: 'shieldbearer' },
     ],
   },
   // Row 3
