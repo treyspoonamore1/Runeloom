@@ -28,15 +28,13 @@ import {
   kiterInput,
   startArenaWave,
   createGrid,
-  createAdventure,
-  tourInput,
   type GameState,
   type InputFrame,
 } from '../src/sim';
 import { MAT, OWNER } from '../data/materials';
 import { parseArgs, requireInt, runCli } from './lib/args';
-import { loadAllRooms, loadRoomText } from './lib/rooms';
-import { startRoom } from '../data/progression';
+import { loadRoomText } from './lib/rooms';
+import { adventureBench } from './lib/adventureBench';
 import { summarize, type Summary } from './lib/stats';
 
 export interface Bench {
@@ -307,46 +305,8 @@ export const benches: Bench[] = [
   weave14Bench(),
   gridTypicalBench(),
   gridWorstBench(),
-  adventureBench(),
+  adventureBench(ENTITY_BUDGET_MS),
 ];
-
-/**
- * M4 adventure: the tour bot (bots/tour.ts) walks the region (or the test world until the region
- * exists) in god mode, through exits and fights. Report only: ticks that change rooms include the
- * room load (parse, grid, objects, spawns), so the note gives those ticks apart.
- */
-function adventureBench(): Bench {
-  const loads: number[] = [];
-  let measuring = false;
-  return {
-    id: 'entity:adventure_tour',
-    description: 'Adventure: tour bot through rooms (room loads included)',
-    budgetMs: ENTITY_BUDGET_MS,
-    reportOnly: true,
-    onMeasureStart: () => {
-      measuring = true;
-      loads.length = 0;
-    },
-    note: () => {
-      if (loads.length === 0) return 'no room changes while measured';
-      const l = summarize(loads);
-      return `${loads.length} room change tick(s): mean ${l.mean.toFixed(3)} ms, max ${l.max.toFixed(3)} ms`;
-    },
-    setup() {
-      const rooms = loadAllRooms();
-      const roomId = rooms[startRoom] !== undefined ? startRoom : 'test/world_a';
-      const state = createAdventure({ seed: 1, rooms, startRoomId: roomId });
-      state.cheats.god = true;
-      return () => {
-        const t0 = performance.now();
-        step(state, tourInput(state));
-        const ms = performance.now() - t0;
-        if (measuring && state.events.some((e) => e.type === 'roomEnter')) loads.push(ms);
-        return ms;
-      };
-    },
-  };
-}
 
 const GRID_TILES = 64; // 256 × 256 cells
 const GRASS_TILE_ROWS = 14;
