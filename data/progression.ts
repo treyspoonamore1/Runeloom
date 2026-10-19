@@ -39,6 +39,26 @@ export function xpToNext(level: number): number {
   return Math.round(30 * Math.pow(level, 2.2));
 }
 
+/** Socketed runes level from 1 to this (DESIGN §5.1). */
+export const maxRuneLevel = 20;
+
+/**
+ * XP a socketed rune needs to go from level L to L + 1. Every socketed rune gains the full XP of
+ * each kill (data/loot.ts killXp), so the starting runes reach about level 12 by the Cinder
+ * Warden. A balance input.
+ */
+export function runeXpToNext(level: number): number {
+  return Math.round(60 * Math.pow(level, 1.8));
+}
+
+/** Exploration rewards (DESIGN §10.1). */
+export const explorationRewards = {
+  /** Max life per Heart Seed. */
+  heartSeedLife: 8,
+  /** Capacity per Loom Shard, on every spindle. */
+  loomShardCapacity: 1,
+};
+
 /** The new-game character (CONTENT §9.1). */
 export const newGame = {
   spindle: 'twig',
