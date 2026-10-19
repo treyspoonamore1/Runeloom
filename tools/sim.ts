@@ -7,6 +7,12 @@
  *   npm run sim -- --adventure [--room test/world_a] [--ticks 3600] [--seed 1] [--god] [--every N] [--json]
  *       An adventure game (all rooms from data/rooms) driven by the tour bot (bots/tour.ts): walks
  *       out through exits and fires at enemies. Prints each room entered and the final hash.
+ *   npm run sim -- --campaign [--seed 1] [--seeds 3] [--until k5] [--verbose] [--json]
+ *       The M4 balance campaign: a new game played E1…K10 by the kiter bot with the reference
+ *       build (src/sim/bots/campaign.ts). A table per seed, then a summary across seeds.
+ *   npm run sim -- --encounters [--room k10] [--seed 1] [--seeds 5] [--level 12] [--rune-level 10]
+ *       Each room's encounter with the reference character at its expected level
+ *       (src/sim/bots/campaignEncounter.ts); exit code 1 if the bot dies.
  *   npm run sim -- --list
  */
 import {
@@ -24,6 +30,7 @@ import { printReadout, readoutFromArgs } from './lib/readout';
 import { parseArgs, requireInt, runCli } from './lib/args';
 import { checkReplay, readReplay } from './lib/replay';
 import { loadAllRooms, loadRoomText } from './lib/rooms';
+import { runCampaignCli, runEncountersCli } from './lib/campaign';
 
 runCli(() => {
   const a = parseArgs(process.argv.slice(2), {
@@ -43,7 +50,38 @@ runCli(() => {
     adventure: { kind: 'boolean' },
     room: { kind: 'string' },
     god: { kind: 'boolean' },
+    campaign: { kind: 'boolean' },
+    seeds: { kind: 'number', default: 1 },
+    until: { kind: 'string' },
+    verbose: { kind: 'boolean' },
+    encounters: { kind: 'boolean' },
+    level: { kind: 'number' },
+    'rune-level': { kind: 'number' },
   });
+
+  if (a.encounters) {
+    runEncountersCli({
+      seed: requireInt('seed', a.seed, 0),
+      seeds: requireInt('seeds', a.seeds, 1),
+      room: a.room,
+      level: a.level,
+      runeLevel: a['rune-level'],
+      verbose: a.verbose,
+      json: a.json,
+    });
+    return;
+  }
+
+  if (a.campaign) {
+    runCampaignCli({
+      seed: requireInt('seed', a.seed, 0),
+      seeds: requireInt('seeds', a.seeds, 1),
+      until: a.until,
+      json: a.json,
+      verbose: a.verbose,
+    });
+    return;
+  }
 
   if (a.adventure) {
     runAdventure(a);

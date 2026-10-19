@@ -100,6 +100,15 @@ export function kiterInput(state: GameState): InputFrame {
   return out;
 }
 
+/**
+ * Where the last kiterInput call wanted to go (an enemy, the spot behind a shield, water, or the
+ * room's spawn when nothing is left), or `on: false`. Read-only scratch for wrappers that add
+ * pathfinding around walls (bots/campaignNav.ts); reading it changes nothing.
+ */
+export function kiterGoal(): Readonly<{ x: number; y: number; on: boolean }> {
+  return goal;
+}
+
 /** Sets `goal` to where the bot wants to fight: near its preferred target, behind shields. */
 function pickGoal(state: GameState, canStrike: boolean): void {
   const p = state.player;

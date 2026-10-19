@@ -72,21 +72,28 @@ export function nearestWater(
   return true;
 }
 
+/** True if `slot` holds a working Cast weave whose root is a Bolt with Frost. */
+function frostBoltIn(state: GameState, slot: number): boolean {
+  const prog = state.weaves.slots[slot]?.program;
+  if (!prog || prog.trigger.event !== 'press' || prog.root.form !== 'bolt') return false;
+  return prog.root.elements.some((x) => x.element === 'frost');
+}
+
 /**
- * Holds the Frost Bolt in slot 3 at a Superheated boss standing in water that can be frozen,
- * replacing the other cast buttons. Returns true if it did.
+ * Holds the Frost Bolt in slot 3 (Q) at a Superheated boss standing in water that can be frozen,
+ * replacing the other cast buttons. Without one in Q, a Frost Bolt in slot 1 (LMB) does the job
+ * (the campaign's reference build when it owns no third Cast rune). Returns true if it did.
  */
 export function frostShot(state: GameState, out: InputFrame, boss: Enemy | null): boolean {
   if (boss === null || !wantsWater(boss)) return false;
   const b = boss.boss!;
   if (!b.inWater || isFrozen(boss) || boss.ailments.freeze.immuneLeft > 0) return false;
-  const prog = state.weaves.slots[2]?.program;
-  if (!prog || prog.trigger.event !== 'press' || prog.root.form !== 'bolt') return false;
-  if (!prog.root.elements.some((x) => x.element === 'frost') || state.player.mana < prog.mana) return false;
+  const slot = frostBoltIn(state, 2) ? 2 : frostBoltIn(state, 0) ? 0 : -1;
+  if (slot < 0 || state.player.mana < state.weaves.slots[slot]!.program!.mana) return false;
   const p = state.player;
   if (!hasLineOfSight(state.room, p.x, p.y, boss.x, boss.y)) return false;
   out.aimX = boss.x;
   out.aimY = boss.y;
-  out.buttons = (out.buttons & Button.Dodge) | Button.Cast3;
+  out.buttons = (out.buttons & Button.Dodge) | (slot === 2 ? Button.Cast3 : Button.Cast1);
   return true;
 }
