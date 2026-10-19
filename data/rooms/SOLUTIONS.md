@@ -1,8 +1,9 @@
 # Region room solutions (M4)
 
-Intended solutions for the Emberwood and Sunken Kiln puzzle rooms. They become scripted solution
-tests (BUILD_PLAN M4 task 10) once the world agent's driver lands. K5 and K10 (boss rooms) are not
-covered here.
+Intended solutions for the Emberwood and Sunken Kiln puzzle rooms. Each one is a scripted
+solution test (BUILD_PLAN M4 task 10) in `tests/sim/world/emberwoodSolutions.test.ts` and
+`tests/sim/world/kilnSolutions.test.ts`; keep them in step. K5 and K10 (boss rooms) are not covered
+here.
 
 Conventions:
 
@@ -16,7 +17,7 @@ Conventions:
 - Enemies are not part of the puzzle steps. Tests can clear them first (`killall`) or run with
   `cheats.noAI`, unless the step says the enemies matter.
 - Static gating (exits, pickups and chests reachable only with the verb the room teaches) is
-  already tested in `tests/sim/world/regionRooms.test.ts`.
+  also tested in `tests/sim/world/regionRooms.test.ts`.
 
 ## E1 Loomstone Glade: burn a bramble wall
 
@@ -82,10 +83,10 @@ Weave: LMB `Cast > Bolt[Fire]` (cx 2).
 
 Heart Seed (8, 29) in the crate-sealed storeroom:
 
-1. Walk to the dirt lane at (14, 28), east of the crate wall (x 11–12, y 26–29).
-2. Cast `Bolt[Fire]` at (12, 28). The bolt stops on the crate and lights it; fire spreads
+1. Walk to the dirt lane at (14, 29), east of the crate wall (x 11–12, y 26–29).
+2. Cast `Bolt[Fire]` at (12, 29). The bolt stops on the crate and lights it; fire spreads
    crate to crate.
-3. Step back to (18, 28). The crates reach the oil barrel at (10, 27), which explodes 1 s after
+3. Step back to (19, 29). The crates reach the oil barrel at (10, 27), which explodes 1 s after
    it lights (4-cell world fire, hurts the player).
 4. When the crates are ash (about 6 s), walk in to (8, 29).
 
