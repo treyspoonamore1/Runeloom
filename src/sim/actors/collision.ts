@@ -40,12 +40,18 @@ const HIT_X = 0;
 const HIT_Y = 1;
 const HIT_NX = 2;
 const HIT_NY = 3;
+// The circle findDeepest checks (x, y, r). A typed array so callers hand it no float arguments,
+// which V8 boxes for calls it doesn't inline.
+const probe = new Float64Array(3);
 
 /**
- * Finds the solid cell the circle overlaps most. On a hit, sets `hit` to the position that just
- * clears that cell (HIT_X, HIT_Y) and the push direction (HIT_NX, HIT_NY).
+ * Finds the solid cell the circle in `probe` overlaps most. On a hit, sets `hit` to the position
+ * that just clears that cell (HIT_X, HIT_Y) and the push direction (HIT_NX, HIT_NY).
  */
-function findDeepest(room: Room, x: number, y: number, r: number): boolean {
+function findDeepest(room: Room): boolean {
+  const x = probe[0]!;
+  const y = probe[1]!;
+  const r = probe[2]!;
   const x0 = Math.floor(x - r);
   const x1 = Math.floor(x + r);
   const y0 = Math.floor(y - r);
@@ -148,7 +154,10 @@ export function clipToContacts(
 
 /** True if a circle at (x, y) overlaps any solid cell by more than a rounding error. */
 export function circleOverlapsSolid(room: Room, x: number, y: number, r: number): boolean {
-  return findDeepest(room, x, y, r);
+  probe[0] = x;
+  probe[1] = y;
+  probe[2] = r;
+  return findDeepest(room);
 }
 
 /**
@@ -162,6 +171,7 @@ export function moveCircle(room: Room, body: CircleBody, r: number, dx: number, 
   let sx = dx / steps;
   let sy = dy / steps;
   let touched = false;
+  probe[2] = r;
   for (let i = 0; i < steps; i++) {
     const startX = body.x;
     const startY = body.y;
@@ -169,7 +179,9 @@ export function moveCircle(room: Room, body: CircleBody, r: number, dx: number, 
     body.y += sy;
     let pass = 0;
     for (; pass < RESOLVE_PASSES; pass++) {
-      if (!findDeepest(room, body.x, body.y, r)) break;
+      probe[0] = body.x;
+      probe[1] = body.y;
+      if (!findDeepest(room)) break;
       touched = true;
       body.x = hit[HIT_X]!;
       body.y = hit[HIT_Y]!;
@@ -186,11 +198,15 @@ export function moveCircle(room: Room, body: CircleBody, r: number, dx: number, 
         sy -= sn * ny;
       }
     }
-    if (pass === RESOLVE_PASSES && findDeepest(room, body.x, body.y, r)) {
-      // Wedged where pushes fight each other: stay at the last clear position.
-      body.x = startX;
-      body.y = startY;
-      break;
+    if (pass === RESOLVE_PASSES) {
+      probe[0] = body.x;
+      probe[1] = body.y;
+      if (findDeepest(room)) {
+        // Wedged where pushes fight each other: stay at the last clear position.
+        body.x = startX;
+        body.y = startY;
+        break;
+      }
     }
   }
   return touched;
