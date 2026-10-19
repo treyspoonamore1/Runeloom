@@ -18,9 +18,14 @@ import {
   spawnGroup,
   spawnSpell,
   step,
+  stepGrid,
+  applyElement,
+  activeCount,
+  PLAYER_ID,
   NEUTRAL_INPUT,
   type GameState,
 } from '../src/sim';
+import { MAT, OWNER } from '../data/materials';
 import { parseArgs, requireInt, runCli } from './lib/args';
 import { loadRoomText } from './lib/rooms';
 import { summarize, type Summary } from './lib/stats';
@@ -30,8 +35,12 @@ export interface Bench {
   description: string;
   /** Budget in ms per tick (mean and p99 must both be under it), or null when not measurable yet. */
   budgetMs: number | null;
-  /** Shown when budgetMs is null. */
+  /** Shown when budgetMs is null and the bench doesn't run. */
   pendingNote?: string;
+  /** Runs and reports without a budget (worst cases). */
+  reportOnly?: boolean;
+  /** Extra line after the result (e.g. the mean active-cell share). */
+  note?: () => string;
   /** Builds the workload; returns a function that advances one tick. */
   setup(): () => void;
 }
@@ -173,14 +182,101 @@ export const benches: Bench[] = [
   scenarioBench('weave_events'),
   stressBench(),
   weave14Bench(),
-  {
-    id: 'grid',
-    description: 'Chemistry grid tick (20 Hz)',
-    budgetMs: null,
-    pendingNote: 'n/a until M3',
-    setup: () => () => {},
-  },
+  gridTypicalBench(),
+  gridWorstBench(),
 ];
+
+const GRID_TILES = 64; // 256 × 256 cells
+const GRASS_TILE_ROWS = 14;
+
+/** A 256×256-cell room: grass on top, a water lake bottom left, a metal yard bottom right. */
+function gridRoom(): string {
+  const rows: string[] = [];
+  for (let ty = 0; ty < GRID_TILES; ty++) {
+    if (ty < GRASS_TILE_ROWS) rows.push('"'.repeat(GRID_TILES));
+    else if (ty < 44) rows.push('.'.repeat(GRID_TILES));
+    else rows.push('~'.repeat(28) + '.'.repeat(8) + 'm'.repeat(28));
+  }
+  return `@id bench/grid\n${rows.join('\n')}\n`;
+}
+
+/**
+ * DESIGN §12 grid budget: 256×256 cells with ~20% active. A fire sweeps the grass (176 rows),
+ * burnt rows regrow one row per grid tick so it never runs out, and Storm hits the lake and the
+ * metal yard every second (charge on ~3,000 cells). Each sample is one grid tick, including the
+ * hits and regrowth in it. The note reports the mean active share.
+ */
+function gridTypicalBench(): Bench {
+  let activeSum = 0;
+  let samples = 0;
+  let cells = 1;
+  return {
+    id: 'grid:typical_20pct',
+    description: 'Chemistry grid tick, 256×256 with ~20% active (fire, smoke, charge)',
+    budgetMs: GRID_BUDGET_MS,
+    note: () => `mean active ${((100 * activeSum) / Math.max(1, samples) / cells).toFixed(1)}% of cells`,
+    setup() {
+      const state = createGame({ seed: 1, roomText: gridRoom(), spawnRoomEnemies: false });
+      const g = state.grid;
+      cells = g.width * g.height;
+      const grassRows = GRASS_TILE_ROWS * 4;
+      const fire = (x: number, y: number) =>
+        applyElement(state, { ...APP, element: 'fire', shape: { kind: 'circle', x, y, r: 2 } });
+      const storm = (x: number, y: number) =>
+        applyElement(state, { ...APP, element: 'storm', shape: { kind: 'circle', x, y, r: 2 } });
+      let t = 0;
+      return () => {
+        // Regrow one burnt row (ash back to grass) per grid tick.
+        const row = (t % grassRows) * g.width;
+        for (let i = row; i < row + g.width; i++)
+          if (g.ground[i] === MAT.ash && g.fire[i] === 0 && g.airTimer[i] === 0) g.ground[i] = MAT.grass;
+        if (t % 40 === 0) for (let k = 0; k < 4; k++) fire(32 + 64 * k, 8 + ((t / 40) % 4) * 13);
+        if (t % 20 === 0) {
+          for (const [x, y] of [
+            [20, 196],
+            [60, 236],
+            [100, 210],
+            [20, 246],
+          ])
+            storm(x!, y!);
+          storm(200, 220);
+        }
+        t++;
+        stepGrid(state);
+        activeSum += activeCount(g.active);
+        samples++;
+      };
+    },
+  };
+}
+
+/** Worst case: every cell of a 256×256 grass field burning (and smoking) on every tick. */
+function gridWorstBench(): Bench {
+  return {
+    id: 'grid:worst_all_burning',
+    description: 'Chemistry grid tick, all 65,536 cells of a grass field burning',
+    budgetMs: null,
+    reportOnly: true,
+    setup() {
+      const rows = Array.from({ length: GRID_TILES }, () => '"'.repeat(GRID_TILES));
+      const state = createGame({
+        seed: 1,
+        roomText: `@id bench/grass\n${rows.join('\n')}\n`,
+        spawnRoomEnemies: false,
+      });
+      // Lingering ×1000: 40,000 grid ticks of fuel, so the field burns for the whole run.
+      applyElement(state, {
+        ...APP,
+        element: 'fire',
+        shape: { kind: 'circle', x: 128, y: 128, r: 182 },
+        durationMult: 1000,
+      });
+      return () => stepGrid(state);
+    },
+  };
+}
+
+const APP = { owner: OWNER.player, sourceId: PLAYER_ID, hitDamage: 10, durationMult: 1 } as const;
 
 interface Result extends Summary {
   id: string;
@@ -224,7 +320,7 @@ runCli(() => {
 
   const results: (Result & { note?: string })[] = [];
   for (const b of selected) {
-    if (b.budgetMs === null)
+    if (b.budgetMs === null && !b.reportOnly)
       results.push({
         id: b.id,
         n: 0,
@@ -235,18 +331,20 @@ runCli(() => {
         ok: null,
         note: b.pendingNote,
       });
-    else results.push(runBench(b, ticks, warmup));
+    else results.push({ ...runBench(b, ticks, warmup), note: b.note?.() });
   }
 
   if (a.json) console.log(JSON.stringify(results));
   else {
     for (const r of results) {
-      if (r.budgetMs === null)
-        console.log(`${r.id.padEnd(26)} ${r.note ?? 'n/a'}  (budget ${GRID_BUDGET_MS} ms)`);
-      else
+      if (r.n === 0) console.log(`${r.id.padEnd(26)} ${r.note ?? 'n/a'}`);
+      else {
+        const verdict =
+          r.budgetMs === null ? 'no budget' : `budget ${r.budgetMs} ms  ${r.ok ? 'OK' : 'OVER BUDGET'}`;
         console.log(
-          `${r.id.padEnd(26)} mean ${r.mean.toFixed(4)} ms  p99 ${r.p99.toFixed(4)} ms  max ${r.max.toFixed(3)} ms  budget ${r.budgetMs} ms  ${r.ok ? 'OK' : 'OVER BUDGET'}`,
+          `${r.id.padEnd(26)} mean ${r.mean.toFixed(4)} ms  p99 ${r.p99.toFixed(4)} ms  max ${r.max.toFixed(3)} ms  ${verdict}${r.note ? `  (${r.note})` : ''}`,
         );
+      }
     }
   }
   if (a.strict && results.some((r) => r.ok === false)) process.exitCode = 1;
