@@ -135,19 +135,35 @@ function computeSeparation(state: GameState): void {
   for (let i = 0; i < n; i++) {
     const e = list[i]!;
     if (e.dead || enemyDef(e.kind).knockbackScale === 0 || isFrozen(e)) continue;
-    acc[0] = 0;
-    acc[1] = 0;
-    // Neighbors in the hash's query order (the push sums depend on it).
+    // Neighbors in the hash's query order (the push sums depend on it). This is pushFrom written
+    // out: called per neighbor, it boxed its float arguments whenever V8 didn't inline it.
     const count = hash.query(e.x, e.y, e.radius);
     const near = hash.hits;
+    const stiffness = t.separationStiffness;
+    let ax = 0;
+    let ay = 0;
     for (let k = 0; k < count; k++) {
       const j = near[k]!;
       if (j === i) continue;
       const o = list[j]!;
       if (o.dead) continue;
-      pushFrom(e, o.x, o.y, o.radius, i < j ? -1 : 1, t.separationStiffness);
+      const dx = e.x - o.x;
+      const dy = e.y - o.y;
+      const rr = e.radius + o.radius;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= rr * rr) continue;
+      const d = Math.sqrt(d2);
+      const push = (rr - d) * stiffness;
+      if (d === 0) {
+        ax += (i < j ? -1 : 1) * push;
+        continue;
+      }
+      ax += (dx / d) * push;
+      ay += (dy / d) * push;
     }
-    if (!p.dead) pushFrom(e, p.x, p.y, pr, -1, t.separationStiffness);
+    acc[0] = ax;
+    acc[1] = ay;
+    if (!p.dead) pushFrom(e, p.x, p.y, pr, -1, stiffness);
     let px = acc[0]!;
     let py = acc[1]!;
     const sp2 = px * px + py * py;
@@ -162,7 +178,10 @@ function computeSeparation(state: GameState): void {
   }
 }
 
-/** Adds to `acc` the push on `e` away from a body at (ox, oy) with radius `or`. */
+/**
+ * Adds to `acc` the push on `e` away from a body at (ox, oy) with radius `or` (the player; the
+ * neighbor loop in computeSeparation does the same inline).
+ */
 function pushFrom(e: Enemy, ox: number, oy: number, or: number, tieSign: number, stiffness: number): void {
   const dx = e.x - ox;
   const dy = e.y - oy;
