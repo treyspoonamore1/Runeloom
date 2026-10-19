@@ -7,8 +7,9 @@ import type { Room } from '../world/room';
  * cutting, so a diagonal step needs both side tiles walkable. Walls in M1 are whole tiles, so
  * the tile grid loses nothing and keeps a rebuild at about 2,000 nodes for the test arena.
  *
- * Determinism and hashing: `cost` is a pure function of the room's walkability and `goalTile`,
- * so hashState hashes only `goalTile` and `builtTick` (when it was last rebuilt), not the array.
+ * Determinism and hashing: `cost` is a pure function of the room's walkability (the hashed walk
+ * masks as of `walkVersion`) and `goalTile`, so hashState hashes `goalTile`, `builtTick` and
+ * `walkVersion`, not the arrays.
  */
 export interface FlowField {
   tilesW: number;
@@ -21,6 +22,8 @@ export interface FlowField {
   goalTile: number;
   /** state.tick of the last rebuild, -1 before the first. */
   builtTick: number;
+  /** grid.walkVersion that `walkable` was read at; when the grid's differs, it is re-read and rebuilt. */
+  walkVersion: number;
 }
 
 export const UNREACHABLE = 0x3fffffff;
@@ -46,7 +49,21 @@ export function createFlowField(room: Room): FlowField {
     cost: new Int32Array(n).fill(UNREACHABLE),
     goalTile: -1,
     builtTick: -1,
+    walkVersion: 0,
   };
+}
+
+/**
+ * Re-reads tile walkability from room.solid when the grid's walkVersion moved on (bramble burnt,
+ * a bridge fell). Returns true if it did, so the caller rebuilds the costs.
+ */
+export function syncFlowWalkable(f: FlowField, room: Room, walkVersion: number): boolean {
+  if (f.walkVersion === walkVersion) return false;
+  f.walkVersion = walkVersion;
+  for (let ty = 0; ty < room.tilesH; ty++)
+    for (let tx = 0; tx < room.tilesW; tx++)
+      f.walkable[ty * room.tilesW + tx] = tileWalkable(room, tx, ty) ? 1 : 0;
+  return true;
 }
 
 function tileWalkable(room: Room, tx: number, ty: number): boolean {

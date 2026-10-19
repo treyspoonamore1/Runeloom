@@ -167,6 +167,44 @@ export const defaultTuning = {
     /** Most cells a spawn is jittered from its tile center, each axis. */
     spawnJitter: 1,
   },
+  /**
+   * Chemistry grid rules (DESIGN §6.3; src/sim/grid). Per-material numbers live in
+   * data/materials.ts. Seconds are converted to 20 Hz grid ticks.
+   */
+  grid: {
+    /** Rule 2 wind factor on spread chance. 1 until Gale and rule 21 arrive (M8). */
+    windFactor: 1,
+    /** Burn intensity (0–255) by what burns: flammable materials, oil (rule 6 "hot"), placed fire (rule 26). */
+    fireIntensity: { material: 192, oil: 255, placed: 128 },
+    /** Rule 26: seconds placed fire burns on walkable non-flammable ground (× Lingering). */
+    placedFireSeconds: 1,
+    /** Rule 14: chance per hit cell that Storm ignites a dry flammable cell. */
+    stormIgniteChance: 0.15,
+    /** Rule 4: steam covers every hit water cell plus this many cells around it (1 = 3×3). */
+    steamRadius: 1,
+    /** Dense smoke fills cells within this many steps (4-neighbor) of the burning cell; light smoke only the cell. */
+    denseSmokeRadius: 1,
+    /** Rule 11: electrified water. */
+    water: {
+      chargeSeconds: 1,
+      maxCells: 600,
+      /** Flood-fill steps from the hit; also the falloff distance (1 − d / maxDistance). */
+      maxDistance: 40,
+      minFalloff: 0.25,
+      /** Fraction of the triggering hit's Storm damage per entity (before falloff). */
+      damageMult: 1,
+    },
+    /** Rule 12: electrified metal networks (no falloff). */
+    metal: { chargeSeconds: 1.5, maxCells: 2000, damageMult: 0.6 },
+    /** Rule 13: most water ↔ metal hand-offs one Storm hit can chain through. */
+    chargeMaxHops: 4,
+    /** Oil barrel explosion (DESIGN §6.2): world-owned fire burst, damage scaled like enemy damage (§7). */
+    explosion: { radius: 4, damage: 30, oilRadius: 3 },
+    /** DESIGN §6.4: terrain-fire ignite DPS = this fraction of refLife(area level) per second. */
+    terrainFireLifeFraction: 0.1,
+    /** DESIGN §7: refLife(L) = refLifeBase × enemyLifeGrowth^(L − 1). */
+    refLifeBase: 50,
+  },
   camera: {
     /** Look-ahead toward the cursor as a fraction of the screen size. */
     lookAhead: 0.15,

@@ -53,26 +53,33 @@ describe('mixSfx', () => {
   });
 });
 
+/** Renders every preset's samples; slow when the machine is busy. */
+const PRESET_RENDER_TIMEOUT_MS = 30_000;
+
 describe('every preset renders', () => {
-  it('is finite, audible, short and peaks at its gain', async () => {
-    vi.stubGlobal('AudioContext', class {});
-    const { ZZFX } = await import('zzfx');
-    for (const id of Object.keys(sfx) as SfxId[]) {
-      const def = sfx[id];
-      const s = mixSfx(def, (...a) => ZZFX.buildSamples(...a), ZZFX.sampleRate);
-      const seconds = s.length / ZZFX.sampleRate;
-      let peak = 0;
-      for (const v of s) {
-        expect(Number.isFinite(v), id).toBe(true);
-        peak = Math.max(peak, Math.abs(v));
+  it(
+    'is finite, audible, short and peaks at its gain',
+    async () => {
+      vi.stubGlobal('AudioContext', class {});
+      const { ZZFX } = await import('zzfx');
+      for (const id of Object.keys(sfx) as SfxId[]) {
+        const def = sfx[id];
+        const s = mixSfx(def, (...a) => ZZFX.buildSamples(...a), ZZFX.sampleRate);
+        const seconds = s.length / ZZFX.sampleRate;
+        let peak = 0;
+        for (const v of s) {
+          expect(Number.isFinite(v), id).toBe(true);
+          peak = Math.max(peak, Math.abs(v));
+        }
+        expect(peak, id).toBeGreaterThan(0.05);
+        expect(peak, id).toBeLessThanOrEqual(def.gain + 1e-6);
+        expect(seconds, id).toBeLessThan(1.0);
+        expect(def.gain, id).toBeLessThanOrEqual(1);
       }
-      expect(peak, id).toBeGreaterThan(0.05);
-      expect(peak, id).toBeLessThanOrEqual(def.gain + 1e-6);
-      expect(seconds, id).toBeLessThan(1.0);
-      expect(def.gain, id).toBeLessThanOrEqual(1);
-    }
-    vi.unstubAllGlobals();
-  });
+      vi.unstubAllGlobals();
+    },
+    PRESET_RENDER_TIMEOUT_MS,
+  );
 });
 
 describe('VoiceLimiter', () => {
@@ -205,7 +212,11 @@ describe('ailment cues', () => {
   const cues = (e: SimEvent) => cuesForEvent(e, s);
 
   it('plays a sound per ailment, centered on the player and placed on enemies', () => {
-    const applied = (target: number | 'player', ailment: 'ignite' | 'chill' | 'shock', magnitude: number): SimEvent => ({
+    const applied = (
+      target: number | 'player',
+      ailment: 'ignite' | 'chill' | 'shock',
+      magnitude: number,
+    ): SimEvent => ({
       type: 'ailmentApplied',
       target,
       ailment,
@@ -226,9 +237,9 @@ describe('ailment cues', () => {
   });
 
   it('cracks on freeze, drips on thaw, crackles on burn ticks and shatters frozen deaths', () => {
-    expect(cues({ type: 'freeze', target: 4, duration: 1.2, sourceId: 0, x: 1, y: 2 }).map((c) => c.id)).toEqual([
-      'freeze',
-    ]);
+    expect(
+      cues({ type: 'freeze', target: 4, duration: 1.2, sourceId: 0, x: 1, y: 2 }).map((c) => c.id),
+    ).toEqual(['freeze']);
     expect(cues({ type: 'thaw', target: 'player', x: 1, y: 2 })).toEqual([{ id: 'thaw' }]);
     const dot = (amount: number): SimEvent => ({
       type: 'dot',
@@ -242,7 +253,15 @@ describe('ailment cues', () => {
     expect(cues(dot(3)).map((c) => c.id)).toEqual(['burnTick']);
     // God mode ignites deal nothing: no crackle.
     expect(cues(dot(0))).toEqual([]);
-    const death = { type: 'death', id: 1, kind: 'tinderling', x: 0, y: 0, killerId: 0, cause: 'hit' } as const;
+    const death = {
+      type: 'death',
+      id: 1,
+      kind: 'tinderling',
+      x: 0,
+      y: 0,
+      killerId: 0,
+      cause: 'hit',
+    } as const;
     expect(cues({ ...death, shattered: true }).map((c) => c.id)).toEqual(['shatter']);
     expect(cues({ ...death, shattered: false }).map((c) => c.id)).toEqual(['deathTinderling']);
   });
@@ -307,10 +326,12 @@ describe('spell form cues', () => {
     expect(ids(beam('fire'))).toEqual(['beamFire']);
     expect(ids(beam('frost'))).toEqual(['beamFrost']);
     expect(ids(beam('storm'))).toEqual(['beamStorm']);
-    expect(ids({ type: 'lobLand', id: 1, castId: 1, elements: ['fire'], x: 0, y: 0, radius: 5 })).toEqual(['lobLand']);
-    expect(ids({ type: 'chainJump', id: 1, castId: 1, target: 3, fromX: 0, fromY: 0, toX: 1, toY: 1 })).toEqual([
-      'chainZap',
+    expect(ids({ type: 'lobLand', id: 1, castId: 1, elements: ['fire'], x: 0, y: 0, radius: 5 })).toEqual([
+      'lobLand',
     ]);
+    expect(
+      ids({ type: 'chainJump', id: 1, castId: 1, target: 3, fromX: 0, fromY: 0, toX: 1, toY: 1 }),
+    ).toEqual(['chainZap']);
     expect(ids({ type: 'manaRefund', amount: 2, instanceId: 1, x: 0, y: 0 })).toEqual(['manaChime']);
     const fired = (trigger: 'cast' | 'pulse'): SimEvent => ({
       type: 'triggerFired',
@@ -348,7 +369,9 @@ describe('spell form cues', () => {
     t.cues({ type: 'spellEnd', id: 10, castId: 1, form: 'orb', x: 0, y: 0, reason: 'expired' });
     expect(t.cues(orbHit)).toEqual([]);
     t.cues(spawn('sigil', { id: 20, toX: 30, toY: 40 }));
-    expect(t.cues(spawn('beam', { id: 21, depth: 1, x: 30, y: 40 })).map((c) => c.id)).toEqual(['sigilPulse']);
+    expect(t.cues(spawn('beam', { id: 21, depth: 1, x: 30, y: 40 })).map((c) => c.id)).toEqual([
+      'sigilPulse',
+    ]);
     expect(t.cues(spawn('beam', { id: 22, depth: 1, x: 31, y: 40 }))).toEqual([]);
   });
 

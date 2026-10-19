@@ -28,12 +28,15 @@ export function hashState(state: GameState): number {
   for (const w of state.rng.getState()) h.u32(w);
   for (const w of state.combatRng.getState()) h.u32(w);
   for (const w of state.aiRng.getState()) h.u32(w);
-  h.num(state.flow.goalTile).num(state.flow.builtTick);
+  for (const w of state.gridRng.getState()) h.u32(w);
+  h.num(state.flow.goalTile).num(state.flow.builtTick).u32(state.flow.walkVersion);
   const ar = state.arena;
   h.u32(ar.wave).string(ar.phase).byte(0).num(ar.timer).u32(ar.waveSize).u32(ar.remaining);
   h.u32(ar.areaLevel).u32(ar.spawnedTotal).u32(ar.killedTotal).u32(ar.queue.length);
   for (const q of ar.queue) h.string(q.kind).byte(0).u32(q.areaLevel).num(q.delay);
   h.string(state.room.id);
+  // The walk masks change with the grid (burnt bramble, broken bridges).
+  h.bytes(state.room.solid).bytes(state.room.shotSolid);
   hashGrid(h, state.grid);
   hashLab(h, state.lab);
   h.u32(state.nextId).num(state.hitstopLeft);
@@ -117,8 +120,20 @@ export function hashHex(n: number): string {
   return (n >>> 0).toString(16).padStart(8, '0');
 }
 
+/**
+ * Every cell field plus the charge events, blasts and counters. Not hashed: `version` (render
+ * upload counter) and `active` (derived; see grid/active.ts).
+ */
 function hashGrid(h: Hasher, g: Grid): void {
-  h.u32(g.width).u32(g.height).u32(g.tick);
+  h.u32(g.width).u32(g.height).u32(g.tick).u32(g.clock).u32(g.walkVersion).u32(g.nextChargeId);
+  h.bytes(g.chargeId).bytes(g.chargeFalloff);
+  h.u32(g.chargeEvents.length);
+  for (const ev of g.chargeEvents) {
+    h.u32(ev.id).u32(ev.chain).string(ev.medium).byte(0).num(ev.damage).u32(ev.owner);
+    h.num(ev.sourceId).u32(ev.ticksLeft).u32(ev.cells);
+  }
+  h.u32(g.blasts.length);
+  for (const b of g.blasts) h.num(b.x).num(b.y).num(b.radius).num(b.damage).u32(b.owner).num(b.sourceId);
   for (const a of [
     g.ground,
     g.surface,

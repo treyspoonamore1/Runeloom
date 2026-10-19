@@ -19,6 +19,7 @@ import { tileGround, type TileGround } from '../../../data/tileGround';
 import { tileForChar } from '../../../data/tiles';
 import { TILE_CELLS } from '../core/constants';
 import type { Room } from '../world/room';
+import { createActiveSet, type ActiveSet } from './active';
 
 export interface Grid {
   /** Size in cells (same as the room). */
@@ -46,10 +47,64 @@ export interface Grid {
   under: Uint8Array;
   /** OWNER code of the team whose effect is on the cell (fire, charge, smoke). */
   owner: Uint8Array;
+  /**
+   * Charge event id on charged cells (0 = none). An entity takes rule 11/12 damage once per id;
+   * look the event up with `chargeEventInfo` (grid/query.ts).
+   */
+  chargeId: Uint32Array;
+  /** Rule 11 falloff on charged cells: 1 − d / maxDistance, at least minFalloff; 1 on metal; 0 when uncharged. */
+  chargeFalloff: Float32Array;
+  /** Charge events with charged cells left, oldest first (grid/charge.ts). */
+  chargeEvents: ChargeEvent[];
+  /** Next charge event id (ids start at 1 and are never reused). */
+  nextChargeId: number;
+  /**
+   * Explosions in the latest grid tick (oil barrels), for the entity code to damage entities.
+   * Cleared at the start of every grid tick.
+   */
+  blasts: Blast[];
   /** Grid ticks run so far (20 Hz; hitstop doesn't advance it). Render interpolates between grid ticks. */
   tick: number;
+  /** Sim ticks since the last grid tick (0 to GRID_EVERY − 1). Hitstop ticks don't count. */
+  clock: number;
   /** Increments whenever any cell field changes, so the renderer knows when to re-upload. */
   version: number;
+  /**
+   * Increments whenever a cell's walkability or shot blocking changes (room.solid / shotSolid
+   * are kept in sync with the material table); the AI flow field rebuilds when it changes.
+   */
+  walkVersion: number;
+  /**
+   * Cells the grid tick visits (grid/active.ts). Derived, not hashed: quiet cells in it do
+   * nothing, and it is visited in ascending index order.
+   */
+  active: ActiveSet;
+}
+
+/** One electrify event (rules 11–13). */
+export interface ChargeEvent {
+  id: number;
+  /** Id of the first event of the Storm hit that started it (rule 13 hand-offs share it). */
+  chain: number;
+  medium: 'water' | 'metal';
+  /** Damage per entity before falloff: the hit's Storm damage × the medium's damageMult. */
+  damage: number;
+  owner: number;
+  sourceId: number;
+  /** Grid ticks until its cells' charge ends. */
+  ticksLeft: number;
+  cells: number;
+}
+
+/** An oil barrel explosion (DESIGN §6.2). Positions and radius in cells. */
+export interface Blast {
+  x: number;
+  y: number;
+  radius: number;
+  /** Fire damage, already scaled by area level. */
+  damage: number;
+  owner: number;
+  sourceId: number;
 }
 
 export function cellIndex(grid: Grid, cx: number, cy: number): number {
@@ -117,8 +172,16 @@ export function createGrid(room: Room): Grid {
     wet: new Uint8Array(n),
     under: new Uint8Array(n),
     owner: new Uint8Array(n).fill(OWNER.world),
+    chargeId: new Uint32Array(n),
+    chargeFalloff: new Float32Array(n),
+    chargeEvents: [],
+    nextChargeId: 1,
+    blasts: [],
     tick: 0,
+    clock: 0,
     version: 0,
+    walkVersion: 0,
+    active: createActiveSet(n),
   };
   for (let ty = 0; ty < room.tilesH; ty++) {
     for (let tx = 0; tx < room.tilesW; tx++) {

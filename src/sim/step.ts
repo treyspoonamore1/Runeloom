@@ -11,6 +11,7 @@ import { prepareEnemyAI } from './ai';
 import { stepArena } from './world/waves';
 import { stepLab } from './world/lab';
 import { stepAilments } from './combat/ailmentTick';
+import { stepGrid } from './grid/tick';
 
 /** Hitstop timers within this many seconds of zero count as expired (absorbs 1/60 rounding). */
 const TIME_EPSILON = 1e-9;
@@ -23,8 +24,8 @@ const TIME_EPSILON = 1e-9;
  * knockback) → AI flow field → enemies (AI, attacks, separation, movement, knockback) → triggers
  * (Cast flow, Pulse, queued events; spells see the moved enemies) → spell instances (Echo
  * repeats, then every instance in spawn order) → enemy projectiles → ailments (ignite damage,
- * decay, timers) → arena (count kills, spawn, waves) → Chemistry Lab scripts → remove dead enemies, ended projectiles and
- * spells → grid (M3).
+ * decay, timers) → arena (count kills, spawn, waves) → Chemistry Lab scripts → remove dead enemies,
+ * ended projectiles and spells → chemistry grid (every 3rd non-hitstop tick, 20 Hz; grid/tick.ts).
  */
 export function step(state: GameState, input: InputFrame): void {
   state.tick++;
@@ -46,8 +47,10 @@ export function step(state: GameState, input: InputFrame): void {
   compactEnemies(state);
   compactProjectiles(state);
   compactSpells(state);
-  if (state.tick % GRID_EVERY === 0) {
-    // Chemistry grid tick (M3).
+  // The grid ticks every GRID_EVERY non-hitstop ticks (its own clock: hitstop never desyncs it).
+  if (++state.grid.clock >= GRID_EVERY) {
+    state.grid.clock = 0;
+    stepGrid(state);
   }
   state.prevButtons = input.buttons;
 }

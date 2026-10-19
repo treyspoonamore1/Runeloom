@@ -24,6 +24,7 @@ import { aggro } from '../ai';
 import { SIM_HZ, TILE_CELLS } from '../core/constants';
 import type { Hasher } from '../core/hash';
 import { createGrid, type Grid } from '../grid/grid';
+import { wakeRegion } from '../grid/region';
 import { applyElement, type Footprint, type TerrainElement } from '../grid/paint';
 import type { GameState } from '../state';
 import type { Room } from './room';
@@ -122,7 +123,7 @@ export function nearestStation(state: GameState, stations: readonly LabStation[]
   return best;
 }
 
-/** Copies the pristine cells of `area` over the live grid and tells the renderer. */
+/** Copies the pristine cells of `area` over the live grid, then wakes the area (walkability, active set, version). */
 function restoreArea(state: GameState, area: CellRect): void {
   const live = state.grid;
   const orig = pristineGrid(state.room);
@@ -137,7 +138,8 @@ function restoreArea(state: GameState, area: CellRect): void {
       d.set(s.subarray(row + area.x0, row + area.x1), row + area.x0);
     }
   }
-  live.version++;
+  // Re-sync walkability, re-activate busy cells and bump the version (inclusive bounds).
+  wakeRegion(state, area.x0, area.y0, area.x1 - 1, area.y1 - 1);
 }
 
 /** Removes the enemies and projectiles whose centers are in `area`. */

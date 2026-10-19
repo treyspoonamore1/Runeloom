@@ -230,7 +230,66 @@ export type SimEvent =
       damageType: DamageType;
       x: number;
       y: number;
+    }
+  /*
+   * Chemistry grid events (src/sim/grid). Batched ones carry `count` cells and their inclusive
+   * bounds in cell coordinates (minX..maxX, minY..maxY): one per kind per grid tick or per
+   * applyElement call, never one per cell. Persistent visuals read state.grid directly; these
+   * are for sounds and one-shot effects.
+   */
+  /** Cells caught fire (rule 1, 2, 6, 14, 26 fire; spread and hits batched separately). */
+  | ({ type: 'cellIgnited' } & CellBounds)
+  /** Burning cells ran out of fuel (rule 3 results, oil burnt away, placed fire out). */
+  | ({ type: 'burntOut' } & CellBounds)
+  /** Fire on water made steam (rule 4); the bounds cover the steamed cells. */
+  | ({ type: 'steam' } & CellBounds)
+  /** Frost froze water into ice or an ice bridge (rules 7, 8). */
+  | ({ type: 'iceFormed' } & CellBounds)
+  /** Ice bridge cells started their visible cracking (crack progress: grid/query.ts). */
+  | ({ type: 'iceBreaking' } & CellBounds)
+  /** Ice bridge cells broke back into deep water (rule 25 is the entity side). */
+  | ({ type: 'iceBroke' } & CellBounds)
+  /**
+   * A water body (rule 11) or metal network (rule 12) was electrified: charge event `chargeId`
+   * over `cells` cells from (x, y) (the first cell reached, its center). handoff: it came across
+   * a water ↔ metal contact (rule 13), not straight from the hit.
+   */
+  | ({ type: 'waterElectrified' } & ElectrifyFields)
+  | ({ type: 'metalElectrified' } & ElectrifyFields)
+  /**
+   * An oil barrel exploded at (x, y) (cells): a fire burst of `radius` cells dealing `damage`
+   * Fire (already scaled by area level), world-owned. The entity code applies the damage from
+   * state.grid.blasts, not from this event.
+   */
+  | {
+      type: 'explosion';
+      x: number;
+      y: number;
+      radius: number;
+      damage: number;
+      owner: number;
+      sourceId: number;
     };
+
+/** Fields of 'waterElectrified' and 'metalElectrified'. */
+export interface ElectrifyFields {
+  chargeId: number;
+  x: number;
+  y: number;
+  cells: number;
+  owner: number;
+  sourceId: number;
+  handoff: boolean;
+}
+
+/** Cell count and inclusive bounds (cells) of a batched grid event. */
+export interface CellBounds {
+  count: number;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
 
 export type SimEventType = SimEvent['type'];
 
