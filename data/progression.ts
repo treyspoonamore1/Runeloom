@@ -68,3 +68,6 @@ export const guaranteedRunes: Partial<Record<RegionRoomId, RuneId[]>> = {
 
 /** Spindle bases by the area level they start dropping at: E4, E8 and K4 (CONTENT §9.1). */
 export const spindleDropFrom = { ashwood: 4, ironbark: 6, rimeglass: 8 } as const;
+
+/** Enemy kinds that are bosses: their death clears their room and is remembered in WorldState.bossesDefeated. */
+export const bossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden'];
