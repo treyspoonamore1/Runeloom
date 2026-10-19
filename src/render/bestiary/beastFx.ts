@@ -17,7 +17,10 @@ export class BeastFx {
   readonly add: FxLayer;
   readonly under = new Container();
   readonly over = new Container();
-  readonly tex: Record<'dot' | 'ring' | 'puff' | 'spark' | 'glow' | 'drip' | 'star' | 'zapA' | 'zapB', Texture>;
+  readonly tex: Record<
+    'dot' | 'ring' | 'puff' | 'spark' | 'glow' | 'drip' | 'star' | 'zapA' | 'zapB',
+    Texture
+  >;
   private budget = 0;
 
   constructor(atlas: Atlas) {
@@ -67,7 +70,18 @@ export class BeastFx {
     return true;
   }
 
-  spawn(layer: FxLayer, tex: Texture, x: number, y: number, vx: number, vy: number, life: number, tint: number, s0: number, s1: number): FxParticle | null {
+  spawn(
+    layer: FxLayer,
+    tex: Texture,
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    life: number,
+    tint: number,
+    s0: number,
+    s1: number,
+  ): FxParticle | null {
     return spawnHeld(layer, tex, x, y, vx, vy, life, tint, s0, s1);
   }
 

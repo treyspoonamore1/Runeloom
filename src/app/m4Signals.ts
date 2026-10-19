@@ -29,7 +29,11 @@ export type M4Cue =
   | ({ type: 'roomEnter'; roomId: string } & At)
   | ({ type: 'levelUp'; level: number } & At)
   | ({ type: 'lootDropped' | 'lootPicked'; id: number; content: LootContent | null } & At)
-  | ({ type: 'doorOpened' | 'chestOpened' | 'pickup' | 'loomStoneActivated'; kind: ObjectKind; key: string } & At)
+  | ({
+      type: 'doorOpened' | 'chestOpened' | 'pickup' | 'loomStoneActivated';
+      kind: ObjectKind;
+      key: string;
+    } & At)
   | ({ type: 'plateClick'; key: string; pressed: boolean } & At)
   | ({ type: 'switchPowered'; key: string; on: boolean } & At)
   | ({ type: 'brazierLit'; key: string; lit: boolean } & At)
@@ -119,7 +123,8 @@ export class M4Signals {
       this.snapshot(s);
       this.memo.clear();
       this.seen.clear();
-      if (M4_EVENTS.roomEnter === null) out.push({ type: 'roomEnter', roomId: s.room.id, x: s.player.x, y: s.player.y });
+      if (M4_EVENTS.roomEnter === null)
+        out.push({ type: 'roomEnter', roomId: s.room.id, x: s.player.x, y: s.player.y });
     }
     if (s.hero.level > this.level && M4_EVENTS.levelUp === null)
       out.push({ type: 'levelUp', level: s.hero.level, x: s.player.x, y: s.player.y });
@@ -152,9 +157,23 @@ export class M4Signals {
       if ((o.kind === 'push_block' || o.kind === 'ice_block') && M4_EVENTS.blockMoved === null) {
         const moved = prev.tx !== now.tx || prev.ty !== now.ty;
         if ((now.moving && !prev.moving) || (moved && !now.moving && !prev.moving))
-          this.out.push({ type: 'blockMoved', kind: o.kind, key: o.key, sliding: o.kind === 'ice_block', stopped: false, ...at });
+          this.out.push({
+            type: 'blockMoved',
+            kind: o.kind,
+            key: o.key,
+            sliding: o.kind === 'ice_block',
+            stopped: false,
+            ...at,
+          });
         else if (prev.moving && !now.moving)
-          this.out.push({ type: 'blockMoved', kind: o.kind, key: o.key, sliding: o.kind === 'ice_block', stopped: true, ...at });
+          this.out.push({
+            type: 'blockMoved',
+            kind: o.kind,
+            key: o.key,
+            sliding: o.kind === 'ice_block',
+            stopped: true,
+            ...at,
+          });
       }
     }
   }
@@ -164,7 +183,10 @@ export class M4Signals {
     if (type === 'plateClick') out.push({ type, key: o.key, pressed: on, ...at });
     else if (type === 'switchPowered') out.push({ type, key: o.key, on, ...at });
     else if (type === 'brazierLit') out.push({ type, key: o.key, lit: on, ...at });
-    else if (on && (type === 'doorOpened' || type === 'chestOpened' || type === 'pickup' || type === 'loomStoneActivated'))
+    else if (
+      on &&
+      (type === 'doorOpened' || type === 'chestOpened' || type === 'pickup' || type === 'loomStoneActivated')
+    )
       out.push({ type, kind: o.kind, key: o.key, ...at });
   }
 
@@ -179,7 +201,8 @@ export class M4Signals {
     for (const [id, d] of this.loot) {
       if (live.has(id)) continue;
       this.loot.delete(id);
-      if (M4_EVENTS.lootPicked === null) this.out.push({ type: 'lootPicked', id, content: d.content, x: d.x, y: d.y });
+      if (M4_EVENTS.lootPicked === null)
+        this.out.push({ type: 'lootPicked', id, content: d.content, x: d.x, y: d.y });
     }
   }
 
@@ -208,7 +231,11 @@ export class M4Signals {
       if (frozen) m.frozenAt = t;
       const given = M4_STATE.superheated(e);
       const heat =
-        given ?? (e.kind === ('cinder_warden' as string) && phase >= 2 && !frozen && t - m.frozenAt >= SUPERHEAT_BREAK);
+        given ??
+        (e.kind === ('cinder_warden' as string) &&
+          phase >= 2 &&
+          !frozen &&
+          t - m.frozenAt >= SUPERHEAT_BREAK);
       if (heat !== m.superheat && M4_EVENTS.superheatChanged === null)
         this.out.push({ type: 'superheatChanged', id: e.id, on: heat, x: e.x, y: e.y });
       m.superheat = heat;
@@ -246,12 +273,23 @@ export class M4Signals {
           const key = m4AttackKey(ev.attack);
           if (!key) break;
           const e = s.enemies.find((en) => en.id === ev.id);
-          const at = ev.type === 'attack' ? { x: ev.x, y: ev.y } : e ? { x: e.x, y: e.y } : { x: s.player.x, y: s.player.y };
-          out.push({ type: ev.type === 'attack' ? 'attackLanded' : 'attackWindup', attack: key, id: ev.id, ...at });
+          const at =
+            ev.type === 'attack'
+              ? { x: ev.x, y: ev.y }
+              : e
+                ? { x: e.x, y: e.y }
+                : { x: s.player.x, y: s.player.y };
+          out.push({
+            type: ev.type === 'attack' ? 'attackLanded' : 'attackWindup',
+            attack: key,
+            id: ev.id,
+            ...at,
+          });
           break;
         }
         case 'death':
-          if (BOSS_KINDS.has(ev.kind)) out.push({ type: 'bossDeath', id: ev.id, kind: ev.kind, x: ev.x, y: ev.y });
+          if (BOSS_KINDS.has(ev.kind))
+            out.push({ type: 'bossDeath', id: ev.id, kind: ev.kind, x: ev.x, y: ev.y });
           break;
         case 'playerDeath':
         case 'playerRespawn':

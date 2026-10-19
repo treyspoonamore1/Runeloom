@@ -109,7 +109,18 @@ export class LurkerRig extends BeastRig {
         fx.ripple(c.x, ry, 0.8 * c.scale, (3 + 2 * c.wind) * c.scale, 0.55, tint, 1);
       }
       if (Math.random() < 10 * c.dt) {
-        const b = fx.spawn(fx.threat, fx.tex.dot, c.x + rand(-1.4, 1.4) * c.scale, ry + rand(-0.5, 0.5), 0, -rand(1, 2), rand(0.25, 0.4), B.bog_lurker.bubble, 0.2, 0.32);
+        const b = fx.spawn(
+          fx.threat,
+          fx.tex.dot,
+          c.x + rand(-1.4, 1.4) * c.scale,
+          ry + rand(-0.5, 0.5),
+          0,
+          -rand(1, 2),
+          rand(0.25, 0.4),
+          B.bog_lurker.bubble,
+          0.2,
+          0.32,
+        );
         if (b) b.aspect = 0.9;
       }
     } else if (s < 0.5 && fx.take(F.rippleIdle, c.dt)) {
@@ -119,7 +130,18 @@ export class LurkerRig extends BeastRig {
       // Burst out of the water.
       for (let i = 0; i < 8; i++) {
         const a = rand(0, Math.PI * 2);
-        const p = fx.spawn(fx.body, fx.tex.dot, c.x, ry, Math.cos(a) * rand(4, 9), Math.sin(a) * rand(2, 5) - 4, rand(0.3, 0.5), 0xd8f4ff, 0.3, 0.12);
+        const p = fx.spawn(
+          fx.body,
+          fx.tex.dot,
+          c.x,
+          ry,
+          Math.cos(a) * rand(4, 9),
+          Math.sin(a) * rand(2, 5) - 4,
+          rand(0.3, 0.5),
+          0xd8f4ff,
+          0.3,
+          0.12,
+        );
         if (p) p.grav = 26;
       }
       fx.ripple(c.x, ry, 1.5 * c.scale, 6 * c.scale, 0.4, B.bog_lurker.ripple, 0.9);
@@ -173,7 +195,18 @@ export class WispRig extends BeastRig {
     this.halo.scale.set(2.2 + c.wind * 0.9);
     const fx = c.fx;
     if (fx.take(2 + c.wind * 14, c.dt)) {
-      const p = fx.spawn(fx.body, fx.tex.dot, c.x + rand(-1, 1) * c.scale, c.y - hover - rand(0, 2) * c.scale, rand(-1, 1), rand(0.5, 2), rand(0.4, 0.8), 0xeaf4ff, 0.16, 0.04);
+      const p = fx.spawn(
+        fx.body,
+        fx.tex.dot,
+        c.x + rand(-1, 1) * c.scale,
+        c.y - hover - rand(0, 2) * c.scale,
+        rand(-1, 1),
+        rand(0.5, 2),
+        rand(0.4, 0.8),
+        0xeaf4ff,
+        0.16,
+        0.04,
+      );
       if (p) p.drag = 1;
     }
   }
@@ -229,7 +262,18 @@ export class CallerRig extends BeastRig {
     if (raise > 0.3 && c.fx.take(18 * raise, c.dt)) {
       const sx = c.x + (this.staff.x + Math.sin(this.staff.rotation) * 2.95) * c.scale;
       const sy = c.y + (this.staff.y - 2.95) * c.scale;
-      const p = c.fx.spawn(c.fx.add, c.fx.tex.spark, sx + rand(-0.6, 0.6), sy + rand(-0.6, 0.6), rand(-5, 5), rand(-5, 5), 0.12, ELEMENT.storm, 0.6, 0.2);
+      const p = c.fx.spawn(
+        c.fx.add,
+        c.fx.tex.spark,
+        sx + rand(-0.6, 0.6),
+        sy + rand(-0.6, 0.6),
+        rand(-5, 5),
+        rand(-5, 5),
+        0.12,
+        ELEMENT.storm,
+        0.6,
+        0.2,
+      );
       if (p) {
         p.align = true;
         p.stretch = 0.03;
@@ -252,16 +296,16 @@ export class MiteRig extends BeastRig {
   constructor(atlas: Atlas, root: Container, lift: Container, body: Sprite, flash: Sprite) {
     super(atlas, root, lift, body, flash);
     for (const [lx, ly] of [
-      [-0.55, -0.25],
-      [-0.62, 0.05],
-      [-0.5, 0.32],
-      [0.55, -0.25],
-      [0.62, 0.05],
-      [0.5, 0.32],
+      [-0.72, -0.3],
+      [-0.8, 0.06],
+      [-0.65, 0.42],
+      [0.72, -0.3],
+      [0.8, 0.06],
+      [0.65, 0.42],
     ] as const) {
       const l = new Sprite(atlas.get('tinderling_leg'));
       l.position.set(lx, ly);
-      l.scale.set(0.6);
+      l.scale.set(0.75);
       root.addChildAt(l, 0);
       this.legs.push(l);
     }
@@ -274,14 +318,20 @@ export class MiteRig extends BeastRig {
       const ph = this.stride + (i % 2) * Math.PI;
       this.legs[i]!.pivot.set(Math.cos(ph) * 0.12 * c.run, Math.sin(ph) * 0.15 * c.run);
     }
-    this.eyes.position.set(c.cx * 0.3, -0.05 + c.cy * 0.25);
+    this.eyes.position.set(c.cx * 0.4, -0.06 + c.cy * 0.32);
     this.eyes.alpha = smoothstep(-0.95, -0.4, c.cy);
     // Scuttle jitter.
     this.lift.rotation += Math.sin(this.stride * 2.3) * 0.08 * c.run;
   }
 }
 
-export type BeastFactory = (atlas: Atlas, root: Container, lift: Container, body: Sprite, flash: Sprite) => BeastRig;
+export type BeastFactory = (
+  atlas: Atlas,
+  root: Container,
+  lift: Container,
+  body: Sprite,
+  flash: Sprite,
+) => BeastRig;
 
 export const SMALL_RIGS: Partial<Record<M4Kind, BeastFactory>> = {
   bog_lurker: (a, r, l, b, f) => new LurkerRig(a, r, l, b, f),

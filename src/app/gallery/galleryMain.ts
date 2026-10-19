@@ -6,12 +6,20 @@
  * window.__gallery drives it from Playwright: show a section, advance time, run the crowd stress
  * test and measure render time.
  */
-import { Container, Text } from 'pixi.js';
+import { Container } from 'pixi.js';
+import { label } from './galleryLabel';
 import { createGame, type GameState, type SimEvent } from '../../sim';
 import { createRenderer, type Renderer } from '../../render/renderer';
 import { poseActors, spawnActor, type Actor, type ActorSpec } from './galleryActors';
 import { beastSpecs, raritySpecs, telegraphSpecs } from './galleryBeasts';
-import { crowdRoomText, galleryRoomText, sectionCenter, SECTION_IDS, type SectionId } from './galleryRoom';
+import {
+  crowdRoomText,
+  galleryRoomText,
+  sectionAt,
+  sectionCenter,
+  SECTION_IDS,
+  type SectionId,
+} from './galleryRoom';
 import { GalleryWorld } from './galleryWorld';
 import { crowdSpecs } from './galleryCrowd';
 
@@ -29,6 +37,8 @@ export interface GalleryHandle {
   crowd(n: number, legacy?: boolean): void;
   /** Advances gallery time by `seconds` in steps of 1/60 s, rendering every `every`-th frame. */
   advance(seconds: number, every?: number): Promise<void>;
+  /** Plays a room transition (fade from black) now. */
+  roomFade(): void;
   /** Stops windups at this progress (0–1), or null to let them cycle. */
   hold(progress: number | null): void;
   /** Mean and p95 CPU ms of renderer.render over `frames` frames (the loop is paused meanwhile). */
@@ -92,7 +102,7 @@ export async function bootGallery(): Promise<void> {
       }
       return;
     }
-    poseActors(actors, t, hold);
+    poseActors(actors, t, hold, (a) => sectionAt(a.spec.x, a.spec.y) === section);
     world.update(t, dt);
     // Brood Kilns that hatch: a mite spawn event beside them every 5 s (the signals time the glow).
     const events: SimEvent[] = world.takeEvents();
@@ -100,7 +110,8 @@ export async function bootGallery(): Promise<void> {
     if (spawnClock >= 5 || t === dt) {
       spawnClock = t === dt ? 3.6 : 0;
       for (const a of actors)
-        if (a.spec.spawns) events.push({ type: 'enemySpawn', id: -1, kind: 'kiln_mite', x: a.e.x, y: a.e.y + 2 });
+        if (a.spec.spawns)
+          events.push({ type: 'enemySpawn', id: -1, kind: 'kiln_mite', x: a.e.x, y: a.e.y + 2 });
     }
     pending.push(...events);
     if (draw) {
@@ -112,6 +123,7 @@ export async function bootGallery(): Promise<void> {
   const show = (id: SectionId): void => {
     if (current !== state) {
       current = state;
+      labels.visible = true;
       renderer.setRoom(state);
     }
     section = id;
@@ -149,6 +161,7 @@ export async function bootGallery(): Promise<void> {
       cs.player.x = cs.player.prevX = 104;
       cs.player.y = cs.player.prevY = 64;
       current = cs;
+      labels.visible = false;
       renderer.setRoom(cs);
       renderer.follow = { x: 104, y: 64 };
       t = 0;
@@ -164,6 +177,9 @@ export async function bootGallery(): Promise<void> {
     },
     hold(p) {
       hold = p;
+    },
+    roomFade() {
+      world.roomFade(t);
     },
     async measure(frames) {
       paused = true;
@@ -181,24 +197,7 @@ export async function bootGallery(): Promise<void> {
       return { mean, p95: ms[Math.floor(ms.length * 0.95)]!, fps: frames / wall };
     },
   };
-  void section;
   await raf();
   await raf();
   window.__gallery.ready = true;
-}
-
-/** A world-space label centered at (x, y): cream text on a dark plate. */
-export function label(text: string, x: number, y: number, size = 1.05, color = 0xfff2d6): Container {
-  const c = new Container();
-  const px = 32;
-  const tx = new Text({
-    text,
-    resolution: 2,
-    style: { fontFamily: 'Arial, sans-serif', fontSize: px, fill: color, fontWeight: '700', stroke: { color: 0x1d1622, width: 7 } },
-  });
-  tx.scale.set(size / px * 1.25);
-  tx.anchor.set(0.5, 0);
-  c.addChild(tx);
-  c.position.set(x, y);
-  return c;
 }

@@ -31,6 +31,28 @@ export async function galleryShots(page: Page, url: string, o: GalleryOptions): 
     const file = join(o.dir, `${o.milestone}_gallery_${id}.png`);
     await page.screenshot({ path: file, timeout: 120_000 });
     written.push(file);
+    if (id === 'moments2') {
+      // The same section 1.2 s in: the player has died and the screen has darkened.
+      await page.evaluate(async () => {
+        const g = window.__gallery!;
+        g.show('moments2');
+        await g.advance(1.2, 10);
+      });
+      const dead = join(o.dir, `${o.milestone}_gallery_death.png`);
+      await page.screenshot({ path: dead, timeout: 120_000 });
+      written.push(dead);
+    }
+    if (id === 'moments') {
+      // A room transition 0.2 s into its fade from black.
+      await page.evaluate(async () => {
+        const g = window.__gallery!;
+        g.roomFade();
+        await g.advance(0.28, 4);
+      });
+      const fade = join(o.dir, `${o.milestone}_gallery_transition.png`);
+      await page.screenshot({ path: fade, timeout: 120_000 });
+      written.push(fade);
+    }
   }
   if (o.perf) {
     for (const legacy of [false, true]) {
@@ -40,7 +62,9 @@ export async function galleryShots(page: Page, url: string, o: GalleryOptions): 
         await g.advance(1, 30);
         return g.measure(180);
       }, legacy);
-      console.log(`render, 300 ${legacy ? 'M1' : 'M4'} enemies: mean ${r.mean.toFixed(2)} ms, p95 ${r.p95.toFixed(2)} ms, ${r.fps.toFixed(1)} fps (SwiftShader)`);
+      console.log(
+        `render, 300 ${legacy ? 'M1' : 'M4'} enemies: mean ${r.mean.toFixed(2)} ms, p95 ${r.p95.toFixed(2)} ms, ${r.fps.toFixed(1)} fps (SwiftShader)`,
+      );
     }
   }
   return written;

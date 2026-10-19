@@ -64,7 +64,10 @@ export class BeastTelegraphs {
   private readonly pool: ImmediatePool;
   private readonly over: ImmediatePool;
   private readonly fx: FxLayer;
-  private readonly t: Record<'dot' | 'ring' | 'glow' | 'chevron' | 'strike' | 'glob' | 'crystal' | 'zapA' | 'zapB' | 'shadow', Texture>;
+  private readonly t: Record<
+    'dot' | 'ring' | 'glow' | 'chevron' | 'strike' | 'glob' | 'crystal' | 'zapA' | 'zapB' | 'shadow',
+    Texture
+  >;
   private time = 0;
   private braziers: Array<{ x: number; y: number }> = [];
   private brazierRoom = '';
@@ -135,7 +138,8 @@ export class BeastTelegraphs {
   private progress(e: Enemy): number {
     const k = e.attack as { timeLeft: number; total?: number };
     const prev = this.totals.get(e.id);
-    if (!prev || prev.name !== e.attack.name || k.timeLeft > prev.left) this.totals.set(e.id, { name: e.attack.name, total: k.timeLeft + 1 / 60, left: k.timeLeft });
+    if (!prev || prev.name !== e.attack.name || k.timeLeft > prev.left)
+      this.totals.set(e.id, { name: e.attack.name, total: k.timeLeft + 1 / 60, left: k.timeLeft });
     const t = this.totals.get(e.id)!;
     t.left = k.timeLeft;
     if (this.totals.size > 256) this.totals.clear();
@@ -143,7 +147,17 @@ export class BeastTelegraphs {
   }
   private readonly totals = new Map<number, { name: string; total: number; left: number }>();
 
-  private put(pool: ImmediatePool, tex: Texture, x: number, y: number, sx: number, sy: number, tint: number, alpha: number, rot = 0): FxParticle | null {
+  private put(
+    pool: ImmediatePool,
+    tex: Texture,
+    x: number,
+    y: number,
+    sx: number,
+    sy: number,
+    tint: number,
+    alpha: number,
+    rot = 0,
+  ): FxParticle | null {
     const p = pool.next(tex);
     if (!p) return null;
     p.x = x;
@@ -170,10 +184,21 @@ export class BeastTelegraphs {
     const n = 1 + Math.floor(u * 3);
     for (let i = 0; i < n; i++) {
       if (Math.random() > 0.35 + 0.6 * u) continue;
-      const z = this.put(this.over, Math.random() < 0.5 ? this.t.zapA : this.t.zapB, x + rand(-1.6, 1.6), y + rand(-1.2, 1.2), rand(0.6, 1.1), rand(0.6, 1.1), Math.random() < 0.5 ? ELEMENT.storm : ELEMENT.stormGlow, 0.9, rand(0, TAU));
+      const z = this.put(
+        this.over,
+        Math.random() < 0.5 ? this.t.zapA : this.t.zapB,
+        x + rand(-1.6, 1.6),
+        y + rand(-1.2, 1.2),
+        rand(0.6, 1.1),
+        rand(0.6, 1.1),
+        Math.random() < 0.5 ? ELEMENT.storm : ELEMENT.stormGlow,
+        0.9,
+        rand(0, TAU),
+      );
       void z;
     }
-    if (u > 0.75 && Math.random() < 0.5) this.put(this.pool, this.t.strike, x, y, 0.5, 1, 0xffffff, 0.25 + 0.4 * (u - 0.75) * 4);
+    if (u > 0.75 && Math.random() < 0.5)
+      this.put(this.pool, this.t.strike, x, y, 0.5, 1, 0xffffff, 0.25 + 0.4 * (u - 0.75) * 4);
   }
 
   private bolt(x: number, y: number): void {
@@ -183,7 +208,17 @@ export class BeastTelegraphs {
     if (g) g.a0 = 0.8;
     for (let i = 0; i < 6; i++) {
       const a = rand(0, TAU);
-      const s = this.fx.spawn(this.t.zapA, x, y, Math.cos(a) * 8, Math.sin(a) * 8, 0.12, ELEMENT.storm, 1, 0.5);
+      const s = this.fx.spawn(
+        this.t.zapA,
+        x,
+        y,
+        Math.cos(a) * 8,
+        Math.sin(a) * 8,
+        0.12,
+        ELEMENT.storm,
+        1,
+        0.5,
+      );
       if (s) s.rotation = a;
     }
   }
@@ -195,7 +230,16 @@ export class BeastTelegraphs {
     const sy = e.y - 6;
     const x = sx + (a.originX - sx) * u;
     const y = sy + (a.originY - sy) * u - Math.sin(u * Math.PI) * 9;
-    this.put(this.pool, this.t.shadow, a.originX, a.originY, 0.6 + 1.6 * u, 0.3 + 0.8 * u, 0xffffff, 0.5 + 0.5 * u);
+    this.put(
+      this.pool,
+      this.t.shadow,
+      a.originX,
+      a.originY,
+      0.6 + 1.6 * u,
+      0.3 + 0.8 * u,
+      0xffffff,
+      0.5 + 0.5 * u,
+    );
     this.put(this.pool, this.t.glob, x, y, 0.9, 0.9, 0xffffff, 1, u * 6);
   }
 
@@ -209,7 +253,17 @@ export class BeastTelegraphs {
       if (grow <= 0) continue;
       const d = (i + 0.5) * 1.6;
       const side = (i % 2 ? 1 : -1) * s.width * 0.18;
-      this.put(this.pool, this.t.crystal, e.attack.originX + s.dirX * d - s.dirY * side, e.attack.originY + s.dirY * d + s.dirX * side, grow * 1.1, grow * 1.1, 0xffffff, 0.95, i * 0.7);
+      this.put(
+        this.pool,
+        this.t.crystal,
+        e.attack.originX + s.dirX * d - s.dirY * side,
+        e.attack.originY + s.dirY * d + s.dirX * side,
+        grow * 1.1,
+        grow * 1.1,
+        0xffffff,
+        0.95,
+        i * 0.7,
+      );
     }
   }
 
@@ -221,7 +275,17 @@ export class BeastTelegraphs {
     const off = (this.time * 9) % step;
     for (let d = off + 1; d < s.length - 0.5; d += step) {
       const fade = Math.min(1, d / 3) * Math.min(1, (s.length - d) / 3);
-      this.put(this.pool, this.t.chevron, e.attack.originX + s.dirX * d, e.attack.originY + s.dirY * d, 1.6 + u, 1.6 + u, T.edge, 0.8 * fade, rot);
+      this.put(
+        this.pool,
+        this.t.chevron,
+        e.attack.originX + s.dirX * d,
+        e.attack.originY + s.dirY * d,
+        1.6 + u,
+        1.6 + u,
+        T.edge,
+        0.8 * fade,
+        rot,
+      );
     }
   }
 
@@ -243,7 +307,17 @@ export class BeastTelegraphs {
       x += Math.cos(ang) * d;
       y += Math.sin(ang) * d;
     }
-    const p = this.fx.spawn(this.t.dot, x, y, rand(-1, 1), -rand(2, 5), rand(0.35, 0.6), Math.random() < 0.5 ? B.cinder_warden.flameOuter : B.cinder_warden.flameInner, 0.35, 0.08);
+    const p = this.fx.spawn(
+      this.t.dot,
+      x,
+      y,
+      rand(-1, 1),
+      -rand(2, 5),
+      rand(0.35, 0.6),
+      Math.random() < 0.5 ? B.cinder_warden.flameOuter : B.cinder_warden.flameInner,
+      0.35,
+      0.08,
+    );
     if (p) p.hold = 0.3;
   }
 
@@ -253,12 +327,14 @@ export class BeastTelegraphs {
     this.brazierRoom = key;
     const list: Array<{ x: number; y: number }> = [];
     const objs = s.objects.filter((o) => o.kind === 'brazier');
-    if (objs.length > 0) for (const o of objs) list.push({ x: (o.tx + 0.5) * TILE_CELLS, y: (o.ty + 0.5) * TILE_CELLS });
+    if (objs.length > 0)
+      for (const o of objs) list.push({ x: (o.tx + 0.5) * TILE_CELLS, y: (o.ty + 0.5) * TILE_CELLS });
     else {
       const r = s.room;
       for (let ty = 0; ty < r.tilesH; ty++)
         for (let tx = 0; tx < r.tilesW; tx++)
-          if (r.tiles[ty * r.tilesW + tx] === 66) list.push({ x: (tx + 0.5) * TILE_CELLS, y: (ty + 0.5) * TILE_CELLS });
+          if (r.tiles[ty * r.tilesW + tx] === 66)
+            list.push({ x: (tx + 0.5) * TILE_CELLS, y: (ty + 0.5) * TILE_CELLS });
     }
     this.braziers = list;
     return list;
@@ -268,10 +344,29 @@ export class BeastTelegraphs {
   private brazierGlow(s: GameState, u: number): void {
     const pulse = 0.5 + 0.5 * Math.sin(this.time * TAU * (4 + 8 * u));
     for (const b of this.brazierList(s)) {
-      this.put(this.over, this.t.glow, b.x, b.y - 0.5, 3 + 2.5 * u, 3 + 2.5 * u, ELEMENT.storm, 0.35 + 0.45 * u * pulse);
+      this.put(
+        this.over,
+        this.t.glow,
+        b.x,
+        b.y - 0.5,
+        3 + 2.5 * u,
+        3 + 2.5 * u,
+        ELEMENT.storm,
+        0.35 + 0.45 * u * pulse,
+      );
       this.put(this.pool, this.t.ring, b.x, b.y, 3.2, 3.2, T.edge, u > 0.8 ? 1 : 0.55 + 0.45 * pulse);
       if (Math.random() < 0.3 + 0.6 * u)
-        this.put(this.over, Math.random() < 0.5 ? this.t.zapA : this.t.zapB, b.x + rand(-1.2, 1.2), b.y - rand(0.5, 2.5), 0.8, 0.8, ELEMENT.storm, 0.9, rand(0, TAU));
+        this.put(
+          this.over,
+          Math.random() < 0.5 ? this.t.zapA : this.t.zapB,
+          b.x + rand(-1.2, 1.2),
+          b.y - rand(0.5, 2.5),
+          0.8,
+          0.8,
+          ELEMENT.storm,
+          0.9,
+          rand(0, TAU),
+        );
     }
   }
 }

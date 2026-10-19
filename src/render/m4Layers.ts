@@ -7,10 +7,25 @@ import { bigBeastEntries } from './bestiary/bigBeasts';
 import { RarityView, rarityAtlasEntries } from './bestiary/rarityView';
 import { smallBeastEntries } from './bestiary/smallBeasts';
 import type { EnemyLayer } from './enemyLayer';
+import { objectAtlasEntries } from './world/objectShapes';
+import { objectCue } from './world/objectCues';
+import { ObjectView, ownedTiles } from './world/objectView';
+import { WorldFx } from './world/worldFx';
+import { lootAtlasEntries } from './world/lootShapes';
+import { LootView } from './world/lootView';
+import { MomentsView } from './world/momentsView';
+import type { Shake } from './shake';
 
 /** Atlas entries of everything M4 adds. */
 export function m4AtlasEntries(): AtlasEntry[] {
-  return [...smallBeastEntries(), ...bigBeastEntries(), ...rarityAtlasEntries(), ...telegraphAccentEntries()];
+  return [
+    ...smallBeastEntries(),
+    ...bigBeastEntries(),
+    ...rarityAtlasEntries(),
+    ...telegraphAccentEntries(),
+    ...objectAtlasEntries(),
+    ...lootAtlasEntries(),
+  ];
 }
 
 export interface ScreenXf {
@@ -29,39 +44,75 @@ export class M4Layers {
   readonly signals = new M4Signals();
   readonly rarity: RarityView;
   readonly tele: BeastTelegraphs;
+  readonly fx: WorldFx;
+  readonly objects: ObjectView;
+  readonly loot: LootView;
+  readonly moments: MomentsView;
   /** Ground layer under the bodies (rarity rings and glows). */
   readonly ground = new Container();
   /** Screen-space layer under damage numbers (Rare name plates). */
   readonly screen = new Container();
   private state: GameState | null = null;
 
-  constructor(atlas: Atlas, enemies: EnemyLayer) {
+  constructor(atlas: Atlas, enemies: EnemyLayer, shake: Shake | null) {
     enemies.signals = this.signals;
     this.rarity = new RarityView(atlas);
     this.tele = new BeastTelegraphs(atlas);
+    this.fx = new WorldFx(atlas);
+    this.objects = new ObjectView(atlas, this.fx);
+    this.loot = new LootView(atlas, this.fx);
+    this.moments = new MomentsView(this.fx, shake);
     this.ground.addChild(this.rarity.glows.container, this.rarity.ground.container);
-    this.screen.addChild(this.rarity.plates);
+    this.screen.addChild(this.rarity.plates, this.moments.screen);
   }
 
   reset(s: GameState): void {
     this.state = s;
     this.tele.reset();
+    this.objects.reset();
+    this.loot.reset();
+    this.fx.reset();
+    this.moments.reset();
+  }
+
+  /** Tiles the object layer draws, so the room bake leaves them out. */
+  owned(s: GameState): Set<number> {
+    return ownedTiles(s.objects, s.room.tilesW);
   }
 
   handle(s: GameState, events: readonly SimEvent[], dt: number): void {
     this.state = s;
     const cues = this.signals.update(s, events, dt);
     this.tele.handle(cues, s);
+    for (const c of cues) {
+      objectCue(c, this.fx);
+      this.loot.handle(c, s);
+      this.moments.handle(c, s);
+    }
   }
 
-  update(s: GameState, enemies: EnemyLayer, dt: number, xf: ScreenXf): void {
+  update(
+    s: GameState,
+    enemies: EnemyLayer,
+    dt: number,
+    xf: ScreenXf,
+    screenW: number,
+    screenH: number,
+    px: number,
+    py: number,
+  ): void {
     this.state = s;
+    this.loot.update(s, dt);
+    this.moments.follow(px, py);
+    this.moments.update(dt, screenW, screenH, xf.scale, xf.ox, xf.oy, xf.screenScale);
     this.rarity.update(s, enemies, dt, xf);
     this.tele.update(s, this.signals, dt);
+    this.objects.update(s, dt);
+    this.fx.update(dt);
   }
 
   get particleCount(): number {
-    return 0;
+    return this.fx.count;
   }
 
   get current(): GameState | null {

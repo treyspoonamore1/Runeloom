@@ -16,7 +16,11 @@ const O = ENEMY.outline;
 // ---- Brood Kiln: a squat brick furnace that hatches Kiln Mites ----------------------------
 
 function kilnDome(p: Pen): Pen {
-  return p.moveTo(-2.1, 0.7).bez(-2.3, -1.8, -1.2, -3.1, 0, -3.15).bez(1.2, -3.1, 2.3, -1.8, 2.1, 0.7).close();
+  return p
+    .moveTo(-2.1, 0.7)
+    .bez(-2.3, -1.8, -1.2, -3.1, 0, -3.15)
+    .bez(1.2, -3.1, 2.3, -1.8, 2.1, 0.7)
+    .close();
 }
 
 function kilnBody(p: Pen, k: K): void {
@@ -25,7 +29,9 @@ function kilnBody(p: Pen, k: K): void {
   p.roundRect(-2.45, 0.35, 4.9, 1.55, 0.4).fill(k(c.base)).stroke(O, k(INK));
   if (k === N) p.roundRect(-2.2, 1.3, 4.4, 0.45, 0.2).fill(c.baseShade);
   // Chimney behind the dome top.
-  p.roundRect(-0.5, -4.15, 1.0, 1.4, 0.2).fill(k(c.brickShade)).stroke(O * 0.8, k(INK));
+  p.roundRect(-0.5, -4.15, 1.0, 1.4, 0.2)
+    .fill(k(c.brickShade))
+    .stroke(O * 0.8, k(INK));
   if (k === N) p.ellipse(0, -4.1, 0.38, 0.16).fill(c.mouth);
   kilnDome(p).fill(k(c.brick));
   if (k === N) {
@@ -38,7 +44,9 @@ function kilnBody(p: Pen, k: K): void {
       [-2.05, 1.55],
       [-2.7, 0.95],
     ] as const) {
-      p.moveTo(-half, y).quad(0, y + 0.35, half, y).stroke(0.1, c.mortar);
+      p.moveTo(-half, y)
+        .quad(0, y + 0.35, half, y)
+        .stroke(0.1, c.mortar);
     }
     for (const [x, y] of [
       [-1.5, 0.25],
@@ -52,7 +60,9 @@ function kilnBody(p: Pen, k: K): void {
       [0.6, -1.65],
       [0, -2.4],
     ] as const)
-      p.moveTo(x, y - 0.42).lineTo(x, y + 0.02).stroke(0.08, c.mortar);
+      p.moveTo(x, y - 0.42)
+        .lineTo(x, y + 0.02)
+        .stroke(0.08, c.mortar);
     p.moveTo(-1.6, -1.6).quad(-1.2, -2.6, -0.4, -2.85).stroke(0.2, c.brickLight);
   }
   kilnDome(p).stroke(O * 1.05, k(INK));
@@ -68,21 +78,32 @@ function kilnBody(p: Pen, k: K): void {
 /** Glow inside the mouth (anchor at the kiln's anchor); alpha follows the spawn cycle. */
 function kilnFire(p: Pen): void {
   const c = B.brood_kiln;
-  p.moveTo(-0.85, 0.7).lineTo(-0.85, -0.35).arc(0, -0.35, 0.85, Math.PI, 0).lineTo(0.85, 0.7).close().fill(c.fire);
+  p.moveTo(-0.85, 0.7)
+    .lineTo(-0.85, -0.35)
+    .arc(0, -0.35, 0.85, Math.PI, 0)
+    .lineTo(0.85, 0.7)
+    .close()
+    .fill(c.fire);
   p.ellipse(0, 0.25, 0.65, 0.55).fill(c.fireHot);
   for (const [x, h] of [
     [-0.45, 0.55],
     [0.05, 0.85],
     [0.45, 0.5],
   ] as const) {
-    p.moveTo(x - 0.2, 0.5).quad(x, 0.5 - h * 1.3, x + 0.2, 0.5).close().fill(0xfff8e0);
+    p.moveTo(x - 0.2, 0.5)
+      .quad(x, 0.5 - h * 1.3, x + 0.2, 0.5)
+      .close()
+      .fill(0xfff8e0);
   }
 }
 
 /** Frozen: frost caps on the dome, icicles on the arch and plinth (anchor as the body). */
 function kilnFrost(p: Pen): void {
   const c = B.brood_kiln;
-  p.moveTo(-1.7, -1.6).bez(-1.3, -2.9, 1.3, -2.9, 1.7, -1.6).quad(1.0, -1.9, 0.4, -1.5).quad(-0.3, -2.0, -1.0, -1.55);
+  p.moveTo(-1.7, -1.6)
+    .bez(-1.3, -2.9, 1.3, -2.9, 1.7, -1.6)
+    .quad(1.0, -1.9, 0.4, -1.5)
+    .quad(-0.3, -2.0, -1.0, -1.55);
   p.quad(-1.4, -1.85, -1.7, -1.6).close().fill(c.frost).stroke(0.12, c.frostShade);
   p.ellipse(-2.0, 0.3, 0.45, 0.3).ellipse(1.9, -0.2, 0.35, 0.45).fill({ color: c.frost, alpha: 0.85 });
   for (const [x, y, h] of [
@@ -94,7 +115,9 @@ function kilnFrost(p: Pen): void {
     [1.6, 0.5, 0.6],
     [0.2, 1.85, 0.45],
   ] as const) {
-    p.poly([x - 0.13, y, x, y + h, x + 0.13, y]).fill(c.frost).stroke(0.07, c.frostShade);
+    p.poly([x - 0.13, y, x, y + h, x + 0.13, y])
+      .fill(c.frost)
+      .stroke(0.07, c.frostShade);
   }
   p.roundRect(-2.4, 0.35, 4.8, 0.32, 0.15).fill({ color: c.frost, alpha: 0.9 });
 }
@@ -113,12 +136,18 @@ function matriarchBody(p: Pen, k: K): void {
     [1.2, 2.1, 0.2],
     [2.3, 1.5, 0.5],
   ] as const) {
-    p.poly([x - 0.5, -4.4, x + lean, -4.6 - h, x + 0.5, -4.4]).fill(k(c.shade)).stroke(O * 0.8, k(INK));
+    p.poly([x - 0.5, -4.4, x + lean, -4.6 - h, x + 0.5, -4.4])
+      .fill(k(c.shade))
+      .stroke(O * 0.8, k(INK));
     if (k === N) p.circle(x + lean * 0.6, -4.7 - h * 0.55, 0.14).fill(c.eye);
   }
   blob(p, 0, -1.5, 4.25, 4.4, MAT_RADII).fill(k(c.body));
   if (k === N) {
-    p.moveTo(1.0, 2.8).quad(4.1, 2.0, 4.25, -1.5).quad(3.9, -4.0, 2.2, -5.0).quad(3.2, -1.2, 1.0, 2.8).close();
+    p.moveTo(1.0, 2.8)
+      .quad(4.1, 2.0, 4.25, -1.5)
+      .quad(3.9, -4.0, 2.2, -5.0)
+      .quad(3.2, -1.2, 1.0, 2.8)
+      .close();
     p.fill(c.shade);
     p.moveTo(-3.0, -3.1).quad(-2.2, -5.0, -0.4, -5.6).stroke(0.4, c.sheen, 0.5);
     p.moveTo(-3.5, -1.0).quad(-3.6, 0.5, -3.0, 1.6).stroke(0.25, c.sheen, 0.4);
@@ -146,7 +175,10 @@ function matriarchBody(p: Pen, k: K): void {
       [1.5, 1.2],
       [2.7, 0.7],
     ] as const)
-      p.moveTo(x - 0.3, 2.6).quad(x, 2.7 + len, x + 0.3, 2.6).close().fill(c.drip);
+      p.moveTo(x - 0.3, 2.6)
+        .quad(x, 2.7 + len, x + 0.3, 2.6)
+        .close()
+        .fill(c.drip);
   }
   blob(p, 0, -1.5, 4.25, 4.4, MAT_RADII).stroke(O * 1.25, k(INK));
 }
@@ -167,7 +199,9 @@ function matriarchSac(p: Pen): void {
 
 function matriarchFist(p: Pen): void {
   const c = B.tar;
-  blob(p, 0, 0, 1.45, 1.3, [1, 0.92, 1.05, 0.95, 1.03, 0.9, 1.02]).fill(c.body).stroke(O * 1.1, INK);
+  blob(p, 0, 0, 1.45, 1.3, [1, 0.92, 1.05, 0.95, 1.03, 0.9, 1.02])
+    .fill(c.body)
+    .stroke(O * 1.1, INK);
   p.ellipse(-0.45, -0.55, 0.55, 0.22).fill({ color: c.sheen, alpha: 0.5 });
   p.circle(0.55, 0.3, 0.28).fill(c.stone).stroke(0.08, INK);
 }
@@ -175,19 +209,35 @@ function matriarchFist(p: Pen): void {
 // ---- Cinder Warden: an iron brazier-knight -------------------------------------------------
 
 function torsoPath(p: Pen): Pen {
-  return p.moveTo(-3.0, -3.1).quad(-3.7, 0, -2.5, 2.5).quad(0, 3.5, 2.5, 2.5).quad(3.7, 0, 3.0, -3.1).quad(0, -3.9, -3.0, -3.1).close();
+  return p
+    .moveTo(-3.0, -3.1)
+    .quad(-3.7, 0, -2.5, 2.5)
+    .quad(0, 3.5, 2.5, 2.5)
+    .quad(3.7, 0, 3.0, -3.1)
+    .quad(0, -3.9, -3.0, -3.1)
+    .close();
 }
 
 function helmPath(p: Pen): Pen {
   // A brazier bowl for a head, wider at its rim.
-  return p.moveTo(-1.9, -5.55).quad(-1.9, -3.4, 0, -3.3).quad(1.9, -3.4, 1.9, -5.55).quad(0, -5.15, -1.9, -5.55).close();
+  return p
+    .moveTo(-1.9, -5.55)
+    .quad(-1.9, -3.4, 0, -3.3)
+    .quad(1.9, -3.4, 1.9, -5.55)
+    .quad(0, -5.15, -1.9, -5.55)
+    .close();
 }
 
 function wardenBody(p: Pen, k: K): void {
   const c = B.cinder_warden;
   torsoPath(p).fill(k(c.iron));
   if (k === N) {
-    p.moveTo(0.6, 3.2).quad(2.2, 2.9, 2.5, 2.5).quad(3.7, 0, 3.0, -3.1).quad(2.6, 0.2, 0.6, 3.2).close().fill(c.ironShade);
+    p.moveTo(0.6, 3.2)
+      .quad(2.2, 2.9, 2.5, 2.5)
+      .quad(3.7, 0, 3.0, -3.1)
+      .quad(2.6, 0.2, 0.6, 3.2)
+      .close()
+      .fill(c.ironShade);
     // Chest plates and the belt.
     p.moveTo(0, -3.4).lineTo(0, 1.5).stroke(0.24, c.ironLight);
     p.moveTo(-2.6, -0.4).quad(0, 0.5, 2.6, -0.4).stroke(0.16, c.ironShade);
@@ -204,15 +254,25 @@ function wardenBody(p: Pen, k: K): void {
   torsoPath(p).stroke(O * 1.3, k(INK));
   // Pauldrons.
   for (const s of [-1, 1]) {
-    p.circle(s * 3.0, -2.75, 1.5).fill(k(c.ironLight)).stroke(O * 1.2, k(INK));
+    p.circle(s * 3.0, -2.75, 1.5)
+      .fill(k(c.ironLight))
+      .stroke(O * 1.2, k(INK));
     if (k === N) {
-      p.arc(s * 3.0, -2.75, 1.15, s > 0 ? -0.4 : Math.PI + 0.4, s > 0 ? 1.6 : Math.PI - 1.6, s < 0).stroke(0.22, c.rim);
-      p.poly([s * 3.1, -4.1, s * 3.55, -5.0, s * 3.75, -3.95]).fill(c.horn).stroke(0.12, INK);
+      p.arc(s * 3.0, -2.75, 1.15, s > 0 ? -0.4 : Math.PI + 0.4, s > 0 ? 1.6 : Math.PI - 1.6, s < 0).stroke(
+        0.22,
+        c.rim,
+      );
+      p.poly([s * 3.1, -4.1, s * 3.55, -5.0, s * 3.75, -3.95])
+        .fill(c.horn)
+        .stroke(0.12, INK);
     }
   }
   // Brazier helm with horns.
   for (const s of [-1, 1]) {
-    p.moveTo(s * 1.6, -5.0).quad(s * 2.9, -5.6, s * 2.6, -7.0).quad(s * 2.4, -5.9, s * 1.4, -5.6).close();
+    p.moveTo(s * 1.6, -5.0)
+      .quad(s * 2.9, -5.6, s * 2.6, -7.0)
+      .quad(s * 2.4, -5.9, s * 1.4, -5.6)
+      .close();
     p.fill(k(c.horn)).stroke(O * 0.8, k(INK));
   }
   helmPath(p).fill(k(c.ironLight));
@@ -252,9 +312,14 @@ function wardenSeams(p: Pen): void {
 
 function wardenFist(p: Pen, k: K = N): void {
   const c = B.cinder_warden;
-  p.roundRect(-1.15, -1.0, 2.3, 2.0, 0.6).fill(k(c.ironLight)).stroke(O * 1.1, k(INK));
+  p.roundRect(-1.15, -1.0, 2.3, 2.0, 0.6)
+    .fill(k(c.ironLight))
+    .stroke(O * 1.1, k(INK));
   if (k === N) {
-    for (const x of [-0.6, 0, 0.6]) p.roundRect(x - 0.24, -1.05, 0.48, 0.55, 0.15).fill(c.rim).stroke(0.08, INK);
+    for (const x of [-0.6, 0, 0.6])
+      p.roundRect(x - 0.24, -1.05, 0.48, 0.55, 0.15)
+        .fill(c.rim)
+        .stroke(0.08, INK);
     p.moveTo(-0.9, 0.55).lineTo(0.9, 0.55).stroke(0.14, c.ironShade);
   }
 }

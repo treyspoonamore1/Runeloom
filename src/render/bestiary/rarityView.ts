@@ -40,7 +40,14 @@ function rarityRing(p: Pen): void {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
     const x = Math.cos(a);
     const y = Math.sin(a);
-    p.poly([x * 0.86, y * 0.86, x * 1.14 - y * 0.1, y * 1.14 + x * 0.1, x * 1.14 + y * 0.1, y * 1.14 - x * 0.1]);
+    p.poly([
+      x * 0.86,
+      y * 0.86,
+      x * 1.14 - y * 0.1,
+      y * 1.14 + x * 0.1,
+      x * 1.14 + y * 0.1,
+      y * 1.14 - x * 0.1,
+    ]);
     p.fill(0xffffff).stroke(0.06, INK);
   }
 }
@@ -78,7 +85,12 @@ export class RarityView {
     this.ground = new ImmediatePool(atlas.get('rarity_ring'), 512);
   }
 
-  update(s: GameState, enemies: EnemyLayer, dt: number, xf: { scale: number; ox: number; oy: number; screenScale: number }): void {
+  update(
+    s: GameState,
+    enemies: EnemyLayer,
+    dt: number,
+    xf: { scale: number; ox: number; oy: number; screenScale: number },
+  ): void {
     this.time += dt;
     const ring = this.atlas.get('rarity_ring');
     const glow = this.atlas.get('glow');
@@ -121,7 +133,11 @@ export class RarityView {
     this.updatePlates(s, enemies, xf);
   }
 
-  private updatePlates(s: GameState, enemies: EnemyLayer, xf: { scale: number; ox: number; oy: number; screenScale: number }): void {
+  private updatePlates(
+    s: GameState,
+    enemies: EnemyLayer,
+    xf: { scale: number; ox: number; oy: number; screenScale: number },
+  ): void {
     const px = s.player.x;
     const py = s.player.y;
     this.near.sort((a, b) => (a.x - px) ** 2 + (a.y - py) ** 2 - ((b.x - px) ** 2 + (b.y - py) ** 2));

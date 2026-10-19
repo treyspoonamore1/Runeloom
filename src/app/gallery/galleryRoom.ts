@@ -25,6 +25,20 @@ export const SECTION_IDS = [
 ] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
 
+/** The section containing (x, y) cells. */
+export function sectionAt(x: number, y: number): SectionId | undefined {
+  const col = Math.floor((x / T - 1) / SECTION_W);
+  const row = Math.floor((y / T - 1) / SECTION_H);
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return undefined;
+  return SECTION_IDS[row * COLS + col];
+}
+
+/** Top-left tile of a section. */
+export function sectionTile(id: SectionId): { tx: number; ty: number } {
+  const i = SECTION_IDS.indexOf(id);
+  return { tx: 1 + (i % COLS) * SECTION_W, ty: 1 + Math.floor(i / COLS) * SECTION_H };
+}
+
 /** Top-left of a section in cells. */
 export function sectionOrigin(id: SectionId): { x: number; y: number } {
   const i = SECTION_IDS.indexOf(id);
@@ -41,7 +55,10 @@ export function galleryRoomText(): string {
   const w = COLS * SECTION_W + 2;
   const h = ROWS * SECTION_H + 2;
   const g: string[][] = [];
-  for (let y = 0; y < h; y++) g.push(Array.from({ length: w }, (_, x) => (x === 0 || y === 0 || x === w - 1 || y === h - 1 ? '#' : '.')));
+  for (let y = 0; y < h; y++)
+    g.push(
+      Array.from({ length: w }, (_, x) => (x === 0 || y === 0 || x === w - 1 || y === h - 1 ? '#' : '.')),
+    );
   /** Fills tiles relative to a section's top-left tile. */
   const fill = (id: SectionId, tx: number, ty: number, tw: number, th: number, ch: string): void => {
     const i = SECTION_IDS.indexOf(id);
@@ -66,8 +83,25 @@ export function galleryRoomText(): string {
   fill('objects', 1, 1, 1, 1, 'B');
   fill('objects', 4, 1, 1, 1, 'B');
   fill('objects', 7, 1, 1, 1, 'B');
+  // Doors set in a wall row: plain, locked and big-key, each closed, opening and open.
+  fill('objects', 0, 8, 20, 1, '#');
+  for (const [x, ch] of [
+    [1, 'D'],
+    [4, 'D'],
+    [7, 'D'],
+    [10, 'K'],
+    [13, 'K'],
+    [16, 'G'],
+  ] as const)
+    fill('objects', x, 8, 1, 1, ch);
+  fill('objects2', 0, 1, 8, 1, '#');
+  fill('objects2', 1, 1, 1, 1, 'G');
+  fill('objects2', 4, 1, 1, 1, 'G');
+  // A vertical wall with a door in it.
+  fill('objects2', 17, 0, 1, 4, '#');
+  fill('objects2', 17, 2, 1, 1, 'D');
   // Ice for the sliding ice block.
-  fill('objects2', 1, 8, 8, 1, 'i');
+  fill('objects2', 1, 9, 12, 1, 'i');
   // Moments: a Loom Stone to respawn at sits in the objects layer; grass around it.
   fill('moments2', 4, 3, 12, 6, '"');
   const rows = g.map((r) => r.join(''));
@@ -79,6 +113,17 @@ export function crowdRoomText(): string {
   const w = 52;
   const h = 32;
   const g: string[][] = [];
-  for (let y = 0; y < h; y++) g.push(Array.from({ length: w }, (_, x) => (x === 0 || y === 0 || x === w - 1 || y === h - 1 ? '#' : y % 9 < 4 && x % 13 < 5 ? '~' : x % 7 < 3 ? '"' : '.')));
+  for (let y = 0; y < h; y++)
+    g.push(
+      Array.from({ length: w }, (_, x) =>
+        x === 0 || y === 0 || x === w - 1 || y === h - 1
+          ? '#'
+          : y % 9 < 4 && x % 13 < 5
+            ? '~'
+            : x % 7 < 3
+              ? '"'
+              : '.',
+      ),
+    );
   return ['@id test/gallery_crowd', '@name Crowd', '@level 1', ...g.map((r) => r.join(''))].join('\n');
 }

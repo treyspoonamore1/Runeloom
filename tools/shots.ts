@@ -66,7 +66,8 @@ runCli(async () => {
     server = await createServer({
       root: ROOT,
       logLevel: 'error',
-      server: { port, strictPort: true, host: '127.0.0.1' },
+      // No HMR: an edit while shots run must not reload the page mid-capture.
+      server: { port, strictPort: true, host: '127.0.0.1', hmr: false },
     });
     await server.listen();
     browser = await chromium.launch({ headless: true, args: GL_ARGS });

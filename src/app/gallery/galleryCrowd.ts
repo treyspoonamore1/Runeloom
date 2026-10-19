@@ -27,7 +27,7 @@ export function crowdSpecs(n: number, legacy: boolean): ActorSpec[] {
   const total = mix.reduce((a, [, c]) => a + c, 0);
   const out: ActorSpec[] = [];
   let seed = 12345;
-  const rnd = (): number => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  const rnd = (): number => (seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296;
   for (const [kind, count] of mix) {
     const k = Math.round((count / total) * n);
     for (let i = 0; i < k && out.length < n; i++) {
@@ -43,6 +43,7 @@ export function crowdSpecs(n: number, legacy: boolean): ActorSpec[] {
         rarity: r > 0.97 ? 'rare' : r > 0.87 ? 'magic' : 'normal',
         mods: r > 0.97 ? ['hasted', 'incendiary'] : undefined,
         wet: kind === 'bog_lurker',
+        offset: rnd() * 3,
       });
     }
   }
