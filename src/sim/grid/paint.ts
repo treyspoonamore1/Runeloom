@@ -15,6 +15,7 @@ import { flush, flushFx } from './fx';
 import { rasterize } from './raster';
 import { MAT, materialByCode } from '../../../data/materials';
 import { iceConducts, terrainDurationMult } from '../hero/effectsTerrain';
+import { elementOnObjects } from '../world/objectHits';
 
 /** Elements that change terrain. Tide and Gale arrive in M8. */
 export type TerrainElement = 'fire' | 'frost' | 'storm' | 'tide' | 'gale';
@@ -81,6 +82,8 @@ export function paintElement(state: GameState, app: ElementApplication): void {
   const durationMult = app.durationMult * terrainDurationMult(state, app.owner);
   const c: CellContext = { owner: app.owner, durationMult };
   g.version++;
+  // M4 puzzle objects: Fire lights braziers and melts ice blocks, Storm powers switches.
+  elementOnObjects(state, app.element, cells, n);
   switch (app.element) {
     case 'fire':
       for (let k = 0; k < n; k++) {

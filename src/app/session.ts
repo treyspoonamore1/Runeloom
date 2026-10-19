@@ -1,4 +1,5 @@
 import {
+  createAdventure,
   createGame,
   DEFAULT_LOADOUT,
   loadoutSpecOf,
@@ -12,10 +13,11 @@ import {
   type SimEvent,
   type TimedHeroEdit,
   type SaveData,
+  loadSave,
   makeSave,
 } from '../sim';
 import { roomTexts } from './rooms';
-import type { SceneDef } from './scenes';
+import { adventureStartRoom, type SceneDef } from './scenes';
 import { cloneTuning, type Tuning } from '../../data/tuning';
 
 export interface SessionOptions {
@@ -25,9 +27,34 @@ export interface SessionOptions {
   mode?: GameMode;
 }
 
+/** A fresh game for a session: adventure games through createAdventure, the rest through createGame. */
+function newState(
+  seed: number,
+  roomId: string,
+  mode: GameMode,
+  tuning?: Tuning,
+  loadout?: LoadoutSpec,
+): GameState {
+  if (mode === 'adventure')
+    return createAdventure({
+      seed,
+      rooms: roomTexts,
+      startRoomId: adventureStartRoom(roomTexts, roomId),
+      tuning,
+    });
+  return createGame({ seed, rooms: roomTexts, roomId, tuning, mode, loadout });
+}
+
+/** An adventure game rebuilt from a save (save.ts loadSave + createAdventure). */
+export function adventureFromSave(save: SaveData, tuning?: Tuning): GameState {
+  return loadSave(save, (init) => createAdventure({ ...init, rooms: roomTexts, tuning }));
+}
+
 /**
  * Owns the live GameState plus the input log for replays. Resetting creates a
- * new GameState (new seed or room) but keeps the current tuning values.
+ * new GameState (new seed or room) but keeps the current tuning values. In adventure mode a
+ * plain reset rebuilds the game the recording started from (`startSave`); a reset with a new
+ * seed, room or mode starts a new game (the new-game hero and weaves) in the start room.
  */
 export class Session {
   state: GameState;
@@ -69,20 +96,51 @@ export class Session {
   /** True once something outside `step` changed the state (console cheats) since the last reset. */
   edited = false;
   private resetListeners: Array<(s: GameState) => void> = [];
+  private roomListeners: Array<(s: GameState) => void> = [];
+  private lastRoom: GameState['room'];
 
   constructor(opts: SessionOptions) {
     this.seed = opts.seed;
     this.roomId = opts.roomId;
     this.sceneId = opts.sceneId;
     this.mode = opts.mode ?? 'sandbox';
-    this.state = createGame({ seed: opts.seed, rooms: roomTexts, roomId: opts.roomId, mode: this.mode });
+    this.state = newState(opts.seed, opts.roomId, this.mode);
+    this.lastRoom = this.state.room;
     this.startTuning = cloneTuning(this.state.tuning);
+    this.rememberStart();
   }
 
   step(input: InputFrame): void {
+    this.syncRoom();
     this.frames.push({ ...input });
     step(this.state, input);
     for (const e of this.state.events) this.pendingEvents.push(e);
+    this.syncRoom();
+  }
+
+  /**
+   * Tells room listeners when the player is in a different room than last time (an exit,
+   * respawn, rest or fast travel). Runs around every step; call it after applying an edit that
+   * can change rooms between ticks (HeroEdit 'travel' and 'rest').
+   */
+  syncRoom(): void {
+    if (this.state.room === this.lastRoom) return;
+    this.lastRoom = this.state.room;
+    for (const fn of this.roomListeners) fn(this.state);
+  }
+
+  /** Called with the state whenever the room changes without a reset (see syncRoom). */
+  onRoomChange(fn: (s: GameState) => void): void {
+    this.roomListeners.push(fn);
+  }
+
+  /** The starting point replays rebuild: the weaves, and in adventure mode the game as a save. */
+  private rememberStart(): void {
+    const adventure = this.state.mode === 'adventure';
+    // The room an adventure actually started in (the scene's room may stand in for the region's).
+    if (adventure) this.roomId = this.state.room.id;
+    this.startLoadout = loadoutSpecOf(this.state.weaves);
+    this.startSave = adventure ? makeSave(this.state) : null;
   }
 
   /** Returns the events collected since the last call and clears them. */
@@ -93,25 +151,28 @@ export class Session {
   }
 
   reset(opts: { seed?: number; roomId?: string; mode?: GameMode } = {}): void {
+    const restart =
+      this.mode === 'adventure' &&
+      this.startSave !== null &&
+      opts.seed === undefined &&
+      opts.roomId === undefined &&
+      (opts.mode === undefined || opts.mode === 'adventure');
     if (opts.seed !== undefined) this.seed = opts.seed >>> 0;
     if (opts.roomId !== undefined) this.roomId = opts.roomId;
     if (opts.mode !== undefined) this.mode = opts.mode;
     const cheats = { ...this.state.cheats };
-    this.startLoadout = loadoutSpecOf(this.state.weaves);
-    this.state = createGame({
-      seed: this.seed,
-      rooms: roomTexts,
-      roomId: this.roomId,
-      tuning: this.state.tuning,
-      mode: this.mode,
-      loadout: this.startLoadout,
-    });
+    const tuning = this.state.tuning;
+    this.state =
+      restart && this.startSave
+        ? adventureFromSave(this.startSave, tuning)
+        : newState(this.seed, this.roomId, this.mode, tuning, loadoutSpecOf(this.state.weaves));
+    this.lastRoom = this.state.room;
     this.state.cheats = cheats;
+    this.rememberStart();
     this.startCheats = { ...cheats };
     this.frames = [];
     this.loadoutEdits = [];
     this.heroEdits = [];
-    this.startSave = null;
     this.pendingEvents = [];
     this.edited = false;
     this.startTuning = cloneTuning(this.state.tuning);
@@ -155,6 +216,7 @@ export class Session {
   markAdventureStart(): void {
     this.mode = this.state.mode;
     this.seed = this.state.seed;
+    this.roomId = this.state.room.id;
     this.frames = [];
     this.loadoutEdits = [];
     this.heroEdits = [];

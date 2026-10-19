@@ -13,7 +13,7 @@ import { getRuneCounts, previewWeave, setWeave, unlimitedRunes } from '../../src
 import { makeReplay } from '../../src/app/replay';
 import { parseReplay } from '../../src/app/replayFormat';
 import { checkReplay } from '../../tools/lib/replay';
-import { Button, createGame, hashState, newGameHero, setupNewGameWeaves } from '../../src/sim';
+import { Button, createAdventure, hashState, newGameHero, setupNewGameWeaves } from '../../src/sim';
 import { makeItem, makePart, makeRune } from '../../src/sim/items/items';
 
 /** A session playing a new-game adventure in the test arena, with a cloak, a part and spare runes to use. */
@@ -25,7 +25,7 @@ function adventureSession(): Session {
   for (const r of ['cast', 'nova', 'fire'] as const) hero.runes.push(makeRune(hero, r));
   hero.unlockedRunes.push('nova');
   hero.unlockedRunes.sort();
-  session.state = createGame({ seed: 5, rooms: roomTexts, roomId: 'test/arena', mode: 'adventure', hero });
+  session.state = createAdventure({ seed: 5, rooms: roomTexts, startRoomId: 'test/arena', hero });
   setupNewGameWeaves(session.state);
   session.markAdventureStart();
   return session;

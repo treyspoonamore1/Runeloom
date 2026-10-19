@@ -1,0 +1,12 @@
+@id test/world_b
+@name Test Ford
+@level 2
+@exit w test/world_a
+@exit e test/world_d
+@spawn 1 enemy:tinderling 2
+############
+#.....k....#
+<..........#
+<....1....K>
+#..........#
+############

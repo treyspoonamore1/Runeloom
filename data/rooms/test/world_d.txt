@@ -1,0 +1,11 @@
+@id test/world_d
+@name Test Keep
+@level 3
+@exit w test/world_b
+@spawn 1 enemy:shieldbearer
+@spawn 2 enemy:tinderling
+##########
+#........#
+<...1..2.#
+#........#
+##########

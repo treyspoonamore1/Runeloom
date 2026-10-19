@@ -42,6 +42,7 @@ import {
   refundCost,
   type RefundCheck,
 } from '../sim/hero/passives';
+import { buildRegionMap, type RegionMap } from '../sim/world/regionMap';
 
 export type { HeroEdit, Description };
 
@@ -68,6 +69,8 @@ export function sendHeroEdit(session: Session, edit: HeroEdit): string | null {
       after: session.loadoutEdits.length,
       edit: structuredClone(edit),
     });
+  // 'travel' and 'rest' change rooms between ticks: let the renderer rebuild now.
+  session.syncRoom();
   return err;
 }
 
@@ -253,3 +256,10 @@ export function salvageValue(session: Session, uid: number): number | null {
 
 /** Thread Scrap it costs to keep a part when unfusing it (DESIGN §8.4). */
 export const UNFUSE_KEEP_COST = scrapValues.unfuseKeepCost;
+
+// ---- Region map (world agent): src/sim/world/regionMap.ts ----
+
+/** The map screen's data: the rooms connected to the current one, laid out from their exits. */
+export function getRegionMap(session: Session): RegionMap {
+  return buildRegionMap(session.state);
+}

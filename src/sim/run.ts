@@ -39,7 +39,7 @@ export function runScenario(
  * Replays recorded input frames from a fresh game, starting from `loadout` and applying each
  * Loom edit and hero edit between ticks when `state.tick === edit.tick` (each list in recorded
  * order; at one tick a hero edit goes after the first `after` Loom edits). `createState`
- * replaces the fresh game (an adventure started from a save); `roomText` is then unused.
+ * replaces the fresh game (an adventure: save.ts loadSave with world/adventure.ts createAdventure); `roomText` is then unused.
  */
 export function runFrames(
   frames: readonly InputFrame[],

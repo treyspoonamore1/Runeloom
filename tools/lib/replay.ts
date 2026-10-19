@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import {
-  createGame,
+  createAdventure,
   hashHex,
   loadSave,
   parseSave,
@@ -10,33 +10,15 @@ import {
 } from '../../src/sim';
 import { decodeFrames, parseReplay, type ReplayFile } from '../../src/app/replayFormat';
 import type { Tuning } from '../../data/tuning';
-import { listRoomIds, loadRoomText } from './rooms';
-
-/** Every room text by id, read from data/rooms (the adventure's RoomSource). */
-export function allRoomTexts(): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const id of listRoomIds()) out[id] = loadRoomText(id);
-  return out;
-}
+import { loadAllRooms, loadRoomText } from './rooms';
 
 /**
- * An adventure game rebuilt from a save, the way replays and tools start one: the game is
- * created in the save's respawn room (else its current room), then restoreSave applies weaves
- * and RNG streams. Stand-in for the world agent's createAdventure.
+ * An adventure game rebuilt from a save, the way replays and tools start one: loadSave with
+ * createAdventure (the save's room at its respawn Loom Stone), then the saved weaves and RNGs.
  */
 export function adventureFromSave(save: SaveData, tuning?: Tuning): GameState {
-  const rooms = allRoomTexts();
-  return loadSave(parseSave(save), (init) =>
-    createGame({
-      seed: init.seed,
-      mode: 'adventure',
-      rooms,
-      roomId: init.world.respawn?.roomId ?? init.world.roomId,
-      hero: init.hero,
-      world: init.world,
-      tuning,
-    }),
-  );
+  const rooms = loadAllRooms();
+  return loadSave(parseSave(save), (init) => createAdventure({ ...init, rooms, tuning }));
 }
 
 export interface ReplayCheck {

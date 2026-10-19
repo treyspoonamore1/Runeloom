@@ -24,3 +24,13 @@ export function listRoomIds(dir = ROOMS_DIR): string[] {
   }
   return out.sort();
 }
+
+/**
+ * Every room text under data/rooms by id, the RoomSource adventure games load rooms from
+ * (createAdventure, replays, bench, shots). Read once per call.
+ */
+export function loadAllRooms(dir = ROOMS_DIR): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const id of listRoomIds(dir)) out[id] = readFileSync(join(dir, `${id}.txt`), 'utf8');
+  return out;
+}

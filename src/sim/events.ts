@@ -4,6 +4,7 @@ import type { GameState } from './state';
 import type { FormParams } from './weave/program';
 import type { SpellEndReason } from './weave/runtime/types';
 import type { HeroEvent } from './hero/events';
+import type { WorldEvent } from './world/worldEvents';
 
 /**
  * Things that happened during one step, for render and audio (hit flash, damage numbers,
@@ -318,7 +319,9 @@ export type SimEvent =
       sourceId: number;
     }
   /** Character, XP and loot events (M4): hero/events.ts. */
-  | HeroEvent;
+  | HeroEvent
+  /** World and puzzle events (M4): rooms, doors, keys, pickups, puzzle objects (world/worldEvents.ts). */
+  | WorldEvent;
 
 /** Fields of 'waterElectrified' and 'metalElectrified'. */
 export interface ElectrifyFields {

@@ -275,6 +275,25 @@ export const defaultTuning = {
     /** Cells of void the view may show beyond the room edge when the room is larger than the view. */
     edgeMargin: 2,
   },
+  /** Rooms, exits and puzzle objects (M4, src/sim/world). */
+  world: {
+    /** Seconds of walking into a push or ice block before it moves one tile (feel). */
+    pushTime: 0.4,
+    /** How far a pushed block travels per second, tiles (visual; the block occupies its new tile at once). */
+    blockMoveSpeed: 5,
+    /** How fast an ice block slides on ice, tiles per second (feel). */
+    iceSlideSpeed: 9,
+    /** Pushing counts only when the move input along the block's axis is at least this (0–1). */
+    pushInputMin: 0.6,
+    /** Cells of slack beyond the player's radius that still count as touching a solid object (chest, door). */
+    touchSlack: 0.35,
+    /** Cells from a pickup's or Loom Stone's tile center that count as touching it. */
+    pickupRadius: 2.5,
+    /** Cells from a Loom Stone's tile center within which the player can rest or fast travel. */
+    loomStoneRange: 4,
+    /** An exit triggers when the player's center is within radius + this many cells of the room edge, facing out. */
+    exitSlack: 0.3,
+  },
 };
 
 export type Tuning = typeof defaultTuning;

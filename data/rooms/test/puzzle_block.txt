@@ -1,0 +1,10 @@
+@id test/puzzle_block
+@name Block and Plate
+@level 1
+@exit e test/puzzle_braziers
+@link D plates:all
+#############
+#..........##
+#.x..P...T.D>
+#..........##
+#############

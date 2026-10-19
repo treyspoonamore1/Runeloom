@@ -12,6 +12,7 @@ import type { GameState } from '../state';
 import { applyPassiveEdit } from './passives';
 import { equip, fuse, salvage, unequip, unfuse } from './equip';
 import { refreshHero } from './hero';
+import { restAtLoomStone, travelToLoomStone } from '../world/adventure';
 
 export type HeroEdit =
   | { kind: 'equip'; uid: number; slot: EquipSlot }
@@ -29,7 +30,6 @@ export type HeroEdit =
   | { kind: 'travel'; roomId: string; key: string }
   /** Rest at the Loom Stone the player stands at: full life and mana, rooms repopulate. */
   | { kind: 'rest' };
-
 /**
  * A HeroEdit recorded by the Session, applied between ticks when `state.tick === tick` (like
  * LoadoutEdit). `after`: how many Loom edits the session had recorded before it, so replays keep
@@ -48,31 +48,29 @@ export interface TimedHeroEdit {
 export function applyHeroEdit(state: GameState, edit: HeroEdit): string | null {
   // ---- Passive tree (effects agent): src/sim/hero/passives.ts refreshes the hero itself ----
   if (edit.kind === 'allocate' || edit.kind === 'refund') return applyPassiveEdit(state, edit);
-  // ---- end passive tree ----
+  // ---- World edits (world agent): Loom Stone rest and fast travel (world/adventure.ts) ----
+  if (edit.kind === 'travel') return travelToLoomStone(state, edit.roomId, edit.key);
+  if (edit.kind === 'rest') return restAtLoomStone(state);
+  // ---- Equipment (hero agent) ----
   const err = applyEquipmentEdit(state, edit);
   if (err === null) refreshHero(state);
   return err;
 }
 
-function applyEquipmentEdit(state: GameState, edit: HeroEdit): string | null {
-  const needsAdventure = 'Only in adventure mode';
+type EquipmentEdit = Exclude<HeroEdit, { kind: 'allocate' | 'refund' | 'travel' | 'rest' }>;
+
+function applyEquipmentEdit(state: GameState, edit: EquipmentEdit): string | null {
+  if (state.mode !== 'adventure') return 'Only in adventure mode';
   switch (edit.kind) {
     case 'equip':
-      return state.mode !== 'adventure' ? needsAdventure : equip(state, edit.uid, edit.slot);
+      return equip(state, edit.uid, edit.slot);
     case 'unequip':
-      return state.mode !== 'adventure' ? needsAdventure : unequip(state, edit.slot);
+      return unequip(state, edit.slot);
     case 'salvage':
-      return state.mode !== 'adventure' ? needsAdventure : salvage(state, edit.uid);
+      return salvage(state, edit.uid);
     case 'fuse':
-      return state.mode !== 'adventure'
-        ? needsAdventure
-        : fuse(state, edit.partUid, edit.spindleUid, edit.socket);
+      return fuse(state, edit.partUid, edit.spindleUid, edit.socket);
     case 'unfuse':
-      return state.mode !== 'adventure'
-        ? needsAdventure
-        : unfuse(state, edit.spindleUid, edit.socket, edit.keep);
-    // Region map (world agent): 'travel' and 'rest'.
-    default:
-      return `${edit.kind}: not available yet`;
+      return unfuse(state, edit.spindleUid, edit.socket, edit.keep);
   }
 }

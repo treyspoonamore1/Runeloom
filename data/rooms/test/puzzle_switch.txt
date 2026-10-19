@@ -1,0 +1,13 @@
+@id test/puzzle_switch
+@name Sealed Door
+@level 10
+@link D switch:S
+@note S The Fen isn't woven yet.
+###########
+#....x....#
+#.........#
+#...mMS...#
+#.........#
+#####D#####
+#.........#
+###########

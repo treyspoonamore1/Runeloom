@@ -1,0 +1,11 @@
+@id test/puzzle_timer
+@name Timed Braziers
+@level 1
+@link D timer:3:braziers:all
+###########
+#B.......B#
+#....x....#
+#.........#
+#####D#####
+#....H....#
+###########

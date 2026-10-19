@@ -54,7 +54,7 @@ export function step(state: GameState, input: InputFrame): void {
   stepAilments(state);
   stepArena(state);
   stepLab(state);
-  stepObjects(state);
+  stepObjects(state, input);
   stepLoot(state);
   compactEnemies(state);
   compactProjectiles(state);
