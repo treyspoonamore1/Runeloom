@@ -34,13 +34,6 @@ export const FLAG = {
 
 export const GRID_HZ = SIM_HZ / GRID_EVERY;
 
-/**
- * Optional fields from the rules engine (M3 rules branch): charge strength relative to the
- * source, 0.25–1 (rule 11 falloff; 1 on metal). Missing on grids without it: full strength.
- */
-interface ChargeExtras {
-  chargeFalloff?: Float32Array;
-}
 
 const PROP_CODES = new Set<number>([MAT.crate, MAT.barricade, MAT.oil_barrel, MAT.brazier, MAT.object]);
 /** Raised blocks the baked layer draws; a change in their count re-bakes it. */
@@ -165,8 +158,8 @@ export class TerrainPack {
   pack(grid: Grid): void {
     const n = this.width * this.height;
     const { ground, surface, air, fire, charge, airTimer, timer, wet, under, owner } = grid;
-    const extras = grid as Grid & ChargeExtras;
-    const falloff = extras.chargeFalloff ?? null;
+    // Rule 11 falloff (0.25–1; 1 on metal). Grids built before the rules engine may lack it.
+    const falloff: Float32Array | undefined = grid.chargeFalloff;
     const next = 1 - this.cur;
     const codes32 = this.codes32;
     const fields32 = this.fields32[next]!;
@@ -308,7 +301,7 @@ export class TerrainPack {
         let cs = 0;
         if (ch > 0) {
           const fade = ch >= chargeFade ? 1 : ch / chargeFade;
-          const s = falloff ? Math.max(chargeMin, 255 * falloff[i]!) : 255;
+          const s = falloff !== undefined ? Math.max(chargeMin, 255 * falloff[i]!) : 255;
           cs = Math.round(s * fade);
         }
         const at = airTimer[i]!;
