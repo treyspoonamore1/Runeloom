@@ -33,15 +33,17 @@ export interface CircleBody {
   vy: number;
 }
 
-// Scratch for the deepest-overlap search; the sim is single-threaded.
-let hitX = 0;
-let hitY = 0;
-let hitNx = 0;
-let hitNy = 0;
+// Scratch for the deepest-overlap search; the sim is single-threaded. A typed array, not module
+// `let`s: writing a float to a module variable allocates a heap number every time.
+const hit = new Float64Array(4);
+const HIT_X = 0;
+const HIT_Y = 1;
+const HIT_NX = 2;
+const HIT_NY = 3;
 
 /**
- * Finds the solid cell the circle overlaps most. On a hit, sets hitX/hitY to the
- * position that just clears that cell and hitNx/hitNy to the push direction.
+ * Finds the solid cell the circle overlaps most. On a hit, sets `hit` to the position that just
+ * clears that cell (HIT_X, HIT_Y) and the push direction (HIT_NX, HIT_NY).
  */
 function findDeepest(room: Room, x: number, y: number, r: number): boolean {
   const x0 = Math.floor(x - r);
@@ -65,10 +67,12 @@ function findDeepest(room: Room, x: number, y: number, r: number): boolean {
         if (depth <= best) continue;
         best = depth;
         found = true;
-        hitNx = dx / d;
-        hitNy = dy / d;
-        hitX = qx + hitNx * r;
-        hitY = qy + hitNy * r;
+        const nx = dx / d;
+        const ny = dy / d;
+        hit[HIT_NX] = nx;
+        hit[HIT_NY] = ny;
+        hit[HIT_X] = qx + nx * r;
+        hit[HIT_Y] = qy + ny * r;
       } else {
         // Center inside the cell (only if a body starts inside a wall): leave by the nearest face.
         const left = x - cx;
@@ -80,22 +84,22 @@ function findDeepest(room: Room, x: number, y: number, r: number): boolean {
         if (depth <= best) continue;
         best = depth;
         found = true;
-        hitX = x;
-        hitY = y;
-        hitNx = 0;
-        hitNy = 0;
+        hit[HIT_X] = x;
+        hit[HIT_Y] = y;
+        hit[HIT_NX] = 0;
+        hit[HIT_NY] = 0;
         if (exit === left) {
-          hitNx = -1;
-          hitX = cx - r;
+          hit[HIT_NX] = -1;
+          hit[HIT_X] = cx - r;
         } else if (exit === right) {
-          hitNx = 1;
-          hitX = cx + 1 + r;
+          hit[HIT_NX] = 1;
+          hit[HIT_X] = cx + 1 + r;
         } else if (exit === top) {
-          hitNy = -1;
-          hitY = cy - r;
+          hit[HIT_NY] = -1;
+          hit[HIT_Y] = cy - r;
         } else {
-          hitNy = 1;
-          hitY = cy + 1 + r;
+          hit[HIT_NY] = 1;
+          hit[HIT_Y] = cy + 1 + r;
         }
       }
     }
@@ -167,17 +171,19 @@ export function moveCircle(room: Room, body: CircleBody, r: number, dx: number, 
     for (; pass < RESOLVE_PASSES; pass++) {
       if (!findDeepest(room, body.x, body.y, r)) break;
       touched = true;
-      body.x = hitX;
-      body.y = hitY;
-      const vn = body.vx * hitNx + body.vy * hitNy;
+      body.x = hit[HIT_X]!;
+      body.y = hit[HIT_Y]!;
+      const nx = hit[HIT_NX]!;
+      const ny = hit[HIT_NY]!;
+      const vn = body.vx * nx + body.vy * ny;
       if (vn < 0) {
-        body.vx -= vn * hitNx;
-        body.vy -= vn * hitNy;
+        body.vx -= vn * nx;
+        body.vy -= vn * ny;
       }
-      const sn = sx * hitNx + sy * hitNy;
+      const sn = sx * nx + sy * ny;
       if (sn < 0) {
-        sx -= sn * hitNx;
-        sy -= sn * hitNy;
+        sx -= sn * nx;
+        sy -= sn * ny;
       }
     }
     if (pass === RESOLVE_PASSES && findDeepest(room, body.x, body.y, r)) {
