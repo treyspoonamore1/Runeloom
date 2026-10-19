@@ -65,7 +65,9 @@ async function boot(): Promise<void> {
     renderer,
     flow,
     title,
-    devScenes: import.meta.env.DEV,
+    // The sandbox scenes (Wilds arena, Chemistry Lab, …) stay reachable in every build while the
+    // game is a prototype the designer playtests.
+    devScenes: true,
   });
   const debug = createDebugUI({ session, loop, renderer, input, uiRoot });
 

@@ -115,7 +115,7 @@ function Menu(p: TitleProps) {
       </button>
       {p.scenes ? (
         <button type="button" class="rl-btn quiet tt-dev" onClick={() => (titleView.value = 'dev')}>
-          Dev scenes
+          Sandbox scenes
         </button>
       ) : null}
     </nav>
@@ -308,8 +308,8 @@ export function TitleScreen(p: TitleProps) {
           </div>
         ) : null}
         {view === 'dev' && p.scenes ? (
-          <div class="tt-panel" aria-label="Dev scenes">
-            <h2>Dev scenes</h2>
+          <div class="tt-panel" aria-label="Sandbox scenes">
+            <h2>Sandbox scenes</h2>
             <div class="tt-scenes">
               {p.scenes.map((s) => (
                 <button
