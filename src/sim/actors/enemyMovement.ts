@@ -14,9 +14,9 @@ import { isStunned } from './terrainState';
 let sepX = new Float64Array(64);
 let sepY = new Float64Array(64);
 const body: CircleBody = { x: 0, y: 0, vx: 0, vy: 0 };
-// Separation push accumulated for the enemy being processed.
-let accX = 0;
-let accY = 0;
+// Separation push (x, y) accumulated for the enemy being processed. A typed array, not module
+// `let`s: writing a float to a module variable allocates a heap number every time.
+const acc = new Float64Array(2);
 
 /**
  * The enemy phase of a tick:
@@ -135,8 +135,8 @@ function computeSeparation(state: GameState): void {
   for (let i = 0; i < n; i++) {
     const e = list[i]!;
     if (e.dead || enemyDef(e.kind).knockbackScale === 0 || isFrozen(e)) continue;
-    accX = 0;
-    accY = 0;
+    acc[0] = 0;
+    acc[1] = 0;
     // Neighbors in the hash's query order (the push sums depend on it).
     const count = hash.query(e.x, e.y, e.radius);
     const near = hash.hits;
@@ -148,8 +148,8 @@ function computeSeparation(state: GameState): void {
       pushFrom(e, o.x, o.y, o.radius, i < j ? -1 : 1, t.separationStiffness);
     }
     if (!p.dead) pushFrom(e, p.x, p.y, pr, -1, t.separationStiffness);
-    let px = accX;
-    let py = accY;
+    let px = acc[0]!;
+    let py = acc[1]!;
     const sp2 = px * px + py * py;
     const max = t.separationMaxSpeed;
     if (sp2 > max * max) {
@@ -162,7 +162,7 @@ function computeSeparation(state: GameState): void {
   }
 }
 
-/** Adds to (accX, accY) the push on `e` away from a body at (ox, oy) with radius `or`. */
+/** Adds to `acc` the push on `e` away from a body at (ox, oy) with radius `or`. */
 function pushFrom(e: Enemy, ox: number, oy: number, or: number, tieSign: number, stiffness: number): void {
   const dx = e.x - ox;
   const dy = e.y - oy;
@@ -172,9 +172,9 @@ function pushFrom(e: Enemy, ox: number, oy: number, or: number, tieSign: number,
   const d = Math.sqrt(d2);
   const push = (rr - d) * stiffness;
   if (d === 0) {
-    accX += tieSign * push;
+    acc[0]! += tieSign * push;
     return;
   }
-  accX += (dx / d) * push;
-  accY += (dy / d) * push;
+  acc[0]! += (dx / d) * push;
+  acc[1]! += (dy / d) * push;
 }
