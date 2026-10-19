@@ -1,13 +1,12 @@
 /** Chemistry Lab controls: the hint in the bottom-left corner (clear of the plaques), R to run the station you stand at, Shift+R for all. */
+import { signal } from '@preact/signals';
 import { h, render } from 'preact';
-import { labStations } from '../../data/lab';
+import { labRoomId, labStations } from '../../data/lab';
 import { nearestStation } from '../sim';
 import type { DebugContext } from './debug';
 import { consoleOpen } from './console/Console';
 import { runLabStations } from './console/lab';
 import { showToast } from './toast';
-
-export const LAB_SCENE = 'lab';
 
 const HINT_STYLE: Record<string, string> = {
   position: 'fixed',
@@ -23,7 +22,11 @@ const HINT_STYLE: Record<string, string> = {
   zIndex: '900',
 };
 
-export function LabHint(): preact.JSX.Element {
+/** True while the lab room is loaded (any scene or `room test/lab`). */
+const inLab = signal(false);
+
+export function LabHint(): preact.JSX.Element | null {
+  if (!inLab.value) return null;
   return (
     <div class="lab-hint" style={HINT_STYLE}>
       R: run nearest station · Shift+R: run all · F1: overlays
@@ -34,15 +37,17 @@ export function LabHint(): preact.JSX.Element {
 const isTextField = (t: EventTarget | null): boolean =>
   t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
 
-/** Installs the hint and the R keys when the scene is the lab; does nothing elsewhere. */
+/** Installs the hint and the R keys; both work only while the lab room is loaded. */
 export function installLabControls(ctx: DebugContext): void {
-  if (ctx.session.sceneId !== LAB_SCENE) return;
   const host = document.createElement('div');
   ctx.uiRoot.appendChild(host);
   render(h(LabHint, {}), host);
+  const sync = (): void => void (inLab.value = ctx.session.state.room.id === labRoomId);
+  sync();
+  ctx.session.onReset(sync);
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'KeyR' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (consoleOpen.value || isTextField(e.target)) return;
+    if (!inLab.value || consoleOpen.value || isTextField(e.target)) return;
     const state = ctx.session.state;
     const all = e.shiftKey;
     const indices = all ? labStations.map((_, i) => i) : [nearestStation(state)];

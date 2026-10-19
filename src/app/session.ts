@@ -12,6 +12,7 @@ import {
   type SimEvent,
 } from '../sim';
 import { roomText } from './rooms';
+import type { SceneDef } from './scenes';
 import { cloneTuning, type Tuning } from '../../data/tuning';
 
 export interface SessionOptions {
@@ -29,7 +30,8 @@ export class Session {
   state: GameState;
   seed: number;
   roomId: string;
-  readonly sceneId: string;
+  /** The scene being played (src/app/scenes.ts); switchScene changes it. */
+  sceneId: string;
   mode: GameMode;
   /** Every input frame stepped since the last reset, for F9 replays. */
   frames: InputFrame[] = [];
@@ -116,6 +118,12 @@ export class Session {
     this.loadoutEdits.push(edit);
     for (const e of this.state.events) this.pendingEvents.push(e);
     this.state.events.length = 0;
+  }
+
+  /** Resets into another scene's room and mode (the pause menu's place picker). */
+  switchScene(scene: SceneDef): void {
+    this.sceneId = scene.id;
+    this.reset({ roomId: scene.roomId, mode: scene.mode ?? 'sandbox' });
   }
 
   onReset(fn: (s: GameState) => void): void {

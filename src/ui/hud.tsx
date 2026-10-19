@@ -15,7 +15,8 @@ import { WeaveIcon } from './loom/glyphs';
 import { readArena, WaveWatcher } from './arena';
 import { consoleOpen } from './console/Console';
 import { injectHudStyle } from './hudStyle';
-import { PauseMenu } from './pauseMenu';
+import { PauseMenu, type PauseActions } from './pauseMenu';
+import { findScene, scenes } from '../app/scenes';
 import { StartScreen } from './startScreen';
 
 export interface HudContext {
@@ -157,7 +158,7 @@ function HudApp({
 }: {
   s: Sigs;
   play(): void;
-  pause: { resume(): void; restart(): void; tick(): void };
+  pause: PauseActions;
   loom: LoomController;
   closeLoom(): void;
 }) {
@@ -267,6 +268,16 @@ export function createHud(ctx: HudContext): Hud {
     ctx.audio.play('uiClick');
     focusGame();
   };
+  const goTo = (id: string): void => {
+    const scene = findScene(id);
+    if (!scene) return;
+    ctx.session.switchScene(scene);
+    beginRun();
+    s.screen.value = 'play';
+    ctx.loop.paused = false;
+    ctx.audio.play('uiClick');
+    focusGame();
+  };
 
   // The Loom: the sim pauses and player input is off while it is open.
   let pausedBeforeLoom = false;
@@ -347,7 +358,16 @@ export function createHud(ctx: HudContext): Hud {
     h(HudApp, {
       s,
       play,
-      pause: { resume, restart, tick: () => ctx.audio.play('uiClick') },
+      pause: {
+        resume,
+        restart,
+        tick: () => ctx.audio.play('uiClick'),
+        places: scenes,
+        get place() {
+          return ctx.session.sceneId;
+        },
+        goTo,
+      },
       loom,
       closeLoom,
     }),

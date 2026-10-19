@@ -62,6 +62,9 @@ export interface LabStation {
   actions?: LabAction[];
 }
 
+/** The lab room (data/rooms/test/lab.txt): plaques, the R keys and the hint appear wherever it is loaded. */
+export const labRoomId = 'test/lab';
+
 /** Tiles of walkway south of every bay: standing in the strip below a bay counts as being at that station. */
 export const labFrontTiles = 3;
 

@@ -5,7 +5,7 @@ import { AiOverlay } from './aiOverlay';
 import { AilmentFx } from './ailmentFx';
 import { ailmentAtlasEntries } from './ailmentShapes';
 import { AmbientView } from './ambientView';
-import { labStations, type LabStation } from '../../data/lab';
+import { labRoomId, labStations, type LabStation } from '../../data/lab';
 import { LabLabels } from './labLabels';
 import { DEBUG_BITS } from './terrain/glslDebug';
 import { TerrainFx } from './terrain/terrainFx';
@@ -77,8 +77,8 @@ export interface Renderer {
     terrainPackMs: number;
   };
   /**
-   * Chemistry Lab plaques: the stations whose labels to draw. By default the lab scene
-   * (`?scene=lab`) shows data/lab.ts `labStations` and other scenes none.
+   * Chemistry Lab plaques: the stations whose labels to draw. By default the lab room shows
+   * data/lab.ts `labStations` and other rooms none.
    */
   setLabStations(stations: readonly LabStation[]): void;
   destroy(): void;
@@ -136,7 +136,6 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const room = new RoomView();
   const ambient = new AmbientView();
   const labels = new LabLabels();
-  const labScene = new URLSearchParams(location.search).get('scene') === 'lab';
   let labOverride: readonly LabStation[] | null = null;
   const player = new PlayerView();
   const overlay = new OverlayView();
@@ -217,7 +216,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     const map = room.build(s.room, s.grid);
     room.sync(s.grid, terrain.blockCells);
     ambient.build(map);
-    labels.set(labOverride ?? (labScene ? labStations : []));
+    labels.set(labOverride ?? (s.room.id === labRoomId ? labStations : []));
     player.reset();
     overlay.invalidate();
     enemies.reset();
@@ -281,7 +280,10 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       numbers.update(dt, camera.scale, ox, oy, screenScale);
 
       // Busy screens dim the player's own effects toward the effect-density setting (DESIGN §14).
-      const busy = enemies.count + projectiles.count / 4 + (fx.particleCount + ailments.particleCount + forms.particleCount) / 40;
+      const busy =
+        enemies.count +
+        projectiles.count / 4 +
+        (fx.particleCount + ailments.particleCount + forms.particleCount) / 40;
       const target = 1 - smoothstep(FX.busyStart, FX.busyFull, busy) * (1 - settings.effectDensity);
       dim += (target - dim) * (1 - Math.exp(-dt / 0.3));
       projectiles.player.alpha = dim;

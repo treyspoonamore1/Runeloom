@@ -31,6 +31,10 @@ function Switch(p: { label: string; on: boolean; onChange(v: boolean): void }) {
 export interface PauseActions {
   resume(): void;
   restart(): void;
+  /** Places to play (scenes), the current one, and a switch to another. */
+  places: ReadonlyArray<{ id: string; short: string }>;
+  place: string;
+  goTo(id: string): void;
   /** Feedback blip when a setting is committed. */
   tick(): void;
 }
@@ -52,8 +56,23 @@ export function PauseMenu(p: PauseActions) {
             Resume
           </button>
           <button class="rl-btn quiet" type="button" onClick={p.restart}>
-            Restart arena
+            Restart
           </button>
+        </div>
+        <div class="rl-row">
+          <span>Place</span>
+          <div class="rl-seg" role="group" aria-label="Place">
+            {p.places.map((pl) => (
+              <button
+                key={pl.id}
+                type="button"
+                aria-pressed={p.place === pl.id}
+                onClick={() => p.goTo(pl.id)}
+              >
+                {pl.short}
+              </button>
+            ))}
+          </div>
         </div>
         <div class="rl-row">
           <span>Volume</span>
