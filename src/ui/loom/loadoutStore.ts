@@ -26,7 +26,11 @@ export function setLoadoutStorage(s: KeyValueStore | null): void {
   storage = s;
 }
 
+/** Adventure weaves belong to the save (src/app/saves.ts), not to the sandbox's localStorage loadout. */
+const sandboxed = (session: Session): boolean => session.state.mode !== 'adventure';
+
 function persist(session: Session): void {
+  if (!sandboxed(session)) return;
   const l = getLoadout(session);
   saveLoadout(storage, { spindleId: l.spindleId, slots: l.slots.map((s) => s.notation) });
 }
@@ -51,7 +55,7 @@ export function applySpindle(session: Session, id: SpindleId): LoadoutView {
  * whose saved weave no longer applies keep what they have. Returns the labels of those slots.
  */
 export function restoreLoadout(session: Session): { restored: boolean; failed: string[] } {
-  const saved = loadSaved(storage);
+  const saved = sandboxed(session) ? loadSaved(storage) : null;
   if (!saved) return { restored: false, failed: [] };
   const now = getLoadout(session);
   if (now.spindleId !== saved.spindleId) setSpindle(session, saved.spindleId);
@@ -66,7 +70,7 @@ export function restoreLoadout(session: Session): { restored: boolean; failed: s
 
 /** True when the live loadout differs from what is saved (e.g. a reset dropped it). */
 export function differsFromSaved(session: Session): boolean {
-  const saved = loadSaved(storage);
+  const saved = sandboxed(session) ? loadSaved(storage) : null;
   if (!saved) return false;
   const l = getLoadout(session);
   return l.spindleId !== saved.spindleId || l.slots.some((s, i) => s.notation !== (saved.slots[i] ?? null));

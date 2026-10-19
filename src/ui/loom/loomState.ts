@@ -3,7 +3,7 @@
  * compiles is applied to its slot at once (through loadoutStore → setWeave), one that doesn't
  * stays in the editor ("held") while the slot keeps its working weave.
  */
-import { batch, signal, type Signal } from '@preact/signals';
+import { batch, computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
 import { getLoadout, previewWeave, type LoadoutView } from '../../app/loadout';
 import type { Session } from '../../app/session';
 import { parseWeave, printWeave, type ParseError } from '../../sim/weave/notation';
@@ -12,7 +12,18 @@ import type { WeavePath, WeaveTree } from '../../sim/weave/tree';
 import type { RuneId } from '../../../data/runes';
 import type { SpindleId } from '../../../data/spindles';
 import { applySpindle, applyWeave, loadoutRev } from './loadoutStore';
-import { emptyTree, firstEmpty, isBlank, placeRune, removeAt, type Placement, type Spot } from './model';
+import {
+  emptyTree,
+  firstEmpty,
+  isBlank,
+  placeRune,
+  removeAt,
+  type EditOptions,
+  type Placement,
+  type Spot,
+} from './model';
+import { freeCounts, type RuneTotals } from './pouchCounts';
+import { runeTotals } from './pouchAdapter';
 
 export type SlotStatus =
   | { kind: 'empty'; applied: boolean }
@@ -65,6 +76,13 @@ export class LoomState {
     null,
   );
   readonly refMenu = signal(false);
+  /** Adventure mode: owned copies per rune (null: the sandbox's unlimited pouch). */
+  readonly totals = signal<RuneTotals>(null);
+  /** Free copies per rune given every slot's draft; null when unlimited. */
+  readonly free: ReadonlySignal<ReadonlyMap<string, number> | null> = computed(() => {
+    const t = this.totals.value;
+    return t ? freeCounts(t, this.drafts.value) : null;
+  });
   /** Live notation per slot when its draft was last synced from it. */
   private synced: (string | null)[] = [];
   private held: boolean[] = [];
@@ -73,6 +91,11 @@ export class LoomState {
   constructor(private readonly session: Session) {
     this.loadout = signal(getLoadout(session));
     this.syncFromLoadout(true);
+  }
+
+  /** Options for model.placements: rune availability in adventure mode. */
+  get editOpts(): EditOptions {
+    return { available: this.free.value };
   }
 
   /** The rune whose valid spots light up: the dragged one, else the armed one. */
@@ -90,6 +113,7 @@ export class LoomState {
 
   /** Re-reads the loadout; drafts that weren't edited follow their slot's live weave. */
   syncFromLoadout(force = false): void {
+    this.totals.value = runeTotals(this.session);
     if (!force && this.seenRev === loadoutRev.peek()) return;
     this.seenRev = loadoutRev.peek();
     const l = getLoadout(this.session);
