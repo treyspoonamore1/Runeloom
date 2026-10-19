@@ -12,6 +12,7 @@ import type { GameState } from '../../../state';
 import { clampPoint, enemiesTouching } from '../geom';
 import { canTarget, spellHit, stepEmits, TIME_EPSILON } from '../procs';
 import { endSpell } from '../spawn';
+import { paintOrb } from '../terrain';
 import type { SpellInstance } from '../types';
 
 export function initOrb(state: GameState, o: SpellInstance, fromPlayer: boolean): void {
@@ -61,6 +62,7 @@ export function stepOrb(state: GameState, o: SpellInstance): void {
     spellHit(state, o, e, kx, ky, -dy * ts, dx * ts);
     if (o.ended) return;
   }
+  paintOrb(state, o, DT);
   stepEmits(state, o);
   if (o.ended) return;
   o.lifeLeft -= DT;

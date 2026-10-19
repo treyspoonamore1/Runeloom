@@ -5,7 +5,8 @@
  * (rule 4); an already burning cell takes the new owner; a flammable cell ignites (rule 1);
  * other walkable ground gets placed fire (rule 26). Wet cells never ignite.
  * Frost: puts fire out keeping its fuel (rule 9), then freezes water (rules 7, 8) or dries mud
- * (rule 10); re-freezing temporary ice restarts its timer (map ice stays permanent).
+ * (rule 10); re-freezing temporary ice restarts its timer (map ice stays permanent). Steaming
+ * water doesn't freeze (DESIGN §5.3: frost does nothing to steam).
  * Storm: rolls rule 14 per dry flammable cell; the water and metal cells feed charge.ts.
  */
 import { AIR, MAT, SURFACE, materialByCode, materials } from '../../../data/materials';
@@ -83,6 +84,8 @@ export function frostCell(state: GameState, i: number, c: CellContext, formed: C
   const g = state.grid;
   if (g.fire[i]! > 0) g.fire[i] = 0; // Rule 9: fuel stays for a later reignite.
   const def = materialByCode[g.ground[i]!]!;
+  // DESIGN §5.3: frost does nothing to steam, so [Fire, Frost] on water leaves steaming water.
+  if (def.water !== null && g.air[i] === AIR.steam) return;
   if (def.frostTo !== undefined) {
     const to = materials[def.frostTo];
     setGround(state, i, to.code);

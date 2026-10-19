@@ -107,6 +107,10 @@ export interface SpellInstance {
   emitLeft: number[];
   /** Mana restored by this instance ("Closer pays more"), capped per instance. */
   refunded: number;
+  /** Nova: terrain radius painted so far (runtime/terrain.ts); 0 for other forms. */
+  terrainR: number;
+  /** Orb: seconds until it paints its trail footprint again (0 at spawn: paints on its first tick). */
+  terrainLeft: number;
   /** Ended this tick; removed at the end of the step. */
   ended: boolean;
   endReason: SpellEndReason | null;
