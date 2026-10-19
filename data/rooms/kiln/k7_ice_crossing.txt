@@ -1,0 +1,34 @@
+@id kiln/k7_ice_crossing
+@name Ice Crossing
+@level 9
+@exit w kiln/k6_frost_shrine
+@exit e kiln/k8_slide_room
+@spawn 1 enemy:frost_wisp 2
+@spawn 2 enemy:bog_lurker
+@link D braziers:all
+##################################################
+####......~~~wwwwwwwwwwwwwwwwwwww~~~............##
+####......~~~wwwwwwwwwwwwwwwwwwww~~~.......##...##
+####......~~~wwwwwwwwwwwwwwwwwwww~~~.......##...##
+####......~~~wwwwwwwwwwwwwwwwwwww~~~.........B..##
+#.........~~~wwwwwwwwwwwwwwwwwwww~~~............##
+#.....##..~~~wwwwwwwwwwwwwwww2www~~~............##
+#.....##..~~~wwwwwwwwwwwwwwwwwwww~~~............##
+#.........~~~wwwwwwwwwwwwwwwwwwww~~~............##
+#.........~~~wwwwwwwwwwwwwwwwwwww~~~............##
+#.........~~~wwwwwww.....wwwwwwww~~~............##
+<.........~~~wwwwww~.....~wwwwwww~~~............D>
+<.........~~~wwwwww~..1..~wwwwwww~~~............D>
+<.........~~~wwwwww~.....~wwwwwww~~~............D>
+<.........~~~wwwwww~.....~wwwwwww~~~............D>
+#.........~~~wwwwwww.....wwwwwwww~~~............##
+#.........~~~wwwwwwwwwwwwwwwwwwww~~~............##
+#.........~~~wwwwwwwwwwwwwwwwwwww~~~............##
+#.....##..~~~wwwwwwwwwwwwwwwwwwww~~~............##
+#.....##..~~~wwwwwwwwwwwwwwwwwwww~~~............##
+#.........~~~wwwwHwwwwwwwwwwwwwww~~~............##
+####......~~~wwwwwwwwwwwwwwwwwwww~~~.........B..##
+####......~~~wwwwwwwwwwwwwwwwwwww~~~.......##...##
+####......~~~wwwwwwwwwwwwwwwwwwww~~~.......##...##
+####......~~~wwwwwwwwwwwwwwwwwwww~~~............##
+##################################################

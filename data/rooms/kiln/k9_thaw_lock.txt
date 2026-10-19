@@ -1,0 +1,40 @@
+@id kiln/k9_thaw_lock
+@name Thaw Lock
+@level 10
+@exit w kiln/k8_slide_room
+@exit n kiln/k10_wardens_hearth
+@spawn 1 pack:caller_guard
+############################^^^^############################
+###########################......###########################
+###########################......###########################
+###########################......###########################
+###########################......###########################
+############################GGGG############################
+#....................................~wwwwwwwwwwwwwwwwwwwww#
+#....................................~wwwwwwwwwwwwwwwwwwwww#
+#.......................##...........~wwwwwwwwwwwwwwwwwwwww#
+#.....mmmmmmmmmmmmmmmmmm##mmmmm......~wwwwwwwwwwwwwwwwwwwww#
+#.....mmmmmmmmmmmmmmmmmmmmmmmmm......~wwwwwwwwwwwwwwwwwwwww#
+#................mm..................~wwwwwwwwwwwwwwwwwwwww#
+#................mm..................~wwwwwwwwwwwwwwwwwwwww#
+#...........##...mm..............##..~wwwwwwww.........wwww#
+#...........##...mm...~~~~~~~~~..##..~wwwwwww~.#.....#.~www#
+#...~~~~~~~......mm...~~~~~~~~~......~wwwwwww~.........~www#
+#...~~~~~~~......mm...~~~~~~~~~......~wwwwwww~.........~www#
+#...~~~~~~~......mm...~~~~~~~~~......~wwwwwww~.........~www#
+#...~~~~~~~......mm...~~~~1~~~~......~wwwwwww~...III...~www#
+<...~~~~~~~......Mm...~~~~~~~~~......~wwwwwww~...IgI...~www#
+<...~~~~~~~......mm...~~~~~~~~~......~wwwwwww~...III...~www#
+#...~~~~~~~......mm...~~~~~~~~~......~wwwwwww~.........~www#
+#...~~~~~~~......mm...~~~~~~~~~......~wwwwwww~.........~www#
+#................mm..................~wwwwwww~.........~www#
+#...........##...mm..................~wwwwwww~.#.....#.~www#
+#...........##...mm..............##..~wwwwwwww.........wwww#
+#................mm..............##..~wwwwwwwwwwwwwwwwwwwww#
+#................mm..................~wwwwwwwwwwwwwwwwwwwww#
+#.....mmmmmmmmmmmmmmmmmmmmmmmmm......~wwwwwwwwwwwwwwwwwwwww#
+#.....mmmmmmmmmmmmmmmmmmmmmmmmm......~wwwwwwwwwwwwwwwwwwwww#
+#....................................~wwwwwwwwwwwwwwwwwwwww#
+#.......................##...........~wwwwwwwwwwwwwwwwwwwww#
+#.......................##...........~wwwwwwwwwwwwwwwwwwwww#
+############################################################
