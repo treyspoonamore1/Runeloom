@@ -15,10 +15,12 @@ describe('creature presets', () => {
       const def = sfxCreature[id];
       const s = mixSfx(def, (...a) => ZZFX.buildSamples(...a), ZZFX.sampleRate);
       let peak = 0;
+      let finite = true;
       for (const v of s) {
-        expect(Number.isFinite(v), id).toBe(true);
+        if (!Number.isFinite(v)) finite = false;
         peak = Math.max(peak, Math.abs(v));
       }
+      expect(finite, id).toBe(true);
       expect(peak, id).toBeGreaterThan(0.05);
       expect(s.length / ZZFX.sampleRate, id).toBeLessThan(1);
       expect(def.gain, id).toBeLessThanOrEqual(0.6);

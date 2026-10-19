@@ -36,7 +36,7 @@ function capacityFor(notation: string): number | undefined {
   return t.ok ? t.program.complexity : undefined;
 }
 
-const HEAVY_TIMEOUT_MS = 120_000;
+const HEAVY_TIMEOUT_MS = 300_000;
 
 describe('DPS readout (DESIGN §5.5)', () => {
   it('reports every field for a simple weave, and is the same for the same input', () => {

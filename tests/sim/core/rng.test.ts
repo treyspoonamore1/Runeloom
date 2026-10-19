@@ -18,12 +18,17 @@ describe('Rng', () => {
   it('keeps float() in [0, 1) with a roughly uniform mean', () => {
     const r = new Rng(7);
     let sum = 0;
+    let min = Infinity;
+    let max = -Infinity;
+    // One assertion per bound, not per sample: 200k expect() calls timed out on a loaded machine.
     for (let i = 0; i < 100_000; i++) {
       const f = r.float();
-      expect(f).toBeGreaterThanOrEqual(0);
-      expect(f).toBeLessThan(1);
+      if (f < min) min = f;
+      if (f > max) max = f;
       sum += f;
     }
+    expect(min).toBeGreaterThanOrEqual(0);
+    expect(max).toBeLessThan(1);
     expect(sum / 100_000).toBeCloseTo(0.5, 2);
   });
 

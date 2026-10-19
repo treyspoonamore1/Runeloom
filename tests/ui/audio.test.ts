@@ -54,7 +54,7 @@ describe('mixSfx', () => {
 });
 
 /** Renders every preset's samples; slow when the machine is busy. */
-const PRESET_RENDER_TIMEOUT_MS = 30_000;
+const PRESET_RENDER_TIMEOUT_MS = 120_000;
 
 describe('every preset renders', () => {
   it(
@@ -67,10 +67,13 @@ describe('every preset renders', () => {
         const s = mixSfx(def, (...a) => ZZFX.buildSamples(...a), ZZFX.sampleRate);
         const seconds = s.length / ZZFX.sampleRate;
         let peak = 0;
+        let finite = true;
+        // One assertion per preset, not per sample (millions of expect() calls were the slow part).
         for (const v of s) {
-          expect(Number.isFinite(v), id).toBe(true);
+          if (!Number.isFinite(v)) finite = false;
           peak = Math.max(peak, Math.abs(v));
         }
+        expect(finite, id).toBe(true);
         expect(peak, id).toBeGreaterThan(0.05);
         expect(peak, id).toBeLessThanOrEqual(def.gain + 1e-6);
         expect(seconds, id).toBeLessThan(1.0);

@@ -10,5 +10,8 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
     environment: 'node',
+    // Sim tests are CPU-heavy; parallel agent builds load the machine far past its 4 cores, where the
+    // 5 s default timed out healthy tests. A real hang still fails, just later.
+    testTimeout: 60_000,
   },
 });
