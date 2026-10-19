@@ -65,7 +65,6 @@ export const bosses = {
       },
     ],
     behavior: { kind: 'boss', boss: 'tar_matriarch' },
-    chemistry: { oilTrailRadius: 2 },
   },
   cinder_warden: {
     name: 'Cinder Warden',

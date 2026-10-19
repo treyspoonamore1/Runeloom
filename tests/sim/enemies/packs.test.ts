@@ -75,7 +75,7 @@ describe('packs', () => {
     expect(lurkers.length).toBeLessThanOrEqual(6);
     for (const l of lurkers) {
       expect(isWaterAt(s, l.x, l.y)).toBe(true);
-      expect(l.y).toBeLessThan(60); // none from the land marker at y 66
+      expect(l.y).toBeLessThan(60); // none from the land marker at y 62
     }
   });
 });

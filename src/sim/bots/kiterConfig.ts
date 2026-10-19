@@ -11,6 +11,10 @@ export const kiterConfig = {
   dangerMargin: 0.6,
   /** Score lost for ending a sample inside a telegraph or an arrow's path. */
   dangerPenalty: 5000,
+  /** M4: score lost for a move that ends (or passes halfway) on fire or charge that would hurt. */
+  hazardPenalty: 600,
+  /** M4: while Ignited, run to water within this many cells (Wet puts it out). */
+  waterSearch: 16,
   /** Melee enemies closer than this are pushed away (centers, cells). */
   keepTinderling: 5,
   keepShieldbearer: 5,
@@ -29,6 +33,10 @@ export const kiterConfig = {
   /** Engage-distance multipliers: lower is preferred. */
   archerPreference: 0.6,
   shieldPreference: 1.6,
+  /** M4: Brood Kilns first: killing the kiln ends the stream of mites. */
+  spawnerPreference: 0.25,
+  /** M4: wallMargin while going for a Brood Kiln (its tile counts as a wall). */
+  wallMarginAtSpawner: 3,
   /** Engage-distance multiplier for an enemy at 0 life, rising linearly to 1 at full life. */
   hurtPreference: 0.4,
   /** Cells behind a Shieldbearer the bot tries to stand. */

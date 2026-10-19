@@ -1,4 +1,5 @@
 import { enemyDef } from '../../../data/enemies';
+import { MAT, OWNER } from '../../../data/materials';
 import type { Enemy } from '../actors/enemies';
 import { circleHitsShape, circleIntersectsSector } from '../combat/shapes';
 import { Button, type InputFrame } from '../core/input';
@@ -40,7 +41,7 @@ const BOLT_SLOT = Button.Cast1;
 
 // Scratch.
 const live: Enemy[] = [];
-const goal = { x: 0, y: 0, on: false };
+const goal = { x: 0, y: 0, on: false, fixed: false };
 let bestHitSoon = false;
 
 /** The root spell and mana of `slot` if it is a working Cast weave whose root is `form`. */
@@ -98,19 +99,29 @@ export function kiterInput(state: GameState): InputFrame {
 function pickGoal(state: GameState, canStrike: boolean): void {
   const p = state.player;
   goal.on = false;
+  goal.fixed = false;
   if (live.length === 0) {
     goal.on = true;
     goal.x = state.room.spawnX;
     goal.y = state.room.spawnY;
     return;
   }
+  // M4: burning, run for the nearest water to put it out (rule 15).
+  if (p.ailments.ignite.timeLeft > 0 && nearestWater(state, C.waterSearch)) return;
   let best: Enemy | null = null;
   let bestCost = Infinity;
   for (const e of live) {
     const b = enemyDef(e.kind).behavior.kind;
     // Out of mana, only archers are worth closing on (harmless up close, and they run).
     if (!canStrike && b !== 'kite') continue;
-    const pref = b === 'kite' ? C.archerPreference : b === 'shield' ? C.shieldPreference : 1;
+    const pref =
+      b === 'kite'
+        ? C.archerPreference
+        : b === 'shield'
+          ? C.shieldPreference
+          : b === 'spawner'
+            ? C.spawnerPreference
+            : 1;
     const hurt = C.hurtPreference + (1 - C.hurtPreference) * (e.life / e.maxLife);
     const cost = Math.sqrt((e.x - p.x) ** 2 + (e.y - p.y) ** 2) * pref * hurt;
     if (cost < bestCost) {
@@ -120,6 +131,8 @@ function pickGoal(state: GameState, canStrike: boolean): void {
   }
   if (!best || (!canStrike && !meleeFarther(state, C.keepFleeing))) return;
   goal.on = true;
+  // M4: a Brood Kiln sits in its own solid tile; walk up to it despite the wall margin.
+  goal.fixed = enemyDef(best.kind).behavior.kind === 'spawner';
   if (enemyDef(best.kind).behavior.kind === 'shield') {
     goal.x = best.x - best.facingX * C.behindShield;
     goal.y = best.y - best.facingY * C.behindShield;
@@ -172,6 +185,15 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
         if (a.timeLeft <= C.dodgeWithin) bestHitSoon = true;
       }
     }
+    // M4: a Tar Hulk with a lit fuse is a telegraph of its blast.
+    const blast = e.special.fuseLeft > 0 ? enemyDef(e.kind).chemistry?.explodes : undefined;
+    if (blast !== undefined) {
+      const r = blast.radius + R + C.dangerMargin;
+      if ((qx - e.x) ** 2 + (qy - e.y) ** 2 <= r * r) {
+        score -= C.dangerPenalty;
+        if (e.special.fuseLeft <= C.dodgeWithin) bestHitSoon = true;
+      }
+    }
     const kind = enemyDef(e.kind).behavior.kind;
     if (kind === 'kite') continue;
     const ex = e.x + e.vx * T;
@@ -190,8 +212,12 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
   }
 
   const wd = wallDistanceAt(state.room, wallDistanceField(state.room), qx, qy);
-  if (wd < C.wallMargin) score -= C.wallWeight * (C.wallMargin - wd) * (C.wallMargin - wd);
+  const margin = goal.fixed ? C.wallMarginAtSpawner : C.wallMargin;
+  if (wd < margin) score -= C.wallWeight * (margin - wd) * (margin - wd);
   if (wd < R) score -= C.dangerPenalty;
+  // M4: burning or charged ground that would hurt (enemy or world owned), at the end and halfway.
+  if (hazardAt(state, qx, qy) || hazardAt(state, p.x + dx * sp * T * 0.5, p.y + dy * sp * T * 0.5))
+    score -= C.hazardPenalty;
 
   if (goal.on) {
     const d0 = Math.sqrt((goal.x - p.x) ** 2 + (goal.y - p.y) ** 2);
@@ -325,4 +351,41 @@ function threatened(state: GameState): boolean {
       return true;
   }
   return false;
+}
+
+/**
+ * True if the cell under (x, y) would hurt the player (DESIGN §6.3 ownership): fire of another
+ * team or the world while the player isn't Wet, or charge of another team or the world.
+ */
+function hazardAt(state: GameState, x: number, y: number): boolean {
+  const g = state.grid;
+  const cx = Math.floor(x);
+  const cy = Math.floor(y);
+  if (cx < 0 || cy < 0 || cx >= g.width || cy >= g.height) return false;
+  const i = cy * g.width + cx;
+  if (g.owner[i] === OWNER.player) return false;
+  return (g.fire[i]! > 0 && state.player.terrain.wetLeft <= 0) || g.charge[i]! > 0;
+}
+
+/** Sets `goal` to the water cell nearest the player within `r` cells (not charged); false if none. */
+function nearestWater(state: GameState, r: number): boolean {
+  const g = state.grid;
+  const p = state.player;
+  const cx = Math.floor(p.x);
+  const cy = Math.floor(p.y);
+  let best = r * r;
+  let found = false;
+  for (let y = Math.max(0, cy - r); y <= Math.min(g.height - 1, cy + r); y++)
+    for (let x = Math.max(0, cx - r); x <= Math.min(g.width - 1, cx + r); x++) {
+      const i = y * g.width + x;
+      if (g.ground[i] !== MAT.shallow_water || g.charge[i]! > 0) continue;
+      const d = (x + 0.5 - p.x) ** 2 + (y + 0.5 - p.y) ** 2;
+      if (d >= best) continue;
+      best = d;
+      found = true;
+      goal.x = x + 0.5;
+      goal.y = y + 0.5;
+    }
+  goal.on = found;
+  return found;
 }
