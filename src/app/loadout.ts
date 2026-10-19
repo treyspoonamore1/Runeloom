@@ -16,6 +16,9 @@ import {
 } from '../sim';
 import type { ParseError } from '../sim/weave/notation';
 import { spindles, type SpindleId } from '../../data/spindles';
+import type { RuneId } from '../../data/runes';
+import { runeCounts, usesRuneItems } from '../sim/hero/runes';
+import type { RuneItem } from '../sim/hero/types';
 import type { Session } from './session';
 
 /** Button label per slot, in slot order. */
@@ -88,14 +91,47 @@ export function getLoadout(session: Session): LoadoutView {
   const w = session.state.weaves;
   return {
     spindleId: w.spindleId,
-    capacity: w.capacity ?? spindles[w.spindleId].capacity,
+    capacity: (w.capacity ?? spindles[w.spindleId].capacity) + session.state.heroMods.capacityAdd,
     slots: w.slots.map((_, i) => slotView(session.state, i)),
   };
 }
 
-/** Compiles `notation` against the current spindle without changing anything (live editor validation). */
-export function previewWeave(session: Session, notation: string): WeavePreview {
-  return simPreview(session.state, notation);
+/**
+ * Compiles `notation` against the current spindle and character without changing anything (live
+ * editor validation). In adventure mode it also checks the hero owns enough free rune items
+ * ("Needs 2 Fire runes; you have 1 free"), counting the runes already in `slot` (the slot being
+ * edited) as free.
+ */
+export function previewWeave(session: Session, notation: string, slot = -1): WeavePreview {
+  return simPreview(session.state, notation, slot);
+}
+
+/**
+ * True when every rune is unlimited (sandbox, arena, lab). False in adventure mode, where weaves
+ * use the hero's rune items and the Loom offers only unlocked runes.
+ */
+export function unlimitedRunes(session: Session): boolean {
+  return !usesRuneItems(session.state);
+}
+
+/** Owned rune items per rune id. `free`: in the pouch, or in `slot` when given (the slot being edited). */
+export type RuneCounts = Partial<Record<RuneId, { free: number; total: number }>>;
+
+/** Rune item counts for the Loom's palette (adventure mode); empty when runes are unlimited. */
+export function getRuneCounts(session: Session, slot = -1): RuneCounts {
+  return usesRuneItems(session.state) ? runeCounts(session.state, slot) : {};
+}
+
+/** Runes the hero has unlocked, sorted (adventure mode); random drops come only from these. */
+export function getUnlockedRunes(session: Session): readonly RuneId[] {
+  return session.state.hero.unlockedRunes;
+}
+
+/** The rune items socketed in a slot's weave, in rune order (empty when runes are unlimited or the slot is empty). */
+export function slotRuneItems(session: Session, slot: number): RuneItem[] {
+  const uids = session.state.weaves.slots[slot]?.runes ?? [];
+  const byUid = new Map(session.state.hero.runes.map((r) => [r.uid, r]));
+  return uids.map((u) => byUid.get(u)).filter((r): r is RuneItem => r !== undefined);
 }
 
 /**
@@ -103,6 +139,8 @@ export function previewWeave(session: Session, notation: string): WeavePreview {
  * is recorded for replays. An invalid weave changes nothing; the result explains why.
  */
 export function setWeave(session: Session, slot: number, notation: string | null): SetWeaveResult {
+  // In adventure mode the weave sockets the hero's rune items (highest level first); a weave the
+  // hero lacks runes for fails with compiled.error explaining which.
   const state = session.state;
   const out = setSlotWeave(state, slot, notation);
   const result: SetWeaveResult = { applied: out.applied, view: slotView(state, slot) };
@@ -120,10 +158,12 @@ export function setWeave(session: Session, slot: number, notation: string | null
 
 /**
  * Switches spindle. Weaves that no longer fit stay in their slots, show their error, and don't fire
- * until they fit again. Recorded for replays.
+ * until they fit again. Recorded for replays. Does nothing in adventure mode, where the spindle is
+ * the equipped spindle item (src/app/hero.ts, HeroEdit 'equip').
  */
 export function setSpindle(session: Session, spindleId: SpindleId): void {
   const state = session.state;
+  if (usesRuneItems(state)) return;
   setLoadoutSpindle(state, spindleId);
   session.recordLoadoutEdit({ tick: state.tick, kind: 'spindle', value: spindleId });
 }

@@ -1,4 +1,4 @@
-import type { Cheats, GameMode, InputFrame, LoadoutEdit, LoadoutSpec } from '../sim';
+import type { Cheats, GameMode, InputFrame, LoadoutEdit, LoadoutSpec, SaveData, TimedHeroEdit } from '../sim';
 import type { Tuning } from '../../data/tuning';
 
 /**
@@ -21,6 +21,13 @@ export interface ReplayFile {
   loadout?: LoadoutSpec;
   /** Loom edits during the recording, applied between ticks (LoadoutEdit); absent means none. */
   loadoutEdits?: LoadoutEdit[];
+  /** Character edits during the recording (M4), applied between ticks; absent means none. */
+  heroEdits?: TimedHeroEdit[];
+  /**
+   * Adventure mode (M4): the game the recording started from, as a save. The replay rebuilds it
+   * with loadSave instead of a fresh createGame; absent in other modes.
+   */
+  start?: SaveData;
   /** Tuning the recording started with. */
   tuning: Tuning;
   /** True if tuning was edited during the recording, in which case it may not reproduce. */

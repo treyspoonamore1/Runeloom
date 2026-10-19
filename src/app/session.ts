@@ -10,6 +10,9 @@ import {
   type GameState,
   type InputFrame,
   type SimEvent,
+  type TimedHeroEdit,
+  type SaveData,
+  makeSave,
 } from '../sim';
 import { roomTexts } from './rooms';
 import type { SceneDef } from './scenes';
@@ -46,6 +49,18 @@ export class Session {
    * `state.tick === tick`. Replays apply them at the same ticks; they don't mark the session edited.
    */
   loadoutEdits: LoadoutEdit[] = [];
+  /**
+   * Character edits since the last reset (src/app/hero.ts sendHeroEdit), applied between ticks
+   * like Loom edits; replays apply them at the same ticks, in the same order relative to Loom
+   * edits (TimedHeroEdit.after). They don't mark the session edited.
+   */
+  heroEdits: TimedHeroEdit[] = [];
+  /**
+   * Adventure mode: the game at the last reset as a save, so replays can rebuild it (loading a
+   * save, or a new game, creates the state outside `createGame`). Null in other modes. Whoever
+   * replaces `state` with an adventure game calls `markAdventureStart()`.
+   */
+  startSave: SaveData | null = null;
   /**
    * Sim events from every step since the last drainEvents(), in order. A frame can run several
    * steps (or none), so render and audio drain this once per frame instead of reading state.events.
@@ -95,6 +110,8 @@ export class Session {
     this.startCheats = { ...cheats };
     this.frames = [];
     this.loadoutEdits = [];
+    this.heroEdits = [];
+    this.startSave = null;
     this.pendingEvents = [];
     this.edited = false;
     this.startTuning = cloneTuning(this.state.tuning);
@@ -119,6 +136,33 @@ export class Session {
     this.loadoutEdits.push(edit);
     for (const e of this.state.events) this.pendingEvents.push(e);
     this.state.events.length = 0;
+  }
+
+  /**
+   * Records a character edit already applied to the state between ticks (and queues the events
+   * it caused). Does not mark the session edited.
+   */
+  recordHeroEdit(edit: TimedHeroEdit): void {
+    this.heroEdits.push(edit);
+    for (const e of this.state.events) this.pendingEvents.push(e);
+    this.state.events.length = 0;
+  }
+
+  /**
+   * Call right after putting a fresh adventure game in `state` (new game, loaded save, reset):
+   * starts a new recording from it, so F9 replays rebuild the game from `startSave`.
+   */
+  markAdventureStart(): void {
+    this.mode = this.state.mode;
+    this.seed = this.state.seed;
+    this.frames = [];
+    this.loadoutEdits = [];
+    this.heroEdits = [];
+    this.pendingEvents = [];
+    this.edited = false;
+    this.startCheats = { ...this.state.cheats };
+    this.startTuning = cloneTuning(this.state.tuning);
+    this.startSave = makeSave(this.state);
   }
 
   /** Resets into another scene's room and mode (the pause menu's place picker). */
