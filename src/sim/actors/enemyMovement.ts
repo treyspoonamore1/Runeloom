@@ -10,10 +10,9 @@ import { stepKnockback } from './knockback';
 import { readGround } from './ground';
 import { isStunned } from './terrainState';
 
-// Scratch: separation velocity per enemy index, neighbor query results, and a body for moveCircle.
+// Scratch: separation velocity per enemy index and a body for moveCircle.
 let sepX = new Float64Array(64);
 let sepY = new Float64Array(64);
-const near: number[] = [];
 const body: CircleBody = { x: 0, y: 0, vx: 0, vy: 0 };
 // Separation push accumulated for the enemy being processed.
 let accX = 0;
@@ -132,12 +131,15 @@ function computeSeparation(state: GameState): void {
   const t = state.tuning.enemies;
   const p = state.player;
   const pr = state.tuning.player.radius;
+  const hash = state.enemyHash;
   for (let i = 0; i < n; i++) {
     const e = list[i]!;
     if (e.dead || enemyDef(e.kind).knockbackScale === 0 || isFrozen(e)) continue;
     accX = 0;
     accY = 0;
-    const count = state.enemyHash.queryCircle(e.x, e.y, e.radius, near);
+    // Neighbors in the hash's query order (the push sums depend on it).
+    const count = hash.query(e.x, e.y, e.radius);
+    const near = hash.hits;
     for (let k = 0; k < count; k++) {
       const j = near[k]!;
       if (j === i) continue;

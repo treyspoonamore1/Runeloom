@@ -24,6 +24,11 @@ export class SpatialHash {
   count = 0;
   /** Largest radius in the hash, so queries reach bodies centered in neighboring buckets. */
   maxRadius = 0;
+  /**
+   * Results of the last `query`: indices into the rebuilt array. Overwritten by the next query
+   * and replaced (grown) by a rebuild, so read it right after the query.
+   */
+  hits = new Int32Array(INITIAL_CAPACITY);
   private readonly bucketStart: Int32Array;
   private items = new Int32Array(INITIAL_CAPACITY);
   private bucketOf = new Int32Array(INITIAL_CAPACITY);
@@ -63,6 +68,7 @@ export class SpatialHash {
     this.ys = new Float64Array(cap);
     this.rs = new Float64Array(cap);
     this.srcIndex = new Int32Array(cap);
+    this.hits = new Int32Array(cap);
   }
 
   /** Re-buckets every live body. Indices returned by queries refer to `bodies`. */
@@ -99,7 +105,16 @@ export class SpatialHash {
    * how many there are.
    */
   queryCircle(x: number, y: number, r: number, out: number[]): number {
-    out.length = 0;
+    const n = this.query(x, y, r);
+    // Shrinking an array is costly; skip it when the length is already right.
+    if (out.length !== n) out.length = 0;
+    const hits = this.hits;
+    for (let k = 0; k < n; k++) out[k] = hits[k]!;
+    return n;
+  }
+
+  /** queryCircle into `hits` instead of an array (same indices, same order). Returns how many. */
+  query(x: number, y: number, r: number): number {
     if (this.count === 0) return 0;
     const reach = r + this.maxRadius;
     const c0 = this.col(x - reach);
@@ -107,18 +122,27 @@ export class SpatialHash {
     const r0 = this.row(y - reach);
     const r1 = this.row(y + reach);
     const start = this.bucketStart;
+    const items = this.items;
+    const xs = this.xs;
+    const ys = this.ys;
+    const rs = this.rs;
+    const src = this.srcIndex;
+    const hits = this.hits;
+    const cols = this.cols;
+    let m = 0;
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
-        const bucket = row * this.cols + col;
-        for (let k = start[bucket]!; k < start[bucket + 1]!; k++) {
-          const j = this.items[k]!;
-          const dx = this.xs[j]! - x;
-          const dy = this.ys[j]! - y;
-          const rr = this.rs[j]! + r;
-          if (dx * dx + dy * dy <= rr * rr) out.push(this.srcIndex[j]!);
+        const bucket = row * cols + col;
+        const end = start[bucket + 1]!;
+        for (let k = start[bucket]!; k < end; k++) {
+          const j = items[k]!;
+          const dx = xs[j]! - x;
+          const dy = ys[j]! - y;
+          const rr = rs[j]! + r;
+          if (dx * dx + dy * dy <= rr * rr) hits[m++] = src[j]!;
         }
       }
     }
-    return out.length;
+    return m;
   }
 }
