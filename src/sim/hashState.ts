@@ -13,6 +13,8 @@ import { hashHeroFx } from './hero/effects';
 import { hashWorld } from './world/worldState';
 import { hashObjects } from './world/objects';
 import { hashLoot } from './items/loot';
+import type { Enemy } from './actors/enemies';
+import { hashBossState, hashEnemySpecial } from './actors/enemyState';
 
 /**
  * Hash of all simulation state that affects the future. Two runs with the same
@@ -88,6 +90,7 @@ export function hashState(state: GameState): number {
     shape(h, a.shape);
     h.bool(e.shield !== null);
     if (e.shield) h.num(e.shield.halfAngleCos).num(e.shield.burnLeft);
+    hashEnemyM4(h, e);
   }
 
   h.u32(state.projectiles.length);
@@ -100,6 +103,16 @@ export function hashState(state: GameState): number {
     for (const id of pr.hitIds) h.u32(id);
   }
   return h.digest();
+}
+
+/** M4 enemy fields: mods, per-kind AI timers, chemistry and dash state, boss state. */
+function hashEnemyM4(h: Hasher, e: Enemy): void {
+  h.u32(e.mods.length);
+  for (const m of e.mods) h.string(m).byte(0);
+  h.u32(e.ai.cooldowns.length);
+  for (const c of e.ai.cooldowns) h.num(c);
+  hashEnemySpecial(h, e.special);
+  hashBossState(h, e.boss);
 }
 
 function amounts(h: Hasher, a: DamageAmounts): void {

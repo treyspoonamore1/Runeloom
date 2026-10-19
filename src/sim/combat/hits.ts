@@ -8,7 +8,7 @@ import { onEnemyKilled } from '../hero/onKill';
 import type { GameState } from '../state';
 import { applyHitAilments, isFrozen, teamOfSource, type AilmentTarget } from './ailments';
 import { arcShock } from './arcs';
-import { deathTerrain, dousedTakenMult } from '../actors/chemistry';
+import { deathTerrain, enemyTakenMult } from '../actors/chemistry';
 import { noteHurt, noteKill } from '../weave/runtime/queue';
 import { resolveHit, zeroAmounts, type DamagePacket, type DamageTarget, type HitResult } from './damage';
 import { afterPlayerHit, hasHitRules, playerHitPacket } from '../hero/effectsCombat';
@@ -50,10 +50,11 @@ export function addHitstop(state: GameState, seconds: number): void {
 // Scratch target side for resolveHit; the sim is single-threaded.
 const targetSide: DamageTarget = { resist: { physical: 0, fire: 0, frost: 0, storm: 0 }, shock: 0 };
 
-function damageTarget(t: AilmentTarget): DamageTarget {
+function damageTarget(state: GameState, t: AilmentTarget): DamageTarget {
   targetSide.resist = t.resist;
   targetSide.shock = t.ailments.shock.effect;
-  targetSide.takenMult = 'kind' in t ? dousedTakenMult(t) : 1;
+  // M4: Superheat joins the doused Tinderling's multiplier (actors/chemistry.ts).
+  targetSide.takenMult = 'kind' in t ? enemyTakenMult(state, t) : 1;
   return targetSide;
 }
 
@@ -99,7 +100,7 @@ function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInf
   // Passive and Fuse rules on the player's hits (hero/effectsCombat.ts); none: same packet.
   const rules = info.sourceId === PLAYER_ID && hasHitRules(state);
   if (rules) packet = playerHitPacket(state, e, packet, info);
-  const res = resolveHit(packet, damageTarget(e), state.combatRng);
+  const res = resolveHit(packet, damageTarget(state, e), state.combatRng);
   e.life -= res.total;
   const kb = info.knockback * def.knockbackScale;
   if (kb > 0) addKnockback(e, info.dirX, info.dirY, kb, state.tuning.feel);
@@ -192,7 +193,7 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
     emit(state, { type: 'evaded', x: p.x, y: p.y, sourceId: info.sourceId });
     return null;
   }
-  const side = damageTarget(p);
+  const side = damageTarget(state, p);
   const less = info.projectile ? state.heroMods.projectileDamageTakenLess : 0;
   if (less !== 0) side.takenMult = (side.takenMult ?? 1) * (1 - less);
   const res = resolveHit(packet, side, state.combatRng);

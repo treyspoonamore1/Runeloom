@@ -4,6 +4,7 @@ import {
   buildRegionMap,
   createAdventure,
   createWorldState,
+  enterRoom,
   killEnemy,
   killPlayer,
   PLAYER_ID,
@@ -147,6 +148,8 @@ describe('boss rooms', () => {
     killPlayer(s);
     runUntil(s, (st) => st.events.some((e) => e.type === 'roomEnter'), 200);
     expect(s.world.flags['test/world_d']!.cleared).toBe(true);
+    // Death repopulated the rooms (and respawned the player in the start room); the boss room stays empty.
+    enterRoom(s, 'test/world_d', { kind: 'default' });
     expect(s.enemies).toEqual([]);
   });
 });

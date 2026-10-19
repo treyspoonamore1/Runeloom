@@ -4,7 +4,8 @@
  *
  * - createAdventure: the game starts in WorldState.roomId (a save) or data/progression.ts
  *   startRoom (a new game), at the respawn Loom Stone when the save has one there, else at the
- *   room's first Loom Stone (else its center).
+ *   room's first Loom Stone (else its center). A save made in a boss room whose boss lives
+ *   (K5, K10: no Loom Stone) loads at the respawn Loom Stone instead.
  * - Death: respawnPlayer (actors/playerVitals.ts) restores life and mana and calls
  *   requestRespawn, which sends the player to WorldState.respawn (or the start room) at the end
  *   of the step and repopulates every room.
@@ -21,7 +22,8 @@ import type { HeroState } from '../hero/types';
 import { createGame, type GameState } from '../state';
 import type { LoadoutSpec } from '../weave/runtime/loadout';
 import { objectCenter, type WorldObject } from './objects';
-import { repopulateRooms } from './roomClear';
+import { repopulateRooms, roomBossKinds } from './roomClear';
+import { parseRoom } from './room';
 import { enterRoom } from './transition';
 export { requestRespawn } from './transition';
 import { createWorldState, loomStoneId, type Arrival, type RoomSource, type WorldState } from './worldState';
@@ -48,6 +50,14 @@ export interface AdventureOptions {
  */
 export function createAdventure(opts: AdventureOptions): GameState {
   const world = opts.world ?? createWorldState(opts.startRoomId ?? startRoom);
+  // A save made in a boss room whose boss still lives (autosave on entering K5 or K10, which
+  // have no Loom Stone) loads at the respawn Loom Stone instead of beside the boss.
+  const saved = opts.rooms[world.roomId];
+  const r = world.respawn;
+  if (opts.world && saved !== undefined && r && opts.rooms[r.roomId] !== undefined) {
+    const header = parseRoom(saved).header;
+    if (roomBossKinds(header).some((k) => !world.bossesDefeated.includes(k))) world.roomId = r.roomId;
+  }
   const roomId = world.roomId;
   if (opts.rooms[roomId] === undefined) throw new Error(`createAdventure: no room "${roomId}"`);
   const fresh = opts.hero === undefined;
@@ -63,7 +73,6 @@ export function createAdventure(opts: AdventureOptions): GameState {
     loadout: opts.loadout ?? { spindleId: newGame.spindle, notations: [] },
   });
   if (fresh && !opts.loadout) setupNewGameWeaves(state);
-  const r = world.respawn;
   const arrival: Arrival = r && r.roomId === roomId ? { kind: 'loomStone', key: r.key } : { kind: 'default' };
   enterRoom(state, roomId, arrival);
   return state;

@@ -5,8 +5,6 @@
  * conditions, spawn markers, enemy and pack ids, @note characters, keys per dungeon); rune and
  * spindle data is consistent and every CONTENT §2 reference weave compiles or fails as stated.
  */
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import {
   capacityMessage,
   compileWeave,
@@ -24,7 +22,9 @@ import { forms, runeIds, runes, runeShips, shipsThrough } from '../data/runes';
 import { spindles, testSpindle } from '../data/spindles';
 import { scenes } from '../src/app/scenes';
 import { defaultTuning } from '../data/tuning';
-import { isEnemyKind } from '../data/enemies';
+import { enemies, enemyDef, isEnemyKind } from '../data/enemies';
+import { isPackId, packs } from '../data/packs';
+import { isMonsterMod, monsterMods } from '../data/monsterMods';
 import { regionRooms } from '../data/progression';
 import { checkPositiveNumbers, missingRefs } from './lib/checks';
 import { fuseEffectErrors, passiveTreeErrors } from './lib/passiveChecks';
@@ -67,28 +67,43 @@ const items = checkItemData();
 errors.push(...items.errors);
 warnings.push(...items.warnings);
 
-/** CONTENT §5 kinds the M4 enemies work adds; region rooms may name them before they land. */
-const m4PendingKinds = new Set([
-  'bog_lurker',
-  'tar_hulk',
-  'frost_wisp',
-  'stormcaller',
-  'kiln_mite',
-  'brood_kiln',
-]);
-for (const [id, data] of parsed)
-  for (const sp of data.header.spawns)
-    if (sp.kind === 'enemy' && !isEnemyKind(sp.id) && m4PendingKinds.has(sp.id))
-      warnings.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} (arrives with the M4 enemies)`);
-
+// Rooms (tools/lib/roomChecks.ts): exits, links, notes, keys, spawn markers, enemy and pack ids.
 const roomCheck = checkRooms(parsed, {
-  isEnemy: (id) => isEnemyKind(id) || m4PendingKinds.has(id),
-  isPack: await loadPackCheck(),
-  // Region rooms other branches still author (K5 and K10 come with the M4 enemies).
+  isEnemy: isEnemyKind,
+  isPack: isPackId,
+  // Region rooms not authored yet: exits to them only warn.
   pendingRooms: new Set<string>(Object.values(regionRooms).filter((id) => !parsed.has(id))),
 });
 errors.push(...roomCheck.errors);
 warnings.push(...roomCheck.warnings);
+for (const [id, data] of parsed)
+  for (const sp of data.header.spawns)
+    if (sp.rarity && sp.kind === 'enemy' && isEnemyKind(sp.id) && enemyDef(sp.id).isBoss)
+      errors.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} is a boss and can't be ${sp.rarity}`);
+
+// Enemies, packs and monster mods (M4): cross-references and numbers.
+for (const [kind, def] of Object.entries(enemies)) {
+  const at = `data/enemies ${kind}`;
+  for (const p of checkFinite(def)) errors.push(`${at}: ${p}`);
+  const b = def.behavior;
+  if (b.kind === 'spawner' && !isEnemyKind(b.spawn)) errors.push(`${at}: spawns unknown kind "${b.spawn}"`);
+  const names = new Set<string>();
+  for (const a of [def.attack, ...('extraAttacks' in def ? def.extraAttacks : [])]) {
+    if (!a) continue;
+    if (names.has(a.name)) errors.push(`${at}: attack name "${a.name}" repeats`);
+    names.add(a.name);
+  }
+}
+for (const [id, pack] of Object.entries(packs)) {
+  const kinds = pack.members.map((m) => m.kind as string);
+  for (const k of [...kinds, pack.leader, pack.minion])
+    if (!isEnemyKind(k)) errors.push(`data/packs ${id}: unknown enemy kind "${k}"`);
+  if (!kinds.includes(pack.leader)) errors.push(`data/packs ${id}: leader "${pack.leader}" isn't a member`);
+  for (const m of pack.members)
+    if (!(m.min >= 1 && m.max >= m.min)) errors.push(`data/packs ${id}: ${m.kind} count ${m.min}-${m.max}`);
+}
+for (const id of Object.keys(monsterMods))
+  if (!isMonsterMod(id)) errors.push(`data/monsterMods ${id}: bad id`);
 
 // Runes (data/runes): ids, names, cross-references, numbers.
 const notations = new Map<string, string>();
@@ -170,21 +185,4 @@ function checkFinite(obj: unknown, path = ''): string[] {
   if (obj !== null && typeof obj === 'object')
     return Object.entries(obj).flatMap(([k, v]) => checkFinite(v, path ? `${path}.${k}` : k));
   return [];
-}
-
-/**
- * Pack ids from data/packs.ts (the enemies agent adds it in M4), or null while it doesn't exist.
- * Accepts an `isPackId` function, or a `packs` record or array with ids.
- */
-async function loadPackCheck(): Promise<((id: string) => boolean) | null> {
-  const path = fileURLToPath(new URL('../data/packs.ts', import.meta.url));
-  if (!existsSync(path)) return null;
-  const mod = (await import(path)) as Record<string, unknown>;
-  if (typeof mod.isPackId === 'function') return (id) => (mod.isPackId as (id: string) => boolean)(id);
-  const packs = mod.packs;
-  if (Array.isArray(packs)) return (id) => packs.some((p: { id?: string }) => p.id === id);
-  if (packs !== null && typeof packs === 'object')
-    return (id) => Object.prototype.hasOwnProperty.call(packs, id);
-  errors.push('data/packs.ts: exports neither isPackId nor packs; pack ids not checked');
-  return () => true;
 }

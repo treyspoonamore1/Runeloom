@@ -1,4 +1,5 @@
 import { enemyDef } from '../../../data/enemies';
+import { OWNER } from '../../../data/materials';
 import type { Enemy } from '../actors/enemies';
 import { circleHitsShape, circleIntersectsSector } from '../combat/shapes';
 import { Button, type InputFrame } from '../core/input';
@@ -6,6 +7,7 @@ import type { GameState } from '../state';
 import type { SpellSpec } from '../weave/program';
 import { hasLineOfSight } from '../world/los';
 import { kiterConfig as C } from './kiterConfig';
+import { bossIn, conducts, frostShot, nearestWater, stormSoon, wantsWater } from './kiterBoss';
 import { wallDistanceAt, wallDistanceField } from './wallDistance';
 
 /**
@@ -40,7 +42,8 @@ const BOLT_SLOT = Button.Cast1;
 
 // Scratch.
 const live: Enemy[] = [];
-const goal = { x: 0, y: 0, on: false };
+const goal = { x: 0, y: 0, on: false, fixed: false };
+let boss: Enemy | null = null;
 let bestHitSoon = false;
 
 /** The root spell and mana of `slot` if it is a working Cast weave whose root is `form`. */
@@ -60,6 +63,7 @@ export function kiterInput(state: GameState): InputFrame {
   if (p.dead) return out;
   live.length = 0;
   for (const e of state.enemies) if (!e.dead && enemyDef(e.kind).behavior.kind !== 'none') live.push(e);
+  boss = bossIn(live);
 
   const strike = slotSpell(state, 1, 'strike');
   const bolt = slotSpell(state, 0, 'bolt');
@@ -88,6 +92,8 @@ export function kiterInput(state: GameState): InputFrame {
     if (bolt && (spare || p.mana >= bolt.mana)) aimBolt(state, out, !spare, bolt.spec, strike?.spec ?? null);
   }
 
+  frostShot(state, out, boss);
+
   const dodgeHeld = (state.prevButtons & Button.Dodge) !== 0;
   if (hitSoon && !dodgeHeld && p.dodgeCharges > 0 && (bestX !== 0 || bestY !== 0))
     out.buttons |= Button.Dodge;
@@ -98,19 +104,31 @@ export function kiterInput(state: GameState): InputFrame {
 function pickGoal(state: GameState, canStrike: boolean): void {
   const p = state.player;
   goal.on = false;
+  goal.fixed = false;
   if (live.length === 0) {
     goal.on = true;
     goal.x = state.room.spawnX;
     goal.y = state.room.spawnY;
     return;
   }
+  // M4: burning, run for the nearest water to put it out (rule 15); a Superheated Warden is
+  // fought from the water (bots/kiterBoss.ts).
+  if (p.ailments.ignite.timeLeft > 0 && nearestWater(state, C.waterSearch, goal)) return;
+  if (wantsWater(boss) && !stormSoon(boss) && nearestWater(state, C.bossWaterSearch, goal)) return;
   let best: Enemy | null = null;
   let bestCost = Infinity;
   for (const e of live) {
     const b = enemyDef(e.kind).behavior.kind;
     // Out of mana, only archers are worth closing on (harmless up close, and they run).
     if (!canStrike && b !== 'kite') continue;
-    const pref = b === 'kite' ? C.archerPreference : b === 'shield' ? C.shieldPreference : 1;
+    const pref =
+      b === 'kite'
+        ? C.archerPreference
+        : b === 'shield'
+          ? C.shieldPreference
+          : b === 'spawner'
+            ? C.spawnerPreference
+            : 1;
     const hurt = C.hurtPreference + (1 - C.hurtPreference) * (e.life / e.maxLife);
     const cost = Math.sqrt((e.x - p.x) ** 2 + (e.y - p.y) ** 2) * pref * hurt;
     if (cost < bestCost) {
@@ -120,6 +138,8 @@ function pickGoal(state: GameState, canStrike: boolean): void {
   }
   if (!best || (!canStrike && !meleeFarther(state, C.keepFleeing))) return;
   goal.on = true;
+  // M4: a Brood Kiln sits in its own solid tile; walk up to it despite the wall margin.
+  goal.fixed = enemyDef(best.kind).behavior.kind === 'spawner';
   if (enemyDef(best.kind).behavior.kind === 'shield') {
     goal.x = best.x - best.facingX * C.behindShield;
     goal.y = best.y - best.facingY * C.behindShield;
@@ -172,6 +192,15 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
         if (a.timeLeft <= C.dodgeWithin) bestHitSoon = true;
       }
     }
+    // M4: a Tar Hulk with a lit fuse is a telegraph of its blast.
+    const blast = e.special.fuseLeft > 0 ? enemyDef(e.kind).chemistry?.explodes : undefined;
+    if (blast !== undefined) {
+      const r = blast.radius + R + C.dangerMargin;
+      if ((qx - e.x) ** 2 + (qy - e.y) ** 2 <= r * r) {
+        score -= C.dangerPenalty;
+        if (e.special.fuseLeft <= C.dodgeWithin) bestHitSoon = true;
+      }
+    }
     const kind = enemyDef(e.kind).behavior.kind;
     if (kind === 'kite') continue;
     const ex = e.x + e.vx * T;
@@ -190,8 +219,12 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
   }
 
   const wd = wallDistanceAt(state.room, wallDistanceField(state.room), qx, qy);
-  if (wd < C.wallMargin) score -= C.wallWeight * (C.wallMargin - wd) * (C.wallMargin - wd);
+  const margin = goal.fixed ? C.wallMarginAtSpawner : C.wallMargin;
+  if (wd < margin) score -= C.wallWeight * (margin - wd) * (margin - wd);
   if (wd < R) score -= C.dangerPenalty;
+  // M4: burning or charged ground that would hurt (enemy or world owned), at the end and halfway.
+  if (hazardAt(state, qx, qy) || hazardAt(state, p.x + dx * sp * T * 0.5, p.y + dy * sp * T * 0.5))
+    score -= C.hazardPenalty;
 
   if (goal.on) {
     const d0 = Math.sqrt((goal.x - p.x) ** 2 + (goal.y - p.y) ** 2);
@@ -325,4 +358,19 @@ function threatened(state: GameState): boolean {
       return true;
   }
   return false;
+}
+
+/**
+ * True if the cell under (x, y) would hurt the player (DESIGN §6.3 ownership): fire of another
+ * team or the world while the player isn't Wet, or charge of another team or the world.
+ */
+function hazardAt(state: GameState, x: number, y: number): boolean {
+  const g = state.grid;
+  const cx = Math.floor(x);
+  const cy = Math.floor(y);
+  if (cx < 0 || cy < 0 || cx >= g.width || cy >= g.height) return false;
+  const i = cy * g.width + cx;
+  if (stormSoon(boss) && conducts(state, i)) return true;
+  if (g.owner[i] === OWNER.player) return false;
+  return (g.fire[i]! > 0 && state.player.terrain.wetLeft <= 0) || g.charge[i]! > 0;
 }

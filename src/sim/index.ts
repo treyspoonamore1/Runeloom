@@ -16,6 +16,7 @@ export { SPATIAL_BUCKET_CELLS } from './core/constants';
 export { isShotSolidCell } from './world/room';
 export { SpatialHash, type HashBody } from './core/spatialHash';
 export type { SimEvent, SimEventType, Team, ProjectileEndReason, DeathCause, TimedAilment } from './events';
+export type { EnemyEvent } from './enemyEvents';
 export {
   PLAYER_ID,
   spawnEnemy,
@@ -266,3 +267,30 @@ export type { WorldEvent } from './world/worldEvents';
 export { runScript, ScriptDriver, type ScriptCommand, type ScriptResult } from './bots/script';
 export { findPath, tileWalkable } from './bots/scriptPath';
 export { tourInput } from './bots/tour';
+// M4 enemies and bosses.
+export {
+  AI_SLOTS,
+  createEnemySpecial,
+  createBossState,
+  type EnemySpecial,
+  type BossState,
+} from './actors/enemies';
+export {
+  rollMods,
+  rarityLifeMult,
+  rarityMinions,
+  shippedMods,
+  moveSpeedMult,
+  attackSpeedMult,
+} from './actors/rarity';
+export { isWaterAt, locomotionOf, ignoresGround, floatRoom } from './actors/locomotion';
+export { explodeHulk } from './actors/hulkBlast';
+export { enemyTakenMult } from './actors/chemistry';
+export { spillOil } from './combat/oil';
+export { attackFootprint, orientShape, type AttackAim } from './combat/enemyAttacks';
+export { planDash, dashLineLength } from './combat/dash';
+export { stepEnemyPassive } from './ai/passive';
+export { strikePoint } from './ai/target';
+export { floodArena } from './ai/bosses/flood';
+export { brazierCenters, stepBrazierStorm } from './ai/bosses/braziers';
+export { phaseThresholds, enterPhase, setSuperheat } from './ai/bosses/phases';

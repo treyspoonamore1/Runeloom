@@ -36,6 +36,7 @@ import { fall, isSafeCell } from './falling';
 import { isInvulnerable } from './player';
 import { chargeSeen, rememberCharge } from './terrainState';
 import { alwaysWet, immuneToTerrainFire, terrainFireDpsMult } from '../hero/effectsTerrain';
+import { ignoresGround, locomotionOf } from './locomotion';
 
 /** Timers within this of zero count as expired. */
 const TIME_EPSILON = 1e-9;
@@ -50,7 +51,8 @@ export function stepEntityTerrain(state: GameState): void {
   for (let k = 0; k < list.length; k++) {
     const e = list[k]!;
     if (e.dead) continue;
-    entityTerrain(state, e, OWNER.enemy);
+    // M4: floating and fixed kinds (Frost Wisp, Brood Kiln) are above the ground's effects.
+    if (!ignoresGround(e.kind)) entityTerrain(state, e, OWNER.enemy);
     if (!e.dead) stepEnemyExtras(state, e, playerHidden);
   }
 }
@@ -69,7 +71,8 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
   if (i < 0) return;
   const g = state.grid;
   const ts = t.terrain;
-  if (state.room.solid[i] === 1) {
+  // M4: swimmers (Bog Lurker) live in deep water and never fall.
+  if (state.room.solid[i] === 1 && !('kind' in t && locomotionOf(t.kind) === 'swim')) {
     fall(state, t);
     if (t.dead) return;
     i = cellIndexAt(state, t.x, t.y);

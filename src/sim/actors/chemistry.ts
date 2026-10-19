@@ -15,6 +15,8 @@ import { rasterize } from '../grid/raster';
 import type { GameState } from '../state';
 import { PLAYER_ID, type Enemy } from './enemies';
 import { isWet } from './terrainState';
+import { explodeHulk } from './hulkBlast';
+import { deathFireSquare } from './rarity';
 
 export function chemistryOf(e: Enemy): EnemyChemistry | undefined {
   return enemyDef(e.kind).chemistry;
@@ -29,6 +31,15 @@ export function isDoused(e: Enemy): boolean {
 export function dousedTakenMult(e: Enemy): number {
   const b = chemistryOf(e)?.alwaysBurning;
   return b !== undefined && isWet(e) ? b.dousedDamageTaken : 1;
+}
+
+/**
+ * Every damage-taken multiplier on an enemy: doused (Tinderling) × Superheated (Cinder Warden,
+ * tuning.bosses.superheatDamageTaken).
+ */
+export function enemyTakenMult(state: GameState, e: Enemy): number {
+  const m = dousedTakenMult(e);
+  return e.boss !== null && e.boss.superheated ? m * state.tuning.bosses.superheatDamageTaken : m;
 }
 
 /**
@@ -77,7 +88,10 @@ export function igniteFlammableAround(
   for (let k = 0; k < n; k++) if (ignitable(g, cells[k]!)) fireOnCell(state, cells[k]!, owner);
 }
 
-/** Terrain an enemy's death leaves: the Shatter frost burst (rule 20) or a Tinderling's fire. */
+/**
+ * Terrain an enemy's death leaves: the Shatter frost burst (rule 20), or a lit Tar Hulk's
+ * explosion, an Incendiary monster's fire and a Tinderling's fire.
+ */
 export function deathTerrain(state: GameState, e: Enemy, killerId: number, shattered: boolean): void {
   if (shattered) {
     applyElement(state, {
@@ -90,11 +104,36 @@ export function deathTerrain(state: GameState, e: Enemy, killerId: number, shatt
     });
     return;
   }
+  // M4: a Tar Hulk dying with its fuse lit explodes; Incendiary monsters leave a square of fire.
+  if (e.special.fuseLeft > 0) explodeHulk(state, e, false);
+  const square = e.mods.length > 0 ? deathFireSquare(e) : 0;
+  if (square > 0) incendiary(state, e, square);
   const b = chemistryOf(e)?.alwaysBurning;
   if (b === undefined || isWet(e)) return;
   applyElement(state, {
     element: 'fire',
     shape: { kind: 'circle', x: Math.floor(e.x) + 0.5, y: Math.floor(e.y) + 0.5, r: b.deathFireRadius },
+    owner: OWNER.enemy,
+    sourceId: WORLD_SOURCE_ID,
+    hitDamage: 0,
+    durationMult: 1,
+  });
+}
+
+/** Incendiary (CONTENT §5): enemy-owned fire on the `side` × `side` cells centered on its cell. */
+function incendiary(state: GameState, e: Enemy, side: number): void {
+  const half = (side - 1) / 2;
+  applyElement(state, {
+    element: 'fire',
+    shape: {
+      kind: 'strip',
+      x: Math.floor(e.x) - half,
+      y: Math.floor(e.y) + 0.5,
+      dirX: 1,
+      dirY: 0,
+      length: side,
+      width: side,
+    },
     owner: OWNER.enemy,
     sourceId: WORLD_SOURCE_ID,
     hitDamage: 0,

@@ -5,6 +5,7 @@ import type { FormParams } from './weave/program';
 import type { SpellEndReason } from './weave/runtime/types';
 import type { HeroEvent } from './hero/events';
 import type { WorldEvent } from './world/worldEvents';
+import type { EnemyEvent } from './enemyEvents';
 
 /**
  * Things that happened during one step, for render and audio (hit flash, damage numbers,
@@ -304,6 +305,8 @@ export type SimEvent =
   | { type: 'tinderlingRelit'; id: number; x: number; y: number }
   /** An enemy became Blind (in smoke or steam, or its target is) or could see again. */
   | { type: 'blindChanged'; id: number; blind: boolean; x: number; y: number }
+  /** M4 enemies and bosses: see enemyEvents.ts. */
+  | EnemyEvent
   /**
    * An oil barrel exploded at (x, y) (cells): a fire burst of `radius` cells dealing `damage`
    * Fire (already scaled by area level), world-owned. The entity code applies the damage from
