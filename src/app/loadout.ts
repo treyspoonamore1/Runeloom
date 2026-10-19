@@ -17,7 +17,9 @@ import {
 import type { ParseError } from '../sim/weave/notation';
 import { spindles, type SpindleId } from '../../data/spindles';
 import type { RuneId } from '../../data/runes';
-import { runeCounts, usesRuneItems } from '../sim/hero/runes';
+import { assignRunes, runeCounts, usesRuneItems } from '../sim/hero/runes';
+import { parseWeave } from '../sim/weave/notation';
+import type { HeroState } from '../sim/hero/types';
 import type { RuneItem } from '../sim/hero/types';
 import type { Session } from './session';
 
@@ -125,6 +127,24 @@ export function getRuneCounts(session: Session, slot = -1): RuneCounts {
 /** Runes the hero has unlocked, sorted (adventure mode); random drops come only from these. */
 export function getUnlockedRunes(session: Session): readonly RuneId[] {
   return session.state.hero.unlockedRunes;
+}
+
+/**
+ * Adventure mode: the character fields for runReadout's input (ReadoutInput.hero and .runes), so
+ * the Loom's DPS readout counts gear, passives and the levels of the rune items `notation` would
+ * socket in `slot`. Empty in other modes or when the hero lacks the runes.
+ */
+export function readoutCharacter(
+  session: Session,
+  notation: string,
+  slot: number,
+): { hero?: HeroState; runes?: number[] } {
+  const state = session.state;
+  if (!usesRuneItems(state)) return {};
+  const parsed = parseWeave(notation);
+  if (!parsed.ok) return {};
+  const a = assignRunes(state, parsed.tree, slot);
+  return a.ok ? { hero: structuredClone(state.hero), runes: a.uids } : {};
 }
 
 /** The rune items socketed in a slot's weave, in rune order (empty when runes are unlimited or the slot is empty). */

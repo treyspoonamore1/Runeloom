@@ -9,6 +9,7 @@ import {
   previewWeave,
   recompileWeaves,
   referenceWeaves,
+  runReadout,
   refreshHero,
   spawnProjectile,
   specPacket,
@@ -193,5 +194,26 @@ describe('neutral HeroMods change nothing', () => {
     expect(a.player.maxLife).toBe(80);
     expect(a.player.maxMana).toBe(50);
     expect(a.player.resist).toEqual({ physical: 0, fire: 0, frost: 0, storm: 0 });
+  });
+});
+
+describe('the DPS readout with a character', () => {
+  it('counts the socketed rune levels and HeroMods of the hero it is given', () => {
+    const state = adventure();
+    const bolt = state.hero.runes.find((r) => r.rune === 'bolt')!;
+    bolt.level = 5;
+    const runes = state.weaves.slots[0]!.runes!;
+    const base = {
+      notation: 'Cast > Bolt[Fire]',
+      spindleId: 'twig' as const,
+      scene: 'dummy_single' as const,
+      seconds: 3,
+      runs: 2,
+      seed: 1,
+    };
+    const plain = runReadout(base);
+    const hero = runReadout({ ...base, hero: state.hero, runes });
+    expect(plain.ok && hero.ok).toBe(true);
+    if (plain.ok && hero.ok) expect(hero.hitDps / plain.hitDps).toBeCloseTo(1.11 ** 4, 6);
   });
 });

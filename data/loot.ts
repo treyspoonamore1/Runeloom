@@ -50,7 +50,13 @@ export const killXp = {
   perBaseLife: 1,
   growth: 1.12,
   rarity: { normal: 1, magic: 1.7, rare: 4 },
-  baseOverride: { tar_matriarch: 400, cinder_warden: 1200, dummy: 0 } as Readonly<Record<string, number>>,
+  baseOverride: {
+    tar_matriarch: 400,
+    cinder_warden: 1200,
+    brood_kiln: 60,
+    kiln_mite: 5,
+    dummy: 0,
+  } as Readonly<Record<string, number>>,
 };
 
 /** Thread Scrap from salvaging (DESIGN §8.5), and the cost to keep a part when unfusing (§8.4). */

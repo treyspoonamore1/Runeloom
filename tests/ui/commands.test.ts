@@ -107,8 +107,8 @@ describe('registry', () => {
     expect(f.calls).toContain('refresh');
   });
 
-  it('stubs name their milestone', () => {
-    expect(reg().execute('give fire', fakeEnv().env).lines[0]).toContain('M2');
+  it('give (M4) needs adventure mode, where runes are items', () => {
+    expect(reg().execute('give fire', fakeEnv().env).lines[0]).toContain('unlimited');
   });
 
   it('allows later milestones to register commands', () => {

@@ -24,6 +24,7 @@ import { defaultTuning } from '../data/tuning';
 import { isEnemyKind } from '../data/enemies';
 import { checkPositiveNumbers, missingRefs, spawnMarkerDiffs } from './lib/checks';
 import { listRoomIds, loadRoomText } from './lib/rooms';
+import { checkItemData } from './lib/itemChecks';
 
 const errors: string[] = [];
 const warnings: string[] = [];
@@ -55,6 +56,10 @@ errors.push(
 );
 
 for (const p of checkPositiveNumbers(defaultTuning)) errors.push(`data/tuning.ts: ${p}`);
+
+const items = checkItemData();
+errors.push(...items.errors);
+warnings.push(...items.warnings);
 
 for (const [id, data] of parsed) {
   for (const sp of data.header.spawns) {

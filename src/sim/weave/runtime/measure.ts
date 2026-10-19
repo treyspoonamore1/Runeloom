@@ -10,6 +10,7 @@ import { step } from '../../step';
 import type { SpellProgram, SpellSpec } from '../program';
 import type { ReadoutInput, ReadoutResult } from '../readout';
 import { applyLoadoutSpec, LOADOUT_SLOTS } from './loadout';
+import { refreshHero } from '../../hero/hero';
 import { createReferenceScene } from './scenes';
 
 /** Event triggers the readout forces once per second (DESIGN §5.5). */
@@ -63,7 +64,12 @@ export function measureRun(
   const state = scene.state;
   const notations: (string | null)[] = new Array<string | null>(LOADOUT_SLOTS).fill(null);
   notations[0] = program.notation;
-  applyLoadoutSpec(state, { spindleId: input.spindleId, capacity, notations });
+  if (input.hero) {
+    state.hero = structuredClone(input.hero);
+    refreshHero(state);
+  }
+  const runes = input.runes ? [[...input.runes]] : undefined;
+  applyLoadoutSpec(state, { spindleId: input.spindleId, capacity, notations, runes });
   state.cheats.infiniteMana = true;
   if (FORCED_EVENTS.includes(program.trigger.event))
     state.triggerForcing = Math.round(readoutRules.forcedEventInterval * SIM_HZ);
