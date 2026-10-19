@@ -5,9 +5,11 @@ import { isInvulnerable, type PlayerState } from '../actors/player';
 import { killPlayer } from '../actors/playerVitals';
 import { emit, type DeathCause } from '../events';
 import type { GameState } from '../state';
-import { applyHitAilments, isFrozen, type AilmentTarget } from './ailments';
+import { applyHitAilments, isFrozen, teamOfSource, type AilmentTarget } from './ailments';
+import { arcShock } from './arcs';
+import { deathTerrain, dousedTakenMult } from '../actors/chemistry';
 import { noteHurt, noteKill } from '../weave/runtime/queue';
-import { resolveHit, type DamagePacket, type DamageTarget, type HitResult } from './damage';
+import { resolveHit, zeroAmounts, type DamagePacket, type DamageTarget, type HitResult } from './damage';
 
 /** How a hit was delivered, besides its damage. */
 export interface HitInfo {
@@ -22,6 +24,10 @@ export interface HitInfo {
   killHitstop?: number;
   /** The player spell instance dealing it, for the 'hit' event. */
   spellId?: number;
+  /** OWNER code of the team dealing it (rule 19 arcs reach who that team can hurt). Default: the team of sourceId. */
+  owner?: number;
+  /** A rule 19 arc: applies no ailments of its own and never arcs again (one generation). */
+  arc?: boolean;
 }
 
 /**
@@ -40,13 +46,29 @@ const targetSide: DamageTarget = { resist: { physical: 0, fire: 0, frost: 0, sto
 function damageTarget(t: AilmentTarget): DamageTarget {
   targetSide.resist = t.resist;
   targetSide.shock = t.ailments.shock.effect;
+  targetSide.takenMult = 'kind' in t ? dousedTakenMult(t) : 1;
   return targetSide;
+}
+
+/** After a hit landed on a live target: its ailments (unless it's an arc), then rule 19 arcs. */
+function afterHit(
+  state: GameState,
+  t: AilmentTarget,
+  packet: DamagePacket,
+  res: HitResult,
+  info: HitInfo,
+): void {
+  if (info.arc) return;
+  applyHitAilments(state, t, packet, res, info.sourceId);
+  if (res.byType.storm > 0)
+    arcShock(state, t, packet, res, info.sourceId, info.owner ?? teamOfSource(info.sourceId));
 }
 
 /**
  * Applies a hit to an enemy or the player: resolves damage (DESIGN §7) with the combat RNG
  * stream and the target's Shock, subtracts life, adds knockback, emits 'hit', handles death and
- * hitstop, and, if the target survives, applies the hit's ailments (combat/ailments.ts).
+ * hitstop, and, if the target survives, applies the hit's ailments (combat/ailments.ts) and,
+ * when it carried Storm damage onto a Wet target, its rule 19 arcs (combat/arcs.ts).
  *
  * Player hits during i-frames are evaded: no damage, no knockback, no ailments, an 'evaded'
  * event, null. Hits on dead targets do nothing and return null. Dummies (immortal) reset to full
@@ -90,7 +112,7 @@ function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInf
     if (info.killHitstop !== undefined) addHitstop(state, info.killHitstop);
     return res;
   }
-  applyHitAilments(state, e, packet, res, info.sourceId);
+  afterHit(state, e, packet, res, info);
   return res;
 }
 
@@ -111,7 +133,44 @@ export function killEnemy(state: GameState, e: Enemy, killerId: number, cause: D
   emit(state, { type: 'death', id: e.id, kind: e.kind, x: e.x, y: e.y, killerId, cause, shattered });
   if (killerId === PLAYER_ID) noteKill(state, e.id, e.x, e.y);
   if (shattered && cause === 'hit') addHitstop(state, state.tuning.feel.hitstopShatter);
+  if (cause !== 'console') deathTerrain(state, e, killerId, shattered);
   return true;
+}
+
+/**
+ * Damage that ignores resistances, Shock and i-frames (a fall, rule 25): subtracts life (not
+ * from the player in god mode), sends 'hit' and handles death. A hit on the player counts for
+ * On Hurt. Does nothing to a dead target.
+ */
+export function dealDirectDamage(
+  state: GameState,
+  t: Enemy | PlayerState,
+  amount: number,
+  sourceId: number,
+): void {
+  if (t.dead || amount <= 0) return;
+  const player = t === state.player;
+  if (!player || !state.cheats.god) t.life -= amount;
+  const byType = zeroAmounts();
+  byType.physical = amount;
+  emit(state, {
+    type: 'hit',
+    target: player ? 'player' : (t as Enemy).id,
+    sourceId,
+    amount,
+    crit: false,
+    damageType: 'physical',
+    x: t.x,
+    y: t.y,
+    kbX: 0,
+    kbY: 0,
+    byType,
+  });
+  if (player) {
+    const p = t as PlayerState;
+    if (p.maxLife > 0) noteHurt(state, amount / p.maxLife);
+    if (p.life <= 0) killPlayer(state);
+  } else if (t.life <= 0) killEnemy(state, t as Enemy, sourceId, 'hit');
 }
 
 function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info: HitInfo): HitResult | null {
@@ -139,7 +198,7 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
   if (res.crit) addHitstop(state, state.tuning.feel.hitstopCrit);
   if (p.maxLife > 0) noteHurt(state, res.total / p.maxLife);
   if (p.life <= 0) killPlayer(state);
-  else applyHitAilments(state, p, packet, res, info.sourceId);
+  else afterHit(state, p, packet, res, info);
   return res;
 }
 

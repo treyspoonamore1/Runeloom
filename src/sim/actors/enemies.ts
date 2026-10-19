@@ -4,6 +4,7 @@ import type { AttackShape } from '../combat/shapes';
 import { createAilments, type Ailments } from '../combat/ailments';
 import { scaleByLevel } from '../combat/damage';
 import { emit } from '../events';
+import { createTerrainState, type TerrainState } from './terrainState';
 import type { GameState } from '../state';
 
 /** Id of the player in events, `targetId`, `ownerId` and `hitIds`. Entity ids start at 1. */
@@ -81,7 +82,11 @@ export function createEnemyAI(): EnemyAI {
 export interface EnemyShield {
   /** Cosine of the half angle of the blocking arc, around `facing`. */
   halfAngleCos: number;
-  /** Seconds of burning left before it is destroyed (burning arrives in M3). */
+  /**
+   * Seconds of burning left before it is destroyed: counts down while the bearer is Ignited or
+   * stands in fire that hurts it (CONTENT §5). At 0 the shield is gone (`Enemy.shield` = null)
+   * and a 'shieldBurned' event is sent.
+   */
   burnLeft: number;
 }
 
@@ -113,6 +118,8 @@ export interface Enemy {
   resist: DamageAmounts;
   /** Ignite, Chill, Freeze and Shock (combat/ailments.ts). */
   ailments: Ailments;
+  /** Wet, Oiled, Blind, ice, stun, charge memory and last safe spot (actors/terrainState.ts). */
+  terrain: TerrainState;
   /** Area level its life and damage are scaled for. */
   areaLevel: number;
   rarity: EnemyRarity;
@@ -171,6 +178,7 @@ export function spawnEnemy(
     maxLife: life,
     resist: { ...def.resist },
     ailments: createAilments(),
+    terrain: createTerrainState(x, y),
     areaLevel,
     rarity: 'normal',
     dead: false,

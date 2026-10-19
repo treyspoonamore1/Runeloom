@@ -91,6 +91,17 @@ export function rasterize(g: Grid, shape: Footprint): CellList {
       };
       break;
     }
+    case 'ring': {
+      const { x, y, r0, r1 } = shape;
+      const a2 = r0 * r0;
+      const b2 = r1 * r1;
+      [x0, y0, x1, y1] = [x - r1, y - r1, x + r1, y + r1];
+      inside = (px, py) => {
+        const d2 = (px - x) * (px - x) + (py - y) * (py - y);
+        return d2 <= b2 && (r0 <= 0 || d2 > a2);
+      };
+      break;
+    }
   }
   const cx0 = Math.max(0, Math.floor(x0 - 0.5));
   const cy0 = Math.max(0, Math.floor(y0 - 0.5));
@@ -98,7 +109,7 @@ export function rasterize(g: Grid, shape: Footprint): CellList {
   const cy1 = Math.min(g.height - 1, Math.ceil(y1 - 0.5));
   for (let cy = cy0; cy <= cy1; cy++)
     for (let cx = cx0; cx <= cx1; cx++) if (inside(cx + 0.5, cy + 0.5)) push(cy * g.width + cx);
-  if (out.len === 0) {
+  if (out.len === 0 && (shape.kind !== 'ring' || shape.r0 <= 0)) {
     const [ox, oy] = origin(shape);
     const cx = Math.floor(ox);
     const cy = Math.floor(oy);

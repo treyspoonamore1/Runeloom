@@ -26,7 +26,13 @@ export type Footprint =
   /** An oriented rectangle starting at (x, y) and extending `length` along (dirX, dirY) (Swath). */
   | { kind: 'strip'; x: number; y: number; dirX: number; dirY: number; length: number; width: number }
   /** A circular sector around (x, y) facing (dirX, dirY) (Strike). */
-  | { kind: 'arc'; x: number; y: number; dirX: number; dirY: number; r: number; halfAngleCos: number };
+  | { kind: 'arc'; x: number; y: number; dirX: number; dirY: number; r: number; halfAngleCos: number }
+  /**
+   * The cells of a disc around (x, y) with r0 < distance ≤ r1 (an expanding Nova paints each
+   * tick's new band). r0 = 0 includes the center (and, like a circle, the origin cell when
+   * nothing else is covered); a band covering no cell center affects nothing.
+   */
+  | { kind: 'ring'; x: number; y: number; r0: number; r1: number };
 
 export interface ElementApplication {
   element: TerrainElement;

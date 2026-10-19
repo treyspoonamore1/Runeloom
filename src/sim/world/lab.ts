@@ -163,6 +163,7 @@ function shiftShape(s: Footprint, dx: number, dy: number): Footprint {
       return { ...s, x0: s.x0 + dx, y0: s.y0 + dy, x1: s.x1 + dx, y1: s.y1 + dy };
     case 'strip':
     case 'arc':
+    case 'ring':
       return { ...s, x: s.x + dx, y: s.y + dy };
   }
 }
@@ -275,6 +276,9 @@ function hashShape(h: Hasher, s: Footprint): void {
       break;
     case 'arc':
       h.num(s.x).num(s.y).num(s.dirX).num(s.dirY).num(s.r).num(s.halfAngleCos);
+      break;
+    case 'ring':
+      h.num(s.x).num(s.y).num(s.r0).num(s.r1);
       break;
   }
 }

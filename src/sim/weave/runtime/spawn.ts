@@ -14,6 +14,7 @@ import type { SpellProgram, SpellSpec } from '../program';
 import { initForm, resolveInstant } from './forms';
 import { rotateInto } from './geom';
 import { fireOnExpire } from './procs';
+import { paintOnEnd } from './terrain';
 import type { CastRecord, SpawnAt, SpellEndReason, SpellInstance } from './types';
 
 /** Opens the record for one fire of a weave slot (or of a program outside the slots: slot -1). */
@@ -218,6 +219,8 @@ function createInstance(
     procs: n === 0 ? NONE : new Array<number>(n).fill(0),
     emitLeft: n === 0 ? NONE : spec.children.map((c) => (c.proc.kind === 'emit' ? c.proc.interval : 0)),
     refunded: 0,
+    terrainR: 0,
+    terrainLeft: 0,
     ended: false,
     endReason: null,
   };
@@ -250,7 +253,8 @@ const PROJECTILE_REASON: Record<SpellEndReason, ProjectileEndReason> = {
 
 /**
  * Ends an instance where it stands (set x, y first). Sends 'spellEnd' (and 'projectileEnd' for
- * bolts), then fires its On Expire branches from there, unless the global cap evicted it.
+ * bolts), then, unless the global cap evicted it, paints its terrain footprint (Bolt, Beam, Lob,
+ * Strike, Swath; runtime/terrain.ts) and fires its On Expire branches from there.
  * `stoppedOn`: the enemy it stopped on, which its On Expire spells spawn from.
  */
 export function endSpell(
@@ -283,5 +287,7 @@ export function endSpell(
       y: inst.y,
       reason: PROJECTILE_REASON[reason],
     });
-  if (reason !== 'evicted') fireOnExpire(state, inst, stoppedOn);
+  if (reason === 'evicted') return;
+  paintOnEnd(state, inst);
+  fireOnExpire(state, inst, stoppedOn);
 }

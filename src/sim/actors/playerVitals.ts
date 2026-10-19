@@ -5,6 +5,7 @@ import type { GameState } from '../state';
 import type { PlayerState } from './player';
 import { cancelCast } from '../weave/runtime/castState';
 import { clearAilments } from '../combat/ailments';
+import { resetTerrainState } from './terrainState';
 
 type CombatTuning = Tuning['combat'];
 
@@ -50,6 +51,7 @@ export function killPlayer(state: GameState): void {
   p.dodgeLeft = 0;
   p.iframesLeft = 0;
   clearAilments(p.ailments);
+  resetTerrainState(p.terrain, p.x, p.y);
   emit(state, { type: 'playerDeath', x: p.x, y: p.y });
 }
 
@@ -65,6 +67,7 @@ export function respawnPlayer(state: GameState): void {
   p.dodgeCharges = t.player.dodgeCharges;
   p.dodgeRechargeLeft = 0;
   p.iframesLeft = t.player.respawnIframes;
+  resetTerrainState(p.terrain, p.x, p.y);
   emit(state, { type: 'playerRespawn', x: p.x, y: p.y });
 }
 

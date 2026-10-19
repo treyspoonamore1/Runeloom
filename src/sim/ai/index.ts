@@ -8,13 +8,15 @@ import { buildFlowField, syncFlowWalkable, tileAt } from './flowField';
 import { stepKite } from './kite';
 import { stepShield } from './shield';
 import { stepSwarm } from './swarm';
+import { avoidHazards, markHazardTiles } from './hazards';
 
 export { aggro } from './common';
 
 /**
  * Once per tick, after the player moves and before enemies think: rebuilds the flow field toward
- * the player when they entered a new tile, the terrain's walkability changed (grid.walkVersion)
- * or `flowRecomputeTicks` passed (skipped with no
+ * the player (with enemy-hurting hazard tiles costing extra, ai/hazards.ts) when they entered a
+ * new tile, the terrain's walkability changed (grid.walkVersion) or `flowRecomputeTicks` passed
+ * (skipped with no
  * enemies, while the player is dead, or with AI off).
  */
 export function prepareEnemyAI(state: GameState): void {
@@ -22,8 +24,14 @@ export function prepareEnemyAI(state: GameState): void {
   const f = state.flow;
   const goal = tileAt(f, state.player.x, state.player.y);
   const terrainChanged = syncFlowWalkable(f, state.room, state.grid.walkVersion);
-  if (terrainChanged || goal !== f.goalTile || state.tick - f.builtTick >= state.tuning.ai.flowRecomputeTicks)
-    buildFlowField(f, goal, state.tick);
+  if (
+    terrainChanged ||
+    goal !== f.goalTile ||
+    state.tick - f.builtTick >= state.tuning.ai.flowRecomputeTicks
+  ) {
+    markHazardTiles(state, f);
+    buildFlowField(f, goal, state.tick, state.tuning.terrain.hazardTileCost);
+  }
 }
 
 /**
@@ -34,7 +42,8 @@ export function prepareEnemyAI(state: GameState): void {
  * - 'idle': stands still until the player is within aggroRange with line of sight, or it is hurt
  *   (in arena mode: aggroes at once). Noticing the player alerts idle enemies within alertRadius.
  * - aggroed ('chase', 'hold', 'kite', 'retreat', 'reposition'): the kind's behavior (swarm.ts,
- *   shield.ts, kite.ts) picks a velocity and facing and starts attacks with startEnemyAttack.
+ *   shield.ts, kite.ts) picks a velocity and facing and starts attacks with startEnemyAttack;
+ *   then avoidHazards (hazards.ts) steers it around fire and charge that would hurt it.
  *   Beyond tuning.ai.leashRange it gives up and goes idle.
  * - 'windup', 'attack', 'recover': mirror enemy.attack.phase; the enemy stands still and keeps
  *   its facing (attacks commit). After recover it goes straight back to its behavior.
@@ -96,6 +105,7 @@ export function stepEnemyAI(state: GameState, e: Enemy): void {
       stepKite(state, e, b, def.attack, def);
       break;
   }
+  if (e.attack.phase === 'none') avoidHazards(state, e);
 }
 
 // Scratch for the pack-alert query.

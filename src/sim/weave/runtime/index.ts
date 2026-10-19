@@ -39,3 +39,4 @@ export { stepSpells, compactSpells, holdSpells } from './step';
 export { spawnSpell, openCast, endSpell, buildPacket, boltKind } from './spawn';
 export { hashWeaveState, hashPacket } from './hash';
 export { createReferenceScene, sceneCenter, type ReferenceScene } from './scenes';
+export { stormDamage, paintSpell } from './terrain';

@@ -256,6 +256,52 @@ export type SimEvent =
    */
   | ({ type: 'waterElectrified' } & ElectrifyFields)
   | ({ type: 'metalElectrified' } & ElectrifyFields)
+  /*
+   * Entity terrain events (src/sim/actors/terrain.ts, falling.ts, chemistry.ts; combat/arcs.ts).
+   * Persistent looks read the entity fields: `terrain.wetLeft` / `oiledLeft` (> 0 while Wet /
+   * Oiled), `terrain.onIce`, `terrain.moveMult`, `terrain.blind` and `terrain.stunLeft` on enemies
+   * and the player (actors/terrainState.ts), `Enemy.shield` (null once burnt) and its burnLeft.
+   */
+  /** The target became Wet (stepped into water) or dried off (wetSeconds after leaving it). */
+  | { type: 'wetChanged'; target: number | 'player'; wet: boolean; x: number; y: number }
+  /** The target became Oiled (stepped on oil) or the oil wore off. */
+  | { type: 'oiledChanged'; target: number | 'player'; oiled: boolean; x: number; y: number }
+  /**
+   * Rule 25: the ground dropped away under the target at (fromX, fromY); it took `damage` (a
+   * 'hit' follows) and is back on safe ground at (toX, toY). Draw a fall, don't interpolate.
+   */
+  | {
+      type: 'fell';
+      target: number | 'player';
+      fromX: number;
+      fromY: number;
+      toX: number;
+      toY: number;
+      damage: number;
+    }
+  /** A Shieldbearer's wooden shield burnt away (4 s of total burning); `Enemy.shield` is now null. */
+  | { type: 'shieldBurned'; id: number; x: number; y: number }
+  /**
+   * Charged water or metal (rules 11, 12) hit the target once for charge event `chargeId`
+   * (`damage` before resistance; its 'hit' follows unless damage is 0 or it was evaded).
+   */
+  | { type: 'chargeHit'; target: number | 'player'; chargeId: number; damage: number; x: number; y: number }
+  /** Rule 19: a Shock arced from one Wet entity to another (its 'hit' follows). */
+  | {
+      type: 'arc';
+      from: number | 'player';
+      to: number | 'player';
+      x0: number;
+      y0: number;
+      x1: number;
+      y1: number;
+    }
+  /** A Tinderling got Wet and went out: stunned for `stun` s, takes more damage until it dries. */
+  | { type: 'tinderlingDoused'; id: number; x: number; y: number; stun: number }
+  /** A doused Tinderling dried off and burns again. */
+  | { type: 'tinderlingRelit'; id: number; x: number; y: number }
+  /** An enemy became Blind (in smoke or steam, or its target is) or could see again. */
+  | { type: 'blindChanged'; id: number; blind: boolean; x: number; y: number }
   /**
    * An oil barrel exploded at (x, y) (cells): a fire burst of `radius` cells dealing `damage`
    * Fire (already scaled by area level), world-owned. The entity code applies the damage from

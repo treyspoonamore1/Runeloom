@@ -7,6 +7,7 @@ import type { GameState } from './state';
 import type { Grid } from './grid/grid';
 import { hashPacket, hashWeaveState } from './weave/runtime/hash';
 import { hashLab } from './world/lab';
+import { hashTerrainState } from './actors/terrainState';
 
 /**
  * Hash of all simulation state that affects the future. Two runs with the same
@@ -14,8 +15,8 @@ import { hashLab } from './world/lab';
  * of sim state here when you add it to GameState.
  *
  * Not hashed: `events` (output only), `enemyHash` (rebuilt from `enemies` every step),
- * prevX/prevY (render interpolation only), `flow.cost` (a pure function of the room and the
- * hashed `flow.goalTile`), `stats` (counters), the legacy `loadout` and compiled weave programs
+ * prevX/prevY (render interpolation only), `flow.cost` and `flow.hazard` (a pure function of the
+ * walk masks and grid at the hashed `flow.builtTick`, and `flow.goalTile`), `stats` (counters), the legacy `loadout` and compiled weave programs
  * (derived from the hashed notations and spindle).
  */
 export function hashState(state: GameState): number {
@@ -50,6 +51,7 @@ export function hashState(state: GameState): number {
   h.u32(p.level).num(p.life).num(p.maxLife).num(p.mana).num(p.maxMana);
   amounts(h, p.resist);
   ailments(h, p.ailments);
+  hashTerrainState(h, p.terrain);
   h.num(p.kbX).num(p.kbY).bool(p.dead).num(p.respawnLeft);
   h.u32(p.castSlot + 1)
     .string(p.castSpell ?? '-')
@@ -64,6 +66,7 @@ export function hashState(state: GameState): number {
     h.num(e.radius).num(e.facingX).num(e.facingY).num(e.life).num(e.maxLife);
     amounts(h, e.resist);
     ailments(h, e.ailments);
+    hashTerrainState(h, e.terrain);
     h.u32(e.areaLevel).string(e.rarity).bool(e.dead);
     const ai = e.ai;
     h.string(ai.mode).byte(0).num(ai.timer).num(ai.targetId).num(ai.cooldown);
@@ -96,7 +99,7 @@ function packet(h: Hasher, d: DamagePacket): void {
 }
 
 function ailments(h: Hasher, a: Ailments): void {
-  h.num(a.ignite.dps).num(a.ignite.timeLeft).num(a.ignite.sourceId).num(a.chill);
+  h.num(a.ignite.dps).num(a.ignite.timeLeft).num(a.ignite.sourceId).u32(a.ignite.owner).num(a.chill);
   h.num(a.freeze.timeLeft).num(a.freeze.immuneLeft).num(a.shock.effect).num(a.shock.timeLeft);
   h.num(a.dotPending).num(a.dotReportLeft);
 }

@@ -6,6 +6,9 @@ import type { PlayerState } from '../actors/player';
 import { emit } from '../events';
 import type { GameState } from '../state';
 import type { DamagePacket, HitResult } from './damage';
+import { OWNER } from '../../../data/materials';
+import { PLAYER_ID } from '../actors/enemies';
+import { isWet } from '../actors/terrainState';
 
 /**
  * Entity ailments (DESIGN §6.4): Ignite, Chill, Freeze and Shock on enemies and the player.
@@ -16,8 +19,9 @@ import type { DamagePacket, HitResult } from './damage';
  * hashes and copies stay flat. Magnitudes from a hit use that hit's damage of the matching type
  * after resistance and before Shock (Shock never feeds itself or double-dips into Ignite).
  *
- * M3 extension points: terrain sources call applyIgnite / addChill / applyShock / freezeTarget
- * directly (terrain-fire DPS, freezing water); Wet plugs into igniteBlocked and chillGain.
+ * Terrain (M3, actors/terrain.ts) calls applyIgnite (refresh mode) for burning ground; Wet
+ * blocks Ignite (igniteBlocked) and multiplies chill gain (chillGain); Oiled doubles Ignite
+ * damage (ailmentTick.ts).
  */
 
 /** Damage over time from a fire hit. Active while timeLeft > 0. */
@@ -28,6 +32,11 @@ export interface IgniteState {
   timeLeft: number;
   /** Who applied it (PLAYER_ID for the player): its damage and kills are credited to them. -1 if none. */
   sourceId: number;
+  /**
+   * OWNER code (data/materials.ts) of the team that ignited it: the fire it lights as it walks
+   * over flammable cells (rule 22) and its Oiled trail (rule 18) belong to that team.
+   */
+  owner: number;
 }
 
 /** Can't act. Active while timeLeft > 0. */
@@ -69,7 +78,7 @@ export const AILMENT_EPSILON = 1e-9;
 
 export function createAilments(): Ailments {
   return {
-    ignite: { dps: 0, timeLeft: 0, sourceId: -1 },
+    ignite: { dps: 0, timeLeft: 0, sourceId: -1, owner: OWNER.world },
     chill: 0,
     freeze: { timeLeft: 0, immuneLeft: 0 },
     shock: { effect: 0, timeLeft: 0 },
@@ -82,6 +91,7 @@ export function createAilments(): Ailments {
 export function clearAilments(a: Ailments): void {
   a.ignite.dps = a.ignite.timeLeft = 0;
   a.ignite.sourceId = -1;
+  a.ignite.owner = OWNER.world;
   a.chill = 0;
   a.freeze.timeLeft = a.freeze.immuneLeft = 0;
   a.shock.effect = a.shock.timeLeft = 0;
@@ -145,14 +155,34 @@ export function actionSpeed(state: GameState, t: AilmentTarget): number {
   return a.chill > 0 ? 1 - chillSlow(state, t) : 1;
 }
 
-/** M3 hook: Wet extinguishes and prevents Ignite (rule 15). No Wet yet. */
-function igniteBlocked(_t: AilmentTarget): boolean {
-  return false;
+/** Wet extinguishes and prevents Ignite (rule 15; the terrain phase puts out a burning entity that gets wet). */
+function igniteBlocked(t: AilmentTarget): boolean {
+  return isWet(t);
 }
 
-/** M3 hook: chill gain multiplier (tuning.ailments.wetChillMultiplier while Wet). No Wet yet. */
-function chillGain(_t: AilmentTarget, _A: AilmentTuning): number {
-  return 1;
+/** Chill gain multiplier: tuning.ailments.wetChillMultiplier while Wet (DESIGN §6.4). */
+function chillGain(t: AilmentTarget, A: AilmentTuning): number {
+  return isWet(t) ? A.wetChillMultiplier : 1;
+}
+
+/** OWNER code of the team behind an attacker id: the player, the world (WORLD_SOURCE_ID, -1) or an enemy. */
+export function teamOfSource(sourceId: number): number {
+  return sourceId === PLAYER_ID ? OWNER.player : sourceId < 0 ? OWNER.world : OWNER.enemy;
+}
+
+/** OWNER code of the target's own team. */
+export function teamOf(t: AilmentTarget): number {
+  return 'kind' in t ? OWNER.enemy : OWNER.player;
+}
+
+/**
+ * The Shock effect a hit of `storm` damage (after resistance, before Shock) gives the target:
+ * clamp(storm ÷ max life × shockPerLifeFraction, shockMin, shockMax), before the player cap.
+ */
+export function shockFor(state: GameState, t: AilmentTarget, storm: number): number {
+  const A = state.tuning.ailments;
+  const raw = (storm / t.maxLife) * A.shockPerLifeFraction;
+  return raw < A.shockMin ? A.shockMin : raw > A.shockMax ? A.shockMax : raw;
 }
 
 /**
@@ -169,7 +199,7 @@ export function applyHitAilments(
 ): void {
   const A = state.tuning.ailments;
   const durMul = packet.ailmentDuration ?? 1;
-  const unshock = 1 + res.shock;
+  const unshock = (1 + res.shock) * res.takenMult;
   const fire = res.byType.fire / unshock;
   const frost = res.byType.frost / unshock;
   const storm = res.byType.storm / unshock;
@@ -178,16 +208,16 @@ export function applyHitAilments(
     const points = isBoss(t) ? A.bossChillPerHit : (frost / t.maxLife) * A.chillPerLifeFraction;
     addChill(state, t, points * chillGain(t, A) * (packet.chillGain ?? 1), durMul, sourceId);
   }
-  if (storm > 0) {
-    const raw = (storm / t.maxLife) * A.shockPerLifeFraction;
-    const effect = raw < A.shockMin ? A.shockMin : raw > A.shockMax ? A.shockMax : raw;
-    applyShock(state, t, effect, A.shockDuration * durMul, sourceId);
-  }
+  if (storm > 0) applyShock(state, t, shockFor(state, t, storm), A.shockDuration * durMul, sourceId);
 }
 
 /**
  * Ignites the target for `dps` (resistance already applied) over `duration` seconds, unless it
- * is immune or already burning at least as strongly. A replacing ignite keeps the dot report timer.
+ * is immune, Wet, or already burning at least as strongly. A replacing ignite keeps the dot
+ * report timer. `owner`: the igniting team (OWNER code), by default the team of `sourceId`.
+ *
+ * `refresh` (terrain fire, rule 16 "refreshed while standing in it"): an ignite of the same
+ * strength has its time topped up to `duration` (no event); a stronger one is left alone.
  */
 export function applyIgnite(
   state: GameState,
@@ -195,17 +225,39 @@ export function applyIgnite(
   dps: number,
   duration: number,
   sourceId: number,
+  owner = teamOfSource(sourceId),
+  refresh = false,
 ): boolean {
   if (dps <= 0 || duration <= 0 || isImmune(t, 'ignite') || igniteBlocked(t)) return false;
   const a = t.ailments;
   const ig = a.ignite;
-  if (ig.timeLeft > 0 && dps <= ig.dps) return false;
+  if (ig.timeLeft > 0 && dps <= ig.dps) {
+    if (refresh && dps === ig.dps && ig.timeLeft < duration) {
+      ig.timeLeft = duration;
+      ig.sourceId = sourceId;
+      ig.owner = owner;
+    }
+    return false;
+  }
   if (ig.timeLeft <= 0) a.dotReportLeft = state.tuning.ailments.dotReportInterval;
   ig.dps = dps;
   ig.timeLeft = duration;
   ig.sourceId = sourceId;
+  ig.owner = owner;
   emitApplied(state, t, 'ignite', dps, duration, sourceId);
   return true;
+}
+
+/** Puts out a burning target (Wet, rule 15): ends its Ignite with an 'ailmentEnded' event. */
+export function extinguish(state: GameState, t: AilmentTarget): void {
+  const a = t.ailments;
+  if (a.ignite.timeLeft <= 0) return;
+  a.ignite.dps = a.ignite.timeLeft = 0;
+  a.ignite.sourceId = -1;
+  a.ignite.owner = OWNER.world;
+  a.dotPending = 0;
+  a.dotReportLeft = 0;
+  emit(state, { type: 'ailmentEnded', target: targetRef(t), ailment: 'ignite', x: t.x, y: t.y });
 }
 
 /**

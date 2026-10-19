@@ -136,3 +136,18 @@ export {
 } from './grid/query';
 export type { ChargeEvent, Blast } from './grid/grid';
 export type { CellBounds, ElectrifyFields } from './events';
+export {
+  isWet,
+  isOiled,
+  isStunned,
+  createTerrainState,
+  CHARGE_MEMORY,
+  type TerrainState,
+} from './actors/terrainState';
+export { stepEntityTerrain, cellIndexAt } from './actors/terrain';
+export { applyBlasts } from './actors/blasts';
+export { isSafeCell, fall } from './actors/falling';
+export { isDoused, burningOwner } from './actors/chemistry';
+export { hurtsEnemies } from './ai/hazards';
+export { extinguish, teamOf, teamOfSource, shockFor } from './combat/ailments';
+export { dealDirectDamage } from './combat/hits';

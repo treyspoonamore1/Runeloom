@@ -4,6 +4,8 @@ import { emit } from '../events';
 import type { GameState } from '../state';
 import { AILMENT_EPSILON, asEnemy, isBoss, targetRef, type AilmentTarget } from './ailments';
 import { killEnemy } from './hits';
+import { isOiled } from '../actors/terrainState';
+import { OWNER } from '../../../data/materials';
 
 /**
  * The ailment phase of a tick, after every hit of the tick has landed (after projectiles) and
@@ -55,7 +57,7 @@ function tickTarget(state: GameState, t: AilmentTarget): void {
 }
 
 /**
- * One tick of Ignite: dps × DT × (1 + Shock) fire damage (none on the player in god mode),
+ * One tick of Ignite: dps × DT × (1 + Shock) (× oiledIgniteMult while Oiled) fire damage (none on the player in god mode),
  * batched into 'dot' events. A kill is credited to the ignite's source. Returns true if the
  * target died.
  */
@@ -66,7 +68,9 @@ function tickIgnite(state: GameState, t: AilmentTarget): boolean {
   const dt = ig.timeLeft < DT ? ig.timeLeft : DT;
   const godPlayer = asEnemy(t) === null && state.cheats.god;
   if (!godPlayer) {
-    const dmg = ig.dps * dt * (1 + a.shock.effect);
+    // Rule 18: Ignite deals oiledIgniteMult × damage while Oiled.
+    const oiled = isOiled(t) ? state.tuning.terrain.oiledIgniteMult : 1;
+    const dmg = ig.dps * dt * (1 + a.shock.effect) * oiled;
     t.life -= dmg;
     a.dotPending += dmg;
   }
@@ -82,6 +86,7 @@ function tickIgnite(state: GameState, t: AilmentTarget): boolean {
   if (ended) {
     ig.dps = 0;
     ig.sourceId = -1;
+    ig.owner = OWNER.world;
     a.dotReportLeft = 0;
     emit(state, { type: 'ailmentEnded', target: targetRef(t), ailment: 'ignite', x: t.x, y: t.y });
   }

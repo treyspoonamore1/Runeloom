@@ -252,8 +252,10 @@ describe('modifiers', () => {
   });
 
   it('Lingering lengthens the ailments its hits apply by 30%', () => {
-    const state = weaveArena(['Cast > Swath[Fire, Lingering]']);
-    const d = addEnemy(state, 'dummy', 85, 60);
+    // A Strike, so the hit's ignite (8/s) outburns the placed fire its arc leaves under the
+    // dummy (terrain-fire DPS 5/s at area level 1, rule 16), which would otherwise take over.
+    const state = weaveArena(['Cast > Strike[Fire, Lingering]']);
+    const d = addEnemy(state, 'dummy', 83, 60);
     castFor(state, LMB, releaseTick(0.4), [120, 60]);
     // The ailment phase of the hit's tick already ran once.
     expect(d.ailments.ignite.timeLeft).toBeCloseTo(3 * 1.3 - 1 / 60, 9);

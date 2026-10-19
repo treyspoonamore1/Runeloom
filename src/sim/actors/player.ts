@@ -11,6 +11,8 @@ import { resetPlayerVitals, stepPlayerVitals } from './playerVitals';
 import { cancelCast } from '../weave/runtime/castState';
 import { noteDodge } from '../weave/runtime/queue';
 import { actionSpeed, createAilments, isFrozen, type Ailments } from '../combat/ailments';
+import { createTerrainState, type TerrainState } from './terrainState';
+import { readGround } from './ground';
 
 /** All player state lives here as plain data, so it hashes, saves and replays. */
 export interface PlayerState {
@@ -49,6 +51,8 @@ export interface PlayerState {
   resist: DamageAmounts;
   /** Ignite, Chill, Freeze and Shock (combat/ailments.ts), with player-side limits. */
   ailments: Ailments;
+  /** Wet, Oiled, ice, charge memory and last safe spot (actors/terrainState.ts). */
+  terrain: TerrainState;
   /** Knockback velocity, cells/s, on top of walking. Decays each tick. */
   kbX: number;
   kbY: number;
@@ -109,6 +113,7 @@ export function createPlayer(x: number, y: number, tuning: Tuning): PlayerState 
     maxMana: 0,
     resist: { physical: 0, fire: 0, frost: 0, storm: 0 },
     ailments: createAilments(),
+    terrain: createTerrainState(x, y),
     kbX: 0,
     kbY: 0,
     dead: false,
@@ -254,8 +259,9 @@ function startDodge(p: PlayerState, t: PlayerTuning, mx: number, my: number, mle
 
 /**
  * Accelerates the velocity vector toward the input's target velocity (moveSpeed slowed by
- * Chill, at moveSpeed/accelTime), or toward rest with no input (at moveSpeed/decelTime),
- * then moves with collision for `dt` seconds.
+ * Chill and the ground's moveMult, at moveSpeed/accelTime), or toward rest with no input (at
+ * moveSpeed/decelTime), then moves with collision for `dt` seconds. On ice both times are the
+ * much longer tuning.terrain.iceAccelTime / iceDecelTime, so the player slides.
  */
 function walk(state: GameState, p: PlayerState, t: PlayerTuning, mx: number, my: number, dt: number): void {
   const hasInput = mx !== 0 || my !== 0;
@@ -264,13 +270,22 @@ function walk(state: GameState, p: PlayerState, t: PlayerTuning, mx: number, my:
     p.faceX = mx / l;
     p.faceY = my / l;
   }
-  const speed = t.moveSpeed * actionSpeed(state, p);
+  const ground = readGround(state, p.x, p.y, p.terrain);
+  const speed = t.moveSpeed * actionSpeed(state, p) * ground.moveMult;
   target.x = mx * speed;
   target.y = my * speed;
   clipToContacts(state.room, p.x, p.y, t.radius, target);
   const tx = target.x;
   const ty = target.y;
-  const rate = t.moveSpeed / (hasInput ? t.accelTime : t.decelTime);
+  const T = state.tuning.terrain;
+  const time = ground.onIce
+    ? hasInput
+      ? T.iceAccelTime
+      : T.iceDecelTime
+    : hasInput
+      ? t.accelTime
+      : t.decelTime;
+  const rate = t.moveSpeed / time;
   const maxDelta = rate * dt;
   const dvx = tx - p.vx;
   const dvy = ty - p.vy;

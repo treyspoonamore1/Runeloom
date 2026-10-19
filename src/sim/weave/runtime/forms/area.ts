@@ -11,6 +11,7 @@ import type { GameState } from '../../../state';
 import { clampPoint, enemiesTouching, unitOr } from '../geom';
 import { canTarget, spellHit, TIME_EPSILON } from '../procs';
 import { elementsOf, endSpell } from '../spawn';
+import { paintNova } from '../terrain';
 import type { SpellInstance } from '../types';
 
 /**
@@ -78,6 +79,7 @@ export function stepNova(state: GameState, n: SpellInstance): void {
     spellHit(state, n, e, kx, ky, kx, ky);
     if (n.ended) return;
   }
+  paintNova(state, n, done);
   if (done) endSpell(state, n, 'done');
 }
 
