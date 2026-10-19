@@ -93,6 +93,15 @@ export const scenarios: Scenario[] = [
     input: (tick, state) => strafeInput(tick, state, [Button.Cast1, Button.Cast2, Button.Cast2]),
   },
   {
+    id: 'wilds_terrain',
+    description:
+      'Wilds arena waves (grass, water, oil, barrels, metal), god mode, unlimited mana, Heartwood: Wildfire Seed, Conductor, Steam Veil, Glacier Step (reference weaves 3, 7, 9, 5).',
+    roomId: 'test/wilds',
+    mode: 'arena',
+    setup: (state) => mixSetup(state, [REF(3), REF(7), REF(9), REF(5)]),
+    input: (tick, state) => strafeInput(tick, state, [Button.Cast1, Button.Cast2, Button.Cast2]),
+  },
+  {
     id: 'arena_bot',
     description:
       'Arena waves against the kiter bot (bots/kiter.ts): kites, Strikes packs, dodges telegraphs.',

@@ -195,7 +195,7 @@ function wildsTerrainBench(): Bench {
   let active = 0;
   let samples = 0;
   return {
-    id: 'entity:wilds_terrain',
+    id: 'entity:wilds_bot_terrain',
     description: 'Entity step, kiter bot vs Wilds arena waves with fire/frost/storm terrain',
     budgetMs: ENTITY_BUDGET_MS,
     note: () =>
@@ -298,6 +298,7 @@ export const benches: Bench[] = [
   scenarioBench('arena_bot'),
   scenarioBench('weave_mix'),
   scenarioBench('weave_events'),
+  scenarioBench('wilds_terrain'),
   stressBench(),
   wildsTerrainBench(),
   weave14Bench(),
