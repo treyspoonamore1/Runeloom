@@ -34,9 +34,12 @@ const dist2: number[] = [];
 
 /** Enemies the bolt may still hit near its sweep, nearest to its start first (ties: array order). */
 function gather(state: GameState, b: SpellInstance, cx: number, cy: number, r: number): number {
-  const n = state.enemyHash.query(cx, cy, r);
+  const hash = state.enemyHash;
+  // Most bolts fly through empty buckets: rule that out without the (float-boxing) query call.
+  if (!hash.anyNear(Math.floor(cx - r), Math.floor(cy - r), Math.floor(cx + r), Math.floor(cy + r))) return 0;
+  const n = hash.query(cx, cy, r);
   if (n === 0) return 0;
-  const found = state.enemyHash.hits;
+  const found = hash.hits;
   let m = 0;
   for (let k = 0; k < n; k++) {
     const idx = found[k]!;

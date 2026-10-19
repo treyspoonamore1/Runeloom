@@ -113,6 +113,27 @@ export class SpatialHash {
     return n;
   }
 
+  /**
+   * False only if `query` finds nothing for any circle that lies within the cells x0..x1 ×
+   * y0..y1 (integers, inclusive): no body is in the buckets such a query could scan. A cheap
+   * test for hot callers whose queries are mostly empty (integer arguments, nothing to box).
+   */
+  anyNear(x0: number, y0: number, x1: number, y1: number): boolean {
+    if (this.count === 0) return false;
+    // Two cells beyond maxRadius cover the circle's last cell and the rounding in query's reach.
+    const m = Math.ceil(this.maxRadius) + 2;
+    const c0 = this.col(x0 - m);
+    const c1 = this.col(x1 + m);
+    const r0 = this.row(y0 - m);
+    const r1 = this.row(y1 + m);
+    const start = this.bucketStart;
+    for (let row = r0; row <= r1; row++) {
+      const b = row * this.cols;
+      if (start[b + c1 + 1]! > start[b + c0]!) return true;
+    }
+    return false;
+  }
+
   /** queryCircle into `hits` instead of an array (same indices, same order). Returns how many. */
   query(x: number, y: number, r: number): number {
     if (this.count === 0) return 0;
