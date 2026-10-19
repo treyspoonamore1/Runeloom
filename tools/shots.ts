@@ -2,6 +2,7 @@
  * Screenshots of debug scenes into shots/.
  *   npm run shots [-- --scene room] [--milestone m0] [--ticks N] [--viewport 390x844]
  *   npm run shots -- --lab [--station 3,7]   Chemistry Lab stations, before and after, into shots/lab/
+ *   npm run shots -- --set creature [--milestone m3]   entities on the chemistry grid (wet, oiled, falls, arcs...)
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
