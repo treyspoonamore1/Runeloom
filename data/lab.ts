@@ -115,7 +115,7 @@ const entries: Entry[] = [
   { rule: 3, label: '03 · A burning wood floor falls away (6 s)', script: [fire(0.3, 12, 10, 3)] },
   {
     rule: 3,
-    label: '03 · Crates and barricades burn away',
+    label: '03 · Crates (3 s) and barricades (4 s) burn away',
     script: [fire(0.3, 8, 8, 2.5), fire(1.5, 18, 8, 2.5)],
   },
   { rule: 4, label: '04 · Fire on water makes steam', script: [fire(0.3, 6, 10, 3), fire(1.2, 18, 10, 3)] },
