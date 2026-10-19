@@ -11,7 +11,7 @@ import {
   type InputFrame,
   type SimEvent,
 } from '../sim';
-import { roomText } from './rooms';
+import { roomTexts } from './rooms';
 import type { SceneDef } from './scenes';
 import { cloneTuning, type Tuning } from '../../data/tuning';
 
@@ -60,7 +60,7 @@ export class Session {
     this.roomId = opts.roomId;
     this.sceneId = opts.sceneId;
     this.mode = opts.mode ?? 'sandbox';
-    this.state = createGame({ seed: opts.seed, roomText: roomText(opts.roomId), mode: this.mode });
+    this.state = createGame({ seed: opts.seed, rooms: roomTexts, roomId: opts.roomId, mode: this.mode });
     this.startTuning = cloneTuning(this.state.tuning);
   }
 
@@ -85,7 +85,8 @@ export class Session {
     this.startLoadout = loadoutSpecOf(this.state.weaves);
     this.state = createGame({
       seed: this.seed,
-      roomText: roomText(this.roomId),
+      rooms: roomTexts,
+      roomId: this.roomId,
       tuning: this.state.tuning,
       mode: this.mode,
       loadout: this.startLoadout,

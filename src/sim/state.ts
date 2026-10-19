@@ -26,12 +26,20 @@ import { createFlowField, type FlowField } from './ai/flowField';
 import { createArenaState, type ArenaState } from './world/waves';
 import { createGrid, type Grid } from './grid/grid';
 import { createLabState, type LabState } from './world/lab';
+import { createHero, refreshHero } from './hero/hero';
+import { emptyHeroMods, type HeroMods } from './hero/mods';
+import type { HeroState } from './hero/types';
+import { createWorldState, type RoomSource, type WorldState } from './world/worldState';
+import { buildObjects, type WorldObject } from './world/objects';
+import type { LootDrop } from './items/loot';
 
 /**
- * How the room plays. 'sandbox': only the room's @spawn enemies. 'arena': endless waves of
- * enemies (src/sim/world/waves.ts).
+ * How the room plays. 'sandbox': only the room's @spawn enemies, every rune unlimited. 'arena':
+ * endless waves of enemies (src/sim/world/waves.ts). 'adventure' (M4): the real game: rooms
+ * connect, the hero owns its runes and items, kills give XP and loot, death respawns at a Loom
+ * Stone.
  */
-export type GameMode = 'sandbox' | 'arena';
+export type GameMode = 'sandbox' | 'arena' | 'adventure';
 
 /** Debug toggles that change the simulation. Hashed, so replays record them. */
 export interface Cheats {
@@ -62,6 +70,18 @@ export interface GameState {
   grid: Grid;
   /** Chemistry Lab scripts waiting to fire (world/lab.ts). Hashed. */
   lab: LabState;
+  /** The character: level, XP, runes, items, passives (hero/types.ts). Hashed; saved. */
+  hero: HeroState;
+  /** What the hero's build adds up to (hero/mods.ts). Derived by refreshHero; not hashed. */
+  heroMods: HeroMods;
+  /** Region progress: current room, room flags, keys, Loom Stones (world/worldState.ts). Hashed; saved. */
+  world: WorldState;
+  /** Puzzle objects and pickups in the current room (world/objects.ts). Hashed. */
+  objects: WorldObject[];
+  /** Drops lying in the current room (items/loot.ts). Hashed. */
+  loot: LootDrop[];
+  /** Room file texts by id; the only way the sim loads a room. Not hashed. */
+  rooms: RoomSource;
   player: PlayerState;
   /** Spell-runtime stream: Lob branch landing points (and later spell randomness). */
   spellRng: Rng;
@@ -123,8 +143,16 @@ export interface GameState {
 
 export interface CreateGameOptions {
   seed: number;
-  /** Room file text (CONTENT §6). */
-  roomText: string;
+  /** Room file text (CONTENT §6). Give this, or `rooms` plus `roomId`. */
+  roomText?: string;
+  /** Room texts by id, for games that change rooms (adventure). */
+  rooms?: RoomSource;
+  /** Starting room id in `rooms` (ignored when roomText is given). */
+  roomId?: string;
+  /** The character, e.g. from a save (default: a fresh level 1 hero). */
+  hero?: HeroState;
+  /** Region progress, e.g. from a save (default: fresh, in the starting room). */
+  world?: WorldState;
   tuning?: Tuning;
   /** Spawn the room's `@spawn enemy:` entries (default: true, except in arena mode). */
   spawnRoomEnemies?: boolean;
@@ -136,7 +164,10 @@ export interface CreateGameOptions {
 
 export function createGame(opts: CreateGameOptions): GameState {
   const tuning = cloneTuning(opts.tuning);
-  const room = buildRoom(parseRoom(opts.roomText));
+  const text = opts.roomText ?? opts.rooms?.[opts.roomId ?? ''];
+  if (text === undefined) throw new Error(`createGame: no room text (roomId "${opts.roomId ?? ''}")`);
+  const room = buildRoom(parseRoom(text));
+  const rooms: RoomSource = opts.rooms ?? { [room.id]: text };
   const rng = new Rng(opts.seed);
   const combatRng = rng.fork('combat');
   const aiRng = rng.fork('ai');
@@ -156,6 +187,12 @@ export function createGame(opts: CreateGameOptions): GameState {
     room,
     grid: createGrid(room),
     lab: createLabState(),
+    hero: opts.hero ?? createHero(),
+    heroMods: emptyHeroMods(),
+    world: opts.world ?? createWorldState(room.id),
+    objects: [],
+    loot: [],
+    rooms,
     player: createPlayer(room.spawnX, room.spawnY, tuning),
     spellRng,
     gridRng,
@@ -179,6 +216,8 @@ export function createGame(opts: CreateGameOptions): GameState {
     events: [],
     prevButtons: 0,
   };
+  refreshHero(state);
+  state.objects = buildObjects(state);
   if (opts.spawnRoomEnemies ?? mode !== 'arena') spawnRoomEnemies(state);
   state.enemyHash.rebuild(state.enemies);
   return state;

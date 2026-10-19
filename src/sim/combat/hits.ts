@@ -4,6 +4,7 @@ import { PLAYER_ID, type Enemy } from '../actors/enemies';
 import { isInvulnerable, type PlayerState } from '../actors/player';
 import { killPlayer } from '../actors/playerVitals';
 import { emit, type DeathCause } from '../events';
+import { onEnemyKilled } from '../hero/onKill';
 import type { GameState } from '../state';
 import { applyHitAilments, isFrozen, teamOfSource, type AilmentTarget } from './ailments';
 import { arcShock } from './arcs';
@@ -133,7 +134,10 @@ export function killEnemy(state: GameState, e: Enemy, killerId: number, cause: D
   emit(state, { type: 'death', id: e.id, kind: e.kind, x: e.x, y: e.y, killerId, cause, shattered });
   if (killerId === PLAYER_ID) noteKill(state, e.id, e.x, e.y);
   if (shattered && cause === 'hit') addHitstop(state, state.tuning.feel.hitstopShatter);
-  if (cause !== 'console') deathTerrain(state, e, killerId, shattered);
+  if (cause !== 'console') {
+    deathTerrain(state, e, killerId, shattered);
+    onEnemyKilled(state, e, killerId, cause);
+  }
   return true;
 }
 

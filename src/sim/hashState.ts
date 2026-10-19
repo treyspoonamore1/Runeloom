@@ -8,6 +8,10 @@ import type { Grid } from './grid/grid';
 import { hashPacket, hashWeaveState } from './weave/runtime/hash';
 import { hashLab } from './world/lab';
 import { hashTerrainState } from './actors/terrainState';
+import { hashHero } from './hero/hero';
+import { hashWorld } from './world/worldState';
+import { hashObjects } from './world/objects';
+import { hashLoot } from './items/loot';
 
 /**
  * Hash of all simulation state that affects the future. Two runs with the same
@@ -17,7 +21,8 @@ import { hashTerrainState } from './actors/terrainState';
  * Not hashed: `events` (output only), `enemyHash` (rebuilt from `enemies` every step),
  * prevX/prevY (render interpolation only), `flow.cost` and `flow.hazard` (a pure function of the
  * walk masks and grid at the hashed `flow.builtTick`, and `flow.goalTile`), `stats` (counters), the legacy `loadout` and compiled weave programs
- * (derived from the hashed notations and spindle).
+ * (derived from the hashed notations and spindle), `heroMods` (derived from the hashed `hero`)
+ * and `rooms` (input text).
  */
 export function hashState(state: GameState): number {
   const h = new Hasher();
@@ -35,6 +40,10 @@ export function hashState(state: GameState): number {
   h.u32(ar.wave).string(ar.phase).byte(0).num(ar.timer).u32(ar.waveSize).u32(ar.remaining);
   h.u32(ar.areaLevel).u32(ar.spawnedTotal).u32(ar.killedTotal).u32(ar.queue.length);
   for (const q of ar.queue) h.string(q.kind).byte(0).u32(q.areaLevel).num(q.delay);
+  hashHero(h, state.hero);
+  hashWorld(h, state.world);
+  hashObjects(h, state.objects);
+  hashLoot(h, state.loot);
   h.string(state.room.id);
   // The walk masks change with the grid (burnt bramble, broken bridges).
   h.bytes(state.room.solid).bytes(state.room.shotSolid);

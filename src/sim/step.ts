@@ -12,6 +12,9 @@ import { stepArena } from './world/waves';
 import { stepLab } from './world/lab';
 import { stepAilments } from './combat/ailmentTick';
 import { stepGrid } from './grid/tick';
+import { stepObjects } from './world/objects';
+import { stepLoot } from './items/loot';
+import { processTransition } from './world/transition';
 import { stepEntityTerrain } from './actors/terrain';
 import { applyBlasts } from './actors/blasts';
 
@@ -27,9 +30,11 @@ const TIME_EPSILON = 1e-9;
  * (Cast flow, Pulse, queued events; spells see the moved enemies) → spell instances (Echo
  * repeats, then every instance in spawn order) → enemy projectiles → entity terrain (Wet, Oiled,
  * burning ground, charge, falls, trails, Blind; actors/terrain.ts) → ailments (ignite damage,
- * decay, timers) → arena (count kills, spawn, waves) → Chemistry Lab scripts → remove dead enemies,
- * ended projectiles and spells → chemistry grid (every 3rd non-hitstop tick, 20 Hz; grid/tick.ts),
- * then that grid tick's explosions hit entities (actors/blasts.ts).
+ * decay, timers) → arena (count kills, spawn, waves) → Chemistry Lab scripts → puzzle objects and
+ * pickups (world/objects.ts) → loot pickup (items/loot.ts) → remove dead enemies, ended projectiles
+ * and spells → chemistry grid (every 3rd non-hitstop tick, 20 Hz; grid/tick.ts), then that grid
+ * tick's explosions hit entities (actors/blasts.ts) → a pending room transition
+ * (world/transition.ts).
  */
 export function step(state: GameState, input: InputFrame): void {
   state.tick++;
@@ -49,6 +54,8 @@ export function step(state: GameState, input: InputFrame): void {
   stepAilments(state);
   stepArena(state);
   stepLab(state);
+  stepObjects(state);
+  stepLoot(state);
   compactEnemies(state);
   compactProjectiles(state);
   compactSpells(state);
@@ -58,6 +65,7 @@ export function step(state: GameState, input: InputFrame): void {
     stepGrid(state);
     applyBlasts(state);
   }
+  processTransition(state);
   state.prevButtons = input.buttons;
 }
 

@@ -30,6 +30,7 @@ src/
     ai/        enemy behaviors
     world/     room parser, puzzles, rifts
     items/     items, affixes, crafting, fuse
+    hero/      character: level, XP, runes, equipment, passives, HeroMods
     meta/      hearth, rekindle (M7)
   render/      PixiJS; reads sim state, never writes it
   ui/          Preact overlay
