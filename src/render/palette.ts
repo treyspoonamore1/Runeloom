@@ -59,7 +59,7 @@ export const PAL = {
   shadow: 0x2a1c1f,
 } as const;
 
-/** Flat colors for ground tiles M0's test room doesn't use yet (fallbacks until M3's grid shader). */
+/** Base colors for ground materials M0 had no look for (the M3 terrain shader builds on them). */
 export const FLAT_GROUND: Record<string, number> = {
   wood_bridge: 0xb7814c,
   wood_floor: 0xc48d55,
@@ -97,16 +97,6 @@ export const BLOCK = {
   /** Shadow strip cast on the ground south of a raised tile. */
   shadow: 1.2,
   shadowAlpha: 0.2,
-};
-
-/** Water animation. */
-export const WATER = {
-  /** Seconds for one full ripple loop. */
-  period: 3,
-  /** Pre-built ripple frames per loop, shown stepped (no tessellation per frame). */
-  frames: 24,
-  /** How far ripples drift sideways, cells. */
-  drift: 0.6,
 };
 
 /** The Loomwright (player) look and procedural animation. */

@@ -1,0 +1,279 @@
+import { AIR, MAT, OWNER, SURFACE, materials, materialByCode } from '../../../data/materials';
+import { GRID_EVERY, SIM_HZ, TILE_CELLS, type Grid } from '../../sim';
+import { TERRAIN_FX } from './terrainColors';
+
+/**
+ * Packs the chemistry grid into RGBA8 data textures for the terrain shader (DESIGN §12). Pure
+ * TypeScript, no Pixi: the view uploads the buffers. Every buffer is a Uint8Array with a
+ * Uint32Array view, one texel per cell (row-major, like the grid), written as one 32-bit word per
+ * texel (little-endian: byte 0 = R).
+ *
+ *   codes  (nearest)  R display ground · G flags · B phase · A true ground
+ *   fields (linear)   R fire · G charge strength · B smoke · A steam      (two copies: prev/cur)
+ *   masks  (linear)   R oil · G wet · B hostile fire · A hostile charge
+ *   glow   (linear, one texel per tile, blurred)  R fire · G charge · B smoke · A steam
+ *
+ * "Display ground" is what the floor shader paints: props (crates, barrels, barricades, braziers,
+ * objects) are drawn by the baked prop layer, so the floor under them shows their `under`
+ * material (or stone). "Hostile" = owned by world or enemy: those hazards get the pulsing edge
+ * (DESIGN §14).
+ */
+
+/** Bits of the codes G channel. */
+export const FLAG = {
+  oil: 1,
+  /** Bits 1–2: OWNER code. */
+  ownerShift: 1,
+  /** Bits 3–4: AIR code. */
+  airShift: 3,
+  /** B holds the low byte of the grid tick the cell's fire went out (embers). */
+  ember: 32,
+  /** Wood over deep water (a bridge), not over a pit. */
+  overWater: 64,
+} as const;
+
+export const GRID_HZ = SIM_HZ / GRID_EVERY;
+
+/**
+ * Optional fields from the rules engine (M3 rules branch): charge strength relative to the
+ * source, 0.25–1 (rule 11 falloff; 1 on metal). Missing on grids without it: full strength.
+ */
+interface ChargeExtras {
+  chargeFalloff?: Float32Array;
+}
+
+const PROP_CODES = new Set<number>([MAT.crate, MAT.barricade, MAT.oil_barrel, MAT.brazier, MAT.object]);
+/** Raised blocks the baked layer draws; a change in their count re-bakes it. */
+const BLOCK_CODES = new Set<number>([MAT.wall, MAT.metal_pylon, MAT.object, MAT.brazier]);
+
+const isProp = new Uint8Array(256);
+const isBlock = new Uint8Array(256);
+for (const c of PROP_CODES) isProp[c] = 1;
+for (const c of BLOCK_CODES) isBlock[c] = 1;
+
+const CRACK_TICKS = Math.round((materials.ice_bridge.crackSeconds ?? 1.5) * GRID_HZ);
+const THAW_TICKS = Math.round(TERRAIN_FX.thawShowSeconds * GRID_HZ);
+const EMBER_TICKS = Math.round(TERRAIN_FX.emberSeconds * GRID_HZ);
+
+export class TerrainPack {
+  readonly width: number;
+  readonly height: number;
+  readonly tilesW: number;
+  readonly tilesH: number;
+  readonly codes: Uint8Array;
+  /** fields[cur] is the newest upload, fields[1 - cur] the one before. */
+  readonly fields: [Uint8Array, Uint8Array];
+  cur = 0;
+  readonly masks: Uint8Array;
+  readonly glow: Uint8Array;
+  /** Changed texel range of the last pack, per buffer: [start, end) (empty when start >= end). */
+  readonly dirty = { codes: [0, 0], fields: [0, 0], masks: [0, 0] };
+  /** Count of raised-block cells; the baked layer re-bakes when it changes. */
+  blockCells = 0;
+  /** True while any cell shows embers, so the view repacks before the 8-bit tick wraps. */
+  embersLive = false;
+
+  private readonly codes32: Uint32Array;
+  private readonly fields32: [Uint32Array, Uint32Array];
+  private readonly masks32: Uint32Array;
+  private readonly prevFire: Uint8Array;
+  /** Grid tick + 1 when the cell's fire went out (0 = none). Render-side memory, not sim state. */
+  private readonly emberTick: Uint32Array;
+  private readonly glowAcc: Float32Array;
+  private readonly glowTmp: Float32Array;
+
+  constructor(width: number, height: number) {
+    this.width = width;
+    this.height = height;
+    this.tilesW = Math.ceil(width / TILE_CELLS);
+    this.tilesH = Math.ceil(height / TILE_CELLS);
+    const n = width * height;
+    this.codes = new Uint8Array(n * 4);
+    this.fields = [new Uint8Array(n * 4), new Uint8Array(n * 4)];
+    this.masks = new Uint8Array(n * 4);
+    this.glow = new Uint8Array(this.tilesW * this.tilesH * 4);
+    this.codes32 = new Uint32Array(this.codes.buffer);
+    this.fields32 = [new Uint32Array(this.fields[0].buffer), new Uint32Array(this.fields[1].buffer)];
+    this.masks32 = new Uint32Array(this.masks.buffer);
+    this.prevFire = new Uint8Array(n);
+    this.emberTick = new Uint32Array(n);
+    this.glowAcc = new Float32Array(this.tilesW * this.tilesH * 4);
+    this.glowTmp = new Float32Array(this.tilesW * this.tilesH * 4);
+  }
+
+  /**
+   * Packs the whole grid. Writes into the older fields buffer and makes it current, so the
+   * shader can blend from the previous upload to this one. Allocation-free.
+   */
+  pack(grid: Grid): void {
+    const n = this.width * this.height;
+    const { ground, surface, air, fire, charge, airTimer, timer, wet, under, owner } = grid;
+    const extras = grid as Grid & ChargeExtras;
+    const falloff = extras.chargeFalloff ?? null;
+    const next = 1 - this.cur;
+    const codes32 = this.codes32;
+    const fields32 = this.fields32[next]!;
+    const masks32 = this.masks32;
+    const prevFire = this.prevFire;
+    const emberTick = this.emberTick;
+    const tick = grid.tick;
+    const acc = this.glowAcc;
+    acc.fill(0);
+    const w = this.width;
+    const tw = this.tilesW;
+    let c0 = n;
+    let c1 = 0;
+    let f0 = n;
+    let f1 = 0;
+    let m0 = n;
+    let m1 = 0;
+    let blocks = 0;
+    let embers = false;
+
+    for (let i = 0; i < n; i++) {
+      const g = ground[i]!;
+      const f = fire[i]!;
+      const ch = charge[i]!;
+      const o = owner[i]!;
+      const a = air[i]!;
+      blocks += isBlock[g]!;
+
+      // Codes.
+      let disp = g;
+      if (isProp[g] === 1) {
+        const u = under[i]!;
+        disp = isProp[u] === 1 ? MAT.stone : u;
+      }
+      let flags = (o << FLAG.ownerShift) | (a << FLAG.airShift);
+      if (surface[i] === SURFACE.oil) flags |= FLAG.oil;
+      if (g === MAT.wood && under[i] === MAT.deep_water) flags |= FLAG.overWater;
+      let phase = 0;
+      const t = timer[i]!;
+      if (g === MAT.ice_bridge) {
+        if (t > 0 && t <= CRACK_TICKS) phase = Math.round(255 * (1 - t / CRACK_TICKS));
+      } else if (g === MAT.ice) {
+        if (t > 0 && t <= THAW_TICKS) phase = Math.round(255 * (1 - t / THAW_TICKS));
+      } else {
+        // Embers: remember when the fire went out; the shader fades them by age.
+        if (f === 0 && prevFire[i]! > 0) emberTick[i] = tick + 1;
+        const et = emberTick[i]!;
+        if (et !== 0) {
+          if (tick + 1 - et > EMBER_TICKS || f > 0) emberTick[i] = 0;
+          else {
+            flags |= FLAG.ember;
+            phase = (et - 1) & 255;
+            embers = true;
+          }
+        }
+      }
+      prevFire[i] = f;
+      const code = (disp | (flags << 8) | (phase << 16) | (g << 24)) >>> 0;
+      if (codes32[i] !== code) {
+        codes32[i] = code;
+        if (i < c0) c0 = i;
+        c1 = i + 1;
+      }
+
+      // Fields.
+      let cs = 0;
+      if (ch > 0) {
+        const fade = ch >= TERRAIN_FX.chargeFadeTicks ? 1 : ch / TERRAIN_FX.chargeFadeTicks;
+        const s = falloff ? Math.max(TERRAIN_FX.chargeMinStrength, 255 * falloff[i]!) : 255;
+        cs = Math.round(s * fade);
+      }
+      const at = airTimer[i]!;
+      const dens = at === 0 ? 0 : Math.min(255, at * TERRAIN_FX.airFadeScale);
+      const smoke = a === AIR.smoke ? dens : 0;
+      const steam = a === AIR.steam ? dens : 0;
+      const fw = (f | (cs << 8) | (smoke << 16) | (steam << 24)) >>> 0;
+      if (fields32[i] !== fw) {
+        fields32[i] = fw;
+        if (i < f0) f0 = i;
+        f1 = i + 1;
+      }
+
+      // Masks.
+      const hostile = o !== OWNER.player;
+      const oil = surface[i] === SURFACE.oil ? 255 : 0;
+      const wt = wet[i]!;
+      const wetV = wt === 0 ? 0 : Math.min(255, wt * TERRAIN_FX.wetFadeScale);
+      const hf = hostile && f > 0 ? 255 : 0;
+      const hc = hostile && ch > 0 ? 255 : 0;
+      const mw = (oil | (wetV << 8) | (hf << 16) | (hc << 24)) >>> 0;
+      if (masks32[i] !== mw) {
+        masks32[i] = mw;
+        if (i < m0) m0 = i;
+        m1 = i + 1;
+      }
+
+      // Glow accumulators per tile.
+      if (fw !== 0) {
+        const cx = i % w;
+        const cy = (i - cx) / w;
+        const k = (((cy / TILE_CELLS) | 0) * tw + ((cx / TILE_CELLS) | 0)) * 4;
+        acc[k] = acc[k]! + f;
+        acc[k + 1] = acc[k + 1]! + cs;
+        acc[k + 2] = acc[k + 2]! + smoke;
+        acc[k + 3] = acc[k + 3]! + steam;
+      }
+    }
+
+    this.cur = next;
+    this.dirty.codes[0] = c0;
+    this.dirty.codes[1] = c1;
+    this.dirty.fields[0] = f0;
+    this.dirty.fields[1] = f1;
+    this.dirty.masks[0] = m0;
+    this.dirty.masks[1] = m1;
+    this.blockCells = blocks;
+    this.embersLive = embers;
+    this.blurGlow();
+  }
+
+  /** Averages the per-tile sums and applies a 3×3 tent blur, into the glow bytes. */
+  private blurGlow(): void {
+    const tw = this.tilesW;
+    const th = this.tilesH;
+    const acc = this.glowAcc;
+    const tmp = this.glowTmp;
+    const inv = 1 / (TILE_CELLS * TILE_CELLS);
+    // Horizontal pass [1 2 1] / 4, then vertical, clamped at the edges.
+    for (let y = 0; y < th; y++) {
+      for (let x = 0; x < tw; x++) {
+        const l = Math.max(0, x - 1);
+        const r = Math.min(tw - 1, x + 1);
+        for (let c = 0; c < 4; c++) {
+          const row = y * tw;
+          tmp[(row + x) * 4 + c] =
+            (acc[(row + l) * 4 + c]! + 2 * acc[(row + x) * 4 + c]! + acc[(row + r) * 4 + c]!) * 0.25 * inv;
+        }
+      }
+    }
+    const out = this.glow;
+    for (let y = 0; y < th; y++) {
+      const u = Math.max(0, y - 1);
+      const d = Math.min(th - 1, y + 1);
+      for (let x = 0; x < tw; x++) {
+        for (let c = 0; c < 4; c++) {
+          const v = (tmp[(u * tw + x) * 4 + c]! + 2 * tmp[(y * tw + x) * 4 + c]! + tmp[(d * tw + x) * 4 + c]!) * 0.25;
+          out[(y * tw + x) * 4 + c] = Math.min(255, Math.round(v * TERRAIN_FX.glowGain));
+        }
+      }
+    }
+  }
+}
+
+/** Material code → true if the baked block layer draws it. */
+export function isBlockCode(code: number): boolean {
+  return isBlock[code] === 1;
+}
+
+/** Material code → true if it's a prop drawn by the baked prop layer. */
+export function isPropCode(code: number): boolean {
+  return isProp[code] === 1;
+}
+
+/** Material id by code, for legends. */
+export function materialName(code: number): string {
+  return materialByCode[code]?.id ?? '?';
+}
