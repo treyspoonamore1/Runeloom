@@ -108,11 +108,21 @@ const expected: Expect[] = [
   },
   {
     within: 2.5,
-    what: 'frost puts the fire out (fuel kept) and it relights',
-    check: (c) => {
-      const i = c.at(12, 10);
-      return c.s.tick >= 2 * SIM_HZ && g(c).fire[i]! > 0 && ofType(c, 'cellIgnited').length >= 2;
-    },
+    what: 'frost puts the whole fire out (fuel kept) and it relights',
+    check: (() => {
+      // The patch must be fully out (no fire anywhere in it) at some point between frost and relight.
+      let wasOut = false;
+      return (c: Ctx) => {
+        if (
+          c.s.tick > SIM_HZ &&
+          c.s.tick < 2 * SIM_HZ &&
+          c.cells(4, 4, 19, 15, (i) => g(c).fire[i]! > 0) === 0
+        )
+          wasOut = true;
+        const i = c.at(12, 10);
+        return wasOut && c.s.tick >= 2 * SIM_HZ && g(c).fire[i]! > 0 && ofType(c, 'cellIgnited').length >= 2;
+      };
+    })(),
   },
   { within: 1, what: 'the mud dries to dirt', check: (c) => g(c).ground[c.at(12, 10)] === MAT.dirt },
   {

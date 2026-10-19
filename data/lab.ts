@@ -144,7 +144,8 @@ const entries: Entry[] = [
   {
     rule: 9,
     label: '09 · Frost puts out fire',
-    script: [fire(0, 12, 10, 5), frost(0.8, 12, 10, 5), fire(2, 12, 10, 5)],
+    // The frost covers the whole patch: any fire left outside it would spread straight back.
+    script: [fire(0, 12, 10, 5), frost(0.8, 12, 10, 10), fire(2, 12, 10, 5)],
   },
   { rule: 10, label: '10 · Frost turns mud to dirt', script: [frost(0.5, 12, 10, 4)] },
   {
