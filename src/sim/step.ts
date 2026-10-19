@@ -12,6 +12,8 @@ import { stepArena } from './world/waves';
 import { stepLab } from './world/lab';
 import { stepAilments } from './combat/ailmentTick';
 import { stepGrid } from './grid/tick';
+import { stepEntityTerrain } from './actors/terrain';
+import { applyBlasts } from './actors/blasts';
 
 /** Hitstop timers within this many seconds of zero count as expired (absorbs 1/60 rounding). */
 const TIME_EPSILON = 1e-9;
@@ -23,9 +25,11 @@ const TIME_EPSILON = 1e-9;
  * Order: clear events → (hitstop: count down, freeze, stop) → player (vitals, dodge, walk,
  * knockback) → AI flow field → enemies (AI, attacks, separation, movement, knockback) → triggers
  * (Cast flow, Pulse, queued events; spells see the moved enemies) → spell instances (Echo
- * repeats, then every instance in spawn order) → enemy projectiles → ailments (ignite damage,
+ * repeats, then every instance in spawn order) → enemy projectiles → entity terrain (Wet, Oiled,
+ * burning ground, charge, falls, trails, Blind; actors/terrain.ts) → ailments (ignite damage,
  * decay, timers) → arena (count kills, spawn, waves) → Chemistry Lab scripts → remove dead enemies,
- * ended projectiles and spells → chemistry grid (every 3rd non-hitstop tick, 20 Hz; grid/tick.ts).
+ * ended projectiles and spells → chemistry grid (every 3rd non-hitstop tick, 20 Hz; grid/tick.ts),
+ * then that grid tick's explosions hit entities (actors/blasts.ts).
  */
 export function step(state: GameState, input: InputFrame): void {
   state.tick++;
@@ -41,6 +45,7 @@ export function step(state: GameState, input: InputFrame): void {
   stepWeaves(state, input);
   stepSpells(state);
   stepProjectiles(state);
+  stepEntityTerrain(state);
   stepAilments(state);
   stepArena(state);
   stepLab(state);
@@ -51,6 +56,7 @@ export function step(state: GameState, input: InputFrame): void {
   if (++state.grid.clock >= GRID_EVERY) {
     state.grid.clock = 0;
     stepGrid(state);
+    applyBlasts(state);
   }
   state.prevButtons = input.buttons;
 }

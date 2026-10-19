@@ -102,6 +102,26 @@ export interface EnemyDef {
   immune?: readonly AilmentKind[];
   /** Bosses use the boss chill rule (DESIGN §6.4): flat chill per frost hit, freeze immunity. */
   isBoss?: boolean;
+  /** Terrain behavior (CONTENT §5 "Chemistry", M3). Missing means none. */
+  chemistry?: EnemyChemistry;
+}
+
+export interface EnemyChemistry {
+  /**
+   * Always burning (Tinderling): lights the flammable cells it crosses as an enemy-owned fire
+   * (rule 22) and leaves fire where it dies. While Wet it is out: stunned for `dousedStun` s when
+   * it goes out, and takes `dousedDamageTaken` × damage until it dries.
+   */
+  alwaysBurning?: {
+    dousedStun: number;
+    dousedDamageTaken: number;
+    /** Radius (cells, from its cell's center) of the enemy-owned fire it leaves on death: 1.5 = 3×3. */
+    deathFireRadius: number;
+  };
+  /** Its projectiles that miss (hit a wall or fly out) ignite flammable cells within this radius of where they land. */
+  missIgniteRadius?: number;
+  /** Walks through hazards that hurt it instead of avoiding them (Tinderlings don't care). */
+  ignoresHazards?: boolean;
 }
 
 const NO_RESIST: DamageAmounts = { physical: 0, fire: 0, frost: 0, storm: 0 };
@@ -130,6 +150,10 @@ export const enemies = {
     behavior: { kind: 'swarm', offsetPerCell: 0.35, offsetMax: 7 },
     // Always burning (CONTENT §5).
     immune: ['ignite'],
+    chemistry: {
+      alwaysBurning: { dousedStun: 2, dousedDamageTaken: 1.5, deathFireRadius: 1.5 },
+      ignoresHazards: true,
+    },
   },
   shieldbearer: {
     name: 'Shieldbearer',
@@ -181,6 +205,8 @@ export const enemies = {
       shape: { kind: 'line', length: 45, width: 1.2, offset: 1.4 },
       projectile: { kind: 'ember_arrow', speed: 45, radius: 0.6, life: 1, pierce: 0 },
     },
+    // Missed arrows ignite flammable cells where they land (CONTENT §5).
+    chemistry: { missIgniteRadius: 1.2 },
     behavior: {
       kind: 'kite',
       panicRange: 8,

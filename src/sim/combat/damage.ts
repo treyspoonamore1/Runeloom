@@ -36,6 +36,8 @@ export interface DamageTarget {
   resist: DamageAmounts;
   /** Shock: increased damage taken as a fraction (0.2 = 20%); see combat/ailments.ts. */
   shock: number;
+  /** Other damage-taken multiplier (a doused Tinderling takes 1.5×). Missing means 1. */
+  takenMult?: number;
 }
 
 export interface HitResult {
@@ -50,6 +52,8 @@ export interface HitResult {
    * damage before Shock, which ailment magnitudes use.
    */
   shock: number;
+  /** The target's other damage-taken multiplier on this hit (1 = none); ailments divide it out like Shock. */
+  takenMult: number;
 }
 
 export function zeroAmounts(): DamageAmounts {
@@ -70,7 +74,7 @@ export function makePacket(
 
 /**
  * Hit damage = base × element share × (1 + Σ increased) × Π (1 + more) × (crit ? crit multi : 1)
- *              × (1 − resistance) × (1 + shock), per type, summed.
+ *              × (1 − resistance) × (1 + shock) × takenMult, per type, summed.
  *
  * The crit roll uses `rng` (the state's dedicated combat stream) and is skipped entirely when
  * critChance ≤ 0, so hits that can't crit don't shift later rolls.
@@ -81,7 +85,8 @@ export function resolveHit(packet: DamagePacket, target: DamageTarget, rng: Rng)
   for (const m of packet.more) common *= 1 + m;
   const crit = packet.critChance > 0 && rng.float() < packet.critChance;
   if (crit) common *= packet.critMultiplier;
-  common *= 1 + target.shock;
+  const taken = target.takenMult ?? 1;
+  common *= (1 + target.shock) * taken;
 
   const byType = zeroAmounts();
   let total = 0;
@@ -99,7 +104,7 @@ export function resolveHit(packet: DamagePacket, target: DamageTarget, rng: Rng)
       mainType = t;
     }
   }
-  return { total, crit, byType, mainType, shock: target.shock };
+  return { total, crit, byType, mainType, shock: target.shock, takenMult: taken };
 }
 
 /** base × growth^(level − 1), by repeated multiplication (exact for integer levels, no Math.pow). */

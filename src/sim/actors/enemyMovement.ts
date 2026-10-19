@@ -7,6 +7,8 @@ import type { GameState } from '../state';
 import { moveCircle, type CircleBody } from './collision';
 import type { Enemy } from './enemies';
 import { stepKnockback } from './knockback';
+import { readGround } from './ground';
+import { isStunned } from './terrainState';
 
 // Scratch: separation velocity per enemy index, neighbor query results, and a body for moveCircle.
 let sepX = new Float64Array(64);
@@ -21,11 +23,13 @@ let accY = 0;
  * The enemy phase of a tick:
  * 1. prevX/prevY ← position; rebuild state.enemyHash.
  * 2. Per enemy in array order: stepEnemyAI (decisions; may start attacks), then stepEnemyAttack
- *    (phase timers; attacks land on entering 'active'). Frozen enemies skip both and stand still.
+ *    (phase timers; attacks land on entering 'active'). Frozen and stunned (doused Tinderling)
+ *    enemies skip both and stand still.
  * 3. Soft separation from overlapping neighbors and the player, from positions before anyone moves.
  *    Frozen enemies aren't pushed (they still push others).
- * 4. Per enemy: move by (AI velocity × actionSpeed + separation) through moveCircle, so Chill
- *    slows walking, then by knockback (Frozen enemies are still knocked back).
+ * 4. Per enemy: move by (walking velocity + separation) through moveCircle, then by knockback
+ *    (Frozen enemies are still knocked back). Walking velocity = AI velocity × actionSpeed (Chill)
+ *    × the ground's moveMult, eased on ice (walkVelocity).
  * 5. Rebuild state.enemyHash at the new positions for spells and projectiles.
  * Dead enemies are skipped throughout.
  */
@@ -40,7 +44,7 @@ export function stepEnemies(state: GameState): void {
   for (let i = 0; i < list.length; i++) {
     const e = list[i]!;
     if (e.dead) continue;
-    if (isFrozen(e)) {
+    if (isFrozen(e) || isStunned(e)) {
       e.vx = e.vy = 0;
       continue;
     }
@@ -54,15 +58,20 @@ export function stepEnemies(state: GameState): void {
   for (let i = 0; i < list.length; i++) {
     const e = list[i]!;
     if (e.dead) continue;
-    const speed = actionSpeed(state, e);
-    const mvx = e.vx * speed + sepX[i]!;
-    const mvy = e.vy * speed + sepY[i]!;
+    walkVelocity(state, e);
+    const ts = e.terrain;
+    const mvx = ts.slideX + sepX[i]!;
+    const mvy = ts.slideY + sepY[i]!;
     if (mvx !== 0 || mvy !== 0) {
       body.x = e.x;
       body.y = e.y;
       body.vx = mvx;
       body.vy = mvy;
-      moveCircle(state.room, body, e.radius, mvx * DT, mvy * DT);
+      if (moveCircle(state.room, body, e.radius, mvx * DT, mvy * DT) && ts.onIce) {
+        // Sliding into a wall loses the part of the slide pointing into it.
+        ts.slideX = body.vx - sepX[i]!;
+        ts.slideY = body.vy - sepY[i]!;
+      }
       e.x = body.x;
       e.y = body.y;
     }
@@ -70,6 +79,37 @@ export function stepEnemies(state: GameState): void {
   }
 
   state.enemyHash.rebuild(list);
+}
+
+/**
+ * The enemy's actual walking velocity into terrain.slideX/Y: the AI's wanted velocity × action
+ * speed (Chill) × the ground's moveMult. On ice it eases toward that at the kind's top speed per
+ * iceAccelTime (iceDecelTime when stopping), so enemies slide too.
+ */
+function walkVelocity(state: GameState, e: Enemy): void {
+  const ts = readGround(state, e.x, e.y, e.terrain);
+  const k = actionSpeed(state, e) * ts.moveMult;
+  const wx = e.vx * k;
+  const wy = e.vy * k;
+  if (!ts.onIce) {
+    ts.slideX = wx;
+    ts.slideY = wy;
+    return;
+  }
+  const T = state.tuning.terrain;
+  const top = enemyDef(e.kind).speed;
+  const rate = top / (wx !== 0 || wy !== 0 ? T.iceAccelTime : T.iceDecelTime);
+  const max = rate * DT;
+  const dx = wx - ts.slideX;
+  const dy = wy - ts.slideY;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  if (d <= max) {
+    ts.slideX = wx;
+    ts.slideY = wy;
+  } else {
+    ts.slideX += (dx / d) * max;
+    ts.slideY += (dy / d) * max;
+  }
 }
 
 /**

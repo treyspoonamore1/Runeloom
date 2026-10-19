@@ -112,7 +112,7 @@ export const defaultTuning = {
     bossFreezeDuration: 0.8,
     /** Boss chill rule: seconds after a Freeze ends during which the boss can't be frozen. */
     bossFreezeImmunity: 6,
-    /** Chill gain multiplier while Wet (M3 hook; Wet doesn't exist yet). */
+    /** Chill gain multiplier while Wet (DESIGN §6.4). */
     wetChillMultiplier: 1.5,
     /** Shock effect (fraction of increased damage taken) per (storm damage ÷ max life). */
     shockPerLifeFraction: 1,
@@ -204,6 +204,52 @@ export const defaultTuning = {
     terrainFireLifeFraction: 0.1,
     /** DESIGN §7: refLife(L) = refLifeBase × enemyLifeGrowth^(L − 1). */
     refLifeBase: 50,
+  },
+  /**
+   * How entities (player and enemies) read the chemistry grid (DESIGN §6.3 rules 15–20, 22, 25;
+   * §6.4 Wet, Oiled, Blind; src/sim/actors/terrain.ts). Per-material slows live in
+   * data/materials.ts (moveMult), per-enemy chemistry in data/enemies.ts.
+   */
+  terrain: {
+    /** Rule 15: seconds an entity stays Wet after leaving shallow water. */
+    wetSeconds: 3,
+    /** Rule 17: seconds an entity stays Oiled after leaving oil. */
+    oiledSeconds: 5,
+    /** Rule 18: Ignite damage multiplier while Oiled. */
+    oiledIgniteMult: 2,
+    /** Rule 19: a Shock landing on a Wet entity arcs to other Wet entities. */
+    arc: {
+      /** Most other Wet entities one shock arcs to. */
+      maxTargets: 5,
+      /** Arc reach in cells (centers). */
+      range: 6,
+      /** Fraction of the hit's damage each arc deals (Storm). */
+      damageFraction: 0.3,
+    },
+    /** Rule 25: falling when the ground drops away (ice bridge breaks, bridge burns). */
+    fall: {
+      /** Damage as a fraction of max life. */
+      lifeFraction: 0.1,
+      /** Cells searched for safe ground when no safe spot was recorded. */
+      searchRadius: 16,
+    },
+    /** Rule 20: radius in cells of a Shatter's frost burst (applies rules 7 and 8). */
+    shatterRadius: 4,
+    /** DESIGN §6.4 Blind: enemies in smoke or steam (or whose target is) can't see farther than this. */
+    blindRange: 4,
+    /** Slippery ice (feel): seconds from standstill to top speed on ice, player and enemies. */
+    iceAccelTime: 0.45,
+    /** Slippery ice (feel): seconds from top speed to standstill on ice. */
+    iceDecelTime: 0.9,
+    /**
+     * Enemies avoid hazards that hurt them (burning or charged cells of another team or the
+     * world): extra flow-field cost per hazardous tile (a straight tile step costs 2).
+     */
+    hazardTileCost: 8,
+    /** Enemies look this many cells past their body edge for a hazard before stepping on it. */
+    hazardProbe: 1.5,
+    /** Knockback in cells from an explosion (grid.blasts), away from its center (feel). */
+    blastKnockback: 3,
   },
   camera: {
     /** Look-ahead toward the cursor as a fraction of the screen size. */

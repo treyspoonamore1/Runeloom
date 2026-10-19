@@ -24,6 +24,11 @@ export interface FlowField {
   builtTick: number;
   /** grid.walkVersion that `walkable` was read at; when the grid's differs, it is re-read and rebuilt. */
   walkVersion: number;
+  /**
+   * 1 where a tile holds a hazard that hurts enemies (fire or charge of the player or the world),
+   * as of the last build (ai/hazards.ts markHazardTiles). Entering it costs the build's penalty extra.
+   */
+  hazard: Uint8Array;
 }
 
 export const UNREACHABLE = 0x3fffffff;
@@ -50,6 +55,7 @@ export function createFlowField(room: Room): FlowField {
     goalTile: -1,
     builtTick: -1,
     walkVersion: 0,
+    hazard: new Uint8Array(n),
   };
 }
 
@@ -83,15 +89,25 @@ export function tileAt(f: FlowField, x: number, y: number): number {
   return ty * f.tilesW + tx;
 }
 
-// Dial's algorithm: edge costs are only STRAIGHT_COST or DIAGONAL_COST, so while costs `c` are
-// being settled every queued cost lies in [c, c + DIAGONAL_COST]; BUCKETS circular buckets cover
-// that window. Buckets are reused across rebuilds and grow as needed.
-const BUCKETS = DIAGONAL_COST + 1;
-const bucket: Int32Array[] = Array.from({ length: BUCKETS }, () => new Int32Array(256));
-const bucketLen = new Int32Array(BUCKETS);
+// Dial's algorithm: edge costs are at most DIAGONAL_COST + the hazard penalty, so while costs `c`
+// are being settled every queued cost lies in [c, c + that]; `buckets` circular buckets cover the
+// window. Buckets are reused across rebuilds and grow as needed.
+let buckets = DIAGONAL_COST + 1;
+const bucket: Int32Array[] = Array.from({ length: buckets }, () => new Int32Array(256));
+let bucketLen = new Int32Array(buckets);
+
+function ensureBuckets(n: number): void {
+  if (n <= bucket.length) {
+    buckets = n;
+    return;
+  }
+  while (bucket.length < n) bucket.push(new Int32Array(256));
+  bucketLen = new Int32Array(n);
+  buckets = n;
+}
 
 function enqueue(c: number, t: number): void {
-  const b = c % BUCKETS;
+  const b = c % buckets;
   let arr = bucket[b]!;
   if (bucketLen[b] === arr.length) {
     const bigger = new Int32Array(arr.length * 2);
@@ -104,10 +120,13 @@ function enqueue(c: number, t: number): void {
 /**
  * Rebuilds costs toward `goalTile` (Dijkstra by bucket queue). A tile is queued again whenever
  * its cost improves; entries whose cost no longer matches are stale and skipped. Shortest-path
- * costs are unique, so the result depends only on the room and the goal, not on queue order.
+ * costs are unique, so the result depends only on the room, `hazard` and the goal, not on queue
+ * order. Stepping into a hazard tile costs `hazardPenalty` (a whole number ≥ 0) extra.
  */
-export function buildFlowField(f: FlowField, goalTile: number, tick: number): void {
-  const { cost, walkable, tilesW, tilesH } = f;
+export function buildFlowField(f: FlowField, goalTile: number, tick: number, hazardPenalty = 0): void {
+  const { cost, walkable, tilesW, tilesH, hazard } = f;
+  const penalty = Math.max(0, Math.round(hazardPenalty));
+  ensureBuckets(DIAGONAL_COST + penalty + 1);
   cost.fill(UNREACHABLE);
   f.goalTile = goalTile;
   f.builtTick = tick;
@@ -116,8 +135,8 @@ export function buildFlowField(f: FlowField, goalTile: number, tick: number): vo
   enqueue(0, goalTile);
   let queued = 1;
   for (let c = 0; queued > 0; c++) {
-    const b = c % BUCKETS;
-    // Settling cost c only queues costs c + 2 and c + 3, never into this bucket.
+    const b = c % buckets;
+    // Settling cost c only queues costs c + 2 to c + 3 + penalty, never into this bucket.
     const arr = bucket[b]!;
     const len = bucketLen[b]!;
     bucketLen[b] = 0;
@@ -138,6 +157,8 @@ export function buildFlowField(f: FlowField, goalTile: number, tick: number): vo
           if (walkable[ty * tilesW + nx] !== 1 || walkable[ny * tilesW + tx] !== 1) continue;
           step = DIAGONAL_COST;
         }
+        // Costs flow outward from the goal: `t` is the tile an enemy at `nt` would step into.
+        if (penalty > 0 && hazard[t] === 1) step += penalty;
         const nc = c + step;
         if (nc < cost[nt]!) {
           cost[nt] = nc;

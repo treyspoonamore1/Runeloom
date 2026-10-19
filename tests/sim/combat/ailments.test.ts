@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyHit, makePacket, PLAYER_ID, type GameState } from '../../../src/sim';
 import { addEnemy, arena, hitWith, ofType, ticks, ticksFor } from './helpers';
+import { OWNER } from '../../../data/materials';
 
 /** DESIGN §6.4 Ignite and Shock, and the Lingering duration multiplier. */
 
@@ -17,7 +18,7 @@ describe('Ignite', () => {
     const applied = ofType(state.events, 'ailmentApplied');
     expect(applied).toHaveLength(1);
     expect(applied[0]).toMatchObject({ target: d.id, ailment: 'ignite', magnitude: 10, duration: 3 });
-    expect(d.ailments.ignite).toEqual({ dps: 10, timeLeft: 3, sourceId: PLAYER_ID });
+    expect(d.ailments.ignite).toEqual({ dps: 10, timeLeft: 3, sourceId: PLAYER_ID, owner: OWNER.player });
     const lifeAfterHit = d.life;
 
     const burning = ticks(state, ticksFor(3) - 1);
@@ -41,12 +42,12 @@ describe('Ignite', () => {
     const left = d.ailments.ignite.timeLeft;
     hitWith(state, d, 10, 'fire', { sourceId: 7 });
     expect(ofType(state.events, 'ailmentApplied')).toHaveLength(0);
-    expect(d.ailments.ignite).toEqual({ dps: 10, timeLeft: left, sourceId: PLAYER_ID });
+    expect(d.ailments.ignite).toEqual({ dps: 10, timeLeft: left, sourceId: PLAYER_ID, owner: OWNER.player });
     hitWith(state, d, 20, 'fire', { sourceId: 7 });
     expect(ofType(state.events, 'ailmentApplied')).toHaveLength(0);
     hitWith(state, d, 40, 'fire', { sourceId: 7 });
     expect(ofType(state.events, 'ailmentApplied')).toHaveLength(1);
-    expect(d.ailments.ignite).toEqual({ dps: 20, timeLeft: 3, sourceId: 7 });
+    expect(d.ailments.ignite).toEqual({ dps: 20, timeLeft: 3, sourceId: 7, owner: OWNER.enemy });
   });
 
   it("applies the target's fire resistance once, at the hit", () => {

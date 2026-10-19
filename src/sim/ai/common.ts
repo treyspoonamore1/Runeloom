@@ -33,10 +33,22 @@ export function measurePlayer(state: GameState, e: Enemy): void {
   }
 }
 
-/** Re-checks line of sight and a straight walk path to the player into `e.ai`. */
+/**
+ * Re-checks line of sight and a straight walk path to the player into `e.ai`. A Blind enemy
+ * (in smoke or steam, or the player is: DESIGN §6.4) sees nothing beyond tuning.terrain.blindRange.
+ */
 export function refreshSight(state: GameState, e: Enemy): void {
   const p = state.player;
   const room = state.room;
+  if (e.terrain.blind) {
+    const dx = p.x - e.x;
+    const dy = p.y - e.y;
+    const r = state.tuning.terrain.blindRange;
+    if (dx * dx + dy * dy > r * r) {
+      e.ai.los = e.ai.walkLine = false;
+      return;
+    }
+  }
   e.ai.los = hasLineOfSight(room, e.x, e.y, p.x, p.y);
   e.ai.walkLine = e.ai.los && hasWalkLine(room, e.x, e.y, p.x, p.y);
 }

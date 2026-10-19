@@ -7,6 +7,7 @@ import { isShotSolidCell, type Room } from '../world/room';
 import type { DamagePacket } from './damage';
 import { applyHit } from './hits';
 import { isBlockedByShield } from './shield';
+import { projectileMissed } from '../actors/chemistry';
 
 /** One projectile, as plain data. Lives in `state.projectiles` in spawn order. */
 export interface Projectile {
@@ -131,10 +132,13 @@ export function circleHitsShotWall(room: Room, x: number, y: number, r: number):
   return false;
 }
 
+/** Ends a projectile. An enemy shot that missed (wall, expired) may ignite where it lands (CONTENT §5). */
 function endProjectile(state: GameState, p: Projectile, reason: ProjectileEndReason): void {
   p.ended = true;
   p.vx = p.vy = 0;
   emit(state, { type: 'projectileEnd', id: p.id, kind: p.kind, x: p.x, y: p.y, reason });
+  if (p.team === 'enemy' && (reason === 'wall' || reason === 'expired'))
+    projectileMissed(state, p.kind, p.x, p.y);
 }
 
 // Scratch for the per-tick enemy candidates and their sort keys; the sim is single-threaded.
