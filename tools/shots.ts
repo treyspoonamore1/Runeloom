@@ -3,6 +3,7 @@
  *   npm run shots [-- --scene room] [--milestone m0] [--ticks N] [--viewport 390x844]
  *   npm run shots -- --lab [--station 3,7]   Chemistry Lab station storyboards into shots/lab/
  *   npm run shots -- --set creature [--milestone m3]   entities on the chemistry grid (wet, oiled, falls, arcs...)
+ *   npm run shots -- --set gallery [--section beasts,loot] [--perf] [--milestone m4]   M4 art gallery
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
@@ -17,6 +18,7 @@ import { ArgError, parseArgs, parseViewport, requireInt, runCli } from './lib/ar
 import { scenarioFrames } from './lib/frames';
 import { labShots } from './lib/labShots';
 import { creatureShotIds, runCreatureShot } from './lib/creatureShots';
+import { galleryShots } from './lib/galleryShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -42,7 +44,9 @@ runCli(async () => {
     viewport: { kind: 'string', default: '1280x720' },
     lab: { kind: 'boolean' },
     station: { kind: 'string' },
-    set: { kind: 'string', help: "'creature': entities on the chemistry grid (lab stations)" },
+    set: { kind: 'string', help: "'creature': entities on the chemistry grid (lab stations); 'gallery': M4 art" },
+    section: { kind: 'string', help: 'gallery sections to shoot, comma-separated (default all, plus crowd)' },
+    perf: { kind: 'boolean', help: 'gallery: measure render time with 300 M4 and 300 M1 enemies' },
   });
   const viewport = parseViewport(a.viewport!);
   const ticks = requireInt('ticks', a.ticks, 0);
@@ -92,7 +96,12 @@ runCli(async () => {
         written.push(file);
         if (errors.length) console.warn(`warning: page errors in creature shot ${id}: ${errors.join('; ')}`);
       }
-    } else if (a.set !== undefined) throw new ArgError(`Unknown --set "${a.set}". Available: creature`);
+    } else if (a.set === 'gallery') {
+      const url = `http://127.0.0.1:${port}/?scene=gallery`;
+      const only = a.section?.split(',');
+      written.push(...(await galleryShots(page, url, { dir: SHOTS_DIR, milestone, only, perf: a.perf === true })));
+      if (errors.length) console.warn(`warning: page errors in the gallery: ${errors.join('; ')}`);
+    } else if (a.set !== undefined) throw new ArgError(`Unknown --set "${a.set}". Available: creature, gallery`);
     for (const scene of a.set === undefined ? selected : []) {
       errors.length = 0;
       await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);

@@ -19,7 +19,7 @@ export function installFont(): void {
       fill: 0xffffff,
       stroke: { color: INK, width: 9, join: 'round' },
     },
-    chars: [['a', 'z'], ['A', 'Z'], ['0', '9'], ' !.-_:+/%'],
+    chars: [['a', 'z'], ['A', 'Z'], ['0', '9'], ' !.-_:+/%,·'],
     resolution: 1,
     padding: 6,
   });

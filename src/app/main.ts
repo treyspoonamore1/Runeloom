@@ -12,6 +12,11 @@ import { createHud } from '../ui/hud';
 
 async function boot(): Promise<void> {
   const params = new URLSearchParams(location.search);
+  if (params.get('scene') === 'gallery') {
+    // The M4 art gallery: render-only, no session, HUD or debug UI.
+    const { bootGallery } = await import('./gallery/galleryMain');
+    return bootGallery();
+  }
   const scene = findScene(params.get('scene') ?? DEFAULT_SCENE) ?? findScene(DEFAULT_SCENE)!;
   const seed = Number(params.get('seed') ?? 1) >>> 0;
 
