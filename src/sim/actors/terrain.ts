@@ -126,12 +126,14 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
   if (g.charge[i]! > 0 && !iframes) chargeHit(state, t, team, g.chargeId[i]!, g.chargeFalloff[i]!);
   if (t.dead) return;
 
-  // Rules 22, 18: a burning entity lights what it walks over.
+  // Rules 22, 18: a burning entity lights what it walks over, and an Oiled one leaves burning
+  // cells behind it: the cell it just left, not the one it stands on, so its own trail (owned by
+  // its igniter) can't keep re-igniting it (M4 balance pass: Oiled players burned to death).
   const owner = burningOwner(t);
   if (owner >= 0) {
     if (ignitable(g, i)) fireOnCell(state, i, owner);
-    else if (ts.oiledLeft > 0 && isIgnited(t) && i !== ts.cell && g.fire[i] === 0)
-      fireOnCell(state, i, owner);
+    else if (ts.oiledLeft > 0 && isIgnited(t) && i !== ts.cell && ts.cell >= 0 && g.fire[ts.cell] === 0)
+      fireOnCell(state, ts.cell, owner);
   }
   ts.cell = i;
 }
