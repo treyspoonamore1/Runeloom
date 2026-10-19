@@ -1,5 +1,5 @@
 import { f1, c3 } from './glslLib';
-import { TERRAIN as C, TERRAIN_FX as FX, TERRAIN_LINE as L } from './terrainColors';
+import { TERRAIN as C, TERRAIN_FX as FX, TERRAIN_LINE as L, TERRAIN_ONESHOT as O } from './terrainColors';
 import { GRID_HZ } from './terrainPack';
 
 /**
@@ -32,8 +32,8 @@ vec3 applyOil(vec3 col, vec2 p, float oil, bool onWater, float aa) {
   float bandK = smoothstep(0.45, 0.75, vnoise(p * 0.18 + vec2(-uTime * 0.03, uTime * 0.02)));
   vec3 oc = mix(${c3(C.oil)}, rainbow * 0.7, 0.3 * bandK);
   if (onWater) oc = mix(oc, col, 0.18);
-  float spec = smoothstep(0.82, 0.88, vnoise(p * 0.45 + vec2(uTime * 0.02, 0.0)));
-  oc += spec * 0.18;
+  float spec = smoothstep(0.86, 0.9, vnoise(p * 0.45 + vec2(uTime * 0.02, 0.0)));
+  oc += spec * 0.08;
   float inside = smoothstep(-aa, aa, d);
   col = mix(col, oc, inside);
   return mix(col, ${c3(C.oilEdge)}, band(d, ${f1(L.detail * 0.55)}, aa) * 0.85);
@@ -58,6 +58,16 @@ vec3 applyCharge(vec3 col, vec2 p, float cs, float aa) {
   }
   col = mix(col, ${c3(C.stormGlow)}, halo * 0.75 * k);
   col = mix(col, ${c3(C.stormCore)}, arcs * k);
+  // Fresh electrify events: a bright front racing out from the origin across the charged cells.
+  for (int i = 0; i < 4; i++) {
+    vec4 pu = uPulses[i];
+    if (pu.w <= 0.0) continue;
+    float front = pu.z * ${f1(O.pulseSpeed)};
+    float d = length(p - pu.xy) - front;
+    float fade = 1.0 - pu.z / ${f1(O.pulseLife)};
+    float b = exp(-d * d / ${f1(O.pulseWidth * O.pulseWidth)}) * fade * pu.w;
+    col = mix(col, mix(${c3(C.stormCore)}, vec3(1.0), 0.5), clamp(b, 0.0, 1.0) * 0.85);
+  }
   return col;
 }
 `;
@@ -203,12 +213,13 @@ void main() {
   float fg = max(g.r, fieldsAt(p).r * 0.5);
   rgb += ${c3(C.fireGlow)} * fg * ${f1(FX.fireGlow)} * (1.0 - a);
   rgb += ${c3(C.stormGlow)} * g.g * ${f1(FX.stormGlow)} * (1.0 - a);
-  // Hostile hazards (world or enemy owned) get a pulsing red-magenta edge (DESIGN §14).
-  float hz = max(m.b, m.a);
-  if (hz > 0.05) {
+  // Hostile hazards (world or enemy owned) get a pulsing red-magenta edge (DESIGN §14). The edge
+  // follows the outline of the whole hazard area (m.b, any owner) where it belongs to hostile
+  // cells (m.a), so a player-owned part of the same pool or fire gets no line across it.
+  if (m.a > 0.05) {
     float pulse = mix(${f1(FX.hazardAlphaMin)}, ${f1(FX.hazardAlphaMax)},
       0.5 + 0.5 * sin(uTime * TAU * ${f1(FX.hazardHz)}));
-    float e = band(hz - 0.62, ${f1(L.hazard * 0.5)}, aa) * pulse;
+    float e = band(m.b - 0.62, ${f1(L.hazard * 0.5)}, aa) * smoothstep(0.2, 0.5, m.a) * pulse;
     rgb = mix(rgb, ${c3(C.hazard)}, e);
     a = mix(a, 1.0, e);
   }

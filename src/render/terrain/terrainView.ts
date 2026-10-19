@@ -142,6 +142,7 @@ export class TerrainView {
     uMix: { value: 1, type: 'f32' },
     uTick: { value: 0, type: 'f32' },
     uFlags: { value: 0, type: 'f32' },
+    uPulses: { value: new Float32Array(16), type: 'vec4<f32>', size: 4 },
   });
   private readonly programs: Record<Pass, GlProgram> = {
     ground: program('ground'),
@@ -189,6 +190,19 @@ export class TerrainView {
     u.uTime = time % TIME_WRAP;
     u.uMix = Math.min(1, Math.max(0, (time - this.uploadTime) * GRID_HZ));
     u.uTick = grid.tick;
+  }
+
+  /** Electrify pulses for the ground shader (terrainFx.ts), ages taken from `clock` (s). */
+  setPulses(pulses: readonly { x: number; y: number; t0: number; strength: number }[], clock: number): void {
+    const a = this.uniforms.uniforms.uPulses as Float32Array;
+    a.fill(0);
+    for (let k = 0; k < Math.min(4, pulses.length); k++) {
+      const pu = pulses[k]!;
+      a[k * 4] = pu.x;
+      a[k * 4 + 1] = pu.y;
+      a[k * 4 + 2] = clock - pu.t0;
+      a[k * 4 + 3] = pu.strength;
+    }
   }
 
   /** Count of raised-block cells at the last pack (the baked layer re-bakes when it changes). */

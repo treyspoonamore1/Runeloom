@@ -634,6 +634,127 @@ export const sfx = {
       { at: 0.18, volume: 0.7, frequency: A4 * 2, shape: 'sine', release: 0.45, delay: 0.08 },
     ],
   },
+  // --- Terrain (M3 chemistry grid) ----------------------------------------------------------
+  /** One grain of the fire bed: a soft crackle, retriggered at a rate that follows the fire on screen. */
+  fireCrackle: {
+    gain: 0.16,
+    pitchVar: 0.3,
+    minGapMs: 45,
+    priority: 0,
+    layers: [
+      { volume: 1, frequency: 1200, shape: 'noise', noise: 4, attack: 0.002, release: 0.04, filter: -900 },
+      { at: 0.05, volume: 0.6, frequency: 700, shape: 'noise', noise: 3, release: 0.03, filter: -600 },
+      { volume: 0.5, frequency: 90, shape: 'noise', noise: 1, release: 0.18, filter: 300 },
+    ],
+  },
+  /** Something caught fire: a breathy whoosh swelling up. */
+  igniteWhoosh: {
+    gain: 0.3,
+    pitchVar: 0.12,
+    minGapMs: 120,
+    layers: [{ volume: 1, frequency: 180, shape: 'noise', noise: 1, attack: 0.08, sustain: 0.06, release: 0.2, slide: 2, filter: 700 }],
+  },
+  /** Fire on water: a soft hiss. */
+  steamHiss: {
+    gain: 0.22,
+    pitchVar: 0.1,
+    minGapMs: 150,
+    layers: [{ volume: 1, frequency: 3000, shape: 'noise', noise: 2, attack: 0.03, sustain: 0.15, release: 0.35, filter: -2500 }],
+  },
+  /** Water froze: a little tinkle. */
+  iceForm: {
+    gain: 0.26,
+    pitchVar: 0.04,
+    minGapMs: 120,
+    layers: [
+      { volume: 0.7, frequency: C6, shape: 'sine', release: 0.25 },
+      { at: 0.05, volume: 0.6, frequency: NOTE(19), shape: 'sine', release: 0.25 },
+      { at: 0.1, volume: 0.5, frequency: NOTE(22), shape: 'sine', release: 0.3 },
+      { volume: 0.4, frequency: 2500, shape: 'noise', noise: 1, release: 0.06, filter: -2000 },
+    ],
+  },
+  /** An ice bridge starts cracking: a dry creak. */
+  iceCrack: {
+    gain: 0.3,
+    pitchVar: 0.12,
+    minGapMs: 180,
+    layers: [
+      { volume: 1, frequency: 500, shape: 'square', slide: -3, release: 0.05, bitCrush: 0.3 },
+      { at: 0.06, volume: 0.7, frequency: 700, shape: 'noise', noise: 2, release: 0.05, filter: -1500 },
+    ],
+  },
+  /** An ice bridge breaks: a shatter dropping into a splash. */
+  iceBreak: {
+    gain: 0.45,
+    pitchVar: 0.06,
+    minGapMs: 150,
+    priority: 2,
+    layers: [
+      { volume: 1, frequency: 2000, shape: 'noise', noise: 2, release: 0.18, filter: -1800 },
+      { volume: 0.5, frequency: NOTE(31), shape: 'sine', release: 0.25, repeatTime: 0.05 },
+      { at: 0.12, volume: 0.7, frequency: 300, shape: 'noise', noise: 1, attack: 0.02, release: 0.25, filter: 500 },
+    ],
+  },
+  /** A water body electrified. */
+  zapWater: {
+    gain: 0.28,
+    pitchVar: 0.08,
+    minGapMs: 100,
+    layers: [{ volume: 1, frequency: 220, shape: 'saw', sustain: 0.05, release: 0.12, tremolo: 0.6, modulation: 30, bitCrush: 0.2 }],
+  },
+  /** A large water body electrified: longer, lower, with a crackling tail. */
+  zapWaterBig: {
+    gain: 0.36,
+    pitchVar: 0.06,
+    minGapMs: 120,
+    priority: 2,
+    layers: [
+      { volume: 1, frequency: 140, shape: 'saw', sustain: 0.12, release: 0.25, tremolo: 0.7, modulation: 25, bitCrush: 0.25 },
+      { at: 0.08, volume: 0.5, frequency: 2400, shape: 'noise', noise: 3, sustain: 0.1, release: 0.15, filter: -2000 },
+    ],
+  },
+  /** A metal network electrified: a brighter, ringing buzz. */
+  zapMetal: {
+    gain: 0.28,
+    pitchVar: 0.06,
+    minGapMs: 100,
+    layers: [
+      { volume: 1, frequency: 330, shape: 'square', sustain: 0.06, release: 0.12, tremolo: 0.5, modulation: 40, bitCrush: 0.15 },
+      { volume: 0.4, frequency: NOTE(24), shape: 'sine', release: 0.3 },
+    ],
+  },
+  zapMetalBig: {
+    gain: 0.36,
+    pitchVar: 0.05,
+    minGapMs: 120,
+    priority: 2,
+    layers: [
+      { volume: 1, frequency: 220, shape: 'square', sustain: 0.14, release: 0.25, tremolo: 0.6, modulation: 35, bitCrush: 0.2 },
+      { volume: 0.45, frequency: NOTE(19), shape: 'sine', release: 0.45 },
+    ],
+  },
+  /** An oil barrel exploded: a deep boom with a noisy blast. */
+  explosionBoom: {
+    gain: 0.7,
+    pitchVar: 0.05,
+    minGapMs: 80,
+    priority: 3,
+    layers: [
+      { volume: 1, frequency: 90, shape: 'sine', slide: -0.4, attack: 0.005, sustain: 0.1, release: 0.5 },
+      { volume: 0.9, frequency: 600, shape: 'noise', noise: 1, attack: 0.002, sustain: 0.05, release: 0.45, filter: 900 },
+      { at: 0.05, volume: 0.4, frequency: 1500, shape: 'noise', noise: 3, release: 0.25, filter: -1200 },
+    ],
+  },
+  /** A bridge, floor or crate burnt away: a low wooden crumble. */
+  burntCrumble: {
+    gain: 0.3,
+    pitchVar: 0.1,
+    minGapMs: 200,
+    layers: [
+      { volume: 1, frequency: 160, shape: 'noise', noise: 2, release: 0.08, repeatTime: 0.06, filter: 500 },
+      { at: 0.1, volume: 0.6, frequency: 110, shape: 'noise', noise: 1, release: 0.25, filter: 400 },
+    ],
+  },
 } satisfies Record<string, SfxDef>;
 
 export type SfxId = keyof typeof sfx;
@@ -705,6 +826,27 @@ export const impactSfx: Record<string, SfxId> = {
   gale_bolt: 'boltImpact',
   physical_bolt: 'boltImpact',
 };
+
+/** Terrain sound tuning: the fire bed and the size where an electrify sounds big. */
+export const terrainAudio = {
+  /** Burning cells counted within this box around the player (about one screen, cells). */
+  viewHalfW: 80,
+  viewHalfH: 46,
+  /** Seconds between counts of the burning cells. */
+  countEvery: 0.15,
+  /** Crackle retrigger interval at a small fire and at a huge one (seconds). */
+  slowest: 0.35,
+  fastest: 0.07,
+  /** This many burning cells on screen is a huge fire (full rate and loudness). */
+  hugeFire: 600,
+  /** Crackle loudness at one burning cell and at a huge fire. */
+  quietest: 0.25,
+  loudest: 1,
+  /** Electrified networks of at least this many cells use the big zap. */
+  bigNetwork: 150,
+  /** Ignitions of fewer cells than this are only heard through the fire bed. */
+  whooshMinCells: 3,
+} as const;
 
 /** Global tuning for the audio system (DESIGN §13). */
 export const audioTuning = {
