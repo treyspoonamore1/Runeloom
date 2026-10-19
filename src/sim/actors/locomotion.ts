@@ -9,7 +9,7 @@
  * Floating and fixed kinds ignore the ground (no Wet, Oiled, burning ground, charge or falls);
  * swimmers read the ground but never fall (actors/terrain.ts).
  */
-import { enemies, type EnemyKind } from '../../../data/enemies';
+import { enemies, enemyDef, type EnemyKind } from '../../../data/enemies';
 import type { EnemyDef, Locomotion } from '../../../data/enemyTypes';
 import { materialByCode } from '../../../data/materials';
 import type { GameState } from '../state';
@@ -17,12 +17,12 @@ import type { Room } from '../world/room';
 import type { CircleBody } from './collision';
 
 export function locomotionOf(kind: EnemyKind): Locomotion {
-  return traits[kind]!.locomotion;
+  return traitsOf(kind).locomotion;
 }
 
 /** True if the kind ignores the ground under it (floats or is fixed in place). */
 export function ignoresGround(kind: EnemyKind): boolean {
-  return traits[kind]!.groundless;
+  return traitsOf(kind).groundless;
 }
 
 /** True if the cell under (x, y) is water (shallow, deep or oily). Outside the grid: false. */
@@ -50,7 +50,7 @@ export function floatRoom(room: Room): Room {
 
 /** The room a kind's collision runs against (moveCircle, knockback). */
 export function movementRoom(state: GameState, kind: EnemyKind): Room {
-  return traits[kind]!.floats ? floatRoom(state.room) : state.room;
+  return traitsOf(kind).floats ? floatRoom(state.room) : state.room;
 }
 
 /**
@@ -91,12 +91,11 @@ export interface KindTraits {
   passive: boolean;
 }
 
-const traits: Record<string, KindTraits> = {};
-for (const [kind, def] of Object.entries(enemies) as [string, EnemyDef][]) {
+function computeTraits(def: EnemyDef): KindTraits {
   const locomotion = def.locomotion ?? 'walk';
   const c = def.chemistry;
   const swims = locomotion === 'swim';
-  traits[kind] = {
+  return {
     locomotion,
     swims,
     floats: locomotion === 'float',
@@ -109,6 +108,10 @@ for (const [kind, def] of Object.entries(enemies) as [string, EnemyDef][]) {
   };
 }
 
+const traits: Record<string, KindTraits> = {};
+for (const [kind, def] of Object.entries(enemies) as [string, EnemyDef][]) traits[kind] = computeTraits(def);
+
 export function traitsOf(kind: EnemyKind): KindTraits {
-  return traits[kind]!;
+  // Kinds added to the table at run time (tests) are computed on first use.
+  return traits[kind] ?? (traits[kind] = computeTraits(enemyDef(kind)));
 }
