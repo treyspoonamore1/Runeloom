@@ -4,13 +4,26 @@
  *   npm run sim -- --replay replays/foo.json
  *   npm run sim -- --weave "<notation>" [--scene dummy_pack] [--seconds 10] [--runs 50] [--seed 1]
  *                  [--spindle heartwood] [--capacity 22] [--json]
+ *   npm run sim -- --adventure [--room test/world_a] [--ticks 3600] [--seed 1] [--god] [--every N] [--json]
+ *       An adventure game (all rooms from data/rooms) driven by the tour bot (bots/tour.ts): walks
+ *       out through exits and fires at enemies. Prints each room entered and the final hash.
  *   npm run sim -- --list
  */
-import { findScenario, hashHex, hashState, createScenarioGame, step, scenarios } from '../src/sim';
+import {
+  createAdventure,
+  findScenario,
+  hashHex,
+  hashState,
+  createScenarioGame,
+  step,
+  scenarios,
+  tourInput,
+} from '../src/sim';
+import { startRoom } from '../data/progression';
 import { printReadout, readoutFromArgs } from './lib/readout';
 import { parseArgs, requireInt, runCli } from './lib/args';
 import { checkReplay, readReplay } from './lib/replay';
-import { loadRoomText } from './lib/rooms';
+import { loadAllRooms, loadRoomText } from './lib/rooms';
 
 runCli(() => {
   const a = parseArgs(process.argv.slice(2), {
@@ -27,7 +40,15 @@ runCli(() => {
     runs: { kind: 'number', default: 50 },
     spindle: { kind: 'string', default: 'heartwood' },
     capacity: { kind: 'number' },
+    adventure: { kind: 'boolean' },
+    room: { kind: 'string' },
+    god: { kind: 'boolean' },
   });
+
+  if (a.adventure) {
+    runAdventure(a);
+    return;
+  }
 
   if (a.weave !== undefined) {
     const { input, result } = readoutFromArgs(a);
@@ -107,3 +128,51 @@ runCli(() => {
     console.log(`player at (${state.player.x.toFixed(3)}, ${state.player.y.toFixed(3)})`);
   }
 });
+
+/** `--adventure`: a tour of the rooms connected to the start room. */
+function runAdventure(a: {
+  room?: string;
+  ticks?: number;
+  seed?: number;
+  every?: number;
+  json: boolean;
+  god: boolean;
+}): void {
+  const rooms = loadAllRooms();
+  const roomId = a.room ?? (rooms[startRoom] !== undefined ? startRoom : 'test/world_a');
+  const ticks = requireInt('ticks', a.ticks, 0);
+  const seed = requireInt('seed', a.seed, 0);
+  const every = a.every === undefined ? 0 : requireInt('every', a.every, 1);
+  const state = createAdventure({ seed, rooms, startRoomId: roomId });
+  state.cheats.god = a.god;
+  const visits: { tick: number; room: string }[] = [{ tick: 0, room: state.room.id }];
+  const checkpoints: { tick: number; hash: string }[] = [];
+  if (!a.json) console.log(`tick=0 room=${state.room.id}`);
+  for (let i = 0; i < ticks; i++) {
+    step(state, tourInput(state));
+    for (const e of state.events) {
+      if (e.type !== 'roomEnter') continue;
+      visits.push({ tick: state.tick, room: e.id });
+      if (!a.json) console.log(`tick=${state.tick} room=${e.id} (${e.arrival})`);
+    }
+    if (every && state.tick % every === 0) {
+      const cp = { tick: state.tick, hash: hashHex(hashState(state)) };
+      checkpoints.push(cp);
+      if (!a.json) console.log(`tick=${cp.tick} hash=${cp.hash}`);
+    }
+  }
+  const hash = hashHex(hashState(state));
+  if (a.json)
+    console.log(
+      JSON.stringify({
+        mode: 'adventure',
+        seed,
+        ticks: state.tick,
+        hash,
+        visits,
+        world: state.world,
+        checkpoints,
+      }),
+    );
+  else console.log(`adventure seed=${seed} ticks=${state.tick} hash=${hash} rooms visited=${visits.length}`);
+}

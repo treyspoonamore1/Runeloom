@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { hashHex, runFrames } from '../../src/sim';
 import { decodeFrames, parseReplay, type ReplayFile } from '../../src/app/replayFormat';
-import { loadRoomText } from './rooms';
+import { loadAllRooms, loadRoomText } from './rooms';
 
 export interface ReplayCheck {
   file: ReplayFile;
@@ -16,13 +16,15 @@ export interface ReplayCheck {
 /** Replays a ReplayFile from a fresh game and compares to the recorded final hash. */
 export function checkReplay(file: ReplayFile): ReplayCheck {
   const frames = decodeFrames(file.frames);
-  const { state, hash } = runFrames(frames, loadRoomText(file.roomId), {
+  const adventure = file.mode === 'adventure';
+  const { state, hash } = runFrames(frames, adventure ? '' : loadRoomText(file.roomId), {
     seed: file.seed,
     tuning: file.tuning,
     mode: file.mode ?? 'sandbox',
     cheats: file.cheats,
     loadout: file.loadout,
     loadoutEdits: file.loadoutEdits,
+    ...(adventure ? { rooms: loadAllRooms(), roomId: file.roomId, hero: file.hero, world: file.world } : {}),
   });
   const h = hashHex(hash);
   return {

@@ -197,3 +197,6 @@ export { parseLinkCondition, linkMet, type LinkCondition } from './world/objectL
 export { markRoomCleared, repopulateRooms, roomBossKinds, bossRoomDone } from './world/roomClear';
 export { exitTilesOn, exitEdge, arrivalPoint, EXIT_CHAR, OPPOSITE } from './world/exits';
 export type { WorldEvent } from './world/worldEvents';
+export { runScript, ScriptDriver, type ScriptCommand, type ScriptResult } from './bots/script';
+export { findPath, tileWalkable } from './bots/scriptPath';
+export { tourInput } from './bots/tour';

@@ -1,4 +1,5 @@
-import type { Cheats, GameMode, InputFrame, LoadoutEdit, LoadoutSpec } from '../sim';
+import type { Cheats, GameMode, InputFrame, LoadoutEdit, LoadoutSpec, WorldState } from '../sim';
+import type { HeroState } from '../sim/hero/types';
 import type { Tuning } from '../../data/tuning';
 
 /**
@@ -21,6 +22,9 @@ export interface ReplayFile {
   loadout?: LoadoutSpec;
   /** Loom edits during the recording, applied between ticks (LoadoutEdit); absent means none. */
   loadoutEdits?: LoadoutEdit[];
+  /** Adventure mode: the hero and world the recording started with (absent: a new game in roomId). */
+  hero?: HeroState;
+  world?: WorldState;
   /** Tuning the recording started with. */
   tuning: Tuning;
   /** True if tuning was edited during the recording, in which case it may not reproduce. */

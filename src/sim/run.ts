@@ -6,6 +6,9 @@ import type { Scenario } from './scenarios';
 import type { Tuning } from '../../data/tuning';
 import type { Cheats, GameMode } from './state';
 import { applyLoadoutEdit, type LoadoutEdit, type LoadoutSpec } from './weave/runtime/loadout';
+import { createAdventure } from './world/adventure';
+import type { RoomSource, WorldState } from './world/worldState';
+import type { HeroState } from './hero/types';
 
 export interface RunResult {
   state: GameState;
@@ -37,6 +40,8 @@ export function runScenario(
 /**
  * Replays recorded input frames from a fresh game, starting from `loadout` and applying each
  * Loom edit between ticks when `state.tick === edit.tick` (edits in recorded order).
+ * Adventure mode needs `rooms` (every room text by id): the game starts with createAdventure in
+ * `roomId` (default: the start room), from `hero` and `world` when given.
  */
 export function runFrames(
   frames: readonly InputFrame[],
@@ -48,15 +53,30 @@ export function runFrames(
     cheats?: Cheats;
     loadout?: LoadoutSpec;
     loadoutEdits?: readonly LoadoutEdit[];
+    rooms?: RoomSource;
+    roomId?: string;
+    hero?: HeroState;
+    world?: WorldState;
   },
 ): RunResult {
-  const state = createGame({
-    seed: opts.seed,
-    roomText,
-    tuning: opts.tuning,
-    mode: opts.mode,
-    loadout: opts.loadout,
-  });
+  const state =
+    opts.mode === 'adventure' && opts.rooms
+      ? createAdventure({
+          seed: opts.seed,
+          rooms: opts.rooms,
+          startRoomId: opts.roomId,
+          tuning: opts.tuning,
+          loadout: opts.loadout,
+          hero: opts.hero && structuredClone(opts.hero),
+          world: opts.world && structuredClone(opts.world),
+        })
+      : createGame({
+          seed: opts.seed,
+          roomText,
+          tuning: opts.tuning,
+          mode: opts.mode,
+          loadout: opts.loadout,
+        });
   if (opts.cheats) state.cheats = { ...opts.cheats };
   const edits = opts.loadoutEdits ?? [];
   let next = 0;

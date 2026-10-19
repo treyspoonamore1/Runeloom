@@ -1,9 +1,12 @@
 /**
  * Data validation (CLAUDE.md rule 5). Exits non-zero on any error; warnings do not fail.
  * Checks: rooms parse and @id matches path; scenario and scene rooms exist; tuning defaults are finite
- * numbers > 0; spawn markers in the grid match @spawn headers (warning in M0); rune and spindle
- * data is consistent and every CONTENT §2 reference weave compiles or fails as stated.
+ * numbers > 0; room cross-references (tools/lib/roomChecks.ts: exits both ways, @link doors and
+ * conditions, spawn markers, enemy and pack ids, @note characters, keys per dungeon); rune and
+ * spindle data is consistent and every CONTENT §2 reference weave compiles or fails as stated.
  */
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   capacityMessage,
   compileWeave,
@@ -22,7 +25,8 @@ import { spindles, testSpindle } from '../data/spindles';
 import { scenes } from '../src/app/scenes';
 import { defaultTuning } from '../data/tuning';
 import { isEnemyKind } from '../data/enemies';
-import { checkPositiveNumbers, missingRefs, spawnMarkerDiffs } from './lib/checks';
+import { checkPositiveNumbers, missingRefs } from './lib/checks';
+import { checkRooms } from './lib/roomChecks';
 import { listRoomIds, loadRoomText } from './lib/rooms';
 
 const errors: string[] = [];
@@ -56,19 +60,9 @@ errors.push(
 
 for (const p of checkPositiveNumbers(defaultTuning)) errors.push(`data/tuning.ts: ${p}`);
 
-for (const [id, data] of parsed) {
-  for (const sp of data.header.spawns) {
-    if (sp.kind === 'enemy' && !isEnemyKind(sp.id))
-      errors.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} is not in data/enemies.ts`);
-    if (sp.kind === 'pack')
-      warnings.push(`rooms/${id}.txt: @spawn ${sp.marker} pack:${sp.id} (packs arrive in M4)`);
-  }
-  const d = spawnMarkerDiffs(data);
-  for (const m of d.usedNotDeclared)
-    warnings.push(`rooms/${id}.txt: spawn marker ${m} is in the grid but has no @spawn header`);
-  for (const m of d.declaredNotUsed)
-    warnings.push(`rooms/${id}.txt: @spawn ${m} is declared but not placed in the grid`);
-}
+const roomCheck = checkRooms(parsed, { isEnemy: isEnemyKind, isPack: await loadPackCheck() });
+errors.push(...roomCheck.errors);
+warnings.push(...roomCheck.warnings);
 
 // Runes (data/runes): ids, names, cross-references, numbers.
 const notations = new Map<string, string>();
@@ -147,4 +141,21 @@ function checkFinite(obj: unknown, path = ''): string[] {
   if (obj !== null && typeof obj === 'object')
     return Object.entries(obj).flatMap(([k, v]) => checkFinite(v, path ? `${path}.${k}` : k));
   return [];
+}
+
+/**
+ * Pack ids from data/packs.ts (the enemies agent adds it in M4), or null while it doesn't exist.
+ * Accepts an `isPackId` function, or a `packs` record or array with ids.
+ */
+async function loadPackCheck(): Promise<((id: string) => boolean) | null> {
+  const path = fileURLToPath(new URL('../data/packs.ts', import.meta.url));
+  if (!existsSync(path)) return null;
+  const mod = (await import(path)) as Record<string, unknown>;
+  if (typeof mod.isPackId === 'function') return (id) => (mod.isPackId as (id: string) => boolean)(id);
+  const packs = mod.packs;
+  if (Array.isArray(packs)) return (id) => packs.some((p: { id?: string }) => p.id === id);
+  if (packs !== null && typeof packs === 'object')
+    return (id) => Object.prototype.hasOwnProperty.call(packs, id);
+  errors.push('data/packs.ts: exports neither isPackId nor packs; pack ids not checked');
+  return () => true;
 }

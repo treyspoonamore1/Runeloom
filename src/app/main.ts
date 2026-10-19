@@ -20,6 +20,8 @@ async function boot(): Promise<void> {
   const session = new Session({ seed, roomId: scene.roomId, sceneId: scene.id, mode: scene.mode });
   const renderer = await createRenderer(gameEl, session.state);
   session.onReset((s) => renderer.setRoom(s));
+  // Adventure: exits, respawn, rest and fast travel change rooms without a reset.
+  session.onRoomChange((s) => renderer.setRoom(s));
   const input = new InputSampler(renderer.app.canvas);
   renderer.app.canvas.addEventListener('mousemove', (e) => renderer.setCursor(e.offsetX, e.offsetY));
 

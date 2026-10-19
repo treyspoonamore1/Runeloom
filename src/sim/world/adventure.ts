@@ -81,7 +81,9 @@ export function loomStoneHere(state: GameState): WorldObject | null {
   for (const o of state.objects) {
     if (o.kind !== 'loom_stone' || !o.on) continue;
     const c = objectCenter(o);
-    if ((p.x - c.x) ** 2 + (p.y - c.y) ** 2 <= r * r) return o;
+    const dx = p.x - c.x;
+    const dy = p.y - c.y;
+    if (dx * dx + dy * dy <= r * r) return o;
   }
   return null;
 }

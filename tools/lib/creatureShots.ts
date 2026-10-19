@@ -6,7 +6,17 @@
  */
 import type { Page } from '@playwright/test';
 
-export const creatureShotIds = ['wet', 'oiled', 'oilfire', 'arc', 'charge', 'fall', 'doused', 'shield', 'blind'] as const;
+export const creatureShotIds = [
+  'wet',
+  'oiled',
+  'oilfire',
+  'arc',
+  'charge',
+  'fall',
+  'doused',
+  'shield',
+  'blind',
+] as const;
 export type CreatureShotId = (typeof creatureShotIds)[number];
 
 export async function runCreatureShot(page: Page, id: CreatureShotId): Promise<void> {
