@@ -6,13 +6,15 @@ import { LINE, PAL } from './palette';
 /** Lab plaque look. Lengths in cells. */
 const PLAQUE = {
   /** Text cap height, cells. */
-  textCells: 1.8,
+  textCells: 1.6,
   /** Font size the text is rasterized at (then scaled to textCells). */
   fontPx: 36,
   padX: 0.7,
   padY: 0.35,
   /** Gap between the plaque bottom and the station's top edge. */
-  gap: 0.5,
+  gap: 0.4,
+  /** Labels wrap to the station's width plus this much (cells), so neighbors never overlap. */
+  wrapExtra: 1.5,
   wood: 0x5a3a26,
   woodLight: 0x7a5236,
   text: 0xfff2d6,
@@ -38,6 +40,8 @@ export class LabLabels {
 
 function plaque(s: LabStation): Container {
   const c = new Container();
+  const k = PLAQUE.textCells / PLAQUE.fontPx;
+  const maxW = s.rect.w * T + PLAQUE.wrapExtra - PLAQUE.padX * 2;
   const text = new Text({
     text: s.label,
     resolution: 2,
@@ -46,9 +50,12 @@ function plaque(s: LabStation): Container {
       fontSize: PLAQUE.fontPx,
       fill: PLAQUE.text,
       fontWeight: '900',
+      align: 'center',
+      wordWrap: true,
+      wordWrapWidth: maxW / k,
+      lineHeight: PLAQUE.fontPx * 1.1,
     },
   });
-  const k = PLAQUE.textCells / PLAQUE.fontPx;
   text.scale.set(k);
   const tw = text.width;
   const th = text.height;
