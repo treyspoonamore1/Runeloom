@@ -4,28 +4,32 @@ import { findScene } from '../../src/app/scenes';
 import { getRegionMap, sendHeroEdit } from '../../src/app/hero';
 import { makeReplay } from '../../src/app/replay';
 import { checkReplay } from '../../tools/lib/replay';
-import { roomTexts } from '../../src/app/rooms';
 import { newGame, startRoom } from '../../data/progression';
-import { hashState } from '../../src/sim';
+import { hashState, objectCenter } from '../../src/sim';
+import { TILE_CELLS } from '../../src/sim/core/constants';
 
 const EAST = { moveX: 1, moveY: 0, aimX: 0, aimY: 0, buttons: 0 };
 
-function adventureSession(): Session {
+function adventureSession(roomId?: string): Session {
   const scene = findScene('adventure')!;
-  return new Session({ seed: 2, roomId: scene.roomId, sceneId: scene.id, mode: scene.mode });
+  return new Session({ seed: 2, roomId: roomId ?? scene.roomId, sceneId: scene.id, mode: scene.mode });
 }
 
 describe('the adventure scene', () => {
-  it('starts a new game in the start room (the test world until the region exists)', () => {
+  it('starts a new game in the start room at its Loom Stone', () => {
     const s = adventureSession();
     expect(s.state.mode).toBe('adventure');
-    expect(s.state.room.id).toBe(roomTexts[startRoom] !== undefined ? startRoom : 'test/world_a');
+    expect(s.state.room.id).toBe(startRoom);
     expect(s.roomId).toBe(s.state.room.id);
+    const stone = s.state.objects.find((o) => o.kind === 'loom_stone')!;
+    const p = s.state.player;
+    const c = objectCenter(stone);
+    expect(Math.hypot(p.x - c.x, p.y - c.y)).toBeLessThan(2 * TILE_CELLS);
+    expect(s.state.hero.level).toBe(1);
   });
 
   it('tells room listeners about exits and rests, and replays reproduce', () => {
-    const s = adventureSession();
-    if (s.state.room.id !== 'test/world_a') return; // The region's own rooms are covered by the content tests.
+    const s = adventureSession('test/world_a');
     const rooms: string[] = [];
     s.onRoomChange((st) => rooms.push(st.room.id));
     for (let i = 0; i < 80; i++) s.step(EAST);

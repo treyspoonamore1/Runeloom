@@ -16,6 +16,8 @@ export interface RoomCheckOptions {
   isEnemy(id: string): boolean;
   /** Null when data/packs.ts doesn't exist yet: pack ids are then not checked. */
   isPack: ((id: string) => boolean) | null;
+  /** Rooms that are planned but not authored yet (e.g. the M4 boss rooms): exits to them only warn. */
+  pendingRooms?: ReadonlySet<string>;
 }
 
 export interface RoomCheckResult {
@@ -90,7 +92,9 @@ export function checkRooms(rooms: ReadonlyMap<string, RoomData>, opts: RoomCheck
         errors.push(`${at}: @exit ${edge} but no '${EXIT_CHAR[edge]}' tile on the ${edge} edge`);
       const target = rooms.get(ex.room);
       if (!target) {
-        errors.push(`${at}: @exit ${edge} ${ex.room}: no such room`);
+        if (opts.pendingRooms?.has(ex.room))
+          warnings.push(`${at}: @exit ${edge} ${ex.room}: not authored yet (the exit stays closed)`);
+        else errors.push(`${at}: @exit ${edge} ${ex.room}: no such room`);
         continue;
       }
       const back = OPPOSITE[edge];

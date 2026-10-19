@@ -17,7 +17,7 @@ import {
   makeSave,
 } from '../sim';
 import { roomTexts } from './rooms';
-import { adventureStartRoom, type SceneDef } from './scenes';
+import type { SceneDef } from './scenes';
 import { cloneTuning, type Tuning } from '../../data/tuning';
 
 export interface SessionOptions {
@@ -39,7 +39,7 @@ function newState(
     return createAdventure({
       seed,
       rooms: roomTexts,
-      startRoomId: adventureStartRoom(roomTexts, roomId),
+      startRoomId: roomId,
       tuning,
     });
   return createGame({ seed, rooms: roomTexts, roomId, tuning, mode, loadout });

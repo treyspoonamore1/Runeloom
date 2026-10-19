@@ -25,6 +25,7 @@ import { spindles, testSpindle } from '../data/spindles';
 import { scenes } from '../src/app/scenes';
 import { defaultTuning } from '../data/tuning';
 import { isEnemyKind } from '../data/enemies';
+import { regionRooms } from '../data/progression';
 import { checkPositiveNumbers, missingRefs } from './lib/checks';
 import { fuseEffectErrors, passiveTreeErrors } from './lib/passiveChecks';
 import { checkRooms } from './lib/roomChecks';
@@ -66,7 +67,26 @@ const items = checkItemData();
 errors.push(...items.errors);
 warnings.push(...items.warnings);
 
-const roomCheck = checkRooms(parsed, { isEnemy: isEnemyKind, isPack: await loadPackCheck() });
+/** CONTENT §5 kinds the M4 enemies work adds; region rooms may name them before they land. */
+const m4PendingKinds = new Set([
+  'bog_lurker',
+  'tar_hulk',
+  'frost_wisp',
+  'stormcaller',
+  'kiln_mite',
+  'brood_kiln',
+]);
+for (const [id, data] of parsed)
+  for (const sp of data.header.spawns)
+    if (sp.kind === 'enemy' && !isEnemyKind(sp.id) && m4PendingKinds.has(sp.id))
+      warnings.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} (arrives with the M4 enemies)`);
+
+const roomCheck = checkRooms(parsed, {
+  isEnemy: (id) => isEnemyKind(id) || m4PendingKinds.has(id),
+  isPack: await loadPackCheck(),
+  // Region rooms other branches still author (K5 and K10 come with the M4 enemies).
+  pendingRooms: new Set<string>(Object.values(regionRooms).filter((id) => !parsed.has(id))),
+});
 errors.push(...roomCheck.errors);
 warnings.push(...roomCheck.warnings);
 

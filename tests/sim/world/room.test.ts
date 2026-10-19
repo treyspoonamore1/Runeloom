@@ -34,6 +34,17 @@ describe('parseRoom', () => {
     expect(() => parseRoom('@id x\n#Z#\n')).toThrow(/unknown tile character 'Z'/);
   });
 
+  it('reads a trailing monster rarity on @spawn and rejects bad counts', () => {
+    const text = (spawn: string) => `@id x\n@spawn ${spawn}\n###\n#1#\n###\n`;
+    expect(parseRoom(text('1 pack:archer_line rare')).header.spawns).toEqual([
+      { marker: '1', kind: 'pack', id: 'archer_line', count: 1, rarity: 'rare' },
+    ]);
+    expect(parseRoom(text('1 enemy:tinderling 2 magic')).header.spawns).toEqual([
+      { marker: '1', kind: 'enemy', id: 'tinderling', count: 2, rarity: 'magic' },
+    ]);
+    expect(() => parseRoom(text('1 enemy:tinderling lots'))).toThrow(/positive integer/);
+  });
+
   it('rejects unknown headers', () => {
     expect(() => parseRoom('@id x\n@colour red\n###\n')).toThrow(/unknown header @colour/);
   });
