@@ -101,7 +101,7 @@ function visitCells(state: GameState): void {
   const width = g.width;
   const last = g.ground.length - width;
   const rng = state.gridRng;
-  const wind = state.tuning.grid.windFactor;
+  const spreadK = state.tuning.grid.windFactor * state.tuning.grid.spreadMult;
   const oilChance = oil.spreadChance;
   const smokeT = smokeTicks();
   const oilSmoke = smokeCode(oil.smoke);
@@ -136,7 +136,7 @@ function visitCells(state: GameState): void {
                 : i - width;
         if (j < 0 || fire[j]! > 0 || wet[j]! > 0) continue;
         const p = surface[j] === SURFACE.oil ? oilChance : SPREAD[ground[j]!]!;
-        if (p > 0 && rng.float() < p * wind) {
+        if (p > 0 && rng.float() < p * spreadK) {
           push(ignitions, j);
           push(ignitions, o);
         }

@@ -174,6 +174,8 @@ export const defaultTuning = {
   grid: {
     /** Rule 2 wind factor on spread chance. 1 until Gale and rule 21 arrive (M8). */
     windFactor: 1,
+    /** Scales every fire spread roll (rule 2): the fire-speed knob. 0.85 after the M3 playtest ("a little too fast"). */
+    spreadMult: 0.85,
     /** Burn intensity (0–255) by what burns: flammable materials, oil (rule 6 "hot"), placed fire (rule 26). */
     fireIntensity: { material: 192, oil: 255, placed: 128 },
     /** Rule 26: seconds placed fire burns on walkable non-flammable ground (× Lingering). */
