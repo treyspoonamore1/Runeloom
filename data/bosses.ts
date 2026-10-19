@@ -68,7 +68,7 @@ export const bosses = {
   },
   cinder_warden: {
     name: 'Cinder Warden',
-    life: 3500,
+    life: 5000,
     speed: 13,
     radius: 4,
     resist: { physical: 0, fire: 0.75, frost: -0.25, storm: 0.25 },

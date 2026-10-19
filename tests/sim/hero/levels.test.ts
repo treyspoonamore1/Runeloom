@@ -13,18 +13,21 @@ import {
   type SimEvent,
 } from '../../../src/sim';
 import { maxRuneLevel, runeXpToNext, xpToNext } from '../../../data/progression';
+import { killXp } from '../../../data/loot';
 import { adventure, giveRune } from './helpers';
 import { ofType } from '../combat/helpers';
 
 const events = (s: { events: SimEvent[] }) => s.events;
 
 describe('XP per kill (DESIGN §7)', () => {
-  it('is base life × 1.12^(area level − 1) × rarity, with boss overrides', () => {
+  it('is base life × growth^(area level − 1) × rarity, with boss overrides', () => {
+    const g = killXp.growth;
     expect(baseKillXp('tinderling')).toBe(14);
+    expect(baseKillXp('tar_matriarch')).toBe(killXp.baseOverride.tar_matriarch);
     expect(killXpFor('tinderling', 1, 'normal')).toBe(14);
-    expect(killXpFor('tinderling', 5, 'normal')).toBe(Math.round(14 * 1.12 ** 4));
-    expect(killXpFor('shieldbearer', 3, 'magic')).toBe(Math.round(90 * 1.12 * 1.12 * 1.7));
-    expect(killXpFor('ember_archer', 2, 'rare')).toBe(Math.round(40 * 1.12 * 4));
+    expect(killXpFor('tinderling', 5, 'normal')).toBe(Math.round(14 * g ** 4));
+    expect(killXpFor('shieldbearer', 3, 'magic')).toBe(Math.round(90 * g * g * 1.7));
+    expect(killXpFor('ember_archer', 2, 'rare')).toBe(Math.round(40 * g * 4));
     expect(killXpFor('dummy', 9, 'normal')).toBe(0);
   });
 
@@ -36,7 +39,7 @@ describe('XP per kill (DESIGN §7)', () => {
     const xp = ofType(events(state), 'xpGained');
     expect(xp).toHaveLength(1);
     expect(xp[0]!.amount).toBe(90);
-    // Level 1 → 2 needs 30, 2 → 3 needs 138: 90 XP is one level and 60 over.
+    // 90 XP is one level (xpToNext(1)) and the rest toward the next.
     expect(state.hero.level).toBe(2);
     expect(state.hero.xp).toBe(90 - xpToNext(1));
     const socketed = new Set(state.weaves.slots.flatMap((s) => s.runes ?? []));

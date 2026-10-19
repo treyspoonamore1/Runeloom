@@ -38,7 +38,7 @@ describe('Cinder Warden', () => {
   it('K10 is a 120×80 arena with grass, stone, two water channels and four braziers', () => {
     const { s, w } = hearth();
     expect([s.room.width, s.room.height]).toEqual([120, 80]);
-    expect([w.maxLife, w.areaLevel]).toEqual([3500, 10]);
+    expect([w.maxLife, w.areaLevel]).toEqual([5000, 10]);
     expect(groundAt(s, 6, 6)).toBe(MAT.grass);
     expect(groundAt(s, 60, 40)).toBe(MAT.stone);
     expect(groundAt(s, 34, 40)).toBe(MAT.shallow_water);

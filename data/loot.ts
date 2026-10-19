@@ -11,8 +11,12 @@ export const dropRates = {
   bossRolls: 6,
   /** Chance per roll of each category. */
   chance: {
-    /** A random rune item, from the runes the hero has unlocked (CONTENT §9.1). */
-    rune: 0.05,
+    /**
+     * A random rune item, from the runes the hero has unlocked (CONTENT §9.1). M4 balance pass:
+     * 5% → 10%, so duplicates (a third Cast, a second Fire) turn up: 6–11 rune drops per campaign
+     * became 11–19.
+     */
+    rune: 0.1,
     /** A Magic cloak, hood, boots or charm. */
     gear: 0.03,
     /** A spindle base the area level allows (data/progression.ts spindleDropFrom). */
@@ -44,14 +48,16 @@ export const lootFloor = {
 /**
  * XP per kill (DESIGN §7): base XP × xpGrowth^(area level − 1) × rarity multiplier, rounded, at
  * least 1. Base XP is the kind's base life × perBaseLife unless `baseOverride` names it (bosses,
- * whose life numbers are absolute). Socketed runes gain the same XP.
+ * whose life numbers are absolute). Socketed runes gain the same XP. M4 balance pass: growth
+ * 1.12 → 1.2 (later rooms have fewer, stronger enemies, so their kills pay relatively more) and
+ * the Tar Matriarch 400 → 1000 (the mini-boss carries the Kiln's second half).
  */
 export const killXp = {
   perBaseLife: 1,
-  growth: 1.12,
+  growth: 1.2,
   rarity: { normal: 1, magic: 1.7, rare: 4 },
   baseOverride: {
-    tar_matriarch: 400,
+    tar_matriarch: 1000,
     cinder_warden: 1200,
     brood_kiln: 60,
     kiln_mite: 5,

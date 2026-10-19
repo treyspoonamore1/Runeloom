@@ -34,9 +34,14 @@ export type RegionRoomId = (typeof regionRooms)[keyof typeof regionRooms];
 /** Where a new game starts. */
 export const startRoom: RegionRoomId = regionRooms.e1;
 
-/** XP needed to go from level L to L + 1 (DESIGN §7; the M4 balance pass tunes it). */
+/**
+ * XP needed to go from level L to L + 1. DESIGN §7's starting point was round(30 × L^2.2); the M4
+ * balance pass flattened it so the campaign bot (npm run sim -- --campaign) reaches level 12 on
+ * entering the Cinder Warden's room: the Kiln's second half has few enemies, so late levels must
+ * cost less relative to early ones.
+ */
 export function xpToNext(level: number): number {
-  return Math.round(30 * Math.pow(level, 2.2));
+  return Math.round(68 * Math.pow(level, 1.6));
 }
 
 /** Socketed runes level from 1 to this (DESIGN §5.1). */
@@ -44,11 +49,12 @@ export const maxRuneLevel = 20;
 
 /**
  * XP a socketed rune needs to go from level L to L + 1. Every socketed rune gains the full XP of
- * each kill (data/loot.ts killXp), so the starting runes reach about level 12 by the Cinder
- * Warden. A balance input.
+ * each kill (data/loot.ts killXp), so the starting runes reach about level 9 by the Cinder
+ * Warden in the campaign sim (the M4 balance pass raised 60 × L^1.8 to 90 × L^1.8 with the larger
+ * kill XP; the Warden's kill time depends on it). A balance input.
  */
 export function runeXpToNext(level: number): number {
-  return Math.round(60 * Math.pow(level, 1.8));
+  return Math.round(90 * Math.pow(level, 1.8));
 }
 
 /** Exploration rewards (DESIGN §10.1). */
