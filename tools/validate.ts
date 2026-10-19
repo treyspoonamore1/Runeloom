@@ -56,9 +56,21 @@ errors.push(
 
 for (const p of checkPositiveNumbers(defaultTuning)) errors.push(`data/tuning.ts: ${p}`);
 
+/** CONTENT §5 kinds the M4 enemies work adds; region rooms may name them before they land. */
+const m4PendingKinds = new Set([
+  'bog_lurker',
+  'tar_hulk',
+  'frost_wisp',
+  'stormcaller',
+  'kiln_mite',
+  'brood_kiln',
+]);
+
 for (const [id, data] of parsed) {
   for (const sp of data.header.spawns) {
-    if (sp.kind === 'enemy' && !isEnemyKind(sp.id))
+    if (sp.kind === 'enemy' && !isEnemyKind(sp.id) && m4PendingKinds.has(sp.id))
+      warnings.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} (arrives with the M4 enemies)`);
+    else if (sp.kind === 'enemy' && !isEnemyKind(sp.id))
       errors.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} is not in data/enemies.ts`);
     if (sp.kind === 'pack')
       warnings.push(`rooms/${id}.txt: @spawn ${sp.marker} pack:${sp.id} (packs arrive in M4)`);
