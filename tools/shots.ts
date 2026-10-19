@@ -1,6 +1,7 @@
 /**
  * Screenshots of debug scenes into shots/.
  *   npm run shots [-- --scene room] [--milestone m0] [--ticks N] [--viewport 390x844]
+ *   npm run shots -- --lab [--station 3,7]   Chemistry Lab stations, before and after, into shots/lab/
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
@@ -13,6 +14,7 @@ import { scenarios } from '../src/sim';
 import { scenes } from '../src/app/scenes';
 import { ArgError, parseArgs, parseViewport, requireInt, runCli } from './lib/args';
 import { scenarioFrames } from './lib/frames';
+import { labShots } from './lib/labShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -36,6 +38,8 @@ runCli(async () => {
     milestone: { kind: 'string', default: 'm0' },
     ticks: { kind: 'number', default: 0 },
     viewport: { kind: 'string', default: '1280x720' },
+    lab: { kind: 'boolean' },
+    station: { kind: 'string' },
   });
   const viewport = parseViewport(a.viewport!);
   const ticks = requireInt('ticks', a.ticks, 0);
@@ -59,9 +63,19 @@ runCli(async () => {
     });
     await server.listen();
     browser = await chromium.launch({ headless: true, args: GL_ARGS });
-    const page = await browser.newPage({ viewport });
+    const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
+
+    if (a.lab) {
+      const dir = join(SHOTS_DIR, 'lab');
+      mkdirSync(dir, { recursive: true });
+      const only = a.station?.split(',').map((v) => requireInt('station', Number(v), 0));
+      const url = `http://127.0.0.1:${port}/?scene=lab&seed=${SEED}&paused=1`;
+      written.push(...(await labShots(page, url, dir, only)));
+      if (errors.length) console.warn(`warning: page errors in the lab: ${errors.join('; ')}`);
+      selected.length = 0;
+    }
 
     for (const scene of selected) {
       errors.length = 0;
