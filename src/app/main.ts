@@ -9,15 +9,23 @@ import { roomText } from './rooms';
 import { installDebugHandle } from './debugHandle';
 import { createAudio } from '../audio/audio';
 import { createHud } from '../ui/hud';
+import { createAdventureFlow } from './adventure';
+import { adventureRoom } from './saveFormat';
+import { setFixtureBoss } from '../ui/adventure/hudAdapter';
 
 async function boot(): Promise<void> {
   const params = new URLSearchParams(location.search);
-  const scene = findScene(params.get('scene') ?? DEFAULT_SCENE) ?? findScene(DEFAULT_SCENE)!;
+  // The demo opens on the adventure title screen; dev URLs with ?scene= go straight to a scene.
+  const title = !params.has('scene');
+  const scene = title
+    ? findScene('adventure')!
+    : (findScene(params.get('scene') ?? DEFAULT_SCENE) ?? findScene(DEFAULT_SCENE)!);
+  const roomId = scene.mode === 'adventure' ? adventureRoom() : scene.roomId;
   const seed = Number(params.get('seed') ?? 1) >>> 0;
 
   const gameEl = document.getElementById('game')!;
   const uiRoot = document.getElementById('ui')!;
-  const session = new Session({ seed, roomId: scene.roomId, sceneId: scene.id, mode: scene.mode });
+  const session = new Session({ seed, roomId, sceneId: scene.id, mode: scene.mode });
   const renderer = await createRenderer(gameEl, session.state);
   session.onReset((s) => renderer.setRoom(s));
   // Adventure: exits, respawn, rest and fast travel change rooms without a reset.
@@ -42,16 +50,32 @@ async function boot(): Promise<void> {
     },
   });
   const audio = createAudio();
-  const hud = createHud({ session, loop, input, uiRoot, audio, renderer });
+  const flow = createAdventureFlow(session);
+  const hud = createHud({
+    session,
+    loop,
+    input,
+    uiRoot,
+    audio,
+    renderer,
+    flow,
+    title,
+    devScenes: import.meta.env.DEV,
+  });
   const debug = createDebugUI({ session, loop, renderer, input, uiRoot });
 
   if (params.get('paused') === '1') loop.paused = true;
   loop.start();
+  // Screenshots and tests: ?boss=cinder_warden shows a fixture boss bar, ?ui=<screen> opens a screen.
+  if (params.has('boss')) setFixtureBoss(params.get('boss'), Number(params.get('bossLife') ?? 0.58));
+  const ui = params.get('ui');
+  if (ui) requestAnimationFrame(() => hud.debug.open(ui as Parameters<typeof hud.debug.open>[0]));
 
   installDebugHandle({
     session,
     loop,
     renderer,
+    ui: { ...hud.debug, boss: setFixtureBoss, flow },
     stateHash: () => hashHex(hashState(session.state)),
     runScenarioHash: (id, ticks, s) => {
       const sc = findScenario(id);

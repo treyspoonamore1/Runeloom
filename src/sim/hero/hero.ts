@@ -7,7 +7,7 @@
  * parts (through its own aggregation function called from here).
  */
 import { EQUIP_SLOTS, type FusePart, type HeroState, type Item, type RuneItem } from './types';
-import { emptyHeroMods } from './mods';
+import { emptyHeroMods, type HeroMods } from './mods';
 import { addPassiveAndPartMods } from './effectMods';
 import { syncHeroEffects } from './effects';
 import type { Hasher } from '../core/hash';
@@ -42,17 +42,24 @@ export function createHero(): HeroState {
  * A hero with nothing (sandbox, arena, lab) gives neutral mods and changes nothing.
  */
 export function refreshHero(state: GameState): void {
-  const mods = emptyHeroMods();
-  // Items, Heart Seeds, Loom Shards (hero/aggregate.ts), then the passive tree and fused Fuse
-  // parts (effects agent: hero/effectMods.ts).
-  addHeroItemMods(mods, state.hero);
-  addPassiveAndPartMods(state.hero, mods);
-  state.heroMods = mods;
+  state.heroMods = heroModsOf(state.hero);
   syncPlayerToHero(state);
   // Once every source is in: compile rules and extra weaves (effects agent: hero/effects.ts),
   // then every weave's program against the new Capacity, cast speed and rune levels.
   syncHeroEffects(state);
   recompileWeaves(state);
+}
+
+/**
+ * What a hero's build adds up to, pure (refreshHero stores it in state.heroMods; the UI compares
+ * hypothetical heroes with it): items, Heart Seeds, Loom Shards (hero/aggregate.ts), then the
+ * passive tree and fused Fuse parts (effects agent: hero/effectMods.ts).
+ */
+export function heroModsOf(hero: Readonly<HeroState>): HeroMods {
+  const mods = emptyHeroMods();
+  addHeroItemMods(mods, hero as HeroState);
+  addPassiveAndPartMods(hero as HeroState, mods);
+  return mods;
 }
 
 /**

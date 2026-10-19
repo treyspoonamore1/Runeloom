@@ -17,7 +17,7 @@ import {
   type Item,
   type RuneItem,
 } from '../sim/hero/types';
-import { passivePointsEarned } from '../sim/hero/hero';
+import { heroModsOf as simHeroModsOf, passivePointsEarned } from '../sim/hero/hero';
 import { slotOfRune } from '../sim/hero/runes';
 import { equippedSlotOf, findItem, kindOfBase, slotsForKind } from '../sim/items/items';
 import {
@@ -43,6 +43,7 @@ import {
   type RefundCheck,
 } from '../sim/hero/passives';
 import { buildRegionMap, type RegionMap } from '../sim/world/regionMap';
+import { loomStoneHere } from '../sim/world/adventure';
 
 export type { HeroEdit, Description };
 
@@ -54,6 +55,14 @@ export function getHero(session: Session): Readonly<HeroState> {
 /** Read-only totals for the character sheet and tooltips. */
 export function getHeroMods(session: Session): Readonly<HeroMods> {
   return session.state.heroMods;
+}
+
+/**
+ * What a hypothetical hero's build adds up to (e.g. a copy with an item swapped), for tooltip
+ * comparisons. Pure: the same aggregation refreshHero runs, without touching the game.
+ */
+export function heroModsOf(hero: Readonly<HeroState>): HeroMods {
+  return simHeroModsOf(hero);
 }
 
 /**
@@ -262,4 +271,10 @@ export const UNFUSE_KEEP_COST = scrapValues.unfuseKeepCost;
 /** The map screen's data: the rooms connected to the current one, laid out from their exits. */
 export function getRegionMap(session: Session): RegionMap {
   return buildRegionMap(session.state);
+}
+
+/** The activated Loom Stone the living player stands at (rest and travel work there), or null. */
+export function getLoomStoneHere(session: Session): { roomId: string; key: string } | null {
+  const o = loomStoneHere(session.state);
+  return o ? { roomId: session.state.room.id, key: o.key } : null;
 }

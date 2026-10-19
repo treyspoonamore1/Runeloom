@@ -152,7 +152,7 @@ export { hurtsEnemies } from './ai/hazards';
 export { extinguish, teamOf, teamOfSource, shockFor } from './combat/ailments';
 export { dealDirectDamage } from './combat/hits';
 // ---- M4: the character, items, loot and saves ----
-export { createHero, refreshHero, passivePointsEarned } from './hero/hero';
+export { createHero, refreshHero, heroModsOf, passivePointsEarned } from './hero/hero';
 export { emptyHeroMods, type HeroMods, type ByType } from './hero/mods';
 export {
   EQUIP_SLOTS,

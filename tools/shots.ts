@@ -6,6 +6,7 @@
  *   npm run shots -- --set rooms [--room e1,k7] [--port 5197]   every region room: whole-room fit and play zoom
  *   npm run shots -- --set onload [--region kiln] [--milestone m4]   every room on load, as an adventure game,
  *       into shots/rooms/<milestone>_<region>_<room>.png (--ticks N steps idle first)
+ *   npm run shots -- --set ui [--milestone m4] [--shot inventory,tree] [--viewport 390x844]   M4 menus and HUD with fixture data
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
@@ -23,6 +24,7 @@ import { creatureShotIds, runCreatureShot } from './lib/creatureShots';
 import { listRoomIds } from './lib/rooms';
 import { authoredRegionRooms, showRoom, type RoomShort } from './lib/roomShots';
 import { regionRooms } from '../data/progression';
+import { runUiShot, uiShotIds, uiShotUrl, type UiShotId } from './lib/uiShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -50,11 +52,12 @@ runCli(async () => {
     station: { kind: 'string' },
     set: {
       kind: 'string',
-      help: "'creature': entities on the chemistry grid (lab stations); 'rooms': region rooms (fit and play zoom); 'onload': every room on load as an adventure game",
+      help: "'creature': entities on the chemistry grid (lab stations); 'rooms': region rooms (fit and play zoom); 'onload': every room on load as an adventure game; 'ui': M4 menus and HUD",
     },
     room: { kind: 'string', help: 'with --set rooms: comma-separated short ids (e1,k7)' },
     region: { kind: 'string', help: "--set onload: only rooms whose id starts with this, e.g. 'kiln'" },
     port: { kind: 'number', default: 0, help: 'dev server port (0: any free port)' },
+    shot: { kind: 'string', help: `with --set ui: some of ${uiShotIds.join(', ')}` },
   });
   const viewport = parseViewport(a.viewport!);
   const ticks = requireInt('ticks', a.ticks, 0);
@@ -148,8 +151,30 @@ runCli(async () => {
         written.push(file);
         if (errors.length) console.warn(`warning: page errors in room ${id}: ${errors.join('; ')}`);
       }
+    } else if (a.set === 'ui') {
+      const only = a.shot?.split(',') ?? [...uiShotIds];
+      const bad = only.filter((x) => !(uiShotIds as readonly string[]).includes(x));
+      if (bad.length)
+        throw new ArgError(`Unknown --shot ${bad.join(', ')}. Available: ${uiShotIds.join(', ')}`);
+      const suffix = a.viewport === '1280x720' ? '' : `_${a.viewport}`;
+      for (const id of only as UiShotId[]) {
+        errors.length = 0;
+        // A fresh context per shot: each starts with empty IndexedDB and localStorage.
+        const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+        const p = await ctx.newPage();
+        p.on('pageerror', (e) => errors.push(e.message));
+        await p.goto(uiShotUrl(`http://127.0.0.1:${port}`, id));
+        await p.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+        await runUiShot(p, id);
+        const file = join(SHOTS_DIR, `${milestone}_ui_${id}${suffix}.png`);
+        await p.screenshot({ path: file, timeout: 120_000 });
+        console.log(`shot ${id}`);
+        written.push(file);
+        await ctx.close();
+        if (errors.length) console.warn(`warning: page errors in ui shot ${id}: ${errors.join('; ')}`);
+      }
     } else if (a.set !== undefined)
-      throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload`);
+      throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload, ui`);
     for (const scene of a.set === undefined ? selected : []) {
       errors.length = 0;
       await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);

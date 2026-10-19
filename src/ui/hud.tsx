@@ -1,23 +1,28 @@
 import { h, render } from 'preact';
-import { signal, type Signal } from '@preact/signals';
+import { signal } from '@preact/signals';
 import type { GameState, SimEvent } from '../sim';
 import type { Session } from '../app/session';
 import type { GameLoop } from '../app/loop';
 import type { InputSampler } from '../app/input';
 import type { Renderer } from '../render/renderer';
 import type { AudioSystem } from '../audio/audio';
-import { fmtCost, readSnap, snapEqual, waveText, type HudSnap } from './hudModel';
+import type { AdventureFlow } from '../app/adventure';
+import { readSnap, snapEqual } from './hudModel';
 import { slotSnaps } from './hudSlots';
 import { getLoadout, slotTimers, type LoadoutView } from '../app/loadout';
-import { createLoom, LoomPanel, type LoomController } from './loom/loom';
+import { createLoom } from './loom/loom';
 import { differsFromSaved, loadoutRev, restoreLoadout } from './loom/loadoutStore';
-import { WeaveIcon } from './loom/glyphs';
 import { readArena, WaveWatcher } from './arena';
 import { consoleOpen } from './console/Console';
 import { injectHudStyle } from './hudStyle';
-import { PauseMenu, type PauseActions } from './pauseMenu';
-import { findScene, scenes } from '../app/scenes';
-import { StartScreen } from './startScreen';
+import { findScene, sandboxScenes } from '../app/scenes';
+import { createAdventureHud, holdToasts } from './adventure/adventureHud';
+import type { LooseEvent } from './adventure/hudEvents';
+import { HudApp } from './hudApp';
+import type { Banner, Screen, Sigs } from './hudBar';
+import type { MenuId } from './menus/frame';
+import { isMenu, menuForKey, menuKey } from './menus/menuHost';
+import { titleView, type TitleView } from './title/titleScreen';
 
 export interface HudContext {
   session: Session;
@@ -30,6 +35,22 @@ export interface HudContext {
   renderer?: Pick<Renderer, 'app'>;
   /** Skip the start screen. Default: true when the URL has paused=1 or autostart=1. */
   skipStart?: boolean;
+  /** Saves and the title screen's actions (adventure mode). */
+  flow?: AdventureFlow;
+  /** Open on the title screen (the adventure demo without ?scene=). */
+  title?: boolean;
+  /** Offer the dev scenes on the title screen (dev builds). */
+  devScenes?: boolean;
+}
+
+/** Screenshot and test hooks (window.__runeloom.ui). Never used by gameplay. */
+export interface HudDebug {
+  /** Opens a screen: 'title', 'inventory', 'tree', 'map', 'pause', 'loom', 'play'; or a title sub-view. */
+  open(screen: Screen | `title:${TitleView}`): void;
+  /** Feeds events to the HUD as if a step had sent them (the M4 events don't exist yet). */
+  events(events: LooseEvent[]): void;
+  /** Keeps toasts and banners on screen (slow screenshot captures). */
+  hold(on: boolean): void;
 }
 
 /** The player-facing HUD: life, mana, dodge charges, spell slots, waves, start screen. */
@@ -38,162 +59,7 @@ export interface Hud {
   handleEvents(events: readonly SimEvent[]): void;
   /** Called once per rendered frame after the sim has stepped. */
   frame(state: GameState): void;
-}
-
-type Screen = 'start' | 'play' | 'pause' | 'loom';
-interface Banner {
-  id: number;
-  title: string;
-  sub: string;
-}
-
-interface Sigs {
-  snap: Signal<HudSnap>;
-  screen: Signal<Screen>;
-  /** Bumped on each hit taken, to restart the red edge flash. */
-  hurt: Signal<number>;
-  /** Slot and counter of the last failed cast, to restart that slot's red flash. */
-  deny: Signal<{ slot: number; n: number }>;
-  banner: Signal<Banner | null>;
-}
-
-const num = (v: number): string => String(v);
-
-function Globe(p: {
-  kind: 'life' | 'mana';
-  value: number;
-  max: number;
-  frac: number;
-  low?: boolean;
-  flash?: number;
-}) {
-  return (
-    <div
-      class={`rl-globe rl-${p.kind}${p.low ? ' low' : ''}`}
-      role="meter"
-      aria-label={p.kind}
-      aria-valuenow={p.value}
-      aria-valuemax={p.max}
-    >
-      <div class={`rl-fill${p.frac <= 0 ? ' empty' : ''}`} style={`--f:${p.frac}`} />
-      <div class="rl-num rl-outline">
-        <b>{num(p.value)}</b>
-        <span>/ {num(p.max)}</span>
-      </div>
-      {p.flash ? <i class="rl-deny" key={p.flash} /> : null}
-    </div>
-  );
-}
-
-function Bar({ s }: { s: Sigs }) {
-  const v = s.snap.value;
-  const deny = s.deny.value;
-  return (
-    <div class="rl-bar">
-      <Globe kind="life" value={v.life} max={v.maxLife} frac={v.lifeFrac} low={v.lifeFrac < 0.3 && !v.dead} />
-      <div class="rl-plate" style="position:relative">
-        {v.god ? <span class="rl-godtag">GOD MODE</span> : null}
-        <div class="rl-pips" aria-label="Dodge charges">
-          <small>Dodge</small>
-          {v.pips.map((fill, i) => (
-            <i key={i} class={`rl-pip${fill >= 1 ? ' full' : ''}`} style={`--p:${fill}`} />
-          ))}
-          <small>Space</small>
-        </div>
-        <div class="rl-slots">
-          {v.slots.map((sl) => (
-            <div class="rl-slotwrap" key={sl.slot}>
-              <div
-                class={`rl-slot${sl.affordable ? '' : ' poor'}${sl.casting ? ' casting' : ''}${sl.notation ? '' : ' empty'}${sl.warn ? ' warn' : ''}`}
-                title={
-                  sl.warn ? `Doesn't fire: ${sl.warn}` : (sl.notation ?? 'Empty slot: press Tab to weave')
-                }
-              >
-                {sl.notation ? <WeaveIcon form={sl.form} element={sl.element} /> : null}
-                <i class={`rl-sweep${sl.casting ? '' : ' idle'}`} style={`--p:${sl.progress}`} />
-                {sl.auto ? (
-                  <i class={`rl-cd${sl.cooldown > 0 ? '' : ' idle'}`} style={`--p:${sl.cooldown}`} />
-                ) : null}
-                {sl.auto ? <span class="rl-auto">auto</span> : null}
-                {sl.cost !== null ? (
-                  <span class="rl-cost" title="Mana cost">
-                    {fmtCost(sl.cost)}
-                  </span>
-                ) : null}
-                {sl.warn ? <i class="rl-warn" aria-label="Doesn't fit the spindle" /> : null}
-                {deny.slot === sl.slot && deny.n > 0 ? <i class="rl-deny" key={deny.n} /> : null}
-              </div>
-              <span class="rl-key">{sl.key}</span>
-              <span class="rl-spellname">{sl.name}</span>
-            </div>
-          ))}
-        </div>
-        <div class="rl-loomhint">
-          <span class="rl-cap">Tab</span> Loom
-        </div>
-      </div>
-      <Globe kind="mana" value={v.mana} max={v.maxMana} frac={v.manaFrac} flash={deny.n} />
-    </div>
-  );
-}
-
-function WavePanel({ s }: { s: Sigs }) {
-  const w = s.snap.value.wave;
-  if (!w) return null;
-  const t = waveText(w);
-  return (
-    <div class="rl-wave">
-      <div class="rl-wave-title rl-outline">{t.title}</div>
-      <div class="rl-wave-detail">{t.detail}</div>
-    </div>
-  );
-}
-
-function HudApp({
-  s,
-  play,
-  pause,
-  loom,
-  closeLoom,
-}: {
-  s: Sigs;
-  play(): void;
-  pause: PauseActions;
-  loom: LoomController;
-  closeLoom(): void;
-}) {
-  const screen = s.screen.value;
-  const v = s.snap.value;
-  const banner = s.banner.value;
-  return (
-    <>
-      {screen !== 'start' ? (
-        <>
-          {s.hurt.value > 0 && !v.dead ? <div class="rl-hurt" key={`hurt-${s.hurt.value}`} /> : null}
-          {v.lifeFrac < 0.3 && !v.dead ? <div class="rl-lowlife" /> : null}
-          <Bar s={s} />
-          <WavePanel s={s} />
-          {banner ? (
-            <div class="rl-banner" key={`banner-${banner.id}`}>
-              <h2>{banner.title}</h2>
-              {banner.sub ? <p>{banner.sub}</p> : null}
-            </div>
-          ) : null}
-          {v.dead ? (
-            <div class="rl-dead">
-              <div>
-                <h2>You fell.</h2>
-                <p>Rewoven in {num(v.respawnSec)}…</p>
-              </div>
-            </div>
-          ) : null}
-        </>
-      ) : null}
-      {screen === 'start' ? <StartScreen onPlay={play} /> : null}
-      {screen === 'pause' ? <PauseMenu {...pause} /> : null}
-      {screen === 'loom' ? <LoomPanel loom={loom} onClose={closeLoom} /> : null}
-    </>
-  );
+  readonly debug: HudDebug;
 }
 
 const isTypingTarget = (t: EventTarget | null): boolean =>
@@ -212,10 +78,11 @@ export function createHud(ctx: HudContext): Hud {
   const loom = createLoom(ctx.session);
   const params = new URLSearchParams(location.search);
   const skipStart = ctx.skipStart ?? (params.get('paused') === '1' || params.get('autostart') === '1');
+  const flow = ctx.flow ?? null;
 
   const s: Sigs = {
     snap: signal(readSnap(ctx.session.state)),
-    screen: signal<Screen>(skipStart ? 'play' : 'start'),
+    screen: signal<Screen>(ctx.title && flow ? 'title' : skipStart ? 'play' : 'start'),
     hurt: signal(0),
     deny: signal({ slot: -1, n: 0 }),
     banner: signal<Banner | null>(null),
@@ -235,18 +102,18 @@ export function createHud(ctx: HudContext): Hud {
     if (!c.hasAttribute('tabindex')) c.tabIndex = -1;
     c.focus({ preventScroll: true });
   };
-
-  /** The arena starts its first wave by itself (tuning.arena.firstWaveDelay), so nothing to do. */
-  const beginRun = (): void => {};
+  const toPlay = (): void => {
+    s.screen.value = 'play';
+    ctx.loop.paused = false;
+    ctx.input.enabled = true;
+    focusGame();
+  };
 
   const play = (): void => {
     if (s.screen.value !== 'start') return;
     ctx.audio.unlock();
     ctx.audio.play('uiStart');
-    s.screen.value = 'play';
-    ctx.loop.paused = false;
-    focusGame();
-    beginRun();
+    toPlay();
   };
   const pause = (): void => {
     if (s.screen.value !== 'play') return;
@@ -255,58 +122,80 @@ export function createHud(ctx: HudContext): Hud {
   };
   const resume = (): void => {
     if (s.screen.value !== 'pause') return;
-    s.screen.value = 'play';
-    ctx.loop.paused = false;
     ctx.audio.play('uiClick');
-    focusGame();
+    toPlay();
   };
   const restart = (): void => {
     ctx.session.reset();
-    beginRun();
-    s.screen.value = 'play';
-    ctx.loop.paused = false;
     ctx.audio.play('uiClick');
-    focusGame();
+    toPlay();
   };
   const goTo = (id: string): void => {
     const scene = findScene(id);
     if (!scene) return;
     ctx.session.switchScene(scene);
-    beginRun();
+    ctx.audio.play('uiClick');
+    toPlay();
+  };
+  /** Back to the title; an adventure is autosaved first, so Continue resumes right here. */
+  const toTitle = (): void => {
+    titleView.value = 'menu';
+    s.screen.value = 'title';
+    ctx.loop.paused = true;
+    if (flow?.inAdventure()) void flow.autosaveNow();
+    else void flow?.refresh();
+  };
+
+  // The Loom and the I / P / M menus: the sim pauses and player input is off while one is open.
+  let pausedBefore = false;
+  const enterModal = (to: Screen): void => {
+    pausedBefore = ctx.loop.paused;
+    ctx.loop.paused = true;
+    ctx.input.enabled = false;
+    s.screen.value = to;
+    ctx.audio.play('uiClick');
+  };
+  const leaveModal = (): void => {
     s.screen.value = 'play';
-    ctx.loop.paused = false;
+    ctx.loop.paused = pausedBefore;
+    ctx.input.enabled = true;
     ctx.audio.play('uiClick');
     focusGame();
   };
-
-  // The Loom: the sim pauses and player input is off while it is open.
-  let pausedBeforeLoom = false;
   const openLoom = (): void => {
     if (s.screen.value !== 'play') return;
-    pausedBeforeLoom = ctx.loop.paused;
-    ctx.loop.paused = true;
-    ctx.input.enabled = false;
     loom.st.syncFromLoadout();
     loom.st.open.value = true;
-    s.screen.value = 'loom';
     ctx.uiRoot.classList.add('rl-looming');
-    ctx.audio.play('uiClick');
+    enterModal('loom');
   };
   const closeLoom = (): void => {
     if (s.screen.value !== 'loom') return;
     loom.st.commitNotation();
     loom.st.open.value = false;
     loom.st.disarm();
-    s.screen.value = 'play';
     ctx.uiRoot.classList.remove('rl-looming');
-    ctx.loop.paused = pausedBeforeLoom;
-    ctx.input.enabled = true;
-    ctx.audio.play('uiClick');
-    focusGame();
+    leaveModal();
+  };
+  /** Opens a menu (from play, or switching from another), or closes it with null. */
+  const menu = (id: MenuId | null): void => {
+    const cur = s.screen.value;
+    if (id === null) {
+      if (isMenu(cur)) leaveModal();
+    } else if (cur === 'play') {
+      if (ctx.session.state.mode !== 'adventure') return;
+      enterModal(id);
+    } else if (isMenu(cur) && cur !== id) {
+      s.screen.value = id;
+      ctx.audio.play('uiClick');
+    }
   };
 
-  if (s.screen.value === 'start') ctx.loop.paused = true;
-  s.screen.subscribe((v) => ctx.uiRoot.classList.toggle('rl-starting', v === 'start'));
+  if (s.screen.value === 'start' || s.screen.value === 'title') ctx.loop.paused = true;
+  s.screen.subscribe((v) => {
+    ctx.uiRoot.classList.toggle('rl-starting', v === 'start' || v === 'title');
+    ctx.uiRoot.classList.toggle('rl-menu-open', isMenu(v));
+  });
 
   // Browsers only start audio after a gesture; this covers URLs that skip the start screen.
   const unlockOnce = (): void => {
@@ -322,21 +211,27 @@ export function createHud(ctx: HudContext): Hud {
   window.addEventListener(
     'keydown',
     (e) => {
-      if (s.screen.value === 'loom') {
-        if (consoleOpen.value) return;
-        if (loom.handleKey(e, closeLoom)) return;
+      const screen = s.screen.value;
+      if (consoleOpen.value) return;
+      if (screen === 'loom' && loom.handleKey(e, closeLoom)) return;
+      if (isMenu(screen)) {
+        menuKey(e, screen, menu);
+        return;
       }
-      if (e.code === 'Tab' && s.screen.value === 'play' && !consoleOpen.value && !e.repeat) {
+      if (e.code === 'Tab' && screen === 'play' && !e.repeat) {
         e.preventDefault();
         openLoom();
         return;
       }
       if (e.repeat) return;
-      if (e.code === 'Escape') {
-        if (consoleOpen.value) return;
-        if (s.screen.value === 'play') pause();
-        else if (s.screen.value === 'pause') resume();
-      } else if ((e.code === 'Enter' || e.code === 'NumpadEnter') && s.screen.value === 'start') {
+      const m = menuForKey(e.code);
+      if (m && screen === 'play' && !isTypingTarget(e.target)) {
+        e.preventDefault();
+        menu(m);
+      } else if (e.code === 'Escape') {
+        if (screen === 'play') pause();
+        else if (screen === 'pause') resume();
+      } else if ((e.code === 'Enter' || e.code === 'NumpadEnter') && screen === 'start') {
         if (isTypingTarget(e.target)) return;
         e.preventDefault();
         play();
@@ -354,22 +249,49 @@ export function createHud(ctx: HudContext): Hud {
     if (document.hidden) autoPause();
   });
 
+  // Loom Stones don't open the map by themselves (a new game starts on one, and walking past a
+  // stone would interrupt a fight); their toast points to M.
+  const adv = createAdventureHud({ session: ctx.session, showBanner });
+  const tick = (): void => ctx.audio.play('uiClick');
+
   render(
     h(HudApp, {
       s,
+      session: ctx.session,
       play,
       pause: {
         resume,
         restart,
-        tick: () => ctx.audio.play('uiClick'),
-        places: scenes,
+        tick,
+        places: sandboxScenes(),
         get place() {
           return ctx.session.sceneId;
         },
         goTo,
+        get adventure() {
+          if (!flow?.inAdventure()) return null;
+          return {
+            slots: flow.slots.value,
+            persistent: flow.persistent.value,
+            saveTo: flow.saveTo,
+            exportSave: flow.exportCurrent,
+            quitToTitle: toTitle,
+          };
+        },
       },
       loom,
       closeLoom,
+      adv,
+      flow,
+      menu,
+      started: () => {
+        ctx.audio.unlock();
+        ctx.audio.play('uiStart');
+        toPlay();
+      },
+      scenes: ctx.devScenes ? sandboxScenes() : null,
+      onScene: goTo,
+      tick,
     }),
     root,
   );
@@ -381,12 +303,14 @@ export function createHud(ctx: HudContext): Hud {
   let viewEdits = ctx.session.loadoutEdits.length;
   let viewAge = 0;
 
-  return {
+  const hud: Hud = {
     handleEvents(events) {
       for (const e of events) {
         if (e.type === 'castFailed') s.deny.value = { slot: e.slot, n: s.deny.peek().n + 1 };
         else if (e.type === 'hit' && e.target === 'player') s.hurt.value = s.hurt.peek() + 1;
       }
+      adv.handleEvents(events);
+      flow?.handleEvents(events);
     },
     frame(state) {
       const edits = ctx.session.loadoutEdits.length;
@@ -396,15 +320,41 @@ export function createHud(ctx: HudContext): Hud {
         viewEdits = edits;
         viewAge = 0;
       }
-      if (s.screen.peek() === 'loom') ctx.input.enabled = false;
+      if (s.screen.peek() === 'loom' || isMenu(s.screen.peek())) ctx.input.enabled = false;
       const next = readSnap(
         state,
         slotSnaps(view, state.player, (i) => slotTimers(state, i)),
       );
       if (!snapEqual(s.snap.peek(), next)) s.snap.value = next;
+      adv.frame();
       const w = watcher.update(readArena(state));
       if (w.transition === 'cleared') showBanner(`Wave ${w.wave} cleared`, 'Catch your breath');
       else if (w.transition === 'started') showBanner(`Wave ${w.wave}`, 'Incoming');
     },
+    debug: {
+      open(screen) {
+        if (screen.startsWith('title')) {
+          s.screen.value = 'title';
+          ctx.loop.paused = true;
+          titleView.value = (screen.split(':')[1] as TitleView | undefined) ?? 'menu';
+          return;
+        }
+        // Keeps the loop's paused state, so screenshots stay still.
+        if (s.screen.peek() !== 'play') s.screen.value = 'play';
+        if (screen === 'loom') openLoom();
+        else if (screen === 'pause') pause();
+        else if (isMenu(screen)) {
+          if (ctx.session.state.mode === 'adventure') enterModal(screen);
+        }
+      },
+      events(events) {
+        hud.handleEvents(events as unknown as SimEvent[]);
+      },
+      hold(on) {
+        holdToasts(on);
+        ctx.uiRoot.classList.toggle('rl-hold', on);
+      },
+    },
   };
+  return hud;
 }

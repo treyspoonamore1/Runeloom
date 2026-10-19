@@ -3,7 +3,7 @@
  * the comparison that keeps DOM updates down to frames where something visible changed.
  * No DOM here, so it runs in Node tests.
  */
-import type { GameState } from '../sim';
+import { playerDodgeCharges, playerDodgeRecharge, type GameState } from '../sim';
 import { enemiesRemaining, readArena, type ArenaView } from './arena';
 import type { SlotSnap } from './hudSlots';
 
@@ -86,7 +86,6 @@ export interface HudSnap {
 export function readSnap(state: GameState, slots: SlotSnap[] = []): HudSnap {
   const p = state.player;
   const a = readArena(state);
-  const t = state.tuning.player;
   return {
     life: fmtVital(p.life, 'ceil'),
     maxLife: Math.round(p.maxLife),
@@ -96,7 +95,8 @@ export function readSnap(state: GameState, slots: SlotSnap[] = []): HudSnap {
     manaFrac: quantize(p.maxMana > 0 ? p.mana / p.maxMana : 0, 100),
     dead: p.dead,
     respawnSec: p.dead ? fmtCountdown(p.respawnLeft) : 0,
-    pips: dodgePips(p.dodgeCharges, t.dodgeCharges, p.dodgeRechargeLeft, t.dodgeRecharge),
+    // With the character's dodge mods (passives, items): 0 of them outside adventure mode.
+    pips: dodgePips(p.dodgeCharges, playerDodgeCharges(state), p.dodgeRechargeLeft, playerDodgeRecharge(state)),
     slots,
     wave: a
       ? { wave: a.wave, phase: a.phase, countdown: fmtCountdown(a.timer), remaining: enemiesRemaining(state) }

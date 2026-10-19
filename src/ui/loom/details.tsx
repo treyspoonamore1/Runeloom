@@ -10,6 +10,19 @@ import type { ReadoutView } from './readoutQueue';
 
 function SpindlePicker({ st }: { st: LoomState }) {
   const cur = st.loadout.value.spindleId;
+  // Adventure: the spindle is the equipped item; it changes in the inventory, not here.
+  if (st.totals.value)
+    return (
+      <div class="lm-sec">
+        <h4>Spindle</h4>
+        <p class="lm-muted lm-sp-imp">
+          {spindles[cur].name}: Capacity {st.loadout.value.capacity}, cast speed ×
+          {fmtNum(spindles[cur].castSpeed, 2)}
+          {spindles[cur].implicitText ? `, ${spindles[cur].implicitText}` : ''}
+        </p>
+        <p class="lm-fine">Equip another spindle in the inventory (I).</p>
+      </div>
+    );
   return (
     <div class="lm-sec">
       <h4>Spindle</h4>

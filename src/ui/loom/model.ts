@@ -21,6 +21,7 @@ import {
   type RuneId,
 } from '../../../data/runes';
 import { printWeave } from '../../sim/weave/notation';
+import { noFreeReason } from './pouchCounts';
 import {
   branchIndex,
   childPath,
@@ -106,6 +107,11 @@ export interface Placement {
 export interface EditOptions {
   /** Deepest branch spell allowed (root is 0). */
   maxDepth?: number;
+  /**
+   * Adventure mode: free copies per rune id (pouchCounts.ts). A rune with none free is offered
+   * nowhere: every spot it could take is blocked with the reason. Absent or null: unlimited.
+   */
+  available?: ReadonlyMap<string, number> | null;
 }
 
 const formDef = (id: string): FormDef | undefined => {
@@ -158,11 +164,14 @@ export function placements(tree: WeaveTree, runeId: string, opts: EditOptions = 
   const def = getRune(runeId);
   if (!def) return [];
   const maxDepth = opts.maxDepth ?? weaveLimits.maxDepth;
+  const scarce = noFreeReason(opts.available ?? null, def.id);
   const out: Placement[] = [];
-  const add = (spot: Spot, reason?: string) =>
+  const add = (spot: Spot, why?: string) => {
+    const reason = why ?? scarce ?? undefined;
     out.push(
       reason ? { spot, key: spotKey(spot), ok: false, reason } : { spot, key: spotKey(spot), ok: true },
     );
+  };
 
   if (def.kind === 'trigger') {
     if (tree.trigger !== def.id) add({ kind: 'trigger' });

@@ -9,7 +9,9 @@ import { KIND_ORDER, KIND_TITLE, runeFacts } from './describe';
 import { RuneGlyph } from './glyphs';
 import type { Anchor, LoomState } from './loomState';
 import { chipRune, placements, type Placement } from './model';
-import { pouchRunes } from './pouch';
+import { pouchPool } from './pouch';
+import { missingRunes } from './pouchCounts';
+import { parseWeave } from '../../sim/weave/notation';
 
 export const anchorOf = (el: Element): Anchor => {
   const r = el.getBoundingClientRect();
@@ -85,10 +87,15 @@ export function Picker({ st }: { st: LoomState }) {
   }, [pk?.key]);
   if (!pk) return null;
   const tree = st.draft;
+  const eo = st.editOpts;
   const opts: Array<{ rune: RuneDef; p: Placement }> = [];
-  for (const r of pouchRunes) {
-    const p = placements(tree, r.id).find((x) => x.ok && x.key === pk.key);
-    if (p) opts.push({ rune: r, p });
+  // Runes that would fit here but have no free copy (adventure): shown disabled, with why.
+  const scarce: Array<{ rune: RuneDef; reason: string }> = [];
+  for (const r of pouchPool(st)) {
+    const here = placements(tree, r.id, eo).find((x) => x.key === pk.key);
+    if (here?.ok) opts.push({ rune: r, p: here });
+    else if (here && eo.available && placements(tree, r.id).some((x) => x.ok && x.key === pk.key))
+      scarce.push({ rune: r, reason: here.reason ?? '' });
   }
   const current = pk.path ? chipRune(tree, pk.path) : undefined;
   return (
@@ -106,6 +113,29 @@ export function Picker({ st }: { st: LoomState }) {
         </button>
       </div>
       {opts.length === 0 ? <p class="lm-muted">Nothing fits here.</p> : null}
+      {scarce.length > 0 ? (
+        <div class="lm-pick-group">
+          <h5>No free copy</h5>
+          <div class="lm-pick-list">
+            {scarce.map(({ rune, reason }) => (
+              <button
+                key={rune.id}
+                type="button"
+                disabled
+                title={reason}
+                aria-label={`${rune.name}: ${reason}`}
+                class={`lm-chip sm nofit k-${rune.kind} r-${rune.id}`}
+              >
+                <span class={`lm-medal k-${rune.kind} r-${rune.id}`}>
+                  <RuneGlyph id={rune.id} />
+                </span>
+                <span class="lm-name">{rune.name}</span>
+                <span class="lm-count none">0</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {KIND_ORDER.map((k) => {
         const list = opts.filter((o) => o.rune.kind === k);
         if (list.length === 0) return null;
@@ -154,6 +184,12 @@ export function RefMenu({ st }: { st: LoomState }) {
   }, [st.refMenu.value]);
   if (!st.refMenu.value) return null;
   const cap = st.loadout.value.capacity;
+  const free = st.free.value;
+  const missing = (notation: string): string[] => {
+    if (!free) return [];
+    const p = parseWeave(notation);
+    return p.ok ? missingRunes(p.tree, free, st.draft) : [];
+  };
   return (
     <div class="lm-pop lm-refmenu" ref={ref} role="menu" aria-label="Reference weaves">
       <div class="lm-pop-head">
@@ -163,27 +199,32 @@ export function RefMenu({ st }: { st: LoomState }) {
         </button>
       </div>
       <div class="lm-ref-list">
-        {referenceWeaves.map((w) => (
-          <button
-            key={w.n}
-            type="button"
-            role="menuitem"
-            class="lm-ref"
-            onClick={() => st.loadNotation(w.notation)}
-          >
-            <span class="lm-ref-n">{w.n}</span>
-            <span class="lm-ref-body">
-              <b>{w.name}</b>
-              <code>{w.notation}</code>
-            </span>
-            <span
-              class={`lm-ref-cx${w.cx > cap ? ' over' : ''}`}
-              title={w.cx > cap ? `Needs ${w.cx} Capacity` : 'Fits'}
+        {referenceWeaves.map((w) => {
+          const lack = missing(w.notation);
+          return (
+            <button
+              key={w.n}
+              type="button"
+              role="menuitem"
+              class={`lm-ref${lack.length ? ' lacking' : ''}`}
+              disabled={lack.length > 0}
+              title={lack.length ? `Needs runes you have no free copy of: ${lack.join(', ')}` : undefined}
+              onClick={() => st.loadNotation(w.notation)}
             >
-              {w.cx}
-            </span>
-          </button>
-        ))}
+              <span class="lm-ref-n">{w.n}</span>
+              <span class="lm-ref-body">
+                <b>{w.name}</b>
+                <code>{w.notation}</code>
+              </span>
+              <span
+                class={`lm-ref-cx${w.cx > cap ? ' over' : ''}`}
+                title={w.cx > cap ? `Needs ${w.cx} Capacity` : 'Fits'}
+              >
+                {w.cx}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

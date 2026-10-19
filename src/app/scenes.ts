@@ -41,6 +41,9 @@ export const scenes: SceneDef[] = [
   },
 ];
 
+/** Scenes the pause menu's place picker offers (adventures start from the title screen). */
+export const sandboxScenes = (): SceneDef[] => scenes.filter((s) => s.mode !== 'adventure');
+
 export const DEFAULT_SCENE = 'arena';
 
 export function findScene(id: string): SceneDef | undefined {

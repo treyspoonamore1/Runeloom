@@ -9,6 +9,7 @@ import type { LoomState, SlotStatus } from './loomState';
 import { isBlank, placementMap, samePath, type Placement } from './model';
 import { anchorOf, tipHandlers } from './popups';
 import { RUNE_MIME } from './pouch';
+import { noFreeReason } from './pouchCounts';
 
 /** Short reason a slot tab shows a warning dot, or null. */
 export function slotWarning(s: SlotStatus | undefined): string | null {
@@ -134,7 +135,7 @@ function SpotButton(p: {
         const id = (e.dataTransfer?.getData(RUNE_MIME) || st.dragging.peek()) as RuneId | null;
         st.dragging.value = null;
         if (!id) return;
-        const target = placementMap(st.draft, id).get(p.spotKey);
+        const target = placementMap(st.draft, id, st.editOpts).get(p.spotKey);
         if (target?.ok) st.place(target, id);
       }}
       {...(filled ? tipHandlers(p.rune, 'below') : {})}
@@ -290,9 +291,10 @@ export function WeaveTreeView({ st }: { st: LoomState }) {
     (status.kind === 'invalid' || status.kind === 'incomplete') && status.path.length > 0
       ? status.path.join('.')
       : null;
-  const c: SpotCtx = { st, active, pm: active ? placementMap(tree, active) : null, badKey };
+  const c: SpotCtx = { st, active, pm: active ? placementMap(tree, active, st.editOpts) : null, badKey };
   const visits = listSpells(tree);
   const none = active && c.pm && ![...c.pm.values()].some((p) => p.ok);
+  const scarce = active ? noFreeReason(st.free.value, active) : null;
   return (
     <div
       id="lm-weave"
@@ -305,7 +307,13 @@ export function WeaveTreeView({ st }: { st: LoomState }) {
       }}
     >
       <Node c={c} visits={visits} at={0} />
-      {none ? <p class="lm-nospot">No spot in this weave takes {getRune(active)?.name}.</p> : null}
+      {none ? (
+        <p class="lm-nospot">
+          {scarce
+            ? `${scarce}${scarce.startsWith('No free') ? ': every copy is in a weave. Remove one first.' : '.'}`
+            : `No spot in this weave takes ${getRune(active)?.name}.`}
+        </p>
+      ) : null}
       {!isBlank(tree) ? (
         <div class="lm-story" aria-label="What this weave does">
           <h5>Reads as</h5>

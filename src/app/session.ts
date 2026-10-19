@@ -46,7 +46,7 @@ function newState(
 }
 
 /** An adventure game rebuilt from a save (save.ts loadSave + createAdventure). */
-export function adventureFromSave(save: SaveData, tuning?: Tuning): GameState {
+export function loadAdventure(save: SaveData, tuning?: Tuning): GameState {
   return loadSave(save, (init) => createAdventure({ ...init, rooms: roomTexts, tuning }));
 }
 
@@ -83,9 +83,9 @@ export class Session {
    */
   heroEdits: TimedHeroEdit[] = [];
   /**
-   * Adventure mode: the game at the last reset as a save, so replays can rebuild it (loading a
-   * save, or a new game, creates the state outside `createGame`). Null in other modes. Whoever
-   * replaces `state` with an adventure game calls `markAdventureStart()`.
+   * Adventure mode: the game at the last reset as a save, so replays (and a plain reset) can
+   * rebuild it with loadSave + createAdventure. Null in other modes. Set by the constructor,
+   * reset, adopt and markAdventureStart.
    */
   startSave: SaveData | null = null;
   /**
@@ -164,18 +164,11 @@ export class Session {
     const tuning = this.state.tuning;
     this.state =
       restart && this.startSave
-        ? adventureFromSave(this.startSave, tuning)
+        ? loadAdventure(this.startSave, tuning)
         : newState(this.seed, this.roomId, this.mode, tuning, loadoutSpecOf(this.state.weaves));
     this.lastRoom = this.state.room;
     this.state.cheats = cheats;
-    this.rememberStart();
-    this.startCheats = { ...cheats };
-    this.frames = [];
-    this.loadoutEdits = [];
-    this.heroEdits = [];
-    this.pendingEvents = [];
-    this.edited = false;
-    this.startTuning = cloneTuning(this.state.tuning);
+    this.beginRecording();
     for (const fn of this.resetListeners) fn(this.state);
   }
 
@@ -210,10 +203,31 @@ export class Session {
   }
 
   /**
-   * Call right after putting a fresh adventure game in `state` (new game, loaded save, reset):
-   * starts a new recording from it, so F9 replays rebuild the game from `startSave`.
+   * Call right after putting a fresh adventure game in `state` yourself (tests, tools): starts a
+   * new recording from it, so F9 replays rebuild the game from `startSave`. The title screen's
+   * new game, continue, load and import go through `adopt`, which does this too.
    */
   markAdventureStart(): void {
+    this.beginRecording();
+  }
+
+  /**
+   * Replaces the game with a prepared state: a new adventure or a loaded save (title screen,
+   * src/app/adventure.ts). Build it with the live tuning (`session.state.tuning`) so replays
+   * match; the cheats carry over. Like reset, it starts a fresh recording (with `startSave` set
+   * in adventure mode) and tells reset listeners.
+   */
+  adopt(state: GameState, sceneId: string): void {
+    state.cheats = { ...this.state.cheats };
+    this.sceneId = sceneId;
+    this.state = state;
+    this.lastRoom = state.room;
+    this.beginRecording();
+    for (const fn of this.resetListeners) fn(this.state);
+  }
+
+  /** A fresh recording from the current state: seed, mode, room, tuning, cheats and the start save. */
+  private beginRecording(): void {
     this.mode = this.state.mode;
     this.seed = this.state.seed;
     this.roomId = this.state.room.id;
@@ -224,7 +238,7 @@ export class Session {
     this.edited = false;
     this.startCheats = { ...this.state.cheats };
     this.startTuning = cloneTuning(this.state.tuning);
-    this.startSave = makeSave(this.state);
+    this.rememberStart();
   }
 
   /** Resets into another scene's room and mode (the pause menu's place picker). */
