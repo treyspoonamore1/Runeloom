@@ -8,21 +8,13 @@ import { mixRgb } from './ailmentPalette';
 import { ENEMY as C, HIT_FLASH } from './combatPalette';
 import { angleDelta, clamp, smoothstep, TAU } from './mathx';
 import { BOW_TIP_X, BOW_TIP_Y } from './enemyShapes';
+import { buildRig, FLAME_POS, LAYOUT } from './enemyRig';
+import { CREATURE } from './creaturePalette';
+
+/** A doused Tinderling is washed ashen: its white flash silhouette, grey, at this alpha. */
+const ASH = CREATURE.ash;
+const ASH_ALPHA = CREATURE.ashAlpha;
 import type { FxParticle } from './particles';
-
-/** Per-kind layout: shadow size, feet height (lift pivot), face offset scale. */
-const LAYOUT: Record<EnemyKind, { shadowRx: number; shadowRy: number; shadowY: number; foot: number }> = {
-  tinderling: { shadowRx: 1.25, shadowRy: 0.55, shadowY: 0.75, foot: 0.85 },
-  shieldbearer: { shadowRx: 2.5, shadowRy: 1.05, shadowY: 1.55, foot: 1.6 },
-  ember_archer: { shadowRx: 1.45, shadowRy: 0.65, shadowY: 1.15, foot: 1.3 },
-  dummy: { shadowRx: 1.6, shadowRy: 0.65, shadowY: 1.35, foot: 1.4 },
-};
-
-const FLAME_POS = [
-  [-0.55, -0.95, 0.75],
-  [0.05, -1.2, 1],
-  [0.55, -0.9, 0.7],
-] as const;
 
 /**
  * One enemy's look: layered atlas sprites with procedural bob, lean, facing, hit flash, squash,
@@ -33,15 +25,19 @@ export class EnemyView {
   /** Bobs, leans and squashes around the feet (ailment parts attach here). */
   readonly lift = new Container();
   private readonly flash: Sprite;
-  private readonly face: Sprite | null = null;
-  private readonly flames: Sprite[] = [];
-  private readonly legs: Sprite[] = [];
+  private readonly face: Sprite | null;
+  private readonly flames: Sprite[];
+  private readonly legs: Sprite[];
   /** Shield (shieldbearer) or bow (archer): rotated to the facing, moved behind when facing north. */
-  private readonly held: Container | null = null;
+  private readonly held: Container | null;
   private heldBack = false;
-  private readonly heldFlash: Sprite | null = null;
-  private readonly strings: Sprite[] = [];
-  private readonly arrow: Sprite | null = null;
+  private readonly heldFlash: Sprite | null;
+  private readonly strings: Sprite[];
+  private readonly arrow: Sprite | null;
+  /** Shieldbearer: char marks over the shield (alpha = how far it has burnt). */
+  private readonly scorch: Sprite | null;
+  /** A doused Tinderling: its flames are out. */
+  private doused = false;
 
   enemy: Enemy | null = null;
   shadow: FxParticle | null = null;
@@ -83,66 +79,16 @@ export class EnemyView {
     readonly kind: EnemyKind,
     atlas: Atlas,
   ) {
-    const L = LAYOUT[kind];
-    const sprite = (name: string) => new Sprite(atlas.get(name));
-    this.lift.pivot.set(0, L.foot);
-    this.lift.position.set(0, L.foot);
-    if (kind === 'tinderling') {
-      for (const [lx, ly] of [
-        [-0.7, 0.7],
-        [-0.3, 0.92],
-        [0.3, 0.92],
-        [0.7, 0.7],
-      ] as const) {
-        const leg = sprite('tinderling_leg');
-        leg.position.set(lx, ly);
-        this.legs.push(leg);
-        this.root.addChild(leg);
-      }
-    } else if (kind === 'shieldbearer') {
-      for (const lx of [-0.85, 0.85]) {
-        const b = sprite('shieldbearer_boot');
-        b.position.set(lx, 1.55);
-        this.legs.push(b);
-        this.root.addChild(b);
-      }
-    }
-    this.root.addChild(this.lift);
-    this.lift.addChild(sprite(`${kind}_body`));
-    this.flash = sprite(`${kind}_flash`);
-    this.flash.alpha = 0;
-    this.lift.addChild(this.flash);
-    if (kind === 'tinderling') {
-      this.face = sprite('tinderling_eyes');
-      for (const [fx, fy, s] of FLAME_POS) {
-        const f = sprite('tinderling_flame');
-        f.position.set(fx, fy);
-        f.scale.set(s);
-        this.flames.push(f);
-      }
-      this.lift.addChild(this.face, ...this.flames);
-    } else if (kind === 'shieldbearer') {
-      this.face = sprite('shieldbearer_visor');
-      this.lift.addChild(this.face);
-      this.held = new Container();
-      this.heldFlash = sprite('shieldbearer_shield_flash');
-      this.heldFlash.alpha = 0;
-      this.held.addChild(sprite('shieldbearer_shield'), this.heldFlash);
-      this.held.position.set(0, -0.2);
-      this.lift.addChild(this.held);
-    } else if (kind === 'ember_archer') {
-      this.face = sprite('ember_archer_face');
-      this.lift.addChild(this.face);
-      this.held = new Container();
-      for (let i = 0; i < 2; i++) {
-        const s = sprite('line');
-        s.tint = C.ember_archer.string;
-        this.strings.push(s);
-      }
-      this.arrow = sprite('ember_archer_arrow');
-      this.held.addChild(this.strings[0]!, this.strings[1]!, this.arrow, sprite('ember_archer_bow'));
-      this.lift.addChild(this.held);
-    }
+    const r = buildRig(kind, atlas, this.root, this.lift);
+    this.flash = r.flash;
+    this.face = r.face;
+    this.flames = r.flames;
+    this.legs = r.legs;
+    this.held = r.held;
+    this.heldFlash = r.heldFlash;
+    this.strings = r.strings;
+    this.arrow = r.arrow;
+    this.scorch = r.scorch;
   }
 
   /** Fresh state for a newly seen enemy. */
@@ -162,7 +108,26 @@ export class EnemyView {
     this.root.alpha = 1;
     this.root.tint = 0xffffff;
     this.root.visible = true;
+    this.root.scale.set(1);
+    this.doused = false;
     for (const f of this.flames) f.visible = true;
+    if (this.held) this.held.visible = true;
+    if (this.scorch) this.scorch.alpha = 0;
+  }
+
+  /** A Tinderling went out (Wet) or relit: its flames hide or show (CreatureFx). */
+  setDoused(on: boolean): void {
+    if (on === this.doused || this.dying >= 0) return;
+    this.doused = on;
+    for (const f of this.flames) f.visible = !on;
+  }
+
+  /** Shieldbearer: how far its shield has burnt (0–1, char marks) and whether it still has one. */
+  setShield(scorch: number, present: boolean): void {
+    if (!this.scorch || !this.held) return;
+    if (this.held.visible !== present) this.held.visible = present;
+    const a = present ? scorch : 0;
+    if (Math.abs(this.scorch.alpha - a) > 0.01) this.scorch.alpha = a;
   }
 
   hit(kbX: number, kbY: number, fromX: number, fromY: number, type: DamageType = 'physical'): void {
@@ -279,7 +244,8 @@ export class EnemyView {
     this.lift.rotation = clamp(this.velX * norm, -1, 1) * C.leanTilt + waddle + this.wobble;
 
     this.flashT = Math.max(0, this.flashT - dt);
-    this.flash.alpha = this.flashT > 0 ? C.flashAlpha * (this.flashT / C.flashTime) ** 0.5 : 0;
+    this.flash.alpha = this.flashT > 0 ? C.flashAlpha * (this.flashT / C.flashTime) ** 0.5 : this.doused ? ASH_ALPHA : 0;
+    if (this.doused && this.flashT <= 0 && this.flash.tint !== ASH) this.flash.tint = ASH;
     if (this.heldFlash) this.heldFlash.alpha = Math.max(this.flash.alpha, this.heldFlash.alpha - dt * 8);
 
     if (this.face) {

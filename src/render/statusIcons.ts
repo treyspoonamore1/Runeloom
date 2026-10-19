@@ -4,6 +4,11 @@ import type { Atlas } from './atlas';
 import { AIL, mixRgb } from './ailmentPalette';
 import { ImmediatePool } from './particles';
 
+/** Grid-state bits for StatusIcons.row (M3: DESIGN §14 Wet, Oiled; §6.4 Blind). */
+export const ICON_WET = 1;
+export const ICON_OIL = 2;
+export const ICON_BLIND = 4;
+
 /**
  * Status icons above bodies (DESIGN §14): an Ignite flame, Shock with its percentage, and a
  * chill meter that fills toward Freeze and becomes a snowflake while frozen. Only active
@@ -20,6 +25,9 @@ export class StatusIcons {
     meterFill: Texture;
     pct: Texture;
     digits: Texture[];
+    wet: Texture;
+    oil: Texture;
+    blind: Texture;
   };
   private time = 0;
   /** Cells per 720p screen pixel this frame. */
@@ -35,6 +43,9 @@ export class StatusIcons {
       meterFill: atlas.get('meter_fill'),
       pct: atlas.get('digit_pct'),
       digits: Array.from({ length: 10 }, (_, d) => atlas.get(`digit_${d}`)),
+      wet: atlas.get('icon_wet'),
+      oil: atlas.get('icon_oil'),
+      blind: atlas.get('icon_blind'),
     };
   }
 
@@ -54,13 +65,13 @@ export class StatusIcons {
     return AIL.iconLift * this.u;
   }
 
-  /** Draws the row for `a` centered at x with its middle at y (cells). */
-  row(a: Ailments, x: number, y: number): void {
+  /** Draws the row for `a` (and the ICON_* grid states in `flags`) centered at x with its middle at y (cells). */
+  row(a: Ailments, x: number, y: number, flags = 0): void {
     const ignite = a.ignite.timeLeft > 0;
     const frozen = a.freeze.timeLeft > 0;
     const chill = !frozen && a.chill > 0.5;
     const shock = a.shock.timeLeft > 0;
-    if (!ignite && !frozen && !chill && !shock) return;
+    if (!ignite && !frozen && !chill && !shock && flags === 0) return;
     const u = this.u;
     const I = AIL.icon * u;
     const gap = AIL.iconGap * u;
@@ -74,6 +85,7 @@ export class StatusIcons {
     if (shock) w += shockW + gap;
     if (frozen) w += I + gap;
     if (chill) w += meterW + gap;
+    for (let b = ICON_WET; b <= ICON_BLIND; b <<= 1) if (flags & b) w += I + gap;
     let cx = x - w / 2;
 
     // Icon textures are 1.2 cells across at scale 1, digits 1.2 tall.
@@ -123,6 +135,17 @@ export class StatusIcons {
         fill.paint(hot > 0 ? mixRgb(AIL.frost, 0xffffff, hot * (0.3 + 0.4 * pulse)) : AIL.frost, 1);
       }
     }
+    // Grid states after the ailments: Wet, Oiled, Blind.
+    if (chill) cx += meterW + gap;
+    if (flags & ICON_WET) {
+      this.put(this.tex.wet, cx + I / 2, y, I / 1.2, 0xffffff, 1);
+      cx += I + gap;
+    }
+    if (flags & ICON_OIL) {
+      this.put(this.tex.oil, cx + I / 2, y, I / 1.2, 0xffffff, 1);
+      cx += I + gap;
+    }
+    if (flags & ICON_BLIND) this.put(this.tex.blind, cx + I / 2, y, I / 1.2, 0xffffff, 1);
   }
 
   private put(t: Texture, x: number, y: number, scale: number, tint: number, alpha: number): void {

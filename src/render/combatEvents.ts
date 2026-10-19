@@ -67,6 +67,15 @@ export class CombatEvents {
           if (ev.form === 'strike') this.strikes.add(ev.id);
           forms.handle(ev);
           break;
+        // Grid chemistry on bodies (M3): falls, charge hits, arcs, Tinderlings, shields.
+        case 'fell':
+        case 'chargeHit':
+        case 'arc':
+        case 'tinderlingDoused':
+        case 'tinderlingRelit':
+        case 'shieldBurned':
+          ailments.creature.handle(ev, s, enemies);
+          break;
         case 'spellEnd':
         case 'beamFire':
         case 'lobLand':

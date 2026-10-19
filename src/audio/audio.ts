@@ -1,5 +1,7 @@
 import type { GameState, SimEvent } from '../sim';
-import { audioTuning, sfx, type SfxId } from '../../data/sfx';
+import { audioTuning, sfx, type SfxDef, type SfxId } from '../../data/sfx';
+import { sfxCreature, type CreatureSfxId } from '../../data/sfxCreature';
+import { creatureCues } from './creatureCues';
 import { onSettingsChange, settings } from '../app/settings';
 import { readArena, WaveWatcher } from '../ui/arena';
 import { cuesForEvent, spatialize, SpellCueTracker, type Cue } from './cues';
@@ -23,10 +25,14 @@ export interface AudioSystem {
 interface Engine {
   ctx: AudioContext;
   master: GainNode;
-  buffers: Map<SfxId, AudioBuffer>;
+  buffers: Map<AnySfxId, AudioBuffer>;
   buildSamples(...args: number[]): ArrayLike<number>;
   sampleRate: number;
 }
+
+/** Every preset: data/sfx.ts plus the grid-creature sounds (data/sfxCreature.ts). */
+type AnySfxId = SfxId | CreatureSfxId;
+const PRESETS: Record<AnySfxId, SfxDef> = { ...sfx, ...sfxCreature };
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -92,10 +98,10 @@ export function createAudio(): AudioSystem {
     }
   };
 
-  const bufferFor = (e: Engine, id: SfxId): AudioBuffer | null => {
+  const bufferFor = (e: Engine, id: AnySfxId): AudioBuffer | null => {
     let buf = e.buffers.get(id);
     if (!buf) {
-      const samples = mixSfx(sfx[id], e.buildSamples, e.sampleRate);
+      const samples = mixSfx(PRESETS[id], e.buildSamples, e.sampleRate);
       if (samples.length === 0) return null;
       buf = e.ctx.createBuffer(1, samples.length, e.sampleRate);
       buf.getChannelData(0).set(samples);
@@ -105,14 +111,14 @@ export function createAudio(): AudioSystem {
   };
 
   // Sounds requested while the engine is still loading (the first click) play once it's ready.
-  let pending: Array<[SfxId, { pan?: number; gain?: number }]> = [];
+  let pending: Array<[AnySfxId, { pan?: number; gain?: number }]> = [];
 
-  const play = (id: SfxId, opts: { pan?: number; gain?: number } = {}): void => {
+  const play = (id: AnySfxId, opts: { pan?: number; gain?: number } = {}): void => {
     const e = engine;
     if (!e && loading && pending.length < 4) pending.push([id, opts]);
     if (!e || volume <= 0 || e.ctx.state !== 'running') return;
     try {
-      const def: { pitchVar?: number; minGapMs?: number; priority?: number } = sfx[id];
+      const def: { pitchVar?: number; minGapMs?: number; priority?: number } = PRESETS[id];
       const buf = bufferFor(e, id);
       if (!buf) return;
       const rate = 1 + (Math.random() * 2 - 1) * (def.pitchVar ?? 0.05);
@@ -161,7 +167,7 @@ export function createAudio(): AudioSystem {
     }
   };
 
-  const playCue = (c: Cue, state: GameState): void => {
+  const playCue = (c: Cue | { id: AnySfxId; x?: number; y?: number; gain?: number }, state: GameState): void => {
     let pan = 0;
     let g = c.gain ?? 1;
     if (c.x !== undefined && c.y !== undefined) {
@@ -189,6 +195,7 @@ export function createAudio(): AudioSystem {
           for (const c of cuesForEvent(e, state)) playCue(c, state);
           for (const c of spellCues.cues(e)) playCue(c, state);
           for (const c of terrainCues(e)) playCue(c, state);
+          for (const c of creatureCues(e, state)) playCue(c, state);
         }
         // The fire bed and burn-out crumbles (frame time, capped so a stall doesn't burst).
         const t = now();
