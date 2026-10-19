@@ -57,6 +57,12 @@ export const killXp = {
     kiln_mite: 5,
     dummy: 0,
   } as Readonly<Record<string, number>>,
+  /**
+   * Kinds that pay nothing (no XP, rune XP or drops) when another enemy spawned them: a living
+   * Brood Kiln spawns 3 Kiln Mites every 5 s forever, so farming one paid about twice the XP per
+   * minute of playing on (M4 balance pass). Mites a room places with @spawn still pay.
+   */
+  spawnedPayNothing: ['kiln_mite'] as readonly string[],
 };
 
 /** Thread Scrap from salvaging (DESIGN §8.5), and the cost to keep a part when unfusing (§8.4). */

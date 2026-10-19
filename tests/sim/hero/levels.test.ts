@@ -119,3 +119,22 @@ describe('rune XP', () => {
     expect(runeXpToNext(1)).toBeGreaterThan(0);
   });
 });
+
+describe('Brood Kiln mites (M4 balance pass)', () => {
+  it('pay no XP and drop nothing when a kiln spawned them; placed mites still pay', () => {
+    const state = adventure();
+    const kiln = spawnEnemy(state, 'brood_kiln', 40, 40);
+    const spawned = spawnEnemy(state, 'kiln_mite', 100, 60, { parentId: kiln.id });
+    const placed = spawnEnemy(state, 'kiln_mite', 110, 60);
+    state.events.length = 0;
+    for (let i = 0; i < 50; i++) {
+      const m = spawnEnemy(state, 'kiln_mite', 100, 60, { parentId: kiln.id });
+      killEnemy(state, m, PLAYER_ID, 'hit');
+    }
+    killEnemy(state, spawned, PLAYER_ID, 'hit');
+    expect(ofType(events(state), 'xpGained')).toHaveLength(0);
+    expect(state.loot).toHaveLength(0);
+    killEnemy(state, placed, PLAYER_ID, 'hit');
+    expect(ofType(events(state), 'xpGained')).toHaveLength(1);
+  });
+});
