@@ -2,6 +2,9 @@ import type { GameState, SimEvent } from '../sim';
 import { audioTuning, sfx, type SfxDef, type SfxId } from '../../data/sfx';
 import { sfxCreature, type CreatureSfxId } from '../../data/sfxCreature';
 import { creatureCues } from './creatureCues';
+import { sfxM4, type M4SfxId } from '../../data/sfxM4';
+import { M4Signals } from '../app/m4Signals';
+import { BossDrone, m4Sounds } from './m4Cues';
 import { onSettingsChange, settings } from '../app/settings';
 import { readArena, WaveWatcher } from '../ui/arena';
 import { cuesForEvent, spatialize, SpellCueTracker, type Cue } from './cues';
@@ -30,9 +33,9 @@ interface Engine {
   sampleRate: number;
 }
 
-/** Every preset: data/sfx.ts plus the grid-creature sounds (data/sfxCreature.ts). */
-type AnySfxId = SfxId | CreatureSfxId;
-const PRESETS: Record<AnySfxId, SfxDef> = { ...sfx, ...sfxCreature };
+/** Every preset: data/sfx.ts plus the grid-creature (data/sfxCreature.ts) and M4 (data/sfxM4.ts) sounds. */
+type AnySfxId = SfxId | CreatureSfxId | M4SfxId;
+const PRESETS: Record<AnySfxId, SfxDef> = { ...sfx, ...sfxCreature, ...sfxM4 };
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -50,6 +53,9 @@ export function createAudio(): AudioSystem {
   const waves = new WaveWatcher();
   const spellCues = new SpellCueTracker();
   const terrain = new TerrainSoundTracker();
+  /** M4 cues (objects, loot, bosses, level ups) from state changes and events; the boss drone. */
+  const m4 = new M4Signals();
+  const drone = new BossDrone();
   let lastFrame = -1;
 
   const applyVolume = (): void => {
@@ -202,6 +208,8 @@ export function createAudio(): AudioSystem {
         const dt = lastFrame < 0 ? 0 : Math.min(0.1, (t - lastFrame) / 1000);
         lastFrame = t;
         for (const c of terrain.cues(events, state, dt)) playCue(c, state);
+        for (const c of m4.update(state, events, dt)) for (const sc of m4Sounds(c)) playCue(sc, state);
+        for (const c of drone.cues(state, dt)) playCue(c, state);
         // Waves have no sim events: they show up as arena state changes.
         const w = waves.update(readArena(state));
         if (w.transition === 'started') play('waveStart');
