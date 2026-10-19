@@ -16,7 +16,7 @@ export const dropRates = {
     /** A Magic cloak, hood, boots or charm. */
     gear: 0.03,
     /** A spindle base the area level allows (data/progression.ts spindleDropFrom). */
-    spindle: 0.012,
+    spindle: 0.02,
     /** The enemy kind's Fuse part (data/fuseParts.ts), if it has one. */
     part: 0.05,
     /** Thread Scrap. */

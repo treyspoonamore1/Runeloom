@@ -364,6 +364,9 @@ export const affixCounts = {
   rare: { prefixes: 3, suffixes: 3 },
 } as const;
 
+/** Chance a Magic item rolls both a prefix and a suffix; otherwise one of them, evenly. */
+export const magicBothChance = 0.5;
+
 /** Magic item names: "<prefix> <base> <suffix>", e.g. "Smoldering Ashwood Spindle of Haste". */
 export const affixNames: Record<AffixId, string> = {
   fire_damage: 'Smoldering',

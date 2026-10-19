@@ -2,7 +2,7 @@
  * Rolling affixes (DESIGN §8.2, CONTENT §3): each item kind has its own pool; tiers are gated by
  * item level; affixes in the same group can't both roll. All rolls use the loot RNG stream.
  */
-import { affixes, type AffixDef, type AffixTier } from '../../../data/affixes';
+import { affixCounts, affixes, magicBothChance, type AffixDef, type AffixTier } from '../../../data/affixes';
 import type { ItemKind } from '../../../data/items';
 import type { Rng } from '../core/rng';
 import type { AffixRoll } from '../hero/types';
@@ -80,13 +80,17 @@ export function rollAffixSet(
   return out;
 }
 
-/** A Magic item's affixes: a prefix, a suffix, or both (half the time), never none. */
+/** A Magic item's affixes: both a prefix and a suffix (magicBothChance), else one of them, never none. */
 export function rollMagicAffixes(rng: Rng, itemKind: ItemKind, itemLevel: number): AffixRoll[] {
-  const shape = rng.int(4);
-  const p = shape === 1 ? 0 : 1;
-  const s = shape === 0 ? 0 : 1;
+  const max = affixCounts.magic;
+  let p: number = max.prefixes;
+  let s: number = max.suffixes;
+  if (!rng.chance(magicBothChance)) {
+    if (rng.chance(0.5)) p = 0;
+    else s = 0;
+  }
   const out = rollAffixSet(rng, itemKind, itemLevel, p, s);
   // A pool with no suffix (or prefix) for this kind still yields at least one affix.
-  if (out.length === 0) return rollAffixSet(rng, itemKind, itemLevel, 1 - p, 1 - s);
+  if (out.length === 0) return rollAffixSet(rng, itemKind, itemLevel, max.prefixes - p, max.suffixes - s);
   return out;
 }
