@@ -1,4 +1,6 @@
 import { kiterInput } from './bots/kiter';
+import { spawnEnemy } from './actors/enemies';
+import { playerMaxLife, playerMaxMana } from './actors/playerVitals';
 import { Button, type InputFrame } from './core/input';
 import type { GameMode, GameState } from './state';
 import { applyLoadoutSpec } from './weave/runtime/loadout';
@@ -107,6 +109,38 @@ export const scenarios: Scenario[] = [
       'Arena waves against the kiter bot (bots/kiter.ts): kites, Strikes packs, dodges telegraphs.',
     roomId: 'test/arena',
     mode: 'arena',
+    input: (_tick, state) => kiterInput(state),
+  },
+  {
+    id: 'm4_packs',
+    description:
+      'M4 enemies against the kiter bot, god mode: a Magic tinderling_swarm, a Rare archer_line, caller_guard and wisp_flight packs, Tar Hulks and a Brood Kiln.',
+    roomId: 'test/enemies_yard',
+    setup(state) {
+      state.cheats.god = true;
+      spawnEnemy(state, 'tar_hulk', 30, 80);
+      spawnEnemy(state, 'tar_hulk', 120, 20);
+      spawnEnemy(state, 'brood_kiln', 130, 82);
+    },
+    input: (_tick, state) => kiterInput(state),
+  },
+  {
+    id: 'warden_bot',
+    description:
+      'The Cinder Warden (K10) against the kiter bot at level 10 with a Frost Bolt in Q: all three phases, the flood, Superheat breaks and the brazier storm.',
+    roomId: 'kiln/k10_wardens_hearth',
+    setup(state) {
+      applyLoadoutSpec(state, {
+        spindleId: 'heartwood',
+        notations: ['Cast > Bolt[Fire]', 'Cast > Strike[]', 'Cast > Bolt[Frost]', null],
+      });
+      const p = state.player;
+      p.level = 10;
+      p.maxLife = p.life = playerMaxLife(state.tuning.combat, 10);
+      p.maxMana = p.mana = playerMaxMana(state.tuning.combat, 10);
+      p.x = p.prevX = 60;
+      p.y = p.prevY = 72;
+    },
     input: (_tick, state) => kiterInput(state),
   },
 ];
