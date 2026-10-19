@@ -27,12 +27,22 @@ function RoomBox({
   onTravel(key: string): void;
 }) {
   const known = r.vis === 'visited' || r.vis === 'current';
-  const fs = Math.max(10, Math.min(16, r.w / 8));
+  // Shrink long names to fit the box (about 0.56 em per glyph); below 9 px, squeeze them instead.
+  const maxW = r.w - 14;
+  const fit = maxW / (r.room.name.length * 0.56);
+  const fs = Math.max(9, Math.min(16, r.w / 8, fit));
+  const squeeze = fit < 9;
   return (
     <g class={`mp-room ${r.vis} g-${r.room.region}${r.room.side ? ' side' : ''}`}>
       <rect x={r.x + 3} y={r.y + 3} width={r.w - 6} height={r.h - 6} rx={8} />
       {known ? (
-        <text x={r.x + r.w / 2} y={r.y + r.h / 2 + fs * 0.35} font-size={fs} class="mp-name">
+        <text
+          x={r.x + r.w / 2}
+          y={r.y + r.h / 2 + fs * 0.35}
+          font-size={fs}
+          class="mp-name"
+          {...(squeeze ? { textLength: maxW, lengthAdjust: 'spacingAndGlyphs' } : {})}
+        >
           {r.room.name}
         </text>
       ) : (
