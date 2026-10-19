@@ -13,7 +13,8 @@
  * the new owner); a hand-off only claims cells its own chain hasn't. Breadth-first order with
  * fixed neighbor order makes every fill deterministic.
  */
-import { materialByCode } from '../../../data/materials';
+import { MAT, materialByCode } from '../../../data/materials';
+import { chargeSeconds, iceConducts, waterConduction } from '../hero/effectsTerrain';
 import { emit } from '../events';
 import type { GameState } from '../state';
 import { markActive } from './active';
@@ -54,6 +55,15 @@ const CONTACT = 2;
 export function conducts(g: Grid, i: number, medium: Medium): boolean {
   const c = materialByCode[g.ground[i]!]!.conducts;
   return medium === 'water' ? c === 'falloff' : c === 'full';
+}
+
+/** conducts(), with ice and ice bridges counting as water when `ice` (Stormglass). */
+function conductsAs(g: Grid, i: number, medium: Medium, ice: boolean): boolean {
+  if (ice && medium === 'water') {
+    const code = g.ground[i]!;
+    if (code === MAT.ice || code === MAT.ice_bridge) return true;
+  }
+  return conducts(g, i, medium);
 }
 
 const DX = [1, -1, 0, 0];
@@ -107,21 +117,24 @@ function fill(
   const g = state.grid;
   const t = state.tuning.grid;
   const rules = medium === 'water' ? t.water : t.metal;
-  const maxCells = rules.maxCells;
-  const maxDist = medium === 'water' ? t.water.maxDistance : Infinity;
+  // Passives on the player's charge (hero/effectsTerrain.ts): Conduit's reach, Stormglass's ice.
+  const reach = waterConduction(state, src.owner);
+  const maxCells = medium === 'water' ? reach.maxCells : rules.maxCells;
+  const maxDist = medium === 'water' ? reach.maxDistance : Infinity;
+  const ice = iceConducts(state, src.owner);
   const id = g.nextChargeId;
   let head = 0;
   let tail = 0;
   for (const i of seeds) {
     if (tail >= maxCells) break;
-    if (stamp[i] === CLAIMED || !conducts(g, i, medium)) continue;
+    if (stamp[i] === CLAIMED || !conductsAs(g, i, medium, ice)) continue;
     stamp[i] = CLAIMED;
     dist[i] = 0;
     queue[tail++] = i;
   }
   if (tail === 0) return 0;
   g.nextChargeId++;
-  const ticks = u8(gridTicks(rules.chargeSeconds * src.durationMult));
+  const ticks = u8(gridTicks(chargeSeconds(state, src.owner, rules.chargeSeconds, src.durationMult)));
   const w = g.width;
   let nContacts = 0;
   const other: Medium = medium === 'water' ? 'metal' : 'water';
@@ -130,7 +143,7 @@ function fill(
     const d = dist[i]!;
     g.charge[i] = ticks;
     g.chargeId[i] = id;
-    g.chargeFalloff[i] = medium === 'water' ? Math.max(t.water.minFalloff, 1 - d / t.water.maxDistance) : 1;
+    g.chargeFalloff[i] = medium === 'water' ? Math.max(t.water.minFalloff, 1 - d / maxDist) : 1;
     g.owner[i] = src.owner;
     markActive(g.active, i);
     const x = i % w;
@@ -141,13 +154,13 @@ function fill(
       if (nx < 0 || ny < 0 || nx >= w || ny >= g.height) continue;
       const j = ny * w + nx;
       if (stamp[j] === CLAIMED) continue;
-      if (conducts(g, j, medium)) {
+      if (conductsAs(g, j, medium, ice)) {
         if (tail < maxCells && d + 1 <= maxDist) {
           stamp[j] = CLAIMED;
           dist[j] = d + 1;
           queue[tail++] = j;
         }
-      } else if (conducts(g, j, other)) contacts[nContacts++] = j;
+      } else if (conductsAs(g, j, other, ice)) contacts[nContacts++] = j;
     }
   }
   const ev: ChargeEvent = {

@@ -72,6 +72,11 @@ export interface MaterialDef {
   revertSeconds?: number;
   /** Ice bridge: seconds of visible cracking before it breaks (rule 25). */
   crackSeconds?: number;
+  /**
+   * Temporary copies (Hydromancer's water, grid/tempWater.ts) turn back into the cell's `under`
+   * when their material timer runs out. Map-placed cells have timer 0 and stay.
+   */
+  revertsToUnder?: boolean;
 }
 
 const base = {
@@ -138,6 +143,7 @@ export const materials: Readonly<Record<MaterialId, MaterialDef>> = {
     conducts: 'falloff',
     water: 'shallow',
     frostTo: 'ice',
+    revertsToUnder: true,
   },
   deep_water: {
     ...base,

@@ -237,6 +237,8 @@ export const defaultTuning = {
     },
     /** Rule 20: radius in cells of a Shatter's frost burst (applies rules 7 and 8). */
     shatterRadius: 4,
+    /** Hydromancer keystone (M4): radius in cells of the shallow water painted around the player each dodge tick. */
+    hydromancerTrailRadius: 1.5,
     /** DESIGN §6.4 Blind: enemies in smoke or steam (or whose target is) can't see farther than this. */
     blindRange: 4,
     /** Slippery ice (feel): seconds from standstill to top speed on ice, player and enemies. */

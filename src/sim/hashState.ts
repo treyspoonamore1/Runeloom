@@ -9,6 +9,7 @@ import { hashPacket, hashWeaveState } from './weave/runtime/hash';
 import { hashLab } from './world/lab';
 import { hashTerrainState } from './actors/terrainState';
 import { hashHero } from './hero/hero';
+import { hashHeroFx } from './hero/effects';
 import { hashWorld } from './world/worldState';
 import { hashObjects } from './world/objects';
 import { hashLoot } from './items/loot';
@@ -51,6 +52,7 @@ export function hashState(state: GameState): number {
   hashLab(h, state.lab);
   h.u32(state.nextId).num(state.hitstopLeft);
   hashWeaveState(h, state);
+  hashHeroFx(h, state.heroFx);
 
   const p = state.player;
   h.num(p.x).num(p.y).num(p.vx).num(p.vy);

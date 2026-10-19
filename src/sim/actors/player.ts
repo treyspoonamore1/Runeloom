@@ -13,6 +13,7 @@ import { noteDodge } from '../weave/runtime/queue';
 import { actionSpeed, createAilments, isFrozen, type Ailments } from '../combat/ailments';
 import { createTerrainState, type TerrainState } from './terrainState';
 import { readGround } from './ground';
+import { dodgeTrail } from '../hero/effectsTerrain';
 
 /** All player state lives here as plain data, so it hashes, saves and replays. */
 export interface PlayerState {
@@ -195,6 +196,7 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
     p.vx = p.dodgeDirX * speed;
     p.vy = p.dodgeDirY * speed;
     moveCircle(state.room, p, t.radius, p.vx * dt, p.vy * dt);
+    dodgeTrail(state); // Hydromancer: shallow water along the dodge (hero/effectsTerrain.ts).
     p.dodgeLeft -= dt;
     walkTime -= dt;
     if (p.dodgeLeft <= TIME_EPSILON) {

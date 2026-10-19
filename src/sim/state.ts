@@ -29,6 +29,7 @@ import { createLabState, type LabState } from './world/lab';
 import { createHero, refreshHero } from './hero/hero';
 import { emptyHeroMods, type HeroMods } from './hero/mods';
 import type { HeroState } from './hero/types';
+import { createHeroFx, type HeroFxState } from './hero/effects';
 import { createWorldState, type RoomSource, type WorldState } from './world/worldState';
 import { buildObjects, type WorldObject } from './world/objects';
 import type { LootDrop } from './items/loot';
@@ -74,6 +75,8 @@ export interface GameState {
   hero: HeroState;
   /** What the hero's build adds up to (hero/mods.ts). Derived by refreshHero; not hashed. */
   heroMods: HeroMods;
+  /** Runtime state of passive and Fuse rules: extra weaves' timers, Living Loom's cooldown (hero/effects.ts). Hashed. */
+  heroFx: HeroFxState;
   /** Region progress: current room, room flags, keys, Loom Stones (world/worldState.ts). Hashed; saved. */
   world: WorldState;
   /** Puzzle objects and pickups in the current room (world/objects.ts). Hashed. */
@@ -189,6 +192,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     lab: createLabState(),
     hero: opts.hero ?? createHero(),
     heroMods: emptyHeroMods(),
+    heroFx: createHeroFx(),
     world: opts.world ?? createWorldState(room.id),
     objects: [],
     loot: [],

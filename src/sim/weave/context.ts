@@ -2,6 +2,7 @@
 import { defaultTuning } from '../../../data/tuning';
 import { weaveLimits, type RuneShip } from '../../../data/runes';
 import type { SpindleDef } from '../../../data/spindles';
+import { NO_RULES, type CompileRules } from './rules';
 
 export interface CompileContext {
   /** Spindle Capacity (complexity budget), including Loom Shards and affixes. */
@@ -18,6 +19,8 @@ export interface CompileContext {
   strikeFlat?: number;
   /** Base crit multiplier. Default tuning.combat.critMultiplier (1.5). */
   critMultiplier?: number;
+  /** Passive and Fuse rules that change compiled numbers (weave/rules.ts). Default NO_RULES. */
+  rules?: Readonly<CompileRules>;
 }
 
 export type ResolvedContext = Required<CompileContext>;
@@ -31,6 +34,7 @@ export function resolveContext(ctx: CompileContext): ResolvedContext {
     runeLevel: ctx.runeLevel ?? 1,
     strikeFlat: ctx.strikeFlat ?? 0,
     critMultiplier: ctx.critMultiplier ?? defaultTuning.combat.critMultiplier,
+    rules: ctx.rules ?? NO_RULES,
   };
 }
 

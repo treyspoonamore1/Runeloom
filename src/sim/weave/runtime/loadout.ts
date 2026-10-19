@@ -17,6 +17,7 @@ import { compileWeave, type CompileResult } from '../compile';
 import { spindleContext, type CompileContext } from '../context';
 import { parseWeave, type ParseError } from '../notation';
 import type { SpellProgram } from '../program';
+import { NO_RULES, sameRules, type CompileRules } from '../rules';
 import { cancelCast } from './castState';
 
 /** Number of weave slots (LMB, RMB, Q, E). */
@@ -55,6 +56,11 @@ export interface WeaveLoadout {
   /** Capacity override (dev test_spindle), or null for the spindle's own. */
   capacity: number | null;
   slots: WeaveSlot[];
+  /**
+   * Passive and Fuse rules every slot is compiled with (weave/rules.ts). Derived from HeroMods
+   * by refreshHero (setCompileRules); not hashed. NO_RULES without passives or parts.
+   */
+  rules: Readonly<CompileRules>;
 }
 
 /** A loadout as plain data, for new games and replays. */
@@ -90,10 +96,12 @@ export function compileContextFor(
   spindleId: SpindleId,
   capacity: number | null,
   tuning: Tuning,
+  rules: Readonly<CompileRules> = NO_RULES,
 ): CompileContext {
   const ctx = spindleContext(spindles[spindleId], { allowShips: RUNTIME_SHIPS });
   if (capacity !== null) ctx.capacity = capacity;
   ctx.critMultiplier = tuning.combat.critMultiplier;
+  if (rules !== NO_RULES) ctx.rules = rules;
   return ctx;
 }
 
@@ -103,16 +111,17 @@ export function previewFor(
   capacity: number | null,
   tuning: Tuning,
   notation: string,
+  rules: Readonly<CompileRules> = NO_RULES,
 ): WeavePreview {
   const parsed = parseWeave(notation);
   if (!parsed.ok) return { parseError: parsed.error };
-  return { compiled: compileWeave(parsed.tree, compileContextFor(spindleId, capacity, tuning)) };
+  return { compiled: compileWeave(parsed.tree, compileContextFor(spindleId, capacity, tuning, rules)) };
 }
 
 /** Compiles `notation` against the state's current spindle without changing anything. */
 export function previewWeave(state: GameState, notation: string): WeavePreview {
   const w = state.weaves;
-  return previewFor(w.spindleId, w.capacity, state.tuning, notation);
+  return previewFor(w.spindleId, w.capacity, state.tuning, notation, w.rules);
 }
 
 function emptySlot(): WeaveSlot {
@@ -123,7 +132,7 @@ function emptySlot(): WeaveSlot {
 function compileSlot(w: WeaveLoadout, tuning: Tuning, slot: WeaveSlot): void {
   slot.program = slot.compiled = slot.error = null;
   if (slot.notation === null) return;
-  const p = previewFor(w.spindleId, w.capacity, tuning, slot.notation);
+  const p = previewFor(w.spindleId, w.capacity, tuning, slot.notation, w.rules);
   if (p.parseError) {
     slot.error = p.parseError.message;
     return;
@@ -144,8 +153,12 @@ function resetTimers(slot: WeaveSlot): void {
  * A loadout from plain data. Notations are stored as given (canonical when they compile); ones
  * that don't compile stay in their slot with their error.
  */
-export function createWeaveLoadout(spec: LoadoutSpec, tuning: Tuning): WeaveLoadout {
-  const w: WeaveLoadout = { spindleId: spec.spindleId, capacity: spec.capacity ?? null, slots: [] };
+export function createWeaveLoadout(
+  spec: LoadoutSpec,
+  tuning: Tuning,
+  rules: Readonly<CompileRules> = NO_RULES,
+): WeaveLoadout {
+  const w: WeaveLoadout = { spindleId: spec.spindleId, capacity: spec.capacity ?? null, slots: [], rules };
   for (let i = 0; i < LOADOUT_SLOTS; i++) {
     const slot = emptySlot();
     slot.notation = spec.notations[i] ?? null;
@@ -165,8 +178,21 @@ export function loadoutSpecOf(w: WeaveLoadout): LoadoutSpec {
 /** Replaces the whole loadout (new game, replays). Cancels any cast. */
 export function applyLoadoutSpec(state: GameState, spec: LoadoutSpec): void {
   cancelCast(state);
-  state.weaves = createWeaveLoadout(spec, state.tuning);
+  state.weaves = createWeaveLoadout(spec, state.tuning, state.weaves.rules);
   state.loadout = legacyLoadout(state.weaves);
+}
+
+/**
+ * Sets the passive and Fuse compile rules (refreshHero, through hero/effects.ts). When they
+ * change, every slot is recompiled like a spindle switch: weaves that no longer fit keep their
+ * notation and error and don't fire. Timers keep running. No change, no recompile.
+ */
+export function setCompileRules(state: GameState, rules: Readonly<CompileRules>): void {
+  const w = state.weaves;
+  if (sameRules(w.rules, rules)) return;
+  w.rules = rules;
+  for (const s of w.slots) compileSlot(w, state.tuning, s);
+  state.loadout = legacyLoadout(w);
 }
 
 export interface SetWeaveOutcome {
@@ -221,6 +247,8 @@ export function applyLoadoutEdit(state: GameState, edit: LoadoutEdit): boolean {
 /** True if some slot's working weave fires on `event`. */
 export function listensFor(state: GameState, event: TriggerEvent): boolean {
   for (const s of state.weaves.slots) if (s.program?.trigger.event === event) return true;
+  // Extra weaves from Fuse parts (Cinder Heart; hero/effects.ts).
+  for (const s of state.heroFx.bonus) if (s.program?.trigger.event === event) return true;
   return false;
 }
 

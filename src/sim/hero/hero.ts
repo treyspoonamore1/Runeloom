@@ -8,6 +8,8 @@
  */
 import { EQUIP_SLOTS, type FusePart, type HeroState, type Item, type RuneItem } from './types';
 import { emptyHeroMods } from './mods';
+import { addPassiveAndPartMods } from './effectMods';
+import { syncHeroEffects } from './effects';
 import type { Hasher } from '../core/hash';
 import type { GameState } from '../state';
 
@@ -32,7 +34,12 @@ export function createHero(): HeroState {
 
 /** Rebuilds `state.heroMods` from `state.hero`. Stub: neutral mods until the M4 agents fill it. */
 export function refreshHero(state: GameState): void {
-  state.heroMods = emptyHeroMods();
+  const mods = emptyHeroMods();
+  // Passive tree and fused Fuse parts (effects agent: hero/effectMods.ts).
+  addPassiveAndPartMods(state.hero, mods);
+  state.heroMods = mods;
+  // Last, once every source is in: compile rules and extra weaves (effects agent: hero/effects.ts).
+  syncHeroEffects(state);
 }
 
 export function hashRune(h: Hasher, r: RuneItem): void {

@@ -10,7 +10,7 @@ const n = materialByCode.length;
 export const SPREAD = new Float64Array(n);
 /** Smoke while burning: 0 none, 1 light, 2 dense. */
 export const SMOKE = new Uint8Array(n);
-/** 1 if the material timer counts down to a revert (ice, ice bridge). */
+/** 1 if the material timer counts down to a revert (ice, ice bridge, temporary shallow water). */
 export const REVERTS = new Uint8Array(n);
 /** 1 if fire on it does more than burn: melts (rule 5) or dries (rule 23). */
 export const FIRE_SPECIAL = new Uint8Array(n);
@@ -28,6 +28,6 @@ for (let c = 0; c < n; c++) {
   if (!m) continue;
   SPREAD[c] = m.flammable?.spreadChance ?? 0;
   SMOKE[c] = smokeCode(m.flammable?.smoke ?? 'none');
-  REVERTS[c] = m.revertSeconds !== undefined ? 1 : 0;
+  REVERTS[c] = m.revertSeconds !== undefined || m.revertsToUnder === true ? 1 : 0;
   FIRE_SPECIAL[c] = m.fireTo !== undefined || m.driesAfter !== undefined ? 1 : 0;
 }

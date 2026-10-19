@@ -3,6 +3,10 @@
  * triggers (On Dodge, Harvest, On Crit, On Hurt) fed by the trigger queue. Every automatic
  * trigger pays its weave's mana when it fires and skips when short; each has its ICD. Nothing
  * fires while the player is dead or frozen (queued events are dropped).
+ *
+ * Passives and Fuse parts (hero/effects.ts): extra weaves (Cinder Heart) are offered Pulse and
+ * events after slots 0–3, firing as slot −1; Living Loom makes automatic triggers free and
+ * gives them a shared cooldown.
  */
 import { isDodging } from '../../actors/player';
 import { DT } from '../../core/constants';
@@ -18,6 +22,13 @@ import { LOADOUT_SLOTS, SLOT_BUTTONS } from './loadout';
 import { aimReach, TIME_EPSILON } from './procs';
 import { openCast, spawnSpell } from './spawn';
 import type { TriggerQueueEntry } from './types';
+import type { WeaveSlot } from './loadout';
+import {
+  autoTriggerMana,
+  autoTriggerReady,
+  noteAutoTriggerFired,
+  tickHeroTriggers,
+} from '../../hero/effects';
 
 /** Pays `cost` mana; false (nothing paid) if short. With cheats.infiniteMana it always pays. */
 export function payMana(state: GameState, cost: number): boolean {
@@ -90,6 +101,7 @@ export function stepWeaves(state: GameState, input: InputFrame): void {
       if (s.cooldownLeft <= TIME_EPSILON) s.cooldownLeft = 0;
     }
   }
+  tickHeroTriggers(state);
   const blocked = p.dead || isFrozen(p);
   if (!p.dead) {
     if (blocked) cancelCast(state);
@@ -172,19 +184,29 @@ function advanceCast(state: GameState, input: InputFrame): void {
  * restarts) if there is none or mana is short. A period of d seconds fires every 60d ticks.
  */
 function stepPulse(state: GameState, blocked: boolean): void {
+  state.weaves.slots.forEach((s, slot) => pulseSlot(state, s, slot, blocked));
+  for (const s of state.heroFx.bonus) pulseSlot(state, s, -1, blocked);
+}
+
+function pulseSlot(state: GameState, s: WeaveSlot, slot: number, blocked: boolean): void {
   const p = state.player;
-  state.weaves.slots.forEach((s, slot) => {
-    const prog = s.program;
-    if (prog === null || prog.trigger.event !== 'interval') return;
-    const due = s.periodLeft <= TIME_EPSILON;
-    if (due) s.periodLeft += prog.trigger.period ?? 0;
-    s.periodLeft -= DT;
-    if (!due || blocked) return;
-    const t = nearestEnemy(state, p.x, p.y, prog.trigger.aimRange ?? Infinity, null, true);
-    if (t === null || !payMana(state, prog.mana)) return;
-    const [dx, dy] = directionOr(p.x, p.y, t.x, t.y, p.aimDirX, p.aimDirY);
-    fireProgram(state, slot, prog, p.x, p.y, dx, dy, t.x, t.y, -1, true);
-  });
+  const prog = s.program;
+  if (prog === null || prog.trigger.event !== 'interval') return;
+  const due = s.periodLeft <= TIME_EPSILON;
+  if (due) s.periodLeft += prog.trigger.period ?? 0;
+  s.periodLeft -= DT;
+  if (!due || blocked) return;
+  const t = nearestEnemy(state, p.x, p.y, prog.trigger.aimRange ?? Infinity, null, true);
+  if (t === null || !payAuto(state, prog)) return;
+  const [dx, dy] = directionOr(p.x, p.y, t.x, t.y, p.aimDirX, p.aimDirY);
+  fireProgram(state, slot, prog, p.x, p.y, dx, dy, t.x, t.y, -1, true);
+}
+
+/** An automatic trigger pays (nothing with Living Loom) unless Living Loom's cooldown runs. */
+function payAuto(state: GameState, prog: SpellProgram): boolean {
+  if (!autoTriggerReady(state) || !payMana(state, autoTriggerMana(state, prog))) return false;
+  noteAutoTriggerFired(state);
+  return true;
 }
 
 /** Event kinds the readout forces (DESIGN §5.5) instead of waiting for them. */
@@ -205,16 +227,25 @@ function stepQueue(state: GameState, input: InputFrame, blocked: boolean): void 
   const list = q.splice(0, q.length);
   if (blocked) return;
   for (const entry of list) {
-    state.weaves.slots.forEach((s, slot) => {
-      const prog = s.program;
-      if (prog === null || prog.trigger.event !== entry.event || s.cooldownLeft > 0) return;
-      const tr = prog.trigger;
-      if (tr.event === 'hurt' && entry.amount < (tr.hurtThreshold ?? 0) - TIME_EPSILON) return;
-      if (!payMana(state, prog.mana)) return;
-      s.cooldownLeft = tr.icd;
-      fireFromEntry(state, input, slot, prog, entry);
-    });
+    state.weaves.slots.forEach((s, slot) => offerEntry(state, input, s, slot, entry));
+    for (const s of state.heroFx.bonus) offerEntry(state, input, s, -1, entry);
   }
+}
+
+function offerEntry(
+  state: GameState,
+  input: InputFrame,
+  s: WeaveSlot,
+  slot: number,
+  entry: TriggerQueueEntry,
+): void {
+  const prog = s.program;
+  if (prog === null || prog.trigger.event !== entry.event || s.cooldownLeft > 0) return;
+  const tr = prog.trigger;
+  if (tr.event === 'hurt' && entry.amount < (tr.hurtThreshold ?? 0) - TIME_EPSILON) return;
+  if (!payAuto(state, prog)) return;
+  s.cooldownLeft = tr.icd;
+  fireFromEntry(state, input, slot, prog, entry);
 }
 
 /** Origin and aim from the trigger's rules (TriggerOrigin, TriggerAim). */

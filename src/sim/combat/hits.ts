@@ -11,6 +11,8 @@ import { arcShock } from './arcs';
 import { deathTerrain, dousedTakenMult } from '../actors/chemistry';
 import { noteHurt, noteKill } from '../weave/runtime/queue';
 import { resolveHit, zeroAmounts, type DamagePacket, type DamageTarget, type HitResult } from './damage';
+import { afterPlayerHit, hasHitRules, playerHitPacket } from '../hero/effectsCombat';
+import type { FormId } from '../../../data/runes';
 
 /** How a hit was delivered, besides its damage. */
 export interface HitInfo {
@@ -29,6 +31,8 @@ export interface HitInfo {
   owner?: number;
   /** A rule 19 arc: applies no ailments of its own and never arcs again (one generation). */
   arc?: boolean;
+  /** The form of the player spell instance dealing it (passive rules such as Brittle). */
+  form?: FormId;
 }
 
 /**
@@ -90,6 +94,9 @@ export function applyHit(
 
 function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInfo): HitResult {
   const def = enemyDef(e.kind);
+  // Passive and Fuse rules on the player's hits (hero/effectsCombat.ts); none: same packet.
+  const rules = info.sourceId === PLAYER_ID && hasHitRules(state);
+  if (rules) packet = playerHitPacket(state, e, packet, info);
   const res = resolveHit(packet, damageTarget(e), state.combatRng);
   e.life -= res.total;
   const kb = info.knockback * def.knockbackScale;
@@ -109,6 +116,7 @@ function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInf
     spellId: info.spellId,
   });
   if (res.crit) addHitstop(state, state.tuning.feel.hitstopCrit);
+  if (rules) afterPlayerHit(state, e, res, info);
   if (e.life <= 0 && killEnemy(state, e, info.sourceId, 'hit')) {
     if (info.killHitstop !== undefined) addHitstop(state, info.killHitstop);
     return res;

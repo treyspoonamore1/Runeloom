@@ -1,7 +1,7 @@
 /**
  * Weave costs (DESIGN §5.4). Assumes every rune id is known and of the right kind (pass 1).
  *
- * - Complexity: Σ rune cx. A branch rune leading into a spell at depth d costs
+ * - Complexity: Σ rune cx, less the Tinder Tooth discount (weave/rules.ts). A branch rune leading into a spell at depth d costs
  *   cx + branchCxPerDepth × (d − 1).
  * - Mana: spellMana = form base mana × Π element and modifier mana mults (the spell's own slots;
  *   inherited or infused elements add nothing) + 0.5 × Σ child spellMana.
@@ -13,6 +13,7 @@ import { weaveLimits, type BranchDef, type TriggerDef } from '../../../data/rune
 import { defOf, formOf } from './checks';
 import type { ResolvedContext } from './context';
 import type { WeaveCosts } from './program';
+import { ruleComplexityDiscount } from './rules';
 import type { SpellNode, WeaveTree } from './tree';
 
 /** Mana of the spell's own runes, before branches. */
@@ -68,7 +69,7 @@ export function castTime(tree: WeaveTree, ctx: ResolvedContext): number {
 export function weaveCostsOf(tree: WeaveTree, ctx: ResolvedContext): WeaveCosts {
   const trigger = defOf(tree.trigger) as TriggerDef;
   return {
-    complexity: weaveComplexity(tree),
+    complexity: weaveComplexity(tree) - ruleComplexityDiscount(tree, ctx.rules),
     capacity: ctx.capacity,
     mana: trigger.manaMult * spellMana(tree.root),
     castTime: castTime(tree, ctx),

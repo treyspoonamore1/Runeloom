@@ -11,6 +11,18 @@ import { applyHeroEdit, type HeroEdit } from '../sim/hero/edits';
 import type { HeroMods } from '../sim/hero/mods';
 import type { FusePart, HeroState, Item, RuneItem } from '../sim/hero/types';
 import type { Session } from './session';
+import {
+  allocateBlocker,
+  allocatedSet,
+  canAllocate,
+  isAllocated,
+  passivePath,
+  passivePoints,
+  passivePointsAvailable,
+  refundCheck,
+  refundCost,
+  type RefundCheck,
+} from '../sim/hero/passives';
 
 export type { HeroEdit };
 
@@ -49,4 +61,65 @@ export function describeRune(rune: RuneItem): Description {
 
 export function describePart(part: FusePart): Description {
   return { name: part.part, rarity: 'magic', base: `Tier ${part.tier}`, lines: [] };
+}
+
+// ---- Passive tree (effects agent): read-only views over data/passives.ts and hero/passives.ts.
+// Allocate and refund with sendHeroEdit({ kind: 'allocate' | 'refund', node }).
+
+export {
+  passiveNodes,
+  passiveEdges,
+  passiveIds,
+  passiveView,
+  PASSIVE_START,
+  type PassiveId,
+  type PassiveNode,
+  type PassiveArea,
+  type PassiveType,
+} from '../../data/passives';
+export type { RefundCheck } from '../sim/hero/passives';
+
+/** How the tree draws a node: allocated, allocatable now (connected, a point free), or not. */
+export type PassiveNodeState = 'allocated' | 'available' | 'locked';
+
+export interface PassiveSummary {
+  /** Points earned: level − 1 + Pattern Seeds. */
+  points: number;
+  /** Points not spent. */
+  available: number;
+  /** Thread Scrap one refund costs now (0 below level 10). */
+  refundCost: number;
+  /** Allocated node ids, start included. */
+  allocated: ReadonlySet<string>;
+}
+
+export function getPassiveSummary(session: Session): PassiveSummary {
+  const hero = session.state.hero;
+  return {
+    points: passivePoints(hero),
+    available: passivePointsAvailable(hero),
+    refundCost: refundCost(hero),
+    allocated: allocatedSet(hero),
+  };
+}
+
+export function passiveNodeState(session: Session, id: string): PassiveNodeState {
+  const hero = session.state.hero;
+  if (isAllocated(hero, id)) return 'allocated';
+  return canAllocate(hero, id) ? 'available' : 'locked';
+}
+
+/** Why the node can't be allocated now, or null if it can. */
+export function passiveAllocateBlocker(session: Session, id: string): string | null {
+  return allocateBlocker(session.state.hero, id);
+}
+
+/** Whether the node can be refunded now, why not, and the Thread Scrap it costs. */
+export function passiveRefundCheck(session: Session, id: string): RefundCheck {
+  return refundCheck(session.state.hero, id);
+}
+
+/** Unallocated nodes on the shortest path to `id`, ending with it ([] if allocated, null if unknown). */
+export function passivePathPreview(session: Session, id: string): string[] | null {
+  return passivePath(session.state.hero, id);
 }

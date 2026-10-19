@@ -9,6 +9,7 @@ import type { DamagePacket, HitResult } from './damage';
 import { OWNER } from '../../../data/materials';
 import { PLAYER_ID } from '../actors/enemies';
 import { isWet } from '../actors/terrainState';
+import { ailmentScale } from '../hero/effectsCombat';
 
 /**
  * Entity ailments (DESIGN §6.4): Ignite, Chill, Freeze and Shock on enemies and the player.
@@ -189,6 +190,8 @@ export function shockFor(state: GameState, t: AilmentTarget, storm: number): num
  * Applies the ailments a resolved hit carries (DESIGN §6.4) to a live target: Ignite from its
  * fire part, Chill (and maybe Freeze) from its frost part, Shock from its storm part. Durations
  * are scaled by packet.ailmentDuration; chill points by packet.chillGain (spindle implicit).
+ * The player's passives and Fuse parts scale durations and effects on top (ailmentScale,
+ * hero/effectsCombat.ts; neutral for every other source).
  */
 export function applyHitAilments(
   state: GameState,
@@ -203,12 +206,29 @@ export function applyHitAilments(
   const fire = res.byType.fire / unshock;
   const frost = res.byType.frost / unshock;
   const storm = res.byType.storm / unshock;
-  if (fire > 0) applyIgnite(state, t, fire * A.igniteDpsFraction, A.igniteDuration * durMul, sourceId);
+  const k = ailmentScale(state, sourceId);
+  if (fire > 0)
+    applyIgnite(
+      state,
+      t,
+      fire * A.igniteDpsFraction * k.igniteDps,
+      A.igniteDuration * durMul * k.igniteDuration,
+      sourceId,
+    );
   if (frost > 0) {
     const points = isBoss(t) ? A.bossChillPerHit : (frost / t.maxLife) * A.chillPerLifeFraction;
-    addChill(state, t, points * chillGain(t, A) * (packet.chillGain ?? 1), durMul, sourceId);
+    // Same association as before M4 (points × wet × implicit), so neutral mods change nothing.
+    const total = points * chillGain(t, A) * (packet.chillGain ?? 1) * k.chillPoints;
+    addChill(state, t, total, durMul * k.freezeDuration, sourceId, k.freezeAdd);
   }
-  if (storm > 0) applyShock(state, t, shockFor(state, t, storm), A.shockDuration * durMul, sourceId);
+  if (storm > 0)
+    applyShock(
+      state,
+      t,
+      shockFor(state, t, storm) * k.shockEffect,
+      A.shockDuration * durMul * k.shockDuration,
+      sourceId,
+    );
 }
 
 /**
@@ -263,8 +283,8 @@ export function extinguish(state: GameState, t: AilmentTarget): void {
 /**
  * Adds chill points (capped at freezeThreshold). Nothing builds while frozen. Reaching the
  * threshold freezes the target, unless it is immune to Freeze or in its boss immunity window;
- * `freezeDurationMul` scales that freeze. Sends 'ailmentApplied' with the new chill total and
- * the seconds it takes to decay.
+ * `freezeDurationMul` scales that freeze, then `freezeAdd` seconds are added (Deep Freeze).
+ * Sends 'ailmentApplied' with the new chill total and the seconds it takes to decay.
  */
 export function addChill(
   state: GameState,
@@ -272,6 +292,7 @@ export function addChill(
   points: number,
   freezeDurationMul: number,
   sourceId: number,
+  freezeAdd = 0,
 ): void {
   if (points <= 0 || isImmune(t, 'chill') || isFrozen(t)) return;
   const A = state.tuning.ailments;
@@ -283,7 +304,7 @@ export function addChill(
   if (a.chill < A.freezeThreshold - AILMENT_EPSILON) return;
   if (isImmune(t, 'freeze') || a.freeze.immuneLeft > 0) return;
   const base = boss ? A.bossFreezeDuration : A.freezeDuration;
-  freezeTarget(state, t, base * freezeDurationMul, sourceId);
+  freezeTarget(state, t, base * freezeDurationMul + freezeAdd, sourceId);
 }
 
 /**

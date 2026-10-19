@@ -13,7 +13,8 @@ import { electrify } from './charge';
 import { fireCell, frostCell, steamAround, stormCell, type CellContext } from './elements';
 import { flush, flushFx } from './fx';
 import { rasterize } from './raster';
-import { materialByCode } from '../../../data/materials';
+import { MAT, materialByCode } from '../../../data/materials';
+import { iceConducts, terrainDurationMult } from '../hero/effectsTerrain';
 
 /** Elements that change terrain. Tide and Gale arrive in M8. */
 export type TerrainElement = 'fire' | 'frost' | 'storm' | 'tide' | 'gale';
@@ -76,13 +77,15 @@ export function paintElement(state: GameState, app: ElementApplication): void {
   if (n === 0) return;
   if (cells.length < n) cells = new Int32Array(n * 2);
   cells.set(list.cells.subarray(0, n));
-  const c: CellContext = { owner: app.owner, durationMult: app.durationMult };
+  // Terrain you create lasts longer with passives (hero/effectsTerrain.ts; 1 without).
+  const durationMult = app.durationMult * terrainDurationMult(state, app.owner);
+  const c: CellContext = { owner: app.owner, durationMult };
   g.version++;
   switch (app.element) {
     case 'fire':
       for (let k = 0; k < n; k++) {
         const i = cells[k]!;
-        if (fireCell(state, i, c)) steamAround(state, i, app.durationMult, steamBatch);
+        if (fireCell(state, i, c)) steamAround(state, i, durationMult, steamBatch);
       }
       flush(state, 'steam', steamBatch);
       return;
@@ -95,10 +98,11 @@ export function paintElement(state: GameState, app: ElementApplication): void {
       if (metal.length < n) metal = new Int32Array(n);
       let nw = 0;
       let nm = 0;
+      const ice = iceConducts(state, app.owner); // Stormglass
       for (let k = 0; k < n; k++) {
         const i = cells[k]!;
         const conducts = materialByCode[g.ground[i]!]!.conducts;
-        if (conducts === 'falloff') water[nw++] = i;
+        if (conducts === 'falloff' || (ice && isIce(g.ground[i]!))) water[nw++] = i;
         else if (conducts === 'full') metal[nm++] = i;
         stormCell(state, i, c);
       }
@@ -107,9 +111,14 @@ export function paintElement(state: GameState, app: ElementApplication): void {
           owner: app.owner,
           sourceId: app.sourceId,
           hitDamage: app.hitDamage,
-          durationMult: app.durationMult,
+          durationMult,
         });
       return;
     }
   }
+}
+
+/** Ice or an ice bridge (Stormglass conducts through both). */
+export function isIce(code: number): boolean {
+  return code === MAT.ice || code === MAT.ice_bridge;
 }
