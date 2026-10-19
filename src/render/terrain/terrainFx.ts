@@ -38,6 +38,11 @@ export class TerrainFx {
   private readonly gAdd: FxLayer;
   private readonly tNorm: FxLayer;
   private readonly tAdd: FxLayer;
+  /**
+   * Ordered layers for stacked discs (fireball rings, flares): a pool swap-removes particles, so
+   * order inside one layer is arbitrary and a big outer disc could cover the core.
+   */
+  private readonly stack: FxLayer[];
   private time = 0;
 
   constructor(
@@ -49,22 +54,23 @@ export class TerrainFx {
     this.gAdd = new FxLayer(t, O.capacity, 'add');
     this.tNorm = new FxLayer(t, O.capacity);
     this.tAdd = new FxLayer(t, O.capacity, 'add');
+    this.stack = [0, 1, 2, 3].map(() => new FxLayer(t, O.stackCapacity));
     this.ground.addChild(this.gNorm.container, this.gAdd.container);
-    this.top.addChild(this.tNorm.container, this.tAdd.container);
+    this.top.addChild(this.tNorm.container, ...this.stack.map((l) => l.container), this.tAdd.container);
   }
 
   get particleCount(): number {
-    return this.gNorm.count + this.gAdd.count + this.tNorm.count + this.tAdd.count;
+    return this.gNorm.count + this.gAdd.count + this.tNorm.count + this.tAdd.count + this.stack.reduce((n, l) => n + l.count, 0);
   }
 
   reset(): void {
-    for (const l of [this.gNorm, this.gAdd, this.tNorm, this.tAdd]) l.clear();
+    for (const l of [this.gNorm, this.gAdd, this.tNorm, this.tAdd, ...this.stack]) l.clear();
     this.pulses.length = 0;
   }
 
   update(dt: number): void {
     this.time += dt;
-    for (const l of [this.gNorm, this.gAdd, this.tNorm, this.tAdd]) l.update(dt);
+    for (const l of [this.gNorm, this.gAdd, this.tNorm, this.tAdd, ...this.stack]) l.update(dt);
     while (this.pulses.length > 0 && this.time - this.pulses[0]!.t0 > O.pulseLife) this.pulses.shift();
   }
 
@@ -178,8 +184,9 @@ export class TerrainFx {
       const at = this.pick(s, b, (i) => g.fire[i]! > 0);
       if (!at) continue;
       // A quick hot flare and a couple of sparks jumping up.
-      this.spawn(this.gNorm, 'glow', at.x, at.y - 0.3, 0, 0, O.flareLife, C.fireOuter, 1.0, 2.2, { a0: 0.75, hold: 0.1 });
-      this.spawn(this.gNorm, 'glow', at.x, at.y - 0.3, 0, 0, O.flareLife * 0.8, C.fireCore, 0.6, 1.2, { a0: 0.9, hold: 0.1 });
+      this.spawn(this.stack[1]!, 'dot', at.x, at.y - 0.3, 0, 0, O.flareLife, C.fireOuter, 0.5, 1.1, { a0: 0.9, hold: 0.3 });
+      this.spawn(this.stack[3]!, 'dot', at.x, at.y - 0.3, 0, 0, O.flareLife * 0.8, C.fireCore, 0.3, 0.6, { a0: 1, hold: 0.3 });
+      this.spawn(this.gAdd, 'glow', at.x, at.y - 0.3, 0, 0, O.flareLife, C.fireGlow, 1.4, 2.4, { a0: 0.6, hold: 0 });
       this.burst(this.gAdd, 'spark', at.x, at.y, 3, [3, 7], [0.25, 0.45], [C.fireInner, C.fireOuter], [0.7, 0.2], {
         up: 5,
         grav: -3,
@@ -268,7 +275,8 @@ export class TerrainFx {
     this.pulses.push({ x, y, t0: this.time, strength });
     if (this.pulses.length > 4) this.pulses.shift();
     const big = 1 + strength;
-    this.spawn(this.tNorm, 'glow', x, y, 0, 0, 0.25, C.stormGlow, 1.5 * big, 3 * big, { a0: 0.6, hold: 0 });
+    this.spawn(this.tNorm, 'dot', x, y, 0, 0, 0.18, C.stormGlow, 0.5 * big, 1.1 * big, { a0: 0.8, hold: 0.3 });
+    this.spawn(this.tAdd, 'glow', x, y, 0, 0, 0.3, C.stormGlow, 1.5 * big, 3 * big, { a0: 0.8, hold: 0 });
     this.spawn(this.tNorm, 'star', x, y, 0, 0, 0.22, C.ink, 1.9 * big, 0.5, { a0: 0.8, hold: 0.2 });
     this.spawn(this.tNorm, 'star', x, y, 0, 0, 0.22, C.stormCore, 1.4 * big, 0.4, { a0: 1, hold: 0.2 });
     this.spawn(this.tNorm, 'ring', x, y, 0, 0, 0.3, metal ? 0xffffff : C.stormCore, 0.4, 2.2 * big, { a0: 0.9, hold: 0 });
@@ -282,9 +290,11 @@ export class TerrainFx {
   private explosion(x: number, y: number, radius: number): void {
     const r = Math.max(2, radius);
     // Flash, fireball, shockwave (dark-backed so it reads on light floors), debris and soot.
-    this.spawn(this.tNorm, 'glow', x, y, 0, 0, O.flashLife * 2, C.fireOuter, r * 0.8, r * 1.9, { a0: 0.85, hold: 0.15 });
-    this.spawn(this.tNorm, 'glow', x, y, 0, 0, O.flashLife * 1.5, C.fireInner, r * 0.6, r * 1.4, { a0: 0.95, hold: 0.15 });
-    this.spawn(this.tNorm, 'glow', x, y, 0, 0, O.flashLife, C.fireCore, r * 0.5, r * 0.9, { a0: 1, hold: 0.2 });
+    // Toon fireball: stacked discs (outer red-orange, yellow, white core) that swell and fade.
+    this.spawn(this.stack[0]!, 'dot', x, y, 0, 0, O.fireballLife, C.fireDeep, r * 0.55, r * 1.05, { a0: 0.95, hold: 0.45 });
+    this.spawn(this.stack[1]!, 'dot', x, y, 0, 0, O.fireballLife * 0.85, C.fireOuter, r * 0.45, r * 0.9, { a0: 1, hold: 0.45 });
+    this.spawn(this.stack[2]!, 'dot', x, y, 0, 0, O.fireballLife * 0.7, C.fireInner, r * 0.3, r * 0.6, { a0: 1, hold: 0.45 });
+    this.spawn(this.stack[3]!, 'dot', x, y, 0, 0, O.flashLife, C.fireCore, r * 0.2, r * 0.4, { a0: 1, hold: 0.4 });
     this.spawn(this.tAdd, 'glow', x, y, 0, 0, O.flashLife, C.fireCore, r * 1.2, r * 2.6, { a0: 0.8, hold: 0 });
     this.spawn(this.tNorm, 'ring', x, y, 0, 0, O.ringLife, C.ink, r * 0.35, r * 1.9, { a0: 0.55, hold: 0 });
     this.spawn(this.tNorm, 'ring', x, y, 0, 0, O.ringLife, C.fireInner, r * 0.3, r * 1.8, { a0: 0.95, hold: 0 });

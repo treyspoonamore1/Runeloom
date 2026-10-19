@@ -158,6 +158,8 @@ export const DEBUG_OWNER = [0xffffff, 0x3ad0ff, 0xff3050] as const;
 export const TERRAIN_ONESHOT = {
   /** Particles per layer (four layers). */
   capacity: 400,
+  /** Particles in each of the three ordered disc layers. */
+  stackCapacity: 64,
   /** Ignition flares per event, and ignited cells per flare (a big hit makes a few, not hundreds). */
   igniteMax: 6,
   ignitePerFlare: 3,
@@ -175,6 +177,7 @@ export const TERRAIN_ONESHOT = {
   pulseWidth: 2.5,
   bigNetwork: 400,
   flashLife: 0.22,
+  fireballLife: 0.45,
   ringLife: 0.4,
   explosionShake: 3,
 } as const;
