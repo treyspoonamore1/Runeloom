@@ -9,6 +9,7 @@
  */
 import type { EquipSlot } from './types';
 import type { GameState } from '../state';
+import { applyPassiveEdit } from './passives';
 
 export type HeroEdit =
   | { kind: 'equip'; uid: number; slot: EquipSlot }
@@ -29,6 +30,9 @@ export type HeroEdit =
 
 /** Applies an edit if it is legal; returns why not, or null when it applied. Stub. */
 export function applyHeroEdit(state: GameState, edit: HeroEdit): string | null {
+  // ---- Passive tree (effects agent): src/sim/hero/passives.ts ----
+  if (edit.kind === 'allocate' || edit.kind === 'refund') return applyPassiveEdit(state, edit);
+  // ---- end passive tree ----
   void state;
   return `${edit.kind}: not available yet`;
 }

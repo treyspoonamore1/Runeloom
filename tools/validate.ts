@@ -23,6 +23,7 @@ import { scenes } from '../src/app/scenes';
 import { defaultTuning } from '../data/tuning';
 import { isEnemyKind } from '../data/enemies';
 import { checkPositiveNumbers, missingRefs, spawnMarkerDiffs } from './lib/checks';
+import { fuseEffectErrors, passiveTreeErrors } from './lib/passiveChecks';
 import { listRoomIds, loadRoomText } from './lib/rooms';
 
 const errors: string[] = [];
@@ -128,6 +129,9 @@ for (const f of mustFailWeaves) {
   const got = !p.ok ? p.error.message : r && !r.ok ? r.error.message : 'compiled';
   if (got !== f.message) errors.push(`must-fail weave ${f.notation}: got "${got}", expected "${f.message}"`);
 }
+
+// Passive tree and Fuse part effects (M4).
+errors.push(...passiveTreeErrors(), ...fuseEffectErrors());
 
 console.log(
   `validate: ${roomIds.length} rooms, ${scenarios.length} scenarios, ${scenes.length} scenes, tuning checked, ` +

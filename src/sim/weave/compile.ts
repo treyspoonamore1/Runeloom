@@ -19,6 +19,7 @@ import { analyzeElements } from './elements';
 import { printWeave } from './notation';
 import type { SpellProgram, WeaveCosts } from './program';
 import { resolveSpell, resolveTrigger } from './resolve';
+import { applyCompileRules } from './rules';
 import { listSpells, type WeaveTree } from './tree';
 
 export type { CompileError } from './checks';
@@ -49,7 +50,7 @@ export function compileWeave(tree: WeaveTree, context: CompileContext): CompileR
   const program: SpellProgram = {
     notation: printWeave(tree),
     trigger: resolveTrigger(defOf(tree.trigger) as TriggerDef, ctx),
-    root: resolveSpell(tree.root, ['root'], 0, [], els, ctx),
+    root: applyCompileRules(resolveSpell(tree.root, ['root'], 0, [], els, ctx), tree, ctx.rules),
     complexity: costs.complexity,
     mana: costs.mana,
     castTime: costs.castTime,
