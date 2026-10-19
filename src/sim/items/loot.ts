@@ -86,18 +86,19 @@ export function grantContent(state: GameState, content: LootContent): void {
   }
 }
 
-/** Ages drops and collects the ones in pickup range (after lootFloor.pickupDelay) while the player is alive. */
+/** Ages drops and collects the ones in pickup range (after tuning.loot.pickupDelay) while the player is alive. */
 export function stepLoot(state: GameState): void {
   const loot = state.loot;
   if (loot.length === 0) return;
   const p = state.player;
-  const r2 = lootFloor.pickupRadius * lootFloor.pickupRadius;
+  const T = state.tuning.loot;
+  const r2 = T.pickupRadius * T.pickupRadius;
   let w = 0;
   for (const d of loot) {
     d.age += DT;
     const dx = d.x - p.x;
     const dy = d.y - p.y;
-    if (!p.dead && d.age >= lootFloor.pickupDelay && dx * dx + dy * dy <= r2) {
+    if (!p.dead && d.age >= T.pickupDelay && dx * dx + dy * dy <= r2) {
       grantContent(state, d.content);
       emit(state, { type: 'lootPicked', id: d.id, x: d.x, y: d.y, content: d.content, onExit: false });
       continue;

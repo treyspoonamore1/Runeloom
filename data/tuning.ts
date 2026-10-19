@@ -253,6 +253,13 @@ export const defaultTuning = {
     /** Knockback in cells from an explosion (grid.blasts), away from its center (feel). */
     blastKnockback: 3,
   },
+  /** Floor loot (M4, src/sim/items/loot.ts). */
+  loot: {
+    /** Seconds after dropping before a drop can be picked up (so it is seen landing). */
+    pickupDelay: 0.5,
+    /** Pickup range from the player's center, cells. */
+    pickupRadius: 4,
+  },
   camera: {
     /** Look-ahead toward the cursor as a fraction of the screen size. */
     lookAhead: 0.15,

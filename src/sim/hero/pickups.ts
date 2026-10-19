@@ -6,11 +6,12 @@ import type { GameState } from '../state';
 import { refreshHero } from './hero';
 
 export function addHeartSeed(state: GameState): void {
-  const before = state.player.maxLife;
+  const p = state.player;
+  const max = p.maxLife;
+  const life = p.life;
   state.hero.heartSeeds++;
   refreshHero(state);
-  const p = state.player;
-  if (!p.dead) p.life = Math.min(p.maxLife, p.life + (p.maxLife - before));
+  if (!p.dead) p.life = Math.min(p.maxLife, life + (p.maxLife - max));
 }
 
 export function addLoomShard(state: GameState): void {

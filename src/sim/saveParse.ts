@@ -252,7 +252,11 @@ function parseWeaves(v: unknown, hero: HeroState): SavedWeaves {
 function rngState(v: unknown, path: string): RngState {
   const a = arr(v, path);
   if (a.length !== 4) fail(path, 'should hold 4 numbers');
-  return a.map((x, i) => int(x, `${path}[${i}]`, 0)) as RngState;
+  return a.map((x, i) => {
+    const v = int(x, `${path}[${i}]`, -0x80000000);
+    if (v > 0xffffffff) fail(`${path}[${i}]`, 'should be a 32-bit number');
+    return v;
+  }) as RngState;
 }
 
 /** Migrations from version n to n + 1, by n. None yet: version 1 is the first. */

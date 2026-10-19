@@ -35,12 +35,8 @@ export const dropRates = {
 /** Fuse part tier by the area level it dropped at (DESIGN §8.4): tier II from 5, tier III from 9. */
 export const partTierFrom = { 2: 5, 3: 9 } as const;
 
-/** Floor loot behavior (items/loot.ts). Cells and seconds. */
+/** Where drops land (items/loot.ts), cells. Pickup delay and range are feel values in data/tuning.ts `loot`. */
 export const lootFloor = {
-  /** Seconds after dropping before a drop can be picked up (so it is seen landing). */
-  pickupDelay: 0.5,
-  /** Pickup range from the player's center, cells. */
-  pickupRadius: 3,
   /** Drops land this far from the body, spread around it. */
   dropSpread: 2,
 };
