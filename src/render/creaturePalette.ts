@@ -67,7 +67,7 @@ export const CREATURE = {
 
   // ---- Blind ------------------------------------------------------------------------------------
   /** Screen-edge haze while the player stands in smoke or steam: peak alpha and tints. */
-  hazeAlpha: 0.32,
+  hazeAlpha: 0.45,
   hazeSmoke: 0x6a6070,
   hazeSteam: 0xdfe8ee,
 

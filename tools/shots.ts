@@ -13,6 +13,7 @@ import { scenarios } from '../src/sim';
 import { scenes } from '../src/app/scenes';
 import { ArgError, parseArgs, parseViewport, requireInt, runCli } from './lib/args';
 import { scenarioFrames } from './lib/frames';
+import { creatureShotIds, runCreatureShot } from './lib/creatureShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -36,6 +37,7 @@ runCli(async () => {
     milestone: { kind: 'string', default: 'm0' },
     ticks: { kind: 'number', default: 0 },
     viewport: { kind: 'string', default: '1280x720' },
+    set: { kind: 'string', help: "'creature': entities on the chemistry grid (lab stations)" },
   });
   const viewport = parseViewport(a.viewport!);
   const ticks = requireInt('ticks', a.ticks, 0);
@@ -63,7 +65,20 @@ runCli(async () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    for (const scene of selected) {
+    if (a.set === 'creature') {
+      for (const id of creatureShotIds) {
+        errors.length = 0;
+        await page.goto(`http://127.0.0.1:${port}/?scene=lab&seed=${SEED}&paused=1`);
+        await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+        await runCreatureShot(page, id);
+        await page.waitForTimeout(500);
+        const file = join(SHOTS_DIR, `${milestone}_creature_${id}.png`);
+        await page.screenshot({ path: file, timeout: 120_000 });
+        written.push(file);
+        if (errors.length) console.warn(`warning: page errors in creature shot ${id}: ${errors.join('; ')}`);
+      }
+    } else if (a.set !== undefined) throw new ArgError(`Unknown --set "${a.set}". Available: creature`);
+    for (const scene of a.set === undefined ? selected : []) {
       errors.length = 0;
       await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);
       await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
