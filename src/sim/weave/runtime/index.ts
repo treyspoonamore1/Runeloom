@@ -24,6 +24,8 @@ export {
   applyLoadoutEdit,
   listensFor,
   legacyLoadout,
+  stateContext,
+  recompileWeaves,
   type WeaveSlot,
   type WeaveLoadout,
   type LoadoutSpec,

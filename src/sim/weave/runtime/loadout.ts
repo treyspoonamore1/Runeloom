@@ -17,8 +17,10 @@ import { compileWeave, type CompileResult } from '../compile';
 import { spindleContext, type CompileContext } from '../context';
 import { parseWeave, type ParseError } from '../notation';
 import type { SpellProgram } from '../program';
+import type { WeaveTree } from '../tree';
 import { NO_RULES, sameRules, type CompileRules } from '../rules';
 import { cancelCast } from './castState';
+import { assignRunes, runeLevelMap, usesRuneItems } from '../../hero/runes';
 
 /** Number of weave slots (LMB, RMB, Q, E). */
 export const LOADOUT_SLOTS = 4;
@@ -49,6 +51,12 @@ export interface WeaveSlot {
   cooldownLeft: number;
   /** Pulse: seconds until the next pulse (0 or less: on the next tick). Hashed. */
   periodLeft: number;
+  /**
+   * Adventure mode: uids of the rune items socketed in this weave, in rune order
+   * (hero/runes.ts runeOrder). Null for empty slots and in sandbox, arena and lab games, whose
+   * runes are unlimited. Hashed when present.
+   */
+  runes: number[] | null;
 }
 
 export interface WeaveLoadout {
@@ -69,6 +77,8 @@ export interface LoadoutSpec {
   capacity?: number | null;
   /** One per slot; missing entries are empty. */
   notations: readonly (string | null)[];
+  /** Adventure mode: socketed rune uids per slot (WeaveSlot.runes). Absent means none anywhere. */
+  runes?: readonly (readonly number[] | null)[];
 }
 
 /**
@@ -118,17 +128,87 @@ export function previewFor(
   return { compiled: compileWeave(parsed.tree, compileContextFor(spindleId, capacity, tuning, rules)) };
 }
 
-/** Compiles `notation` against the state's current spindle without changing anything. */
-export function previewWeave(state: GameState, notation: string): WeavePreview {
+/**
+ * The compile context for the state's weaves: the spindle (and Capacity override) plus the
+ * character (HeroMods Core group): added Capacity, increased cast speed, reduced mana cost, flat
+ * Strike damage and added rune levels. With a spindle item equipped (adventure) its implicit
+ * reaches the weave through HeroMods; without one (sandbox, arena, lab) from the spindle id, as
+ * before M4. Neutral HeroMods give exactly compileContextFor's context.
+ */
+export function stateContext(state: GameState): CompileContext {
   const w = state.weaves;
-  return previewFor(w.spindleId, w.capacity, state.tuning, notation, w.rules);
+  const mods = state.heroMods;
+  const ctx = compileContextFor(w.spindleId, w.capacity, state.tuning, w.rules);
+  if (state.hero.equipped.spindle !== null) {
+    ctx.runeLevel = 1 + mods.runeLevelAdd.all;
+    ctx.strikeFlat = mods.strikeFlatAdd;
+  } else {
+    ctx.runeLevel = (ctx.runeLevel ?? 1) + mods.runeLevelAdd.all;
+    ctx.strikeFlat = (ctx.strikeFlat ?? 0) + mods.strikeFlatAdd;
+  }
+  ctx.capacity += mods.capacityAdd;
+  ctx.castSpeed = (ctx.castSpeed ?? 1) * (1 + mods.castSpeedInc);
+  ctx.manaCostMult = 1 - mods.manaCostReduced;
+  return ctx;
+}
+
+/** A weave planned for a slot: what it compiles to and, in adventure mode, the rune items it would socket. */
+interface WeavePlan {
+  preview: WeavePreview;
+  runes: number[] | null;
+}
+
+/** Compiles a parsed tree for the state, with the levels of the given socketed items. */
+function compileTree(state: GameState, tree: WeaveTree, runes: readonly number[] | null): CompileResult {
+  const ctx = stateContext(state);
+  if (runes) ctx.runeLevels = runeLevelMap(state, tree, runes);
+  return compileWeave(tree, ctx);
+}
+
+/**
+ * Parses and compiles `notation` for `slot` (-1: no slot), and in adventure mode picks the rune
+ * items it would socket. A rune the hero doesn't have enough free items of fails like a compile
+ * error ("Needs 2 Fire runes; you have 1 free"), after the compiler's own checks.
+ */
+function planWeave(state: GameState, slot: number, notation: string): WeavePlan {
+  const parsed = parseWeave(notation);
+  if (!parsed.ok) return { preview: { parseError: parsed.error }, runes: null };
+  const plain = compileTree(state, parsed.tree, null);
+  if (!plain.ok || !usesRuneItems(state)) return { preview: { compiled: plain }, runes: null };
+  const a = assignRunes(state, parsed.tree, slot);
+  if (!a.ok) {
+    const failed: CompileResult = {
+      ok: false,
+      error: { message: a.message, path: a.path },
+      costs: plain.costs,
+    };
+    return { preview: { compiled: failed }, runes: null };
+  }
+  return { preview: { compiled: compileTree(state, parsed.tree, a.uids) }, runes: a.uids };
+}
+
+/**
+ * Compiles `notation` against the state's current spindle and character without changing
+ * anything. In adventure mode it also checks the hero has the rune items, counting the items
+ * already in `slot` as free (default: no slot, so only pouch items count).
+ */
+export function previewWeave(state: GameState, notation: string, slot = -1): WeavePreview {
+  return planWeave(state, slot, notation).preview;
 }
 
 function emptySlot(): WeaveSlot {
-  return { notation: null, program: null, compiled: null, error: null, cooldownLeft: 0, periodLeft: 0 };
+  return {
+    notation: null,
+    program: null,
+    compiled: null,
+    error: null,
+    cooldownLeft: 0,
+    periodLeft: 0,
+    runes: null,
+  };
 }
 
-/** Recomputes a slot's derived fields from its notation. */
+/** Recomputes a slot's derived fields from its notation, without a character (createWeaveLoadout). */
 function compileSlot(w: WeaveLoadout, tuning: Tuning, slot: WeaveSlot): void {
   slot.program = slot.compiled = slot.error = null;
   if (slot.notation === null) return;
@@ -141,6 +221,33 @@ function compileSlot(w: WeaveLoadout, tuning: Tuning, slot: WeaveSlot): void {
   slot.compiled = c;
   if (c.ok) slot.program = c.program;
   else slot.error = c.error.message;
+}
+
+/**
+ * Recomputes a slot's derived fields for the state's spindle, character and socketed rune
+ * levels. In adventure mode a weave without socketed runes doesn't fire.
+ */
+function compileStateSlot(state: GameState, slot: WeaveSlot): void {
+  slot.program = slot.compiled = slot.error = null;
+  if (slot.notation === null) return;
+  const parsed = parseWeave(slot.notation);
+  if (!parsed.ok) {
+    slot.error = parsed.error.message;
+    return;
+  }
+  const c = compileTree(state, parsed.tree, slot.runes);
+  slot.compiled = c;
+  if (!c.ok) slot.error = c.error.message;
+  else if (usesRuneItems(state) && slot.runes === null) slot.error = 'No runes are socketed in this weave';
+  else slot.program = c.program;
+}
+
+/** Recompiles the given slots (default: all) after the character, spindle or rune levels changed. Timers keep running. */
+export function recompileWeaves(state: GameState, slots?: readonly number[]): void {
+  const w = state.weaves;
+  for (let i = 0; i < w.slots.length; i++)
+    if (!slots || slots.includes(i)) compileStateSlot(state, w.slots[i]!);
+  state.loadout = legacyLoadout(w);
 }
 
 /** A new weave is ready at once: no ICD, and a Pulse fires on the next tick it finds a target. */
@@ -162,6 +269,8 @@ export function createWeaveLoadout(
   for (let i = 0; i < LOADOUT_SLOTS; i++) {
     const slot = emptySlot();
     slot.notation = spec.notations[i] ?? null;
+    const runes = spec.runes?.[i];
+    slot.runes = slot.notation !== null && runes ? [...runes] : null;
     compileSlot(w, tuning, slot);
     if (slot.program) slot.notation = slot.program.notation;
     resetTimers(slot);
@@ -172,14 +281,23 @@ export function createWeaveLoadout(
 
 /** The loadout as plain data (for new games after a reset, and replay files). */
 export function loadoutSpecOf(w: WeaveLoadout): LoadoutSpec {
-  return { spindleId: w.spindleId, capacity: w.capacity, notations: w.slots.map((s) => s.notation) };
+  const spec: LoadoutSpec = {
+    spindleId: w.spindleId,
+    capacity: w.capacity,
+    notations: w.slots.map((s) => s.notation),
+  };
+  if (w.slots.some((s) => s.runes !== null)) spec.runes = w.slots.map((s) => (s.runes ? [...s.runes] : null));
+  return spec;
 }
 
-/** Replaces the whole loadout (new game, replays). Cancels any cast. */
+/**
+ * Replaces the whole loadout (new game, replays, loading a save). Cancels any cast. Socketed
+ * rune uids in the spec are taken as given (src/sim/save.ts validates saves).
+ */
 export function applyLoadoutSpec(state: GameState, spec: LoadoutSpec): void {
   cancelCast(state);
   state.weaves = createWeaveLoadout(spec, state.tuning, state.weaves.rules);
-  state.loadout = legacyLoadout(state.weaves);
+  recompileWeaves(state);
 }
 
 /**
@@ -191,8 +309,7 @@ export function setCompileRules(state: GameState, rules: Readonly<CompileRules>)
   const w = state.weaves;
   if (sameRules(w.rules, rules)) return;
   w.rules = rules;
-  for (const s of w.slots) compileSlot(w, state.tuning, s);
-  state.loadout = legacyLoadout(w);
+  recompileWeaves(state);
 }
 
 export interface SetWeaveOutcome {
@@ -206,12 +323,14 @@ export interface SetWeaveOutcome {
  */
 export function setSlotWeave(state: GameState, slot: number, notation: string | null): SetWeaveOutcome {
   if (!Number.isInteger(slot) || slot < 0 || slot >= LOADOUT_SLOTS) throw new Error(`No weave slot ${slot}`);
-  const preview: WeavePreview = notation === null ? {} : previewWeave(state, notation);
+  const plan: WeavePlan = notation === null ? { preview: {}, runes: null } : planWeave(state, slot, notation);
+  const preview = plan.preview;
   if (notation !== null && (preview.parseError || !preview.compiled!.ok)) return { applied: false, preview };
   if (state.player.castSlot === slot) cancelCast(state);
   const s = state.weaves.slots[slot]!;
   s.notation = preview.compiled?.ok ? preview.compiled.program.notation : null;
-  compileSlot(state.weaves, state.tuning, s);
+  s.runes = plan.runes;
+  compileStateSlot(state, s);
   resetTimers(s);
   state.loadout = legacyLoadout(state.weaves);
   return { applied: true, preview };
@@ -230,13 +349,17 @@ export function setLoadoutSpindle(
   const w = state.weaves;
   w.spindleId = spindleId;
   w.capacity = capacity;
-  for (const s of w.slots) compileSlot(w, state.tuning, s);
-  state.loadout = legacyLoadout(w);
+  recompileWeaves(state);
 }
 
-/** Applies one recorded edit. Returns false if it was rejected (invalid weave or spindle). */
+/**
+ * Applies one recorded edit. Returns false if it was rejected (invalid weave or spindle). In
+ * adventure mode the spindle follows the equipped spindle item (HeroEdit 'equip'), so 'spindle'
+ * edits are rejected.
+ */
 export function applyLoadoutEdit(state: GameState, edit: LoadoutEdit): boolean {
   if (edit.kind === 'spindle') {
+    if (usesRuneItems(state)) return false;
     if (edit.value === null || !isSpindleId(edit.value)) return false;
     setLoadoutSpindle(state, edit.value, state.weaves.capacity);
     return true;

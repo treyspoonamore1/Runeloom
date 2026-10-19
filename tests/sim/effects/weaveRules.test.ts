@@ -212,7 +212,8 @@ describe('neutral rules', () => {
     refreshHero(s);
     expect(s.weaves.rules).toBe(NO_RULES);
     expect(s.heroFx).toEqual({ bonus: [], autoCooldownLeft: 0 });
-    expect(program(s)).toBe(prog); // not even recompiled
+    // refreshHero recompiles every slot (hero/hero.ts); neutral rules compile to the same program.
+    expect(program(s)).toEqual(prog);
     expect(hashState(s)).toBe(before);
   });
 });

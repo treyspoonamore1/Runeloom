@@ -13,8 +13,17 @@ export interface CompileContext {
   castSpeed?: number;
   /** Deepest branch spell allowed. Default 3 (weaveLimits.maxDepth). */
   maxDepth?: number;
-  /** Level of every rune (per-rune levels arrive with rune items in M4). Default 1. */
+  /** Level of every rune not named in `runeLevels`. Default 1. */
   runeLevel?: number;
+  /**
+   * Per-rune levels from rune items (adventure mode), keyed by the rune's path joined with '.'
+   * (`runeKey`): 'trigger', 'root.form', 'root.b0.form', 'root.i1', 'root.b0.branch'. Missing
+   * keys use `runeLevel`. A spell's damage scales with its form rune's level and Pulse's period
+   * with the trigger's (DESIGN §7); other runes' levels don't change numbers in M4.
+   */
+  runeLevels?: Readonly<Record<string, number>>;
+  /** Multiplier on mana costs (1 − reduced mana cost). Default 1. */
+  manaCostMult?: number;
   /** Flat Strike base damage (Ironbark implicit). Default 0. */
   strikeFlat?: number;
   /** Base crit multiplier. Default tuning.combat.critMultiplier (1.5). */
@@ -25,6 +34,18 @@ export interface CompileContext {
 
 export type ResolvedContext = Required<CompileContext>;
 
+const NO_LEVELS: Readonly<Record<string, number>> = {};
+
+/** The key of a rune's path in `CompileContext.runeLevels` ('root.b0.form'). */
+export function runeKey(path: readonly string[]): string {
+  return path.join('.');
+}
+
+/** The level of the rune at `path`. */
+export function levelAt(ctx: ResolvedContext, path: readonly string[]): number {
+  return ctx.runeLevels[runeKey(path)] ?? ctx.runeLevel;
+}
+
 export function resolveContext(ctx: CompileContext): ResolvedContext {
   return {
     capacity: ctx.capacity,
@@ -32,6 +53,8 @@ export function resolveContext(ctx: CompileContext): ResolvedContext {
     castSpeed: ctx.castSpeed ?? 1,
     maxDepth: ctx.maxDepth ?? weaveLimits.maxDepth,
     runeLevel: ctx.runeLevel ?? 1,
+    runeLevels: ctx.runeLevels ?? NO_LEVELS,
+    manaCostMult: ctx.manaCostMult ?? 1,
     strikeFlat: ctx.strikeFlat ?? 0,
     critMultiplier: ctx.critMultiplier ?? defaultTuning.combat.critMultiplier,
     rules: ctx.rules ?? NO_RULES,

@@ -12,6 +12,9 @@ import { addPassiveAndPartMods } from './effectMods';
 import { syncHeroEffects } from './effects';
 import type { Hasher } from '../core/hash';
 import type { GameState } from '../state';
+import { addHeroItemMods } from './aggregate';
+import { syncPlayerToHero } from '../actors/playerVitals';
+import { recompileWeaves } from '../weave/runtime/loadout';
 
 /** A level 1 character with nothing: sandbox, arena and lab games use it as is. */
 export function createHero(): HeroState {
@@ -32,14 +35,32 @@ export function createHero(): HeroState {
   };
 }
 
-/** Rebuilds `state.heroMods` from `state.hero`. Stub: neutral mods until the M4 agents fill it. */
+/**
+ * Rebuilds `state.heroMods` from `state.hero`, then brings the systems that cache character
+ * numbers up to date: the player's level, max life and mana, resistances and dodge charges, and
+ * every weave's compiled program (Capacity, cast speed, rune levels, Strike bonus, mana cost).
+ * A hero with nothing (sandbox, arena, lab) gives neutral mods and changes nothing.
+ */
 export function refreshHero(state: GameState): void {
   const mods = emptyHeroMods();
-  // Passive tree and fused Fuse parts (effects agent: hero/effectMods.ts).
+  // Items, Heart Seeds, Loom Shards (hero/aggregate.ts), then the passive tree and fused Fuse
+  // parts (effects agent: hero/effectMods.ts).
+  addHeroItemMods(mods, state.hero);
   addPassiveAndPartMods(state.hero, mods);
   state.heroMods = mods;
-  // Last, once every source is in: compile rules and extra weaves (effects agent: hero/effects.ts).
+  syncPlayerToHero(state);
+  // Once every source is in: compile rules and extra weaves (effects agent: hero/effects.ts),
+  // then every weave's program against the new Capacity, cast speed and rune levels.
   syncHeroEffects(state);
+  recompileWeaves(state);
+}
+
+/**
+ * Passive points earned (DESIGN §9): one per level above 1, plus Pattern Seeds. Unspent points
+ * are this minus `hero.passives.length`.
+ */
+export function passivePointsEarned(hero: HeroState): number {
+  return hero.level - 1 + hero.patternSeeds;
 }
 
 export function hashRune(h: Hasher, r: RuneItem): void {

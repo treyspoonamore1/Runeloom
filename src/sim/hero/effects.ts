@@ -87,6 +87,8 @@ function bonusSlot(state: GameState, notation: string): WeaveSlot {
     error: null,
     cooldownLeft: 0,
     periodLeft: 0,
+    // Extra weaves use no rune items (CONTENT §4: no slot and no Capacity).
+    runes: null,
   };
   const parsed = parseWeave(notation);
   if (!parsed.ok) {

@@ -36,6 +36,11 @@ export function hashWeaveState(h: Hasher, state: GameState): void {
   for (const s of w.slots) {
     str(h, s.notation);
     h.num(s.cooldownLeft).num(s.periodLeft);
+    // Socketed rune uids exist only in adventure mode; other modes hash exactly as before M4.
+    if (s.runes) {
+      h.byte(1).u32(s.runes.length);
+      for (const u of s.runes) h.u32(u);
+    }
   }
   h.bool(state.cheats.infiniteMana === true)
     .u32(state.triggerForcing)

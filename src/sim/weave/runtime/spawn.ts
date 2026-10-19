@@ -9,6 +9,7 @@ import { PLAYER_ID } from '../../actors/enemies';
 import { zeroAmounts, type DamagePacket } from '../../combat/damage';
 import { emit, type ProjectileEndReason } from '../../events';
 import type { GameState } from '../../state';
+import type { HeroMods } from '../../hero/mods';
 import { specPacket } from '../packet';
 import type { SpellProgram, SpellSpec } from '../program';
 import { initForm, resolveInstant } from './forms';
@@ -42,30 +43,51 @@ export function openCast(
   return cast;
 }
 
-/** Packets are shared and never mutated, so one per (spec, spindle, damage factor) is cached. */
+/** Packets are shared and never mutated, so one per (spec, spindle, character, damage factor) is cached. */
 const packetCache = new WeakMap<
   SpellSpec,
-  { spindleId: string; damageMult: number; packet: DamagePacket }[]
+  { spindleId: string; mods: HeroMods; damageMult: number; packet: DamagePacket }[]
 >();
 
-/** The hit packet for `spec` on the current spindle, with an extra damage factor (Echo). Shared; never mutate. */
+/**
+ * The hit packet for `spec` on the current spindle and character, with an extra damage factor
+ * (Echo). Shared; never mutate. The character's HeroMods Core group adds increased damage by type
+ * (with a spindle item equipped, its implicit arrives this way too), increased damage for branch
+ * spells (depth ≥ 1) and added crit chance. Without a spindle item (sandbox, arena, lab) the
+ * spindle id's implicit applies as before M4. Neutral mods leave the packet exactly as before.
+ */
 export function buildPacket(state: GameState, spec: SpellSpec, damageMult: number): DamagePacket {
   const spindleId = state.weaves.spindleId;
+  const mods = state.heroMods;
   let list = packetCache.get(spec);
   if (list === undefined) packetCache.set(spec, (list = []));
-  for (const c of list) if (c.spindleId === spindleId && c.damageMult === damageMult) return c.packet;
+  for (const c of list)
+    if (c.spindleId === spindleId && c.mods === mods && c.damageMult === damageMult) return c.packet;
   const packet = specPacket(spec, damageMult !== 1 ? [damageMult] : []);
   packet.ailmentDuration = spec.ailmentDurationMult;
-  const imp: SpindleImplicit = spindles[spindleId].implicit;
+  const imp: SpindleImplicit =
+    state.hero.equipped.spindle === null ? spindles[spindleId].implicit : NO_IMPLICIT;
+  let by: DamagePacket['increasedByType'];
   if (imp.increased) {
-    const by = zeroAmounts();
+    by = zeroAmounts();
     for (const t of damageTypes) by[t] = imp.increased[t] ?? 0;
-    packet.increasedByType = by;
   }
+  for (const t of damageTypes)
+    if (mods.damageInc[t] !== 0) {
+      by ??= zeroAmounts();
+      by[t] += mods.damageInc[t];
+    }
+  if (by) packet.increasedByType = by;
+  if (spec.depth >= 1 && mods.branchDamageInc !== 0) packet.increased += mods.branchDamageInc;
+  if (mods.critChanceAdd !== 0) packet.critChance += mods.critChanceAdd;
+  // The character's chill build-up (chillGainInc) scales chill points in ailmentScale
+  // (hero/effectsCombat.ts); only a sandbox spindle id's implicit still rides on the packet.
   if (imp.chillGain) packet.chillGain = 1 + imp.chillGain;
-  list.push({ spindleId, damageMult, packet });
+  list.push({ spindleId, mods, damageMult, packet });
   return packet;
 }
+
+const NO_IMPLICIT: SpindleImplicit = {};
 
 const elementCache = new WeakMap<SpellSpec, ElementId[]>();
 

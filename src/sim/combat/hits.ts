@@ -33,6 +33,8 @@ export interface HitInfo {
   arc?: boolean;
   /** The form of the player spell instance dealing it (passive rules such as Brittle). */
   form?: FormId;
+  /** Delivered by a projectile (HeroMods projectileDamageTakenLess applies to the player). */
+  projectile?: boolean;
 }
 
 /**
@@ -190,7 +192,10 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
     emit(state, { type: 'evaded', x: p.x, y: p.y, sourceId: info.sourceId });
     return null;
   }
-  const res = resolveHit(packet, damageTarget(p), state.combatRng);
+  const side = damageTarget(p);
+  const less = info.projectile ? state.heroMods.projectileDamageTakenLess : 0;
+  if (less !== 0) side.takenMult = (side.takenMult ?? 1) * (1 - less);
+  const res = resolveHit(packet, side, state.combatRng);
   if (!state.cheats.god) p.life -= res.total;
   const kb = info.knockback;
   if (kb > 0) addKnockback(p, info.dirX, info.dirY, kb, state.tuning.feel);

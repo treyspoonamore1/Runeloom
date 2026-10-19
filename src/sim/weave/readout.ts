@@ -20,6 +20,7 @@ import type { DamageAmounts } from '../../../data/combatTypes';
 import { isSpindleId, type SpindleId } from '../../../data/spindles';
 import { defaultTuning, type Tuning } from '../../../data/tuning';
 import { previewFor } from './runtime/loadout';
+import type { HeroState } from '../hero/types';
 import { measureRun, standoff, summarize, type RunTotals } from './runtime/measure';
 
 /** DESIGN §5.5 reference scenes. dummy_grid is for stress tests, not the readout. */
@@ -41,6 +42,13 @@ export interface ReadoutInput {
   seed: number;
   /** Tuning to run with (defaults to data/tuning.ts). */
   tuning?: Tuning;
+  /**
+   * Adventure mode (M4): the character to measure with (gear, level, Heart Seeds, Loom Shards,
+   * passives: everything HeroMods adds up to). Absent: no character, as in the sandbox.
+   */
+  hero?: HeroState;
+  /** With `hero`: the rune item uids the weave would socket, in rune order, so their levels count. */
+  runes?: readonly number[];
 }
 
 export type ReadoutResult =

@@ -5,6 +5,7 @@ import type { DebugContext } from '../debug';
 import { CommandError, numArg, type CommandRegistry } from './commands';
 import { registerM1Commands } from './m1';
 import { registerM2Commands } from './m2';
+import { registerHeroCommands } from './hero';
 import { registerLabCommands } from './lab';
 
 /** Context for console commands: the debug context plus actions owned by the UI layer. */
@@ -16,10 +17,7 @@ export interface ConsoleEnv extends DebugContext {
   clearOutput(): void;
 }
 
-const STUBS: Array<[string, string, string]> = [
-  ['give', 'give <rune>', 'M2'],
-  ['level', 'level <n>', 'M2'],
-];
+const STUBS: Array<[string, string, string]> = [];
 
 export function registerBuiltins(reg: CommandRegistry<ConsoleEnv>): void {
   reg.register({
@@ -110,6 +108,7 @@ export function registerBuiltins(reg: CommandRegistry<ConsoleEnv>): void {
   registerM1Commands(reg);
   registerM2Commands(reg);
   registerLabCommands(reg);
+  registerHeroCommands(reg);
   for (const [name, usage, ms] of STUBS)
     reg.register({ name, usage, summary: `(${ms})`, run: () => `"${name}" is available in ${ms}.` });
 }
