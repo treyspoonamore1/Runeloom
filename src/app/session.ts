@@ -223,6 +223,9 @@ export class Session {
     this.state = state;
     this.lastRoom = state.room;
     this.beginRecording();
+    // What building it sent (the start room's roomEnter): the HUD shows the room banner.
+    for (const e of state.events) this.pendingEvents.push(e);
+    state.events.length = 0;
     for (const fn of this.resetListeners) fn(this.state);
   }
 
