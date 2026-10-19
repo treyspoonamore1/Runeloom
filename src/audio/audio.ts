@@ -4,6 +4,7 @@ import { onSettingsChange, settings } from '../app/settings';
 import { readArena, WaveWatcher } from '../ui/arena';
 import { cuesForEvent, spatialize, SpellCueTracker, type Cue } from './cues';
 import { mixSfx } from './synth';
+import { terrainCues, TerrainSoundTracker } from './terrainCues';
 import { VoiceLimiter } from './voices';
 
 /** Sound effects driven by sim events (DESIGN §13). */
@@ -42,6 +43,8 @@ export function createAudio(): AudioSystem {
   const sources = new Map<number, AudioBufferSourceNode>();
   const waves = new WaveWatcher();
   const spellCues = new SpellCueTracker();
+  const terrain = new TerrainSoundTracker();
+  let lastFrame = -1;
 
   const applyVolume = (): void => {
     if (!engine) return;
@@ -185,7 +188,13 @@ export function createAudio(): AudioSystem {
         for (const e of events) {
           for (const c of cuesForEvent(e, state)) playCue(c, state);
           for (const c of spellCues.cues(e)) playCue(c, state);
+          for (const c of terrainCues(e)) playCue(c, state);
         }
+        // The fire bed and burn-out crumbles (frame time, capped so a stall doesn't burst).
+        const t = now();
+        const dt = lastFrame < 0 ? 0 : Math.min(0.1, (t - lastFrame) / 1000);
+        lastFrame = t;
+        for (const c of terrain.cues(events, state, dt)) playCue(c, state);
         // Waves have no sim events: they show up as arena state changes.
         const w = waves.update(readArena(state));
         if (w.transition === 'started') play('waveStart');
