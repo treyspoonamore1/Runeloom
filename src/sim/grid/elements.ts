@@ -14,6 +14,7 @@ import type { GameState } from '../state';
 import { markActive } from './active';
 import { addToBatch, fx, gridTicks, ignitable, ignite, setAir, setGround, steamTicks, u16 } from './cells';
 import type { CellBatch } from './cells';
+import { iceDurationMult } from '../hero/effectsTerrain';
 
 export interface CellContext {
   owner: number;
@@ -86,10 +87,12 @@ export function frostCell(state: GameState, i: number, c: CellContext, formed: C
   const def = materialByCode[g.ground[i]!]!;
   // DESIGN §5.3: frost does nothing to steam, so [Fire, Frost] on water leaves steaming water.
   if (def.water !== null && g.air[i] === AIR.steam) return;
+  // Long Winter: ice you create lasts longer (hero/effectsTerrain.ts; 1 without).
+  const iceMult = c.durationMult * iceDurationMult(state, c.owner);
   if (def.frostTo !== undefined) {
     const to = materials[def.frostTo];
     setGround(state, i, to.code);
-    const t = frozenTicks(to.id, c.durationMult);
+    const t = frozenTicks(to.id, iceMult);
     if (t > 0) {
       g.timer[i] = t;
       addToBatch(formed, g, i);
@@ -98,7 +101,7 @@ export function frostCell(state: GameState, i: number, c: CellContext, formed: C
   }
   // Temporary ice hit by Frost again lasts its full time again; map ice (timer 0) stays permanent.
   if (def.revertSeconds !== undefined && g.timer[i]! > 0) {
-    const t = frozenTicks(def.id, c.durationMult);
+    const t = frozenTicks(def.id, iceMult);
     if (g.timer[i]! < t) g.timer[i] = t;
   }
 }

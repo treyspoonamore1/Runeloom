@@ -51,6 +51,7 @@ export function spellHit(
     knockback: spec.knockback,
     killHitstop: inst.form === 'strike' ? state.tuning.feel.hitstopStrikeKill : undefined,
     spellId: inst.id,
+    form: inst.form,
   });
   if (res === null) return null;
   inst.hitCount++;

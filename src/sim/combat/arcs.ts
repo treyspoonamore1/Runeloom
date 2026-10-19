@@ -15,6 +15,7 @@ import { hazardHurts } from '../grid/query';
 import { applyShock, shockFor, targetRef, teamOf, type AilmentTarget } from './ailments';
 import { makePacket, type DamagePacket, type HitResult } from './damage';
 import { applyHit } from './hits';
+import { ailmentScale, arcReach } from '../hero/effectsCombat';
 
 // Scratch: candidate query results and the chosen targets with their squared distances.
 const found: number[] = [];
@@ -32,20 +33,23 @@ export function arcShock(
   if (t.dead || !isWet(t)) return;
   const T = state.tuning.terrain.arc;
   const A = state.tuning.ailments;
+  // Bog Gill reaches farther and hits more for the player's arcs (hero/effectsCombat.ts).
+  const { range, maxTargets } = arcReach(state, owner);
   picks.length = 0;
   pickD.length = 0;
   const p = state.player;
-  if (p !== t && !p.dead && isWet(p) && hazardHurts(owner, teamOf(p))) consider(p, t, T.range, T.maxTargets);
-  const n = state.enemyHash.queryCircle(t.x, t.y, T.range, found);
+  if (p !== t && !p.dead && isWet(p) && hazardHurts(owner, teamOf(p))) consider(p, t, range, maxTargets);
+  const n = state.enemyHash.queryCircle(t.x, t.y, range, found);
   for (let k = 0; k < n; k++) {
     const e: Enemy = state.enemies[found[k]!]!;
     if (e === t || e.dead || !isWet(e) || !hazardHurts(owner, teamOf(e))) continue;
-    consider(e, t, T.range, T.maxTargets);
+    consider(e, t, range, maxTargets);
   }
   if (picks.length === 0) return;
   const storm = res.byType.storm / ((1 + res.shock) * res.takenMult);
-  const effect = shockFor(state, t, storm);
-  const duration = A.shockDuration * (packet.ailmentDuration ?? 1);
+  const sk = ailmentScale(state, sourceId);
+  const effect = shockFor(state, t, storm) * sk.shockEffect;
+  const duration = A.shockDuration * (packet.ailmentDuration ?? 1) * sk.shockDuration;
   const arc = makePacket(res.total * T.damageFraction, { storm: 1 }, 0, state.tuning.combat.critMultiplier);
   // Copied: the hits below run other code that may reuse the scratch lists.
   const targets = picks.slice();

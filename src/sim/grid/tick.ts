@@ -16,7 +16,7 @@ import { AIR, MAT, OWNER, SURFACE, materialByCode, materials, oil } from '../../
 import { scaleByLevel } from '../combat/damage';
 import { emit } from '../events';
 import type { GameState } from '../state';
-import { markActive, mergeAdded } from './active';
+import { mergeAdded } from './active';
 import {
   WORLD_SOURCE_ID,
   addToBatch,
@@ -34,8 +34,9 @@ import { FIRE_SPECIAL, REVERTS, SMOKE, SMOKE_DENSE, SMOKE_NONE, SPREAD, smokeCod
 import { flushFx } from './fx';
 import type { Grid } from './grid';
 import { paintElement } from './paint';
-import { rasterize } from './raster';
+import { spillOil } from './oil';
 import { areaLevel } from './query';
+import { fireSpreadMult } from '../hero/effectsTerrain';
 
 /** A growable list of ints (pending cross-cell writes). */
 interface IntList {
@@ -102,6 +103,8 @@ function visitCells(state: GameState): void {
   const last = g.ground.length - width;
   const rng = state.gridRng;
   const spreadK = state.tuning.grid.windFactor * state.tuning.grid.spreadMult;
+  // Fire you create spreads faster with passives (Kindler, Wildheart; hero/effectsTerrain.ts).
+  const playerSpreadK = spreadK * fireSpreadMult(state);
   const oilChance = oil.spreadChance;
   const smokeT = smokeTicks();
   const oilSmoke = smokeCode(oil.smoke);
@@ -136,7 +139,7 @@ function visitCells(state: GameState): void {
                 : i - width;
         if (j < 0 || fire[j]! > 0 || wet[j]! > 0) continue;
         const p = surface[j] === SURFACE.oil ? oilChance : SPREAD[ground[j]!]!;
-        if (p > 0 && rng.float() < p * spreadK) {
+        if (p > 0 && rng.float() < p * (o === OWNER.player ? playerSpreadK : spreadK)) {
           push(ignitions, j);
           push(ignitions, o);
         }
@@ -209,6 +212,11 @@ function burnOut(state: GameState, i: number, oilBurning: boolean): void {
 function timerTick(state: GameState, i: number): void {
   const g = state.grid;
   const def = materialByCode[g.ground[i]!]!;
+  if (def.revertsToUnder === true) {
+    // Temporary water (grid/tempWater.ts) dries back into the ground it covered.
+    if (--g.timer[i]! === 0) setGround(state, i, g.under[i]!);
+    return;
+  }
   if (def.revertSeconds === undefined || def.fireTo === undefined) return;
   const t = --g.timer[i]!;
   const crack = def.crackSeconds !== undefined ? gridTicks(def.crackSeconds) : 0;
@@ -267,19 +275,7 @@ function explode(state: GameState, i: number): void {
   const y = sy / n;
   const t = state.tuning.grid;
   const ex = t.explosion;
-  const spill = rasterize(g, { kind: 'circle', x, y, r: ex.oilRadius });
-  for (let k = 0; k < spill.len; k++) {
-    const j = spill.cells[k]!;
-    const def = materialByCode[g.ground[j]!]!;
-    if (!def.walk && def.water === null) continue;
-    g.surface[j] = SURFACE.oil;
-    if (g.fire[j]! > 0) {
-      // Oil spilled into a fire catches at once (burning oil keeps the invariant: oil + fire = oil burning).
-      g.fire[j] = t.fireIntensity.oil;
-      g.fuel[j] = gridTicks(oil.burnSeconds);
-    }
-    markActive(g.active, j);
-  }
+  spillOil(state, x, y, ex.oilRadius);
   paintElement(state, {
     element: 'fire',
     shape: { kind: 'circle', x, y, r: ex.radius },

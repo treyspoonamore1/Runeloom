@@ -28,6 +28,11 @@ export interface DamagePacket {
   increasedByType?: DamageAmounts;
   /** Multiplier on the chill points this hit adds (Rimeglass 1.2). Missing means 1. */
   chillGain?: number;
+  /**
+   * Per-type "more" factors for this one hit (Wildheart, Oilcraft, Rainshadow, Stormglass;
+   * hero/effectsCombat.ts). Set on per-hit copies only, never on shared packets. Missing means 1.
+   */
+  moreByType?: DamageAmounts;
 }
 
 /** The target side of the formula. */
@@ -74,7 +79,7 @@ export function makePacket(
 
 /**
  * Hit damage = base × element share × (1 + Σ increased) × Π (1 + more) × (crit ? crit multi : 1)
- *              × (1 − resistance) × (1 + shock) × takenMult, per type, summed.
+ *              × (1 − resistance) × (1 + shock) × takenMult × moreByType, per type, summed.
  *
  * The crit roll uses `rng` (the state's dedicated combat stream) and is skipped entirely when
  * critChance ≤ 0, so hits that can't crit don't shift later rolls.
@@ -96,7 +101,8 @@ export function resolveHit(packet: DamagePacket, target: DamageTarget, rng: Rng)
     const base = packet.base[t];
     if (base === 0) continue;
     const inc = byTypeInc ? 1 + packet.increased + byTypeInc[t] : 1;
-    const dmg = base * inc * common * (1 - target.resist[t]);
+    let dmg = base * inc * common * (1 - target.resist[t]);
+    if (packet.moreByType) dmg *= packet.moreByType[t];
     byType[t] = dmg;
     total += dmg;
     if (dmg > best) {

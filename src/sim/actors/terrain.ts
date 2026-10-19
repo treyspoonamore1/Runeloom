@@ -17,6 +17,9 @@
  *    always-burning Tinderling: enemy-owned). Oiled and Ignited, every new cell it enters gets fire.
  * 7. Blind (enemies): smoke or steam on its cell or its target's.
  * Stun counts down here too.
+ *
+ * Passives (hero/effectsTerrain.ts): Hydromancer keeps the player Wet as if in water, Pyre
+ * Walker makes the player ignore burning ground, Wildheart scales player-owned fire's ignite.
  */
 import { AIR, OWNER, SURFACE, materialByCode } from '../../../data/materials';
 import { makePacket } from '../combat/damage';
@@ -32,6 +35,7 @@ import type { Enemy } from './enemies';
 import { fall, isSafeCell } from './falling';
 import { isInvulnerable } from './player';
 import { chargeSeen, rememberCharge } from './terrainState';
+import { alwaysWet, immuneToTerrainFire, terrainFireDpsMult } from '../hero/effectsTerrain';
 
 /** Timers within this of zero count as expired. */
 const TIME_EPSILON = 1e-9;
@@ -78,8 +82,8 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
   const T = state.tuning.terrain;
   const def = materialByCode[g.ground[i]!]!;
 
-  // Rule 15: Wet.
-  if (def.water !== null) {
+  // Rule 15: Wet (Hydromancer: always).
+  if (def.water !== null || alwaysWet(state, t)) {
     if (ts.wetLeft <= 0) becomeWet(state, t);
     ts.wetLeft = T.wetSeconds;
   } else if (ts.wetLeft > 0) {
@@ -104,10 +108,13 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
   // The player's i-frames (dodge, respawn) also dodge terrain fire and charge.
   const iframes = t === state.player && isInvulnerable(state.player);
   // Rule 16: burning ground.
-  const fireHurts = g.fire[i]! > 0 && hazardHurts(g.owner[i]!, team);
+  const fireHurts = g.fire[i]! > 0 && hazardHurts(g.owner[i]!, team) && !immuneToTerrainFire(state, t);
   if (fireHurts && !iframes) {
     const owner = g.owner[i]!;
-    const dps = terrainFireDps(state, g.surface[i] === SURFACE.oil) * (1 - t.resist.fire);
+    const dps =
+      terrainFireDps(state, g.surface[i] === SURFACE.oil) *
+      terrainFireDpsMult(state, owner) *
+      (1 - t.resist.fire);
     applyIgnite(state, t, dps, state.tuning.ailments.igniteDuration, hazardSource(owner), owner, true);
   }
   if ('kind' in t && t.shield !== null && (fireHurts || isIgnited(t))) burnShield(state, t);

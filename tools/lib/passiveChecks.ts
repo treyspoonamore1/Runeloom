@@ -20,7 +20,8 @@ export function passiveTreeErrors(): string[] {
     if (n.text.length === 0) errors.push(`${at(id)}: no tooltip text`);
     for (const l of n.stats)
       if (!(l.stat in statInfo) || !Number.isFinite(l.value)) errors.push(`${at(id)}: bad stat ${l.stat}`);
-    for (const k of Object.keys(n.effects)) if (!effectKeys.has(k)) errors.push(`${at(id)}: unknown effect ${k}`);
+    for (const k of Object.keys(n.effects))
+      if (!effectKeys.has(k)) errors.push(`${at(id)}: unknown effect ${k}`);
   }
   const seen = new Set<string>();
   for (const [a, b] of passiveEdges) {
