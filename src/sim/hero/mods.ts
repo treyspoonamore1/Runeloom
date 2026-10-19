@@ -98,7 +98,8 @@ export interface HeroMods {
   parts: { part: string; tier: 1 | 2 | 3 }[];
   /**
    * Named effects not covered by a number above, e.g. 'oilcraft', 'brittle', 'rainshadow',
-   * 'echoing_thread', with their magnitude. Keys are documented where they are applied.
+   * 'echoing_thread', with their magnitude. Keys and meanings: data/passiveStats.ts EFFECT_KEYS;
+   * applied in src/sim/hero/effects*.ts (each lists its hooks). Values from several sources add.
    */
   effects: Record<string, number>;
   /** Extra weaves that use no slot and no Capacity (Cinder Heart grants `Harvest > Nova[Fire]`). */

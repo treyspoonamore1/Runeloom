@@ -20,7 +20,7 @@
  * - dodgeTrail (actors/player.ts): Hydromancer's shallow water along each dodge.
  */
 import { OWNER } from '../../../data/materials';
-import { hydromancerGrounds, passiveRules } from '../../../data/passives';
+import { hydromancerGrounds } from '../../../data/passives';
 import type { AilmentTarget } from '../combat/ailments';
 import { placeTempWater } from '../grid/tempWater';
 import type { GameState } from '../state';
@@ -81,6 +81,6 @@ export function dodgeTrail(state: GameState): void {
   const seconds = state.heroMods.effects.hydromancer ?? 0;
   if (seconds <= 0) return;
   const p = state.player;
-  const r = passiveRules.hydromancer.trailRadius;
+  const r = state.tuning.terrain.hydromancerTrailRadius;
   placeTempWater(state, p.x, p.y, r, seconds * terrainDurationMult(state, OWNER.player), hydromancerGrounds);
 }

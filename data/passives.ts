@@ -39,8 +39,8 @@ export const passiveView = { minX: -1000, minY: -1000, width: 2000, height: 2000
 export const passiveRules = {
   wildheart: { fireHitLess: 0.3, spreadInc: 0.5 },
   pyreWalker: { moreOnBurning: 0.2 },
-  /** trailRadius: cells of shallow water painted around the player each dodge tick (feel guess). */
-  hydromancer: { waterSeconds: 6, trailRadius: 1.5 },
+  /** The trail's width is a feel value: tuning.terrain.hydromancerTrailRadius. */
+  hydromancer: { waterSeconds: 6 },
   stormglass: { stormMore: 0.4 },
   livingLoom: { globalCooldown: 0.4 },
   singleThread: { more: 0.7, capacity: -3 },
