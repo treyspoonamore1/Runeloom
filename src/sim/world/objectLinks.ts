@@ -7,6 +7,7 @@
  * - `switch:S`: every conduit switch in the room is powered.
  * - `plates:all`: every pressure plate is pressed at the same time.
  * - `cleared`: the room is cleared (all its enemies dead).
+ * - `sealed`: never holds. A door that stays shut on purpose (the K10 storm door, CONTENT §9.1).
  * A door that opened stays open (RoomFlags.opened), and so do the braziers and switches that
  * opened it: they start lit or powered when the room is entered again.
  */
@@ -17,7 +18,11 @@ import type { ObjectKind, WorldObject } from './objects';
 import { openDoor } from './objectGround';
 
 export type LinkCondition =
-  { kind: 'braziers'; seconds: number } | { kind: 'switch' } | { kind: 'plates' } | { kind: 'cleared' };
+  | { kind: 'braziers'; seconds: number }
+  | { kind: 'switch' }
+  | { kind: 'plates' }
+  | { kind: 'cleared' }
+  | { kind: 'sealed' };
 
 /** Parses a link condition, or returns null if it is not one of CONTENT §6.2's. */
 export function parseLinkCondition(text: string): LinkCondition | null {
@@ -25,6 +30,7 @@ export function parseLinkCondition(text: string): LinkCondition | null {
   if (text === 'switch:S') return { kind: 'switch' };
   if (text === 'plates:all') return { kind: 'plates' };
   if (text === 'cleared') return { kind: 'cleared' };
+  if (text === 'sealed') return { kind: 'sealed' };
   const m = /^timer:(\d+(?:\.\d+)?):braziers:all$/.exec(text);
   if (m) {
     const s = Number(m[1]);
@@ -74,7 +80,7 @@ export function linkMet(state: GameState, door: string): boolean {
     if (l.door !== door) continue;
     any = true;
     const c = parseLinkCondition(l.condition);
-    if (c === null) return false;
+    if (c === null || c.kind === 'sealed') return false;
     if (c.kind === 'cleared') {
       if (!roomFlags(state.world, state.room.id).cleared) return false;
     } else if (!allOn(state.objects, conditionKind(c)!)) return false;
