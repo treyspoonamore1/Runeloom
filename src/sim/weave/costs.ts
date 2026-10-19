@@ -70,7 +70,7 @@ export function weaveCostsOf(tree: WeaveTree, ctx: ResolvedContext): WeaveCosts 
   return {
     complexity: weaveComplexity(tree),
     capacity: ctx.capacity,
-    mana: trigger.manaMult * spellMana(tree.root),
+    mana: trigger.manaMult * spellMana(tree.root) * ctx.manaCostMult,
     castTime: castTime(tree, ctx),
   };
 }

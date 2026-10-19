@@ -3,6 +3,7 @@ import type { ElementId, FormId, TriggerId } from '../../data/runes';
 import type { GameState } from './state';
 import type { FormParams } from './weave/program';
 import type { SpellEndReason } from './weave/runtime/types';
+import type { HeroEvent } from './hero/events';
 
 /**
  * Things that happened during one step, for render and audio (hit flash, damage numbers,
@@ -315,7 +316,9 @@ export type SimEvent =
       damage: number;
       owner: number;
       sourceId: number;
-    };
+    }
+  /** Character, XP and loot events (M4): hero/events.ts. */
+  | HeroEvent;
 
 /** Fields of 'waterElectrified' and 'metalElectrified'. */
 export interface ElectrifyFields {

@@ -17,7 +17,7 @@ import { scaleByLevel } from '../combat/damage';
 import { SIM_HZ } from '../core/constants';
 import { fanRotations, rotationDeg } from './angles';
 import { defOf, formOf } from './checks';
-import type { ResolvedContext } from './context';
+import { levelAt, type ResolvedContext } from './context';
 import { branchComplexity, ownComplexity, ownMana } from './costs';
 import type { EffectiveElement } from './elements';
 import type {
@@ -37,7 +37,10 @@ type Els = ReadonlyMap<SpellNode, readonly EffectiveElement[]>;
 export function resolveTrigger(def: TriggerDef, ctx: ResolvedContext): TriggerSpec {
   let period: number | null = null;
   if (def.period)
-    period = Math.max(def.period.min, def.period.base - def.period.perLevel * (ctx.runeLevel - 1));
+    period = Math.max(
+      def.period.min,
+      def.period.base - def.period.perLevel * (levelAt(ctx, ['trigger']) - 1),
+    );
   return {
     id: def.id,
     event: def.event,
@@ -86,7 +89,7 @@ export function resolveSpell(
   }
 
   const baseDamage = form.damaging
-    ? scaleByLevel(form.baseDamage, weaveLimits.runeLevelGrowth, ctx.runeLevel) +
+    ? scaleByLevel(form.baseDamage, weaveLimits.runeLevelGrowth, levelAt(ctx, [...path, 'form'])) +
       (form.id === 'strike' ? ctx.strikeFlat : 0)
     : 0;
 
@@ -154,7 +157,7 @@ export function resolveSpell(
       durationMult: fx.terrainDurationMult,
     },
     canHitSource: form.canHitSource,
-    manaCost: ownMana(spell) + weaveLimits.branchManaWeight * childMana,
+    manaCost: ownMana(spell) * ctx.manaCostMult + weaveLimits.branchManaWeight * childMana,
     complexity: ownComplexity(spell),
     children,
   };

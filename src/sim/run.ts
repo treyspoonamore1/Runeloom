@@ -6,6 +6,7 @@ import type { Scenario } from './scenarios';
 import type { Tuning } from '../../data/tuning';
 import type { Cheats, GameMode } from './state';
 import { applyLoadoutEdit, type LoadoutEdit, type LoadoutSpec } from './weave/runtime/loadout';
+import { applyHeroEdit, type TimedHeroEdit } from './hero/edits';
 
 export interface RunResult {
   state: GameState;
@@ -36,7 +37,9 @@ export function runScenario(
 
 /**
  * Replays recorded input frames from a fresh game, starting from `loadout` and applying each
- * Loom edit between ticks when `state.tick === edit.tick` (edits in recorded order).
+ * Loom edit and hero edit between ticks when `state.tick === edit.tick` (each list in recorded
+ * order; at one tick a hero edit goes after the first `after` Loom edits). `createState`
+ * replaces the fresh game (an adventure started from a save); `roomText` is then unused.
  */
 export function runFrames(
   frames: readonly InputFrame[],
@@ -48,22 +51,41 @@ export function runFrames(
     cheats?: Cheats;
     loadout?: LoadoutSpec;
     loadoutEdits?: readonly LoadoutEdit[];
+    heroEdits?: readonly TimedHeroEdit[];
+    createState?: () => GameState;
   },
 ): RunResult {
-  const state = createGame({
-    seed: opts.seed,
-    roomText,
-    tuning: opts.tuning,
-    mode: opts.mode,
-    loadout: opts.loadout,
-  });
+  const state = opts.createState
+    ? opts.createState()
+    : createGame({
+        seed: opts.seed,
+        roomText,
+        tuning: opts.tuning,
+        mode: opts.mode,
+        loadout: opts.loadout,
+      });
   if (opts.cheats) state.cheats = { ...opts.cheats };
   const edits = opts.loadoutEdits ?? [];
+  const heroEdits = opts.heroEdits ?? [];
   let next = 0;
+  let nextHero = 0;
+  const applyDue = () => {
+    for (;;) {
+      const le = edits[next];
+      const he = heroEdits[nextHero];
+      const leDue = le !== undefined && le.tick <= state.tick;
+      const heDue = he !== undefined && he.tick <= state.tick;
+      if (heDue && (!leDue || he.after <= next)) {
+        applyHeroEdit(state, he.edit);
+        nextHero++;
+      } else if (leDue) applyLoadoutEdit(state, edits[next++]!);
+      else return;
+    }
+  };
   for (const f of frames) {
-    while (next < edits.length && edits[next]!.tick <= state.tick) applyLoadoutEdit(state, edits[next++]!);
+    applyDue();
     step(state, f);
   }
-  while (next < edits.length && edits[next]!.tick <= state.tick) applyLoadoutEdit(state, edits[next++]!);
+  applyDue();
   return { state, hash: hashState(state) };
 }

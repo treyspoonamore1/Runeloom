@@ -9,6 +9,8 @@
  */
 import type { EquipSlot } from './types';
 import type { GameState } from '../state';
+import { equip, fuse, salvage, unequip, unfuse } from './equip';
+import { refreshHero } from './hero';
 
 export type HeroEdit =
   | { kind: 'equip'; uid: number; slot: EquipSlot }
@@ -27,8 +29,46 @@ export type HeroEdit =
   /** Rest at the Loom Stone the player stands at: full life and mana, rooms repopulate. */
   | { kind: 'rest' };
 
-/** Applies an edit if it is legal; returns why not, or null when it applied. Stub. */
+/**
+ * A HeroEdit recorded by the Session, applied between ticks when `state.tick === tick` (like
+ * LoadoutEdit). `after`: how many Loom edits the session had recorded before it, so replays keep
+ * the order of hero and Loom edits made between the same two ticks.
+ */
+export interface TimedHeroEdit {
+  tick: number;
+  after: number;
+  edit: HeroEdit;
+}
+
+/**
+ * Applies an edit if it is legal; returns why not, or null when it applied. Equipment edits work
+ * in adventure mode only (other modes have no inventory). A successful edit refreshes the hero.
+ */
 export function applyHeroEdit(state: GameState, edit: HeroEdit): string | null {
-  void state;
-  return `${edit.kind}: not available yet`;
+  const err = applyEquipmentEdit(state, edit);
+  if (err === null) refreshHero(state);
+  return err;
+}
+
+function applyEquipmentEdit(state: GameState, edit: HeroEdit): string | null {
+  const needsAdventure = 'Only in adventure mode';
+  switch (edit.kind) {
+    case 'equip':
+      return state.mode !== 'adventure' ? needsAdventure : equip(state, edit.uid, edit.slot);
+    case 'unequip':
+      return state.mode !== 'adventure' ? needsAdventure : unequip(state, edit.slot);
+    case 'salvage':
+      return state.mode !== 'adventure' ? needsAdventure : salvage(state, edit.uid);
+    case 'fuse':
+      return state.mode !== 'adventure'
+        ? needsAdventure
+        : fuse(state, edit.partUid, edit.spindleUid, edit.socket);
+    case 'unfuse':
+      return state.mode !== 'adventure'
+        ? needsAdventure
+        : unfuse(state, edit.spindleUid, edit.socket, edit.keep);
+    // Passive tree (effects agent) and region map (world agent).
+    default:
+      return `${edit.kind}: not available yet`;
+  }
 }

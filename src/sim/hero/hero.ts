@@ -10,6 +10,9 @@ import { EQUIP_SLOTS, type FusePart, type HeroState, type Item, type RuneItem } 
 import { emptyHeroMods } from './mods';
 import type { Hasher } from '../core/hash';
 import type { GameState } from '../state';
+import { addHeroItemMods } from './aggregate';
+import { syncPlayerToHero } from '../actors/playerVitals';
+import { recompileWeaves } from '../weave/runtime/loadout';
 
 /** A level 1 character with nothing: sandbox, arena and lab games use it as is. */
 export function createHero(): HeroState {
@@ -30,9 +33,26 @@ export function createHero(): HeroState {
   };
 }
 
-/** Rebuilds `state.heroMods` from `state.hero`. Stub: neutral mods until the M4 agents fill it. */
+/**
+ * Rebuilds `state.heroMods` from `state.hero`, then brings the systems that cache character
+ * numbers up to date: the player's level, max life and mana, resistances and dodge charges, and
+ * every weave's compiled program (Capacity, cast speed, rune levels, Strike bonus, mana cost).
+ * A hero with nothing (sandbox, arena, lab) gives neutral mods and changes nothing.
+ */
 export function refreshHero(state: GameState): void {
-  state.heroMods = emptyHeroMods();
+  const mods = emptyHeroMods();
+  addHeroItemMods(mods, state.hero);
+  state.heroMods = mods;
+  syncPlayerToHero(state);
+  recompileWeaves(state);
+}
+
+/**
+ * Passive points earned (DESIGN §9): one per level above 1, plus Pattern Seeds. Unspent points
+ * are this minus `hero.passives.length`.
+ */
+export function passivePointsEarned(hero: HeroState): number {
+  return hero.level - 1 + hero.patternSeeds;
 }
 
 export function hashRune(h: Hasher, r: RuneItem): void {

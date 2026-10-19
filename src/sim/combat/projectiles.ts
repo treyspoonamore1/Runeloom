@@ -232,6 +232,7 @@ function hitInfo(p: Projectile) {
     dirX: speed > 0 ? p.vx / speed : 0,
     dirY: speed > 0 ? p.vy / speed : 0,
     knockback: p.knockback,
+    projectile: true,
   };
 }
 

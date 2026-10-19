@@ -7,7 +7,13 @@ import { DT } from '../core/constants';
 import { emit } from '../events';
 import { clipToContacts, moveCircle } from './collision';
 import { stepKnockback } from './knockback';
-import { resetPlayerVitals, stepPlayerVitals } from './playerVitals';
+import {
+  playerDodgeCharges,
+  playerDodgeRecharge,
+  playerMoveSpeed,
+  resetPlayerVitals,
+  stepPlayerVitals,
+} from './playerVitals';
 import { cancelCast } from '../weave/runtime/castState';
 import { noteDodge } from '../weave/runtime/queue';
 import { actionSpeed, createAilments, isFrozen, type Ailments } from '../combat/ailments';
@@ -153,7 +159,7 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
   p.prevY = p.y;
   if (!stepPlayerVitals(state)) return;
 
-  tickTimers(p, t);
+  tickTimers(p, playerDodgeCharges(state), playerDodgeRecharge(state));
   updateAim(p, input);
   if (isFrozen(p)) {
     p.vx = p.vy = 0;
@@ -201,7 +207,7 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
       p.dodgeLeft = 0;
       // Leave the dodge at run speed along the (possibly wall-slid) dodge velocity, so
       // holding the same direction keeps running instead of stopping dead.
-      const k = t.moveSpeed / speed;
+      const k = playerMoveSpeed(state) / speed;
       p.vx *= k;
       p.vy *= k;
     }
@@ -213,20 +219,20 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
   stepKnockback(state.room, p, t.radius, state.tuning.feel);
 }
 
-function tickTimers(p: PlayerState, t: PlayerTuning): void {
+/** I-frames, then dodge charges: they come back one at a time, each after a full `recharge`. */
+function tickTimers(p: PlayerState, charges: number, recharge: number): void {
   p.iframesLeft = p.iframesLeft > DT + TIME_EPSILON ? p.iframesLeft - DT : 0;
 
-  // Charges come back one at a time, each after a full dodgeRecharge.
-  if (p.dodgeCharges >= t.dodgeCharges) {
-    p.dodgeCharges = t.dodgeCharges;
+  if (p.dodgeCharges >= charges) {
+    p.dodgeCharges = charges;
     p.dodgeRechargeLeft = 0;
     return;
   }
-  if (p.dodgeRechargeLeft <= 0) p.dodgeRechargeLeft = t.dodgeRecharge;
+  if (p.dodgeRechargeLeft <= 0) p.dodgeRechargeLeft = recharge;
   p.dodgeRechargeLeft -= DT;
   if (p.dodgeRechargeLeft <= TIME_EPSILON) {
     p.dodgeCharges++;
-    p.dodgeRechargeLeft = p.dodgeCharges < t.dodgeCharges ? p.dodgeRechargeLeft + t.dodgeRecharge : 0;
+    p.dodgeRechargeLeft = p.dodgeCharges < charges ? p.dodgeRechargeLeft + recharge : 0;
   }
 }
 
@@ -271,7 +277,8 @@ function walk(state: GameState, p: PlayerState, t: PlayerTuning, mx: number, my:
     p.faceY = my / l;
   }
   const ground = readGround(state, p.x, p.y, p.terrain);
-  const speed = t.moveSpeed * actionSpeed(state, p) * ground.moveMult;
+  const moveSpeed = playerMoveSpeed(state);
+  const speed = moveSpeed * actionSpeed(state, p) * ground.moveMult;
   target.x = mx * speed;
   target.y = my * speed;
   clipToContacts(state.room, p.x, p.y, t.radius, target);
@@ -285,7 +292,7 @@ function walk(state: GameState, p: PlayerState, t: PlayerTuning, mx: number, my:
     : hasInput
       ? t.accelTime
       : t.decelTime;
-  const rate = t.moveSpeed / time;
+  const rate = moveSpeed / time;
   const maxDelta = rate * dt;
   const dvx = tx - p.vx;
   const dvy = ty - p.vy;

@@ -44,6 +44,7 @@ export function hashState(state: GameState): number {
   hashWorld(h, state.world);
   hashObjects(h, state.objects);
   hashLoot(h, state.loot);
+  if (state.mode === 'adventure') for (const x of state.lootRng.getState()) h.u32(x);
   h.string(state.room.id);
   // The walk masks change with the grid (burnt bramble, broken bridges).
   h.bytes(state.room.solid).bytes(state.room.shotSolid);

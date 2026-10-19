@@ -1,4 +1,5 @@
 import { Rng } from './core/rng';
+import { hashString } from './core/hash';
 import { buildRoom, parseRoom, type Room } from './world/room';
 import { createPlayer, type PlayerState } from './actors/player';
 import { spawnRoomEnemies, type Enemy } from './actors/enemies';
@@ -64,6 +65,12 @@ export interface GameState {
   combatRng: Rng;
   /** Enemy AI rolls only (approach offsets, strafe sides, reaction jitter, wave spawn points). */
   aiRng: Rng;
+  /**
+   * Loot rolls only (drops, affixes, part tiers; items/drops.ts), seeded from the seed without
+   * advancing `rng`, so loot never shifts combat or AI rolls. Hashed in adventure mode (the only
+   * mode that rolls loot); saved.
+   */
+  lootRng: Rng;
   tuning: Tuning;
   room: Room;
   /** The chemistry grid (DESIGN §6): materials, fire, charge, water, smoke per cell. */
@@ -183,6 +190,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     rng,
     combatRng,
     aiRng,
+    lootRng: new Rng((opts.seed ^ hashString('loot')) >>> 0),
     tuning,
     room,
     grid: createGrid(room),

@@ -151,3 +151,71 @@ export { isDoused, burningOwner } from './actors/chemistry';
 export { hurtsEnemies } from './ai/hazards';
 export { extinguish, teamOf, teamOfSource, shockFor } from './combat/ailments';
 export { dealDirectDamage } from './combat/hits';
+// ---- M4: the character, items, loot and saves ----
+export { createHero, refreshHero, passivePointsEarned } from './hero/hero';
+export { emptyHeroMods, type HeroMods, type ByType } from './hero/mods';
+export {
+  EQUIP_SLOTS,
+  type EquipSlot,
+  type HeroState,
+  type Item,
+  type ItemRarity,
+  type RuneItem,
+  type FusePart,
+  type AffixRoll,
+} from './hero/types';
+export { applyHeroEdit, type HeroEdit, type TimedHeroEdit } from './hero/edits';
+export { newGameHero, newGameRunes, setupNewGameWeaves } from './hero/newGame';
+export { grantXp, killXpFor, baseKillXp } from './hero/xp';
+export {
+  runeOrder,
+  runeCounts,
+  freeRunes,
+  slotOfRune,
+  socketedUids,
+  usesRuneItems,
+  assignRunes,
+  grantRuneXp,
+} from './hero/runes';
+export { unlockRune } from './hero/unlock';
+export { onEnemyKilled } from './hero/onKill';
+export { onRoomCleared } from './hero/rewards';
+export { addHeartSeed, addLoomShard } from './hero/pickups';
+export type { HeroEvent } from './hero/events';
+export {
+  stepLoot,
+  dropLoot,
+  collectRoomLoot,
+  grantContent,
+  type LootDrop,
+  type LootContent,
+} from './items/loot';
+export {
+  rollKillLoot,
+  dropKillLoot,
+  rollSpindle,
+  rollGear,
+  partTierFor,
+  spindleBasesAt,
+} from './items/drops';
+export { rollAffixSet, rollMagicAffixes, eligibleAffixes, tiersAt } from './items/affixRoll';
+export { kindOfBase, slotsForKind, baseName, equippedSpindle, findItem, equippedSlotOf } from './items/items';
+export {
+  makeSave,
+  parseSave,
+  restoreSave,
+  loadSave,
+  hashProgress,
+  SAVE_FORMAT,
+  SAVE_VERSION,
+  type SaveData,
+  type SaveGameInit,
+  type SavedWeaves,
+} from './save';
+export {
+  heroMaxLife,
+  heroMaxMana,
+  playerDodgeCharges,
+  playerDodgeRecharge,
+  playerMoveSpeed,
+} from './actors/playerVitals';
