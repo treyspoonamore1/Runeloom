@@ -216,7 +216,7 @@ Pack tables:
 | `wisp_flight` | 2 Frost Wisps and 3 Kiln Mites |
 | `caller_guard` | 1 Stormcaller and 2 Shieldbearers |
 
-Monster rarity: Magic packs (blue) have 1–2 mods and ×1.7 life. Rares (yellow) have 2–4 mods, ×4 life and 2 minions. Mods ship in M5; M4 needs only Hasted, Incendiary and Thick-skinned for the first Rares.
+Monster rarity: Magic packs (blue) have 1–2 mods and ×1.7 life. Rares (yellow) have 2–4 mods, ×4 life and 2 minions. Mods ship in M5; M4 needs only Hasted, Incendiary and Thick-skinned for the first Rares. Rooms request rarity on the `@spawn` line (§6.2). Pack leaders and minion kinds: tinderling_swarm tinderling / tinderling, archer_line shieldbearer / ember_archer, tar_crew tar_hulk / tinderling, bog_nest bog_lurker / bog_lurker, wisp_flight frost_wisp / kiln_mite, caller_guard stormcaller / shieldbearer.
 
 | Mod | Effect |
 |---|---|
@@ -284,12 +284,17 @@ A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `S`, `T`, `x`, `c`, `\
 @name <display name>
 @level <area level>
 @exit <w|e|n|s> <room id>
-@spawn <digit> enemy:<id> [count]
-@spawn <digit> pack:<pack id>
+@spawn <digit> enemy:<id> [count] [magic|rare]
+@spawn <digit> pack:<pack id> [magic|rare]
 @link <door char> <condition>
+@note <object char> <text>
 ```
 
-Link conditions: `braziers:all`, `switch:S`, `plates:all`, `cleared` (all enemies dead), `timer:<seconds>:braziers:all` (all braziers lit within the time).
+Link conditions: `braziers:all`, `switch:S`, `plates:all`, `cleared` (all enemies dead), `timer:<seconds>:braziers:all` (all braziers lit within the time). Several `@link` lines for one door must all hold.
+
+Rarity (M4): a trailing `magic` makes every spawned enemy Magic with the same 1–2 mods. A trailing `rare` makes a pack's leader Rare with 2 normal minions of the pack's minion kind, or makes each enemy of an `enemy:` line Rare with 2 minions of its own kind. Bosses ignore rarity.
+
+`@note` (M4): when the object with that character activates (a switch is powered, a door opens, a chest opens, a pickup is taken), the game shows the text. The K10 storm door uses it: `@note S The Fen isn't woven yet.`
 
 ### 6.3 Example: Sunken Kiln, room K7
 
