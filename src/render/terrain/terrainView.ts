@@ -5,6 +5,7 @@ import { LIB, VERTEX } from './glslLib';
 import { MATERIALS } from './glslMaterials';
 import { PASS_MAINS } from './glslPasses';
 import { GRID_HZ, TerrainPack } from './terrainPack';
+import { TILE_CELLS } from '../../sim';
 
 type Pass = 'ground' | 'fire' | 'air' | 'debug';
 
@@ -36,6 +37,47 @@ function dataSource(data: Uint8Array, width: number, height: number, linear: boo
   });
 }
 
+/**
+ * One quad per room tile. Only tiles with activity get real triangles (the rest are degenerate),
+ * so the fire and air passes cost nothing over quiet terrain. Rewritten in place on each upload.
+ */
+function tileGeometry(width: number, height: number, tilesW: number, tilesH: number): MeshGeometry {
+  const n = tilesW * tilesH;
+  const pos = new Float32Array(n * 8);
+  for (let ty = 0; ty < tilesH; ty++) {
+    for (let tx = 0; tx < tilesW; tx++) {
+      const k = (ty * tilesW + tx) * 8;
+      const x0 = tx * TILE_CELLS;
+      const y0 = ty * TILE_CELLS;
+      const x1 = Math.min(width, x0 + TILE_CELLS);
+      const y1 = Math.min(height, y0 + TILE_CELLS);
+      pos.set([x0, y0, x1, y0, x1, y1, x0, y1], k);
+    }
+  }
+  return new MeshGeometry({ positions: pos, uvs: new Float32Array(n * 8), indices: new Uint32Array(n * 6) });
+}
+
+/** Enables the quads of tiles whose glow channel c0 or c1 is non-zero; returns how many. */
+function activateTiles(geom: MeshGeometry, glow: Uint8Array, c0: number, c1: number): number {
+  const idx = geom.indices;
+  const n = idx.length / 6;
+  let active = 0;
+  for (let k = 0; k < n; k++) {
+    const on = glow[k * 4 + c0]! > 0 || glow[k * 4 + c1]! > 0;
+    const b = k * 4;
+    const o = k * 6;
+    if (on) active++;
+    idx[o] = on ? b : 0;
+    idx[o + 1] = on ? b + 1 : 0;
+    idx[o + 2] = on ? b + 2 : 0;
+    idx[o + 3] = on ? b : 0;
+    idx[o + 4] = on ? b + 2 : 0;
+    idx[o + 5] = on ? b + 3 : 0;
+  }
+  geom.indexBuffer.update();
+  return active;
+}
+
 interface Sources {
   codes: BufferImageSource;
   fields: [BufferImageSource, BufferImageSource];
@@ -55,12 +97,16 @@ export class TerrainView {
   readonly fire = new Container();
   readonly air = new Container();
   readonly debug = new Container();
-  /** CPU ms of the last pack + upload (0 on frames without one). */
+  /** CPU ms of the last pack + upload (0 on frames without one), and of the pack alone. */
   lastUploadMs = 0;
+  lastPackMs = 0;
   private pack: TerrainPack | null = null;
   private sources: Sources | null = null;
   private grid: Grid | null = null;
   private meshes: Mesh<MeshGeometry, Shader>[] = [];
+  private geometries: MeshGeometry[] = [];
+  private fireGeom: MeshGeometry | null = null;
+  private airGeom: MeshGeometry | null = null;
   private uploadedVersion = -1;
   private packTick = 0;
   private uploadTime = 0;
@@ -107,6 +153,7 @@ export class TerrainView {
     if (grid.version !== this.uploadedVersion || stale) {
       const t0 = performance.now();
       pack.pack(grid);
+      this.lastPackMs = performance.now() - t0;
       this.uploadDirty();
       this.lastUploadMs = performance.now() - t0;
       this.uploadedVersion = grid.version;
@@ -131,6 +178,7 @@ export class TerrainView {
 
   private rebuild(width: number, height: number): void {
     for (const m of this.meshes) m.destroy();
+    for (const g of this.geometries) g.destroy();
     this.meshes = [];
     if (this.sources) {
       const s = this.sources;
@@ -147,11 +195,20 @@ export class TerrainView {
     const u = this.uniforms.uniforms;
     (u.uSize as Float32Array).set([width, height]);
     (u.uGlowSize as Float32Array).set([pack.tilesW, pack.tilesH]);
-    const geometry = new MeshGeometry({
+    const full = new MeshGeometry({
       positions: new Float32Array([0, 0, width, 0, width, height, 0, height]),
       uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
       indices: new Uint32Array([0, 1, 2, 0, 2, 3]),
     });
+    this.fireGeom = tileGeometry(width, height, pack.tilesW, pack.tilesH);
+    this.airGeom = tileGeometry(width, height, pack.tilesW, pack.tilesH);
+    this.geometries = [full, this.fireGeom, this.airGeom];
+    const geoms: Record<Pass, MeshGeometry> = {
+      ground: full,
+      fire: this.fireGeom,
+      air: this.airGeom,
+      debug: full,
+    };
     const layers: Record<Pass, Container> = {
       ground: this.ground,
       fire: this.fire,
@@ -172,7 +229,7 @@ export class TerrainView {
         },
       });
       this.shaders[pass] = shader;
-      const mesh = new Mesh({ geometry, shader });
+      const mesh = new Mesh({ geometry: geoms[pass], shader });
       this.meshes.push(mesh);
       layers[pass].addChild(mesh);
     }
@@ -191,6 +248,14 @@ export class TerrainView {
     const s = this.sources!;
     for (const src of [s.codes, s.fields[0], s.fields[1], s.masks, s.glow]) src.update();
     this.bindFields();
+    this.activate();
+  }
+
+  /** Points the fire and air quads at the tiles with fire/charge and smoke/steam. */
+  private activate(): void {
+    const glow = this.pack!.glow;
+    this.fire.visible = activateTiles(this.fireGeom!, glow, 0, 1) > 0;
+    this.air.visible = activateTiles(this.airGeom!, glow, 2, 3) > 0;
   }
 
   private uploadDirty(): void {
@@ -202,10 +267,12 @@ export class TerrainView {
     if (d.masks[0]! < d.masks[1]!) s.masks.update(d.masks[0], d.masks[1]);
     s.glow.update();
     this.bindFields();
+    this.activate();
   }
 
   destroy(): void {
     for (const m of this.meshes) m.destroy();
+    for (const g of this.geometries) g.destroy();
     for (const sh of Object.values(this.shaders)) sh.destroy();
     if (this.sources) {
       const s = this.sources;

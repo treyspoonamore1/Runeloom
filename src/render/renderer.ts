@@ -72,6 +72,8 @@ export interface Renderer {
     playerFxAlpha: number;
     /** CPU ms of the last terrain pack + upload (0 on frames without a grid change). */
     terrainUploadMs: number;
+    /** CPU ms of the last terrain pack alone. */
+    terrainPackMs: number;
   };
   /**
    * Chemistry Lab plaques: the stations whose labels to draw. By default the lab scene
@@ -300,6 +302,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       particles: fx.particleCount + ailments.particleCount + forms.particleCount,
       playerFxAlpha: dim,
       terrainUploadMs: terrain.lastUploadMs,
+      terrainPackMs: terrain.lastPackMs,
     }),
     setLabStations(stations) {
       labOverride = stations;

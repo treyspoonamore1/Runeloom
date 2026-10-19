@@ -73,9 +73,9 @@ export class TerrainPack {
   /** True while any cell shows embers, so the view repacks before the 8-bit tick wraps. */
   embersLive = false;
 
-  private readonly codes32: Uint32Array;
-  private readonly fields32: [Uint32Array, Uint32Array];
-  private readonly masks32: Uint32Array;
+  private readonly codes32: Int32Array;
+  private readonly fields32: [Int32Array, Int32Array];
+  private readonly masks32: Int32Array;
   private readonly prevFire: Uint8Array;
   /** Grid tick + 1 when the cell's fire went out (0 = none). Render-side memory, not sim state. */
   private readonly emberTick: Uint32Array;
@@ -92,9 +92,9 @@ export class TerrainPack {
     this.fields = [new Uint8Array(n * 4), new Uint8Array(n * 4)];
     this.masks = new Uint8Array(n * 4);
     this.glow = new Uint8Array(this.tilesW * this.tilesH * 4);
-    this.codes32 = new Uint32Array(this.codes.buffer);
-    this.fields32 = [new Uint32Array(this.fields[0].buffer), new Uint32Array(this.fields[1].buffer)];
-    this.masks32 = new Uint32Array(this.masks.buffer);
+    this.codes32 = new Int32Array(this.codes.buffer);
+    this.fields32 = [new Int32Array(this.fields[0].buffer), new Int32Array(this.fields[1].buffer)];
+    this.masks32 = new Int32Array(this.masks.buffer);
     this.prevFire = new Uint8Array(n);
     this.emberTick = new Uint32Array(n);
     this.glowAcc = new Float32Array(this.tilesW * this.tilesH * 4);
@@ -129,92 +129,120 @@ export class TerrainPack {
     let m1 = 0;
     let blocks = 0;
     let embers = false;
+    // Constants as locals: the hot loop runs once per cell.
+    const mStone = MAT.stone;
+    const mWood = MAT.wood;
+    const mDeep = MAT.deep_water;
+    const mIce = MAT.ice;
+    const mBridge = MAT.ice_bridge;
+    const sOil = SURFACE.oil;
+    const aSmoke = AIR.smoke;
+    const aSteam = AIR.steam;
+    const oPlayer = OWNER.player;
+    const fOil = FLAG.oil;
+    const fOverWater = FLAG.overWater;
+    const fEmber = FLAG.ember;
+    const ownerShift = FLAG.ownerShift;
+    const airShift = FLAG.airShift;
+    const crackTicks = CRACK_TICKS;
+    const thawTicks = THAW_TICKS;
+    const emberTicks = EMBER_TICKS;
+    const chargeFade = TERRAIN_FX.chargeFadeTicks;
+    const chargeMin = TERRAIN_FX.chargeMinStrength;
+    const airScale = TERRAIN_FX.airFadeScale;
+    const wetScale = TERRAIN_FX.wetFadeScale;
+    const tc = TILE_CELLS;
+    const propLut = isProp;
+    const blockLut = isBlock;
 
-    for (let i = 0; i < n; i++) {
-      const g = ground[i]!;
-      const f = fire[i]!;
-      const ch = charge[i]!;
-      const o = owner[i]!;
-      const a = air[i]!;
-      blocks += isBlock[g]!;
+    const h = this.height;
+    let i = 0;
+    for (let cy = 0; cy < h; cy++) {
+      const rowTile = ((cy / tc) | 0) * tw;
+      for (let cx = 0; cx < w; cx++, i++) {
+        const g = ground[i]!;
+        const f = fire[i]!;
+        const ch = charge[i]!;
+        const o = owner[i]!;
+        const a = air[i]!;
+        blocks += blockLut[g]!;
 
-      // Codes.
-      let disp = g;
-      if (isProp[g] === 1) {
-        const u = under[i]!;
-        disp = isProp[u] === 1 ? MAT.stone : u;
-      }
-      let flags = (o << FLAG.ownerShift) | (a << FLAG.airShift);
-      if (surface[i] === SURFACE.oil) flags |= FLAG.oil;
-      if (g === MAT.wood && under[i] === MAT.deep_water) flags |= FLAG.overWater;
-      let phase = 0;
-      const t = timer[i]!;
-      if (g === MAT.ice_bridge) {
-        if (t > 0 && t <= CRACK_TICKS) phase = Math.round(255 * (1 - t / CRACK_TICKS));
-      } else if (g === MAT.ice) {
-        if (t > 0 && t <= THAW_TICKS) phase = Math.round(255 * (1 - t / THAW_TICKS));
-      } else {
-        // Embers: remember when the fire went out; the shader fades them by age.
-        if (f === 0 && prevFire[i]! > 0) emberTick[i] = tick + 1;
-        const et = emberTick[i]!;
-        if (et !== 0) {
-          if (tick + 1 - et > EMBER_TICKS || f > 0) emberTick[i] = 0;
-          else {
-            flags |= FLAG.ember;
-            phase = (et - 1) & 255;
-            embers = true;
+        // Codes.
+        let disp = g;
+        if (propLut[g] === 1) {
+          const u = under[i]!;
+          disp = propLut[u] === 1 ? mStone : u;
+        }
+        let flags = (o << ownerShift) | (a << airShift);
+        if (surface[i] === sOil) flags |= fOil;
+        if (g === mWood && under[i] === mDeep) flags |= fOverWater;
+        let phase = 0;
+        const t = timer[i]!;
+        if (g === mBridge) {
+          if (t > 0 && t <= crackTicks) phase = Math.round(255 * (1 - t / crackTicks));
+        } else if (g === mIce) {
+          if (t > 0 && t <= thawTicks) phase = Math.round(255 * (1 - t / thawTicks));
+        } else {
+          // Embers: remember when the fire went out; the shader fades them by age.
+          if (f === 0 && prevFire[i]! > 0) emberTick[i] = tick + 1;
+          const et = emberTick[i]!;
+          if (et !== 0) {
+            if (tick + 1 - et > emberTicks || f > 0) emberTick[i] = 0;
+            else {
+              flags |= fEmber;
+              phase = (et - 1) & 255;
+              embers = true;
+            }
           }
         }
-      }
-      prevFire[i] = f;
-      const code = (disp | (flags << 8) | (phase << 16) | (g << 24)) >>> 0;
-      if (codes32[i] !== code) {
-        codes32[i] = code;
-        if (i < c0) c0 = i;
-        c1 = i + 1;
-      }
+        prevFire[i] = f;
+        const code = disp | (flags << 8) | (phase << 16) | (g << 24);
+        if (codes32[i] !== code) {
+          codes32[i] = code;
+          if (i < c0) c0 = i;
+          c1 = i + 1;
+        }
 
-      // Fields.
-      let cs = 0;
-      if (ch > 0) {
-        const fade = ch >= TERRAIN_FX.chargeFadeTicks ? 1 : ch / TERRAIN_FX.chargeFadeTicks;
-        const s = falloff ? Math.max(TERRAIN_FX.chargeMinStrength, 255 * falloff[i]!) : 255;
-        cs = Math.round(s * fade);
-      }
-      const at = airTimer[i]!;
-      const dens = at === 0 ? 0 : Math.min(255, at * TERRAIN_FX.airFadeScale);
-      const smoke = a === AIR.smoke ? dens : 0;
-      const steam = a === AIR.steam ? dens : 0;
-      const fw = (f | (cs << 8) | (smoke << 16) | (steam << 24)) >>> 0;
-      if (fields32[i] !== fw) {
-        fields32[i] = fw;
-        if (i < f0) f0 = i;
-        f1 = i + 1;
-      }
+        // Fields.
+        let cs = 0;
+        if (ch > 0) {
+          const fade = ch >= chargeFade ? 1 : ch / chargeFade;
+          const s = falloff ? Math.max(chargeMin, 255 * falloff[i]!) : 255;
+          cs = Math.round(s * fade);
+        }
+        const at = airTimer[i]!;
+        const dens = at === 0 ? 0 : Math.min(255, at * airScale);
+        const smoke = a === aSmoke ? dens : 0;
+        const steam = a === aSteam ? dens : 0;
+        const fw = f | (cs << 8) | (smoke << 16) | (steam << 24);
+        if (fields32[i] !== fw) {
+          fields32[i] = fw;
+          if (i < f0) f0 = i;
+          f1 = i + 1;
+        }
 
-      // Masks.
-      const hostile = o !== OWNER.player;
-      const oil = surface[i] === SURFACE.oil ? 255 : 0;
-      const wt = wet[i]!;
-      const wetV = wt === 0 ? 0 : Math.min(255, wt * TERRAIN_FX.wetFadeScale);
-      const hf = hostile && f > 0 ? 255 : 0;
-      const hc = hostile && ch > 0 ? 255 : 0;
-      const mw = (oil | (wetV << 8) | (hf << 16) | (hc << 24)) >>> 0;
-      if (masks32[i] !== mw) {
-        masks32[i] = mw;
-        if (i < m0) m0 = i;
-        m1 = i + 1;
-      }
+        // Masks.
+        const hostile = o !== oPlayer;
+        const oil = surface[i] === sOil ? 255 : 0;
+        const wt = wet[i]!;
+        const wetV = wt === 0 ? 0 : Math.min(255, wt * wetScale);
+        const hf = hostile && f > 0 ? 255 : 0;
+        const hc = hostile && ch > 0 ? 255 : 0;
+        const mw = oil | (wetV << 8) | (hf << 16) | (hc << 24);
+        if (masks32[i] !== mw) {
+          masks32[i] = mw;
+          if (i < m0) m0 = i;
+          m1 = i + 1;
+        }
 
-      // Glow accumulators per tile.
-      if (fw !== 0) {
-        const cx = i % w;
-        const cy = (i - cx) / w;
-        const k = (((cy / TILE_CELLS) | 0) * tw + ((cx / TILE_CELLS) | 0)) * 4;
-        acc[k] = acc[k]! + f;
-        acc[k + 1] = acc[k + 1]! + cs;
-        acc[k + 2] = acc[k + 2]! + smoke;
-        acc[k + 3] = acc[k + 3]! + steam;
+        // Glow accumulators per tile.
+        if (fw !== 0) {
+          const k = (rowTile + ((cx / tc) | 0)) * 4;
+          acc[k] = acc[k]! + f;
+          acc[k + 1] = acc[k + 1]! + cs;
+          acc[k + 2] = acc[k + 2]! + smoke;
+          acc[k + 3] = acc[k + 3]! + steam;
+        }
       }
     }
 
@@ -255,7 +283,8 @@ export class TerrainPack {
       const d = Math.min(th - 1, y + 1);
       for (let x = 0; x < tw; x++) {
         for (let c = 0; c < 4; c++) {
-          const v = (tmp[(u * tw + x) * 4 + c]! + 2 * tmp[(y * tw + x) * 4 + c]! + tmp[(d * tw + x) * 4 + c]!) * 0.25;
+          const v =
+            (tmp[(u * tw + x) * 4 + c]! + 2 * tmp[(y * tw + x) * 4 + c]! + tmp[(d * tw + x) * 4 + c]!) * 0.25;
           out[(y * tw + x) * 4 + c] = Math.min(255, Math.round(v * TERRAIN_FX.glowGain));
         }
       }
