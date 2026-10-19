@@ -46,7 +46,7 @@ const NAV = {
   /** Longest shot at an enemy that can't be walked to, cells. */
   shotRange: 55,
   /** Extra path cost of a tile with fire that would hurt (walk around it if it's cheap to). */
-  fireCost: 10,
+  fireCost: 30,
   /** Half-width of the clear corridor a shot needs, cells (a bolt's radius plus slack). */
   shotWidth: 1.6,
   /** Extra path cost of crossing a burnable tile (they must burn first). */
@@ -154,6 +154,17 @@ function hostileFire(state: GameState, t: number): boolean {
   return false;
 }
 
+/** The player stands on a cell burning with fire that hurts them. */
+function inHostileFire(state: GameState): boolean {
+  const p = state.player;
+  const g = state.grid;
+  const cx = Math.floor(p.x);
+  const cy = Math.floor(p.y);
+  if (cx < 0 || cy < 0 || cx >= g.width || cy >= g.height) return false;
+  const i = cy * g.width + cx;
+  return g.fire[i]! > 0 && g.owner[i] !== OWNER.player;
+}
+
 interface Plan {
   /** Tile path from the player's tile (excluded) to the target tile. */
   tiles: number[];
@@ -236,6 +247,8 @@ export class CampaignNav {
     }
     const goal = kiterGoal();
     const room = state.room;
+    // Standing in fire that hurts (Oiled, on burning oil, it kills in seconds): get out first.
+    if (!p.dead && p.terrain.wetLeft <= 0 && inHostileFire(state) && this.escape(state, out)) return out;
     if (p.dead || !goal.on || (hasWalkLine(room, p.x, p.y, goal.x, goal.y) && engaged(state))) {
       this.plan.tiles = [];
       this.goalTile = -1;
@@ -289,6 +302,37 @@ export class CampaignNav {
       out.moveY = dy / len;
     }
     return out;
+  }
+
+  /** Moves toward the nearest tile free of hostile fire; false if there is none reachable. */
+  private escape(state: GameState, out: InputFrame): boolean {
+    const room = state.room;
+    const p = state.player;
+    const w = room.tilesW;
+    const n = w * room.tilesH;
+    const walk = new Uint8Array(n);
+    for (let t = 0; t < n; t++)
+      walk[t] = tileWalkable(room, t % w, Math.floor(t / w)) ? (hostileFire(state, t) ? 3 : 1) : 0;
+    const start = Math.floor(p.y / TILE_CELLS) * w + Math.floor(p.x / TILE_CELLS);
+    if (start < 0 || start >= n) return false;
+    const was = walk[start]!;
+    walk[start] = 1;
+    const { cost, parent } = costMap(room, walk, start);
+    let best = -1;
+    for (let t = 0; t < n; t++)
+      if (t !== start && walk[t] === 1 && cost[t]! >= 0 && (best < 0 || cost[t]! < cost[best]!)) best = t;
+    if (best < 0 || was === 1) return false;
+    const path = pathTo(parent, start, best);
+    const to = center(room, path[0] ?? best);
+    const dx = to.x - p.x;
+    const dy = to.y - p.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-9) return false;
+    out.moveX = dx / len;
+    out.moveY = dy / len;
+    this.plan.tiles = [];
+    this.goalTile = -1;
+    return true;
   }
 
   private makePlan(state: GameState, gx: number, gy: number): Plan {

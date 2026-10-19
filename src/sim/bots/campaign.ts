@@ -106,6 +106,8 @@ export interface CampaignOptions {
   maxDeaths?: number;
   /** Finish a room's last enemies after this many seconds without damage dealt (default 45). */
   stallSeconds?: number;
+  /** What a stall does: 'finish' the enemies (default, paying their XP) or 'leave' the room. */
+  onStall?: 'finish' | 'leave';
   /** Stop after this room (default the last). */
   until?: RoomKey;
   /** Called with the state just before each room's fight (snapshots for encounter sims). */
@@ -267,10 +269,11 @@ export function playRoom(
         log.deathCauses.push(describeDeath(recent, state.tick));
       } else if (e.type === 'lootPicked') countDrop(log, e.content);
     }
-    // Respawned at a Loom Stone in another room (or this one, repopulated): come straight back.
+    // Respawned at a Loom Stone in another room, or walked out through an exit: come straight
+    // back in through the same exit as before.
     if (state.room.id !== roomId) {
       if (log.deaths >= maxDeaths) break;
-      enter(state, roomId, null);
+      enter(state, roomId, fromId);
       lastDamage = state.tick;
       bossHitAt = -1;
     } else if (log.deaths >= maxDeaths && state.player.dead) break;
@@ -281,6 +284,11 @@ export function playRoom(
       break;
     }
     if (state.tick - lastDamage > stallTicks && !state.player.dead) {
+      if (opts.onStall === 'leave') {
+        for (const e of state.enemies)
+          if (!e.dead) log.left.push(`${e.kind}@${Math.round(e.x)},${Math.round(e.y)}`);
+        break;
+      }
       for (const e of state.enemies)
         if (!e.dead) {
           log.stuck++;

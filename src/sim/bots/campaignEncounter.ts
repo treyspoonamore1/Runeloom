@@ -31,28 +31,29 @@ export interface CharacterSpec {
 
 /**
  * The character at each room's entry: level, rune level and spindle at or below the campaign's
- * across seeds 1–3 (npm run sim -- --campaign --seeds 3), Heart Seeds and Loom Shards from the
- * rooms before (CONTENT §9: E2, E4, E6, E7, K4, K7, K8).
+ * across seeds 1–5 (npm run sim -- --campaign --seeds 5; the Strike rune's level), Heart Seeds and
+ * Loom Shards from the rooms before (CONTENT §9: E2, E4, E6, E7, K4, K7, K8). The Twig Spindle
+ * throughout: the campaign finds an Ashwood or Ironbark in most seeds, not all.
  */
 export const expectedCharacters: Readonly<Record<RoomKey, CharacterSpec>> = {
   e1: { level: 1, runeLevel: 1, spindle: 'twig', heartSeeds: 0, loomShards: 0 },
-  e2: { level: 2, runeLevel: 2, spindle: 'twig', heartSeeds: 0, loomShards: 0 },
-  e3: { level: 3, runeLevel: 3, spindle: 'twig', heartSeeds: 0, loomShards: 1 },
-  e4: { level: 4, runeLevel: 3, spindle: 'twig', heartSeeds: 0, loomShards: 1 },
+  e2: { level: 2, runeLevel: 1, spindle: 'twig', heartSeeds: 0, loomShards: 0 },
+  e3: { level: 3, runeLevel: 2, spindle: 'twig', heartSeeds: 0, loomShards: 1 },
+  e4: { level: 3, runeLevel: 3, spindle: 'twig', heartSeeds: 0, loomShards: 1 },
   e5: { level: 4, runeLevel: 4, spindle: 'twig', heartSeeds: 1, loomShards: 1 },
-  e6: { level: 5, runeLevel: 5, spindle: 'twig', heartSeeds: 1, loomShards: 1 },
-  e7: { level: 6, runeLevel: 6, spindle: 'twig', heartSeeds: 2, loomShards: 1 },
-  e8: { level: 6, runeLevel: 6, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
-  k1: { level: 7, runeLevel: 7, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
-  k2: { level: 8, runeLevel: 7, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
-  k3: { level: 8, runeLevel: 7, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
-  k4: { level: 8, runeLevel: 7, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
-  k5: { level: 8, runeLevel: 8, spindle: 'twig', heartSeeds: 3, loomShards: 2 },
-  k6: { level: 8, runeLevel: 8, spindle: 'twig', heartSeeds: 3, loomShards: 2 },
-  k7: { level: 8, runeLevel: 8, spindle: 'twig', heartSeeds: 3, loomShards: 2 },
-  k8: { level: 9, runeLevel: 8, spindle: 'twig', heartSeeds: 4, loomShards: 2 },
-  k9: { level: 9, runeLevel: 8, spindle: 'twig', heartSeeds: 4, loomShards: 3 },
-  k10: { level: 9, runeLevel: 9, spindle: 'twig', heartSeeds: 4, loomShards: 3 },
+  e6: { level: 5, runeLevel: 4, spindle: 'twig', heartSeeds: 1, loomShards: 1 },
+  e7: { level: 7, runeLevel: 6, spindle: 'twig', heartSeeds: 2, loomShards: 1 },
+  e8: { level: 7, runeLevel: 6, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
+  k1: { level: 9, runeLevel: 7, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
+  k2: { level: 9, runeLevel: 7, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
+  k3: { level: 9, runeLevel: 7, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
+  k4: { level: 9, runeLevel: 7, spindle: 'twig', heartSeeds: 2, loomShards: 2 },
+  k5: { level: 10, runeLevel: 8, spindle: 'twig', heartSeeds: 3, loomShards: 2 },
+  k6: { level: 11, runeLevel: 9, spindle: 'twig', heartSeeds: 3, loomShards: 2 },
+  k7: { level: 11, runeLevel: 9, spindle: 'twig', heartSeeds: 3, loomShards: 2 },
+  k8: { level: 11, runeLevel: 9, spindle: 'twig', heartSeeds: 4, loomShards: 2 },
+  k9: { level: 11, runeLevel: 9, spindle: 'twig', heartSeeds: 4, loomShards: 3 },
+  k10: { level: 12, runeLevel: 9, spindle: 'twig', heartSeeds: 4, loomShards: 3 },
 };
 
 /** The rooms played before `key`, in campaign order. */
@@ -108,11 +109,12 @@ export function runEncounter(opts: EncounterOptions): RoomLog {
   const p = state.player;
   p.life = p.maxLife;
   p.mana = p.maxMana;
-  // No stall rescue: an encounter the bot can't finish fails.
+  // No stall rescue: enemies the bot can't engage for 60 s are left (and listed), not killed.
   return playRoom(state, opts.key, from, {
     maxSeconds: opts.maxSeconds ?? 400,
     maxDeaths: 1,
-    stallSeconds: 1e9,
+    stallSeconds: 60,
+    onStall: 'leave',
     onTick: opts.onTick,
   });
 }
