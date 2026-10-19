@@ -45,6 +45,19 @@ export function markRoomCleared(state: GameState): void {
   emit(state, { type: 'roomCleared', id, first });
 }
 
+/**
+ * Leaving through the edge named by `@clear exit <edge>` pays the room's first-clear rewards if
+ * they're still owed. The room isn't marked cleared: enemies left behind are there on re-entry.
+ */
+export function payRewardsOnExit(state: GameState, edge: string): void {
+  if (state.room.header.clearOnExit !== edge) return;
+  const id = state.room.id;
+  const f = roomFlags(state.world, id);
+  if (f.rewardsPaid) return;
+  onRoomCleared(state, id);
+  f.rewardsPaid = true;
+}
+
 /** Per tick: records boss deaths and clears the room when its enemies (or its boss) are dead. */
 export function stepRoomClear(state: GameState): void {
   const w = state.world;

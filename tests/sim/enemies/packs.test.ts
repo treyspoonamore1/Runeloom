@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bosses } from '../../../data/bosses';
 import { circleOverlapsSolid, createGame, hashState, isWaterAt, parseRoom } from '../../../src/sim';
 import { enemies } from '../../../data/enemies';
 import { packs, type PackDef } from '../../../data/packs';
@@ -133,7 +134,7 @@ describe('monster rarity in packs', () => {
     const m = s.enemies.find((e) => e.kind === 'tar_matriarch')!;
     expect(m.rarity).toBe('normal');
     expect(m.mods).toEqual([]);
-    expect(m.maxLife).toBe(900);
+    expect(m.maxLife).toBe(bosses.tar_matriarch.life);
     expect(s.enemies).toHaveLength(1);
   });
 });

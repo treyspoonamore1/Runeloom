@@ -15,6 +15,12 @@ export interface RoomHeader {
    * 'note' event with the text for the UI to show.
    */
   notes: { char: string; text: string }[];
+  /**
+   * `@clear exit <w|e|n|s>` (M4): the room's first-clear rewards are also paid when the player
+   * leaves through that edge, even with enemies left (E3: a burnt bridge strands part of the pack).
+   * Null when absent.
+   */
+  clearOnExit: 'w' | 'e' | 'n' | 's' | null;
 }
 
 /** A parsed room file (CONTENT §6), before it becomes simulation data. */
@@ -36,7 +42,16 @@ export class RoomParseError extends Error {
 }
 
 export function parseRoom(text: string): RoomData {
-  const header: RoomHeader = { id: '', name: '', level: 1, exits: [], spawns: [], links: [], notes: [] };
+  const header: RoomHeader = {
+    id: '',
+    name: '',
+    level: 1,
+    exits: [],
+    spawns: [],
+    links: [],
+    notes: [],
+    clearOnExit: null,
+  };
   const rows: string[] = [];
   let firstRowLine = 0;
   const lines = text.split('\n');
@@ -126,6 +141,14 @@ function parseHeaderLine(h: RoomHeader, line: string, lineNo: number): void {
       if (args[0]!.length !== 1) throw new RoomParseError('@note needs one tile character', lineNo);
       // Keep the text as written (single spaces between words).
       h.notes.push({ char: args[0]!, text: args.slice(1).join(' ') });
+      break;
+    }
+    case 'clear': {
+      need(2);
+      const dir = args[1];
+      if (args[0] !== 'exit' || (dir !== 'w' && dir !== 'e' && dir !== 'n' && dir !== 's'))
+        throw new RoomParseError('@clear takes "exit <w|e|n|s>"', lineNo);
+      h.clearOnExit = dir;
       break;
     }
     default:

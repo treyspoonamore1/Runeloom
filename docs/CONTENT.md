@@ -191,8 +191,8 @@ Objects and bosses. Bosses and the Brood Kiln are placed with `@spawn <digit> en
 | Id | Name | Area level | Life | Resist | Notes |
 |---|---|---|---|---|---|
 | `brood_kiln` | Brood Kiln | Room level | 200 | 50 / 0 / 0 | Stationary object. Spawns 3 Kiln Mites every 5 s. Stops while Frozen. Legend character `&` (§6.1) |
-| `tar_matriarch` | Tar Matriarch (mini-boss) | 8 | 900 | −30 / 0 / 0 | Tar Hulk elite. Summons 2 Tar Hulks at 50% life. Teaches oil plus fire, and the explosion risk |
-| `cinder_warden` | Cinder Warden | 10 | 3,500 | 75 / −25 / 25 | Three phases, DESIGN §10.3. Uses the boss chill rule (DESIGN §6.4) |
+| `tar_matriarch` | Tar Matriarch (mini-boss) | 8 | 1,800 | −30 / 0 / 0 | Tar Hulk elite. Summons 2 Tar Hulks at 50% life. Teaches oil plus fire, and the explosion risk |
+| `cinder_warden` | Cinder Warden | 10 | 5,000 | 75 / −25 / 25 | Three phases, DESIGN §10.3. Uses the boss chill rule (DESIGN §6.4) |
 
 Boss attacks:
 
@@ -288,11 +288,14 @@ A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `S`, `T`, `x`, `c`, `\
 @spawn <digit> pack:<pack id> [magic|rare]
 @link <door char> <condition>
 @note <object char> <text>
+@clear exit <w|e|n|s>
 ```
 
 Link conditions: `braziers:all`, `switch:S`, `plates:all`, `cleared` (all enemies dead), `timer:<seconds>:braziers:all` (all braziers lit within the time), `sealed` (never opens: a door that stays shut on purpose, like the K10 storm door). Several `@link` lines for one door must all hold.
 
 Rarity (M4): a trailing `magic` makes every spawned enemy Magic with the same 1–2 mods. A trailing `rare` makes a pack's leader Rare with 2 normal minions of the pack's minion kind, or makes each enemy of an `enemy:` line Rare with 2 minions of its own kind. Bosses ignore rarity.
+
+`@clear exit <edge>` (M4): the room's first-clear rewards are also paid when the player leaves through that edge, even with enemies left. E3 uses it, because burning the bridge strands part of the chasing pack.
 
 `@note` (M4): when the object with that character activates (a switch is powered, a door opens, a chest opens, a pickup is taken), the game shows the text. The K10 storm door uses it: `@note S The Fen isn't woven yet.`
 

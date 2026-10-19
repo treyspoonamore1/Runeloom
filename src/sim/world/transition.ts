@@ -30,7 +30,7 @@ import { createLabState } from './lab';
 import { buildRoom, parseRoom } from './room';
 import { buildObjects, objectCenter } from './objects';
 import { arrivalPoint, OPPOSITE } from './exits';
-import { bossRoomDone, markRoomCleared, repopulateRooms } from './roomClear';
+import { bossRoomDone, markRoomCleared, repopulateRooms, payRewardsOnExit } from './roomClear';
 import { startRoom } from '../../../data/progression';
 import { roomFlags, type Arrival } from './worldState';
 
@@ -40,6 +40,7 @@ export function processTransition(state: GameState): void {
   if (!pending) return;
   state.world.pending = null;
   const reason = pending.reason ?? 'exit';
+  if (reason === 'exit' && pending.arrival.kind === 'edge') payRewardsOnExit(state, pending.arrival.from);
   if (reason === 'respawn' || reason === 'rest') repopulateRooms(state);
   enterRoom(state, pending.roomId, pending.arrival);
 }

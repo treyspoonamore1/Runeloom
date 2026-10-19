@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { aggro, isWaterAt, type GameState } from '../../../src/sim';
 import { SURFACE } from '../../../data/materials';
+import { bosses } from '../../../data/bosses';
+
+const LIFE = bosses.tar_matriarch.life;
 import { hitWith } from '../combat/helpers';
 import { fromFile, idx, ofType, place, run } from './helpers';
 
@@ -14,10 +17,10 @@ function pit(px: number, py: number): GameState {
 }
 
 describe('Tar Matriarch', () => {
-  it('spawns in K5 with her absolute 900 life at area level 8', () => {
+  it('spawns in K5 with her absolute CONTENT §5 life at area level 8', () => {
     const s = pit(10, 30);
     const m = s.enemies.find((e) => e.kind === 'tar_matriarch')!;
-    expect(m.maxLife).toBe(900);
+    expect(m.maxLife).toBe(LIFE);
     expect(m.areaLevel).toBe(8);
     expect(m.boss).toMatchObject({ phase: 1, pendingPhase: 0 });
     expect(s.room.level).toBe(8);
@@ -72,7 +75,7 @@ describe('Tar Matriarch', () => {
     const s = pit(20, 30);
     const m = s.enemies.find((e) => e.kind === 'tar_matriarch')!;
     aggro(s, m);
-    hitWith(s, m, 451, 'physical');
+    hitWith(s, m, LIFE / 2 + 1, 'physical');
     const ev = run(s, 120);
     expect(ofType(ev, 'telegraph').filter((t) => t.attack === 'summon_hulks')).toHaveLength(1);
     const sum = ofType(ev, 'bossSummon');
@@ -86,7 +89,7 @@ describe('Tar Matriarch', () => {
       expect(h.areaLevel).toBe(8);
       expect(h.ai.mode).not.toBe('idle');
     }
-    hitWith(s, m, 200, 'physical');
+    hitWith(s, m, LIFE / 5, 'physical');
     expect(ofType(run(s, 200), 'bossSummon')).toHaveLength(0);
   });
 

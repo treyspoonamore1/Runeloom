@@ -272,7 +272,7 @@ The player suffers the same ailments from enemy and world hazards, with player-s
 - Enemy life = base life × 1.12^(area level − 1). Magic ×1.7, Rare ×4.
 - Enemy damage = base damage × 1.09^(area level − 1). Boss numbers in CONTENT §5 are absolute.
 - `refLife(L) = 50 × 1.12^(L − 1)`: the life of a reference enemy at area level L. Terrain hazards scale from it.
-- XP to next level = round(30 × L^2.2). Treat this as a starting point. Target: about level 12 when the player reaches the Cinder Warden, after 45 to 75 minutes. The balance sim (BUILD_PLAN M4) tunes it.
+- XP to next level = round(68 × L^1.6) (tuned by the M4 balance sim from the starting point round(30 × L^2.2)). Kill XP = the enemy's base life × 1.2^(area level − 1) × rarity (Magic ×1.7, Rare ×4); bosses have fixed values. Target: about level 12 when the player reaches the Cinder Warden, after 45 to 75 minutes. The campaign bot (`npm run sim -- --campaign`) reaches the Warden at level 12.
 
 ## 8. Items
 

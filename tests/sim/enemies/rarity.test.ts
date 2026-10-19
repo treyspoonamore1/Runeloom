@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bosses } from '../../../data/bosses';
 import { aggro, enemyAttackPacket, scaleByLevel, spawnEnemy } from '../../../src/sim';
 import { enemies } from '../../../data/enemies';
 import { hastedWindup, rollMods } from '../../../src/sim/actors/rarity';
@@ -92,8 +93,8 @@ describe('area level scaling (DESIGN §7)', () => {
     const s = arena(100, 40, 3);
     const m = spawnEnemy(s, 'tar_matriarch', 30, 30);
     const w = spawnEnemy(s, 'cinder_warden', 60, 30);
-    expect([m.maxLife, m.areaLevel]).toEqual([900, 8]);
-    expect([w.maxLife, w.areaLevel]).toEqual([5000, 10]);
+    expect([m.maxLife, m.areaLevel]).toEqual([bosses.tar_matriarch.life, 8]);
+    expect([w.maxLife, w.areaLevel]).toEqual([bosses.cinder_warden.life, 10]);
     expect(enemyAttackPacket(s, w, enemies.cinder_warden.attack).base.fire).toBe(40);
     expect(enemyAttackPacket(s, m, enemies.tar_matriarch.attack).base.physical).toBe(30);
   });

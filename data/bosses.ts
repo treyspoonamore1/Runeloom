@@ -14,7 +14,7 @@ const COS30 = 0.8660254037844387;
 export const bosses = {
   tar_matriarch: {
     name: 'Tar Matriarch',
-    life: 900,
+    life: 1800,
     speed: 10,
     radius: 3.6,
     resist: { physical: 0, fire: -0.3, frost: 0, storm: 0 },
