@@ -66,8 +66,11 @@ export class Camera {
     }
     const halfW = screenW / 2 / this.scale;
     const halfH = screenH / 2 / this.scale;
+    // The bottom HUD covers the lowest part of the screen: the view may scroll that far past the
+    // room's bottom edge, so the bottom rows (and arrivals from the south) are never hidden.
+    const inset = (tuning.hudInset * screenH) / this.scale;
     tx = clampAxis(tx, halfW, room.width, tuning.edgeMargin);
-    ty = clampAxis(ty, halfH, room.height, tuning.edgeMargin);
+    ty = clampAxis(ty, halfH, room.height, tuning.edgeMargin, inset);
 
     if (this.snapNext || tuning.smoothing <= 0) {
       this.x = tx;
@@ -80,7 +83,7 @@ export class Camera {
     }
     // Clamp the smoothed position too, so a resize or zoom change never shows the void.
     this.x = clampAxis(this.x, halfW, room.width, tuning.edgeMargin);
-    this.y = clampAxis(this.y, halfH, room.height, tuning.edgeMargin);
+    this.y = clampAxis(this.y, halfH, room.height, tuning.edgeMargin, inset);
 
     // Snap the world origin to device pixels so static lines stay crisp.
     const r = resolution > 0 ? resolution : 1;
@@ -104,9 +107,14 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 /** Keeps the view inside [−margin, size + margin], or centers the room when the view is larger. */
-function clampAxis(center: number, half: number, size: number, margin: number): number {
+/**
+ * Clamps a view center to a room axis: up to `margin` cells of void past either edge, plus
+ * `farInset` past the far edge (the bottom HUD). A room smaller than the view is centered in the
+ * part of the screen the HUD leaves visible.
+ */
+function clampAxis(center: number, half: number, size: number, margin: number, farInset = 0): number {
   const lo = half - margin;
-  const hi = size - half + margin;
-  if (lo > hi) return size / 2;
+  const hi = size - half + margin + farInset;
+  if (lo > hi) return (size + farInset) / 2;
   return clamp(center, lo, hi);
 }
