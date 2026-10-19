@@ -1,4 +1,3 @@
-import type { EnemyKind } from '../../data/enemies';
 import { ELEMENT } from './combatPalette';
 
 /**
@@ -87,7 +86,8 @@ export interface BodyBox {
   bottom: number;
 }
 
-export const BODY: Record<EnemyKind | 'player', BodyBox> = {
+/** M1 kinds and the player; M4 kinds keep theirs in bestiary/bestiaryPalette.ts (use bodyBoxOf). */
+export const BODY: Record<'tinderling' | 'shieldbearer' | 'ember_archer' | 'dummy' | 'player', BodyBox> = {
   tinderling: { w: 1.25, top: -2.0, bottom: 1.0 },
   shieldbearer: { w: 1.95, top: -2.9, bottom: 1.9 },
   ember_archer: { w: 1.2, top: -2.7, bottom: 1.5 },
@@ -96,7 +96,7 @@ export const BODY: Record<EnemyKind | 'player', BodyBox> = {
 };
 
 /** Extra height of the status row over kinds whose drawing pokes above `top` (Tinderling flames). */
-export const ICON_EXTRA: Partial<Record<EnemyKind, number>> = { tinderling: 0.4 };
+export const ICON_EXTRA: Partial<Record<string, number>> = { tinderling: 0.4 };
 
 /** Mixes `rgb` toward `to` by t (0–1). */
 export function mixRgb(rgb: number, to: number, t: number): number {

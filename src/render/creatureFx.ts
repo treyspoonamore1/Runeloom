@@ -5,6 +5,7 @@ import type { Ailments, GameState, SimEvent } from '../sim';
 import type { TerrainState } from '../sim/actors/terrainState';
 import { burst, rand, spawnHeld } from './ailmentBursts';
 import { AIL, BODY, type BodyBox } from './ailmentPalette';
+import { bodyBoxOf } from './kindInfo';
 import type { AilmentParts } from './ailmentParts';
 import type { Atlas } from './atlas';
 import { CREATURE as C, hueRgb } from './creaturePalette';
@@ -352,6 +353,6 @@ export class CreatureFx {
 }
 
 function bodyBox(kind: string): BodyBox {
-  return BODY[kind as keyof typeof BODY] ?? BODY.tinderling;
+  return kind === 'player' ? BODY.player : bodyBoxOf(kind);
 }
 

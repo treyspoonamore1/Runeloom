@@ -15,7 +15,7 @@ const WHITE: K = () => 0xffffff;
 const O = ENEMY.outline;
 
 /** Closed smooth blob through points at the given radii, evenly spaced, starting east. */
-function blob(p: Pen, cx: number, cy: number, rx: number, ry: number, radii: readonly number[]): Pen {
+export function blob(p: Pen, cx: number, cy: number, rx: number, ry: number, radii: readonly number[]): Pen {
   const n = radii.length;
   const px: number[] = [];
   const py: number[] = [];
