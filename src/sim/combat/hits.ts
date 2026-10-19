@@ -8,7 +8,7 @@ import { onEnemyKilled } from '../hero/onKill';
 import type { GameState } from '../state';
 import { applyHitAilments, isFrozen, teamOfSource, type AilmentTarget } from './ailments';
 import { arcShock } from './arcs';
-import { deathTerrain, dousedTakenMult } from '../actors/chemistry';
+import { deathTerrain, enemyTakenMult } from '../actors/chemistry';
 import { noteHurt, noteKill } from '../weave/runtime/queue';
 import { resolveHit, zeroAmounts, type DamagePacket, type DamageTarget, type HitResult } from './damage';
 
@@ -44,10 +44,11 @@ export function addHitstop(state: GameState, seconds: number): void {
 // Scratch target side for resolveHit; the sim is single-threaded.
 const targetSide: DamageTarget = { resist: { physical: 0, fire: 0, frost: 0, storm: 0 }, shock: 0 };
 
-function damageTarget(t: AilmentTarget): DamageTarget {
+function damageTarget(state: GameState, t: AilmentTarget): DamageTarget {
   targetSide.resist = t.resist;
   targetSide.shock = t.ailments.shock.effect;
-  targetSide.takenMult = 'kind' in t ? dousedTakenMult(t) : 1;
+  // M4: Superheat joins the doused Tinderling's multiplier (actors/chemistry.ts).
+  targetSide.takenMult = 'kind' in t ? enemyTakenMult(state, t) : 1;
   return targetSide;
 }
 
@@ -90,7 +91,7 @@ export function applyHit(
 
 function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInfo): HitResult {
   const def = enemyDef(e.kind);
-  const res = resolveHit(packet, damageTarget(e), state.combatRng);
+  const res = resolveHit(packet, damageTarget(state, e), state.combatRng);
   e.life -= res.total;
   const kb = info.knockback * def.knockbackScale;
   if (kb > 0) addKnockback(e, info.dirX, info.dirY, kb, state.tuning.feel);
@@ -182,7 +183,7 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
     emit(state, { type: 'evaded', x: p.x, y: p.y, sourceId: info.sourceId });
     return null;
   }
-  const res = resolveHit(packet, damageTarget(p), state.combatRng);
+  const res = resolveHit(packet, damageTarget(state, p), state.combatRng);
   if (!state.cheats.god) p.life -= res.total;
   const kb = info.knockback;
   if (kb > 0) addKnockback(p, info.dirX, info.dirY, kb, state.tuning.feel);

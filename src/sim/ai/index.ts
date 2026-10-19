@@ -3,7 +3,21 @@ import type { Enemy } from '../actors/enemies';
 import { actionSpeed } from '../combat/ailments';
 import { DT } from '../core/constants';
 import type { GameState } from '../state';
-import { aggro, deaggro, measurePlayer, refreshSight, setMode, sightDue, stop, toPlayer } from './common';
+import {
+  aggro,
+  dashVelocity,
+  deaggro,
+  measurePlayer,
+  refreshSight,
+  setMode,
+  sightDue,
+  stop,
+  toPlayer,
+} from './common';
+import { stepBossAI } from './bosses';
+import { tickExtraCooldowns, tryEveryAttack } from './extras';
+import { stepLurker } from './lurker';
+import { stepSpawner } from './spawner';
 import { buildFlowField, syncFlowWalkable, tileAt } from './flowField';
 import { stepKite } from './kite';
 import { stepShield } from './shield';
@@ -54,22 +68,38 @@ export function prepareEnemyAI(state: GameState): void {
  * actionSpeed (the kiter's strafe timer and the Shieldbearer's turning too). Frozen enemies are
  * skipped before this is called (actors/enemyMovement.ts).
  *
- * Contract with the core: writes only `enemy.vx/vy` (at most enemyDef(kind).speed),
- * `enemy.facingX/facingY` (unit) and `enemy.ai`; randomness comes from `state.aiRng`.
+ * Contract with the core: writes only `enemy.vx/vy` (at most enemyDef(kind).speed × Hasted, or
+ * a running dash's speed), `enemy.facingX/facingY` (unit), `enemy.ai` and the lurker's
+ * `special.submerged`; randomness comes from `state.aiRng`.
+ *
+ * M4: kinds with a 'spawner' behavior (Brood Kiln, ai/spawner.ts) and bosses (ai/bosses) run
+ * their own loops. Others also use their cadenced extraAttacks (ai/extras.ts: the Frost Wisp's
+ * frost line) before their behavior, and 'lurker' (ai/lurker.ts) joins the behaviors. A
+ * trapped Bog Lurker does nothing ('trapped'); a running dash keeps its velocity.
  */
 export function stepEnemyAI(state: GameState, e: Enemy): void {
   if (state.cheats.noAI) return;
   const def = enemyDef(e.kind);
   const b = def.behavior;
-  if (b.kind === 'none' || !def.attack) return;
+  if (b.kind === 'none') return;
+  if (b.kind === 'spawner') return stepSpawner(state, e, b);
+  if (b.kind === 'boss') return stepBossAI(state, e, b);
+  if (!def.attack) return;
   const ai = e.ai;
   const dt = DT * actionSpeed(state, e);
   ai.timer += dt;
   ai.cooldown = ai.cooldown > dt ? ai.cooldown - dt : 0;
+  tickExtraCooldowns(e, def, dt);
+  if (e.special.trapped) {
+    stop(e);
+    setMode(e, 'trapped');
+    return;
+  }
 
   const phase = e.attack.phase;
   if (phase !== 'none') {
-    stop(e);
+    if (phase === 'active' && e.special.dashSpeed > 0) dashVelocity(e);
+    else stop(e);
     setMode(e, phase === 'windup' ? 'windup' : phase === 'active' ? 'attack' : 'recover');
     return;
   }
@@ -94,7 +124,11 @@ export function stepEnemyAI(state: GameState, e: Enemy): void {
     refreshSight(state, e);
   }
 
+  if (tryEveryAttack(state, e, def)) return;
   switch (b.kind) {
+    case 'lurker':
+      stepLurker(state, e, b, def.attack);
+      break;
     case 'swarm':
       stepSwarm(state, e, b, def.attack);
       break;
@@ -116,7 +150,10 @@ function alertPack(state: GameState, e: Enemy): void {
   const n = state.enemyHash.queryCircle(e.x, e.y, state.tuning.ai.alertRadius, packmates);
   for (let k = 0; k < n; k++) {
     const o = state.enemies[packmates[k]!]!;
-    if (o.dead || o.ai.mode !== 'idle' || enemyDef(o.kind).behavior.kind === 'none') continue;
+    if (o.dead || o.ai.mode !== 'idle') continue;
+    const od = enemyDef(o.kind);
+    // Bosses wake on their own (and announce it); dummies never do.
+    if (od.behavior.kind === 'none' || od.isBoss) continue;
     aggro(state, o);
   }
 }

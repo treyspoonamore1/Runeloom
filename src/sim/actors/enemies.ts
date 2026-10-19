@@ -5,12 +5,16 @@ import { createAilments, type Ailments } from '../combat/ailments';
 import { scaleByLevel } from '../combat/damage';
 import { emit } from '../events';
 import { createTerrainState, type TerrainState } from './terrainState';
+import { rarityLifeMult } from './rarity';
+import { createBossState, createEnemySpecial, type BossState, type EnemySpecial } from './enemyState';
 import type { GameState } from '../state';
 
 /** Id of the player in events, `targetId`, `ownerId` and `hitIds`. Entity ids start at 1. */
 export const PLAYER_ID = 0;
 
 export type EnemyRarity = 'normal' | 'magic' | 'rare';
+
+export { createBossState, createEnemySpecial, type BossState, type EnemySpecial } from './enemyState';
 
 export type AttackPhase = 'none' | 'windup' | 'active' | 'recover';
 
@@ -60,7 +64,16 @@ export interface EnemyAI {
   strafe: number;
   /** Seconds until the strafe side flips. */
   strafeLeft: number;
+  /**
+   * M4: per-kind timers, seconds until each is ready (AI_SLOTS of them, 0 = ready). Index k is
+   * the kind's extraAttacks[k] cadence (`every`: Frost Wisp's frost line); the Brood Kiln's spawn
+   * timer is slot 0; bosses use them per attack (ai/bosses).
+   */
+  cooldowns: number[];
 }
+
+/** Length of EnemyAI.cooldowns. */
+export const AI_SLOTS = 4;
 
 /** A fresh, idle AI record. */
 export function createEnemyAI(): EnemyAI {
@@ -75,6 +88,7 @@ export function createEnemyAI(): EnemyAI {
     offsetY: 0,
     strafe: 1,
     strafeLeft: 0,
+    cooldowns: new Array<number>(AI_SLOTS).fill(0),
   };
 }
 
@@ -123,22 +137,38 @@ export interface Enemy {
   /** Area level its life and damage are scaled for. */
   areaLevel: number;
   rarity: EnemyRarity;
+  /** Monster mods (data/monsterMods.ts ids), M4: Magic and Rare monsters. Empty for normal ones. */
+  mods: string[];
   /** Died this tick; removed at the end of the step. Dead enemies never act or get hit. */
   dead: boolean;
   ai: EnemyAI;
   attack: EnemyAttackState;
   shield: EnemyShield | null;
+  /** M4 chemistry and dash state (EnemySpecial). */
+  special: EnemySpecial;
+  /** Fight state for bosses (EnemyDef.isBoss), else null. */
+  boss: BossState | null;
 }
 
 export interface SpawnOptions {
-  /** Defaults to the room's level. */
+  /** Defaults to the room's level (bosses: their CONTENT §5 level, EnemyDef.level). */
   areaLevel?: number;
   /** Unit facing. Defaults to toward the player (or +y if on top of the player). */
   facingX?: number;
   facingY?: number;
+  /** Monster rarity (M4). Default 'normal'. Ignored for bosses. */
+  rarity?: EnemyRarity;
+  /** Monster mods (data/monsterMods.ts ids), usually rolled with the rarity (actors/rarity.ts). */
+  mods?: readonly string[];
+  /** The enemy that spawned it (EnemySpecial.parentId). */
+  parentId?: number;
 }
 
-/** Spawns an enemy at (x, y) cells and returns it. Throws on an unknown kind. */
+/**
+ * Spawns an enemy at (x, y) cells and returns it. Throws on an unknown kind.
+ * Life is base × enemyLifeGrowth^(area level − 1) (DESIGN §7), × the rarity's and mods' life
+ * multipliers (Magic ×1.7, Rare ×4, Thick-skinned ×1.4). Bosses have absolute life and no rarity.
+ */
 export function spawnEnemy(
   state: GameState,
   kind: string,
@@ -148,8 +178,12 @@ export function spawnEnemy(
 ): Enemy {
   if (!isEnemyKind(kind)) throw new Error(`Unknown enemy kind "${kind}"`);
   const def = enemyDef(kind);
-  const areaLevel = opts.areaLevel ?? state.room.level;
-  const life = scaleByLevel(def.life, state.tuning.combat.enemyLifeGrowth, areaLevel);
+  const boss = def.isBoss === true;
+  const areaLevel = opts.areaLevel ?? (boss ? (def.level ?? state.room.level) : state.room.level);
+  const rarity: EnemyRarity = boss ? 'normal' : (opts.rarity ?? 'normal');
+  const mods = boss ? [] : [...(opts.mods ?? [])];
+  let life = boss ? def.life : scaleByLevel(def.life, state.tuning.combat.enemyLifeGrowth, areaLevel);
+  if (rarity !== 'normal' || mods.length > 0) life *= rarityLifeMult(rarity, mods);
   let fx = opts.facingX ?? state.player.x - x;
   let fy = opts.facingY ?? state.player.y - y;
   const fl = Math.sqrt(fx * fx + fy * fy);
@@ -160,6 +194,9 @@ export function spawnEnemy(
     fx = 0;
     fy = 1;
   }
+  const special = createEnemySpecial();
+  special.submerged = def.behavior.kind === 'lurker';
+  special.parentId = opts.parentId ?? -1;
   const e: Enemy = {
     id: state.nextId++,
     kind,
@@ -180,7 +217,8 @@ export function spawnEnemy(
     ailments: createAilments(),
     terrain: createTerrainState(x, y),
     areaLevel,
-    rarity: 'normal',
+    rarity,
+    mods,
     dead: false,
     ai: createEnemyAI(),
     attack: {
@@ -192,6 +230,8 @@ export function spawnEnemy(
       originY: y,
     },
     shield: def.shield ? { halfAngleCos: def.shield.halfAngleCos, burnLeft: def.shield.burnTime } : null,
+    special,
+    boss: boss ? createBossState() : null,
   };
   state.enemies.push(e);
   emit(state, { type: 'enemySpawn', id: e.id, kind, x, y });
@@ -199,27 +239,10 @@ export function spawnEnemy(
 }
 
 /**
- * Spawns the room's `@spawn <digit> enemy:<id> [count]` entries at every matching marker.
- * Several enemies on one marker go on a square grid `spawnSpacing` cells apart, row by row,
- * centered on the marker. Packs (`pack:<id>`) arrive in M4 and are skipped.
+ * Spawns the room's `@spawn` entries (enemies, packs, rarity) and a Brood Kiln on every `&`
+ * tile: see actors/roomSpawns.ts.
  */
-export function spawnRoomEnemies(state: GameState): void {
-  const spacing = state.tuning.enemies.spawnSpacing;
-  for (const s of state.room.spawns) {
-    if (s.kind !== 'enemy') continue;
-    let side = 1;
-    while (side * side < s.count) side++;
-    const half = (side - 1) / 2;
-    for (const m of state.room.spawnMarkers) {
-      if (m.marker !== s.marker) continue;
-      for (let i = 0; i < s.count; i++) {
-        const gx = (i % side) - half;
-        const gy = Math.floor(i / side) - half;
-        spawnEnemy(state, s.id, m.x + gx * spacing, m.y + gy * spacing);
-      }
-    }
-  }
-}
+export { spawnRoomEnemies } from './roomSpawns';
 
 /** Removes dead enemies, keeping the order of the rest. */
 export function compactEnemies(state: GameState): void {

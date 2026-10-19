@@ -6,7 +6,8 @@
  * - local steering (avoidHazards, after each behavior picks its velocity): a cell ahead that
  *   would hurt turns the enemy 45° or 90° toward a safe one (or it waits); an enemy already in
  *   one walks out the safest way.
- * Kinds with chemistry.ignoresHazards (Tinderlings) do neither; the shared flow field still bends.
+ * Kinds with chemistry.ignoresHazards (Tinderlings, Bog Lurkers) and floaters (Frost Wisps) do
+ * neither; the shared flow field still bends.
  */
 import { enemyDef } from '../../../data/enemies';
 import { OWNER } from '../../../data/materials';
@@ -59,7 +60,8 @@ const SIDE_TURNS = 4;
 /** Local steering around hazards; see the file comment. Call after the behavior set e.vx/vy. */
 export function avoidHazards(state: GameState, e: Enemy): void {
   const def = enemyDef(e.kind);
-  if (def.chemistry?.ignoresHazards) return;
+  // Floaters are above the ground's hazards.
+  if (def.chemistry?.ignoresHazards || def.locomotion === 'float') return;
   const inHazard = hurtsEnemies(state, Math.floor(e.x), Math.floor(e.y));
   const v2 = e.vx * e.vx + e.vy * e.vy;
   if (v2 === 0) {

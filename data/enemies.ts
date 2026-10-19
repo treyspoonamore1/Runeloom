@@ -3,130 +3,29 @@
  * Units: cells, seconds, cells per second; resistances are fractions (0.75 = 75%).
  *
  * Values CONTENT doesn't give (radii, recover, cooldown, attack shapes and ranges, knockback,
- * arrow speed and radius) are first guesses, listed in the M1 report.
+ * arrow speed and radius) are first guesses, listed in the M1 and M4 reports. Types are in
+ * data/enemyTypes.ts.
  */
-import type { AilmentKind, DamageAmounts, DamageType, ProjectileDef } from './combatTypes';
+import type { DamageAmounts } from './combatTypes';
+import type { AttackDef, EnemyDef } from './enemyTypes';
+import { bosses } from './bosses';
+import { m4Enemies } from './enemiesM4';
 
-/**
- * Attack area relative to the attacker. `offset` is how far forward of the enemy's center the
- * shape's origin sits: the circle's center, the cone's apex or the line's start.
- * Cone and arc widths are stored as the cosine of the half angle, so the sim needs no trig.
- */
-export type AttackShapeDef =
-  | { kind: 'circle'; r: number; offset: number }
-  | { kind: 'cone'; r: number; halfAngleCos: number; offset: number }
-  | { kind: 'line'; length: number; width: number; offset: number };
-
-export interface AttackDef {
-  /** Id shown in events ('telegraph', 'attack'), e.g. for sounds. */
-  name: string;
-  /** Hit damage at area level 1. */
-  damage: number;
-  damageType: DamageType;
-  /** Telegraph seconds before the attack lands (DESIGN §14: ≥ 0.4 s if damage ≥ 15% of player life). */
-  windup: number;
-  /** Seconds the attack shows as landing. The hit itself happens once, as it starts. */
-  active: number;
-  /** Seconds after `active` before the enemy is free again. */
-  recover: number;
-  /** AI hint: seconds from one attack's start to the next. */
-  cooldown: number;
-  /** AI hint: start attacking when the gap between the two bodies' edges is at most this. */
-  range: number;
-  /** Knockback distance applied to the player, cells. */
-  knockback: number;
-  /** Telegraph and hit area. For projectile attacks it shows the flight path. */
-  shape: AttackShapeDef;
-  /** If set, the attack fires this projectile along its direction instead of hitting its shape. */
-  projectile?: ProjectileDef;
-}
-
-/**
- * How the AI (src/sim/ai) drives a kind. Distances in cells, times in seconds, speeds as a
- * fraction of the kind's `speed`, turn rates in radians per second.
- */
-export type BehaviorDef =
-  /** Never moves or attacks (dummies). */
-  | { kind: 'none' }
-  /**
-   * Rushes the player. Each enemy aims at the player plus its own random offset of
-   * min(distance × offsetPerCell, offsetMax) cells, so a pack fans out and surrounds instead of
-   * queueing in a line.
-   */
-  | { kind: 'swarm'; offsetPerCell: number; offsetMax: number }
-  /**
-   * Advances with its shield up. Facing turns toward the player at most `turnRate`, so a player
-   * circling fast enough gets behind it. Bashes only when the player is in range and within
-   * ±acos(bashArcCos) of its facing; never turns while attacking.
-   */
-  | { kind: 'shield'; turnRate: number; bashArcCos: number }
-  /**
-   * Holds `preferredRange` with line of sight: backs off at `retreatSpeed` when the player is
-   * closer than its min (without stopping to shoot inside `panicRange`, unless a wall is behind
-   * it), strafes sideways at `strafeSpeed` inside the band while drifting toward its middle
-   * (switching side every strafeFlipMin–strafeFlipMax s, or when a wall is within `wallProbe`
-   * cells ahead), closes in when farther, and follows the flow field to regain line of sight.
-   */
-  | {
-      kind: 'kite';
-      panicRange: number;
-      strafeSpeed: number;
-      retreatSpeed: number;
-      strafeFlipMin: number;
-      strafeFlipMax: number;
-      wallProbe: number;
-    };
-
-export interface EnemyDef {
-  name: string;
-  /** Max life at area level 1. */
-  life: number;
-  /** Top move speed, cells per second (AI hint; the AI sets the velocity). */
-  speed: number;
-  /** Body radius in cells. */
-  radius: number;
-  resist: DamageAmounts;
-  /** Multiplier on knockback this enemy receives (0: never moved by hits). */
-  knockbackScale: number;
-  /** AI hint: notices the player within this many cells. */
-  aggroRange: number;
-  /** AI hint for kiters: preferred distance band to the player, cells. */
-  preferredRange?: { min: number; max: number };
-  attack: AttackDef | null;
-  behavior: BehaviorDef;
-  /** Front-arc shield that blocks projectiles (Shieldbearer). */
-  shield?: { halfAngleCos: number; burnTime: number };
-  /** Training dummies: at 0 life they reset to full instead of dying (DESIGN §5.5). */
-  immortal?: boolean;
-  /** Ailments this kind never suffers (CONTENT §5), e.g. Tinderlings can't be ignited. */
-  immune?: readonly AilmentKind[];
-  /** Bosses use the boss chill rule (DESIGN §6.4): flat chill per frost hit, freeze immunity. */
-  isBoss?: boolean;
-  /** Terrain behavior (CONTENT §5 "Chemistry", M3). Missing means none. */
-  chemistry?: EnemyChemistry;
-}
-
-export interface EnemyChemistry {
-  /**
-   * Always burning (Tinderling): lights the flammable cells it crosses as an enemy-owned fire
-   * (rule 22) and leaves fire where it dies. While Wet it is out: stunned for `dousedStun` s when
-   * it goes out, and takes `dousedDamageTaken` × damage until it dries.
-   */
-  alwaysBurning?: {
-    dousedStun: number;
-    dousedDamageTaken: number;
-    /** Radius (cells, from its cell's center) of the enemy-owned fire it leaves on death: 1.5 = 3×3. */
-    deathFireRadius: number;
-  };
-  /** Its projectiles that miss (hit a wall or fly out) ignite flammable cells within this radius of where they land. */
-  missIgniteRadius?: number;
-  /** Walks through hazards that hurt it instead of avoiding them (Tinderlings don't care). */
-  ignoresHazards?: boolean;
-}
+export type {
+  AttackDef,
+  AttackShapeDef,
+  AttackTerrainDef,
+  BehaviorDef,
+  DashDef,
+  EnemyChemistry,
+  EnemyDef,
+  Locomotion,
+} from './enemyTypes';
 
 const NO_RESIST: DamageAmounts = { physical: 0, fire: 0, frost: 0, storm: 0 };
 
-export const enemies = {
+/** The M1 kinds. */
+const m1Enemies = {
   tinderling: {
     name: 'Tinderling',
     life: 14,
@@ -231,6 +130,12 @@ export const enemies = {
   },
 } satisfies Record<string, EnemyDef>;
 
+/**
+ * Every enemy kind: the M1 kinds, the M4 kinds (data/enemiesM4.ts) and the bosses
+ * (data/bosses.ts). Ids are exactly CONTENT §5's (Fuse parts drop by kind, CONTENT §4).
+ */
+export const enemies = { ...m1Enemies, ...m4Enemies, ...bosses } satisfies Record<string, EnemyDef>;
+
 export type EnemyKind = keyof typeof enemies;
 
 export function isEnemyKind(id: string): id is EnemyKind {
@@ -239,4 +144,18 @@ export function isEnemyKind(id: string): id is EnemyKind {
 
 export function enemyDef(kind: EnemyKind): EnemyDef {
   return enemies[kind];
+}
+
+// Attack lookup by name: the kind's primary attack and its extraAttacks.
+const attackIndex = new Map<string, Map<string, AttackDef>>();
+for (const [kind, def] of Object.entries(enemies) as [string, EnemyDef][]) {
+  const m = new Map<string, AttackDef>();
+  if (def.attack) m.set(def.attack.name, def.attack);
+  for (const a of def.extraAttacks ?? []) m.set(a.name, a);
+  attackIndex.set(kind, m);
+}
+
+/** The kind's attack called `name` (its primary attack or one of its extraAttacks), or null. */
+export function attackByName(kind: EnemyKind, name: string): AttackDef | null {
+  return attackIndex.get(kind)?.get(name) ?? null;
 }

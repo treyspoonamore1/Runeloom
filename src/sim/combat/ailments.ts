@@ -274,15 +274,18 @@ export function addChill(
   sourceId: number,
 ): void {
   if (points <= 0 || isImmune(t, 'chill') || isFrozen(t)) return;
+  // M4: the Superheated Cinder Warden builds chill only while standing in water (DESIGN §10.3).
+  const boss = asEnemy(t)?.boss;
+  if (boss && boss.chillNeedsWater && !boss.inWater) return;
   const A = state.tuning.ailments;
   const a = t.ailments;
-  const boss = isBoss(t);
+  const bossRule = isBoss(t);
   const sum = a.chill + points;
   a.chill = sum < A.freezeThreshold ? sum : A.freezeThreshold;
-  emitApplied(state, t, 'chill', a.chill, a.chill / (boss ? A.bossChillDecay : A.chillDecay), sourceId);
+  emitApplied(state, t, 'chill', a.chill, a.chill / (bossRule ? A.bossChillDecay : A.chillDecay), sourceId);
   if (a.chill < A.freezeThreshold - AILMENT_EPSILON) return;
   if (isImmune(t, 'freeze') || a.freeze.immuneLeft > 0) return;
-  const base = boss ? A.bossFreezeDuration : A.freezeDuration;
+  const base = bossRule ? A.bossFreezeDuration : A.freezeDuration;
   freezeTarget(state, t, base * freezeDurationMul, sourceId);
 }
 

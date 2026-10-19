@@ -9,6 +9,8 @@ import type { Enemy } from './enemies';
 import { stepKnockback } from './knockback';
 import { readGround } from './ground';
 import { isStunned } from './terrainState';
+import { stepEnemyPassive } from '../ai/passive';
+import { ignoresGround, locomotionOf, movementRoom, swimMove } from './locomotion';
 
 // Scratch: separation velocity per enemy index and a body for moveCircle.
 let sepX = new Float64Array(64);
@@ -21,14 +23,16 @@ const acc = new Float64Array(2);
 /**
  * The enemy phase of a tick:
  * 1. prevX/prevY ← position; rebuild state.enemyHash.
- * 2. Per enemy in array order: stepEnemyAI (decisions; may start attacks), then stepEnemyAttack
- *    (phase timers; attacks land on entering 'active'). Frozen and stunned (doused Tinderling)
- *    enemies skip both and stand still.
+ * 2. Per enemy in array order: stepEnemyPassive (M4 chemistry and boss bookkeeping, even when
+ *    Frozen: ai/passive.ts), then stepEnemyAI (decisions; may start attacks), then
+ *    stepEnemyAttack (phase timers; attacks land on entering 'active'). Frozen and stunned
+ *    (doused Tinderling) enemies skip the last two and stand still.
  * 3. Soft separation from overlapping neighbors and the player, from positions before anyone moves.
  *    Frozen enemies aren't pushed (they still push others).
  * 4. Per enemy: move by (walking velocity + separation) through moveCircle, then by knockback
  *    (Frozen enemies are still knocked back). Walking velocity = AI velocity × actionSpeed (Chill)
- *    × the ground's moveMult, eased on ice (walkVelocity).
+ *    × the ground's moveMult, eased on ice (walkVelocity). Floaters collide only with
+ *    shot-blocking cells; swimmers stay on water (actors/locomotion.ts).
  * 5. Rebuild state.enemyHash at the new positions for spells and projectiles.
  * Dead enemies are skipped throughout.
  */
@@ -42,6 +46,8 @@ export function stepEnemies(state: GameState): void {
 
   for (let i = 0; i < list.length; i++) {
     const e = list[i]!;
+    if (e.dead) continue;
+    stepEnemyPassive(state, e);
     if (e.dead) continue;
     if (isFrozen(e) || isStunned(e)) {
       e.vx = e.vy = 0;
@@ -61,12 +67,14 @@ export function stepEnemies(state: GameState): void {
     const ts = e.terrain;
     const mvx = ts.slideX + sepX[i]!;
     const mvy = ts.slideY + sepY[i]!;
+    const room = movementRoom(state, e.kind);
     if (mvx !== 0 || mvy !== 0) {
       body.x = e.x;
       body.y = e.y;
       body.vx = mvx;
       body.vy = mvy;
-      if (moveCircle(state.room, body, e.radius, mvx * DT, mvy * DT) && ts.onIce) {
+      if (locomotionOf(e.kind) === 'swim') swimMove(state, body, mvx * DT, mvy * DT);
+      else if (moveCircle(room, body, e.radius, mvx * DT, mvy * DT) && ts.onIce) {
         // Sliding into a wall loses the part of the slide pointing into it.
         ts.slideX = body.vx - sepX[i]!;
         ts.slideY = body.vy - sepY[i]!;
@@ -74,7 +82,7 @@ export function stepEnemies(state: GameState): void {
       e.x = body.x;
       e.y = body.y;
     }
-    stepKnockback(state.room, e, e.radius, feel);
+    stepKnockback(room, e, e.radius, feel);
   }
 
   state.enemyHash.rebuild(list);
@@ -86,7 +94,12 @@ export function stepEnemies(state: GameState): void {
  * iceAccelTime (iceDecelTime when stopping), so enemies slide too.
  */
 function walkVelocity(state: GameState, e: Enemy): void {
-  const ts = readGround(state, e.x, e.y, e.terrain);
+  let ts = e.terrain;
+  if (ignoresGround(e.kind)) {
+    // Floating (or fixed): the ground neither slows nor slides it.
+    ts.moveMult = 1;
+    ts.onIce = false;
+  } else ts = readGround(state, e.x, e.y, ts);
   const k = actionSpeed(state, e) * ts.moveMult;
   const wx = e.vx * k;
   const wy = e.vy * k;

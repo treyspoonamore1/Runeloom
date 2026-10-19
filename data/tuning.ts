@@ -137,6 +137,44 @@ export const defaultTuning = {
     /** Grid spacing in cells when a room @spawn places several enemies on one marker. */
     spawnSpacing: 3,
   },
+  /**
+   * Boss fights (DESIGN §10.3, CONTENT §5; src/sim/ai/bosses). Attack numbers are in
+   * data/bosses.ts; these are the fight's pacing and rule numbers.
+   */
+  bosses: {
+    /** Tar Matriarch: summons her Tar Hulks when her life falls to this fraction. */
+    matriarchSummonAt: 0.5,
+    /** Tar Matriarch: Tar Hulks she summons. */
+    matriarchSummonCount: 2,
+    /** Tar Matriarch: cells from her center the summoned Hulks appear. */
+    matriarchSummonDistance: 8,
+    /** Cinder Warden: phase 2 starts at this fraction of life. */
+    wardenPhase2At: 0.66,
+    /** Cinder Warden: phase 3 starts at this fraction of life. */
+    wardenPhase3At: 0.33,
+    /** Superheated (phases 2–3): fraction of damage he still takes (0.3 = 70% less). */
+    superheatDamageTaken: 0.3,
+    /** Seconds a Freeze breaks Superheat for, counted from the moment he freezes. */
+    superheatBreakSeconds: 4,
+    /** Phase 2 flood: the water spreads from the channels until this fraction of the floor is water. */
+    floodFraction: 0.5,
+    /** Phase 3: seconds from one brazier storm to the next. */
+    brazierStormPeriod: 5,
+    /** Phase 3: seconds the braziers glow before the lightning lands. */
+    brazierGlowSeconds: 1.2,
+    /** Phase 3: seconds from the storm call to the first glow. */
+    brazierFirstDelay: 1.5,
+    /** Phase 3: Storm damage the brazier lightning electrifies water and metal with (absolute). */
+    brazierStormDamage: 35,
+    /** Bosses walk at least this many seconds between attacks (keeps a readable rhythm). */
+    attackGap: 0.6,
+    /** Cinder Warden: charges only at a player at least this many cells away (centers). */
+    wardenChargeMinDistance: 14,
+    /** Cinder Warden: the charge runs this many cells past where the player stood (walls permitting). */
+    wardenChargeOvershoot: 10,
+    /** Cinder Warden: shortest charge worth starting, cells (a wall closer than this: no charge). */
+    wardenChargeMinLength: 12,
+  },
   /** Enemy AI shared by every kind (per-kind behavior lives in data/enemies.ts). */
   ai: {
     /** Aggroed enemies farther than this many cells from the player give up and go idle. */

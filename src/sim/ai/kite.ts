@@ -4,12 +4,15 @@ import { actionSpeed } from '../combat/ailments';
 import { DT } from '../core/constants';
 import type { GameState } from '../state';
 import { isSolidCell } from '../world/room';
+import { movementRoom } from '../actors/locomotion';
+import { strikePoint } from './target';
 import { attack, faceVelocity, moveAlong, setMode, steerTo, toPlayer } from './common';
 
 type Kite = Extract<BehaviorDef, { kind: 'kite' }>;
 
 /**
- * Ember Archer: keeps `preferredRange` from the player with line of sight and shoots.
+ * Ember Archer, Frost Wisp, Stormcaller: keeps `preferredRange` from the player with line of
+ * sight and shoots (a targeted attack strikes the point ai/target.ts picks).
  * - No line of sight: 'reposition', following the flow field until it sees the player again.
  * - Sees the player within attack range and off cooldown: draws (windup) and fires, except when
  *   the player is inside panicRange and it has room to back off.
@@ -33,7 +36,12 @@ export function stepKite(state: GameState, e: Enemy, b: Kite, def: AttackDef, ki
   const cornered = wallAhead(state, e, -ux, -uy, b.wallProbe);
   const panic = toPlayer.dist < b.panicRange && !cornered;
   if (toPlayer.gap <= def.range && ai.cooldown <= 0 && !panic) {
-    attack(state, e, def, ux, uy);
+    if (!def.targeted) attack(state, e, def, ux, uy);
+    else {
+      // Stormcaller: strikes a point (the water or metal nearest the player, ai/target.ts).
+      const pt = strikePoint(state, e);
+      attack(state, e, def, ux, uy, { x: pt.x, y: pt.y });
+    }
     return;
   }
 
@@ -85,5 +93,5 @@ function flipStrafe(state: GameState, e: Enemy, b: Kite): void {
 /** True if the cell `probe` cells from the enemy's edge along the unit direction is unwalkable. */
 function wallAhead(state: GameState, e: Enemy, dx: number, dy: number, probe: number): boolean {
   const reach = e.radius + probe;
-  return isSolidCell(state.room, Math.floor(e.x + dx * reach), Math.floor(e.y + dy * reach));
+  return isSolidCell(movementRoom(state, e.kind), Math.floor(e.x + dx * reach), Math.floor(e.y + dy * reach));
 }

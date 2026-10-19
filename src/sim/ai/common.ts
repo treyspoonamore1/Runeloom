@@ -1,6 +1,8 @@
 import { enemyDef, type AttackDef } from '../../../data/enemies';
 import { PLAYER_ID, type Enemy } from '../actors/enemies';
-import { startEnemyAttack } from '../combat/enemyAttacks';
+import { startEnemyAttack, type AttackAim } from '../combat/enemyAttacks';
+import { locomotionOf } from '../actors/locomotion';
+import { attackSpeedMult, moveSpeedMult } from '../actors/rarity';
 import type { GameState } from '../state';
 import { hasLineOfSight, hasWalkLine } from '../world/los';
 import { flowStep } from './flowField';
@@ -50,7 +52,8 @@ export function refreshSight(state: GameState, e: Enemy): void {
     }
   }
   e.ai.los = hasLineOfSight(room, e.x, e.y, p.x, p.y);
-  e.ai.walkLine = e.ai.los && hasWalkLine(room, e.x, e.y, p.x, p.y);
+  // Floaters cross anything shots cross, so a clear shot is a clear path for them.
+  e.ai.walkLine = e.ai.los && (locomotionOf(e.kind) === 'float' || hasWalkLine(room, e.x, e.y, p.x, p.y));
 }
 
 /** True on the ticks this enemy re-checks sight (every losCheckTicks, staggered by id). */
@@ -89,10 +92,18 @@ export function aggro(state: GameState, e: Enemy): void {
   ai.offsetX = ox / l;
   ai.offsetY = oy / l;
   ai.strafe = rng.chance(0.5) ? 1 : -1;
-  const b = enemyDef(e.kind).behavior;
+  const def = enemyDef(e.kind);
+  const b = def.behavior;
   ai.strafeLeft = b.kind === 'kite' ? rng.range(b.strafeFlipMin, b.strafeFlipMax) : 0;
   const reaction = rng.range(0, t.reactionJitter);
   if (ai.cooldown < reaction) ai.cooldown = reaction;
+  // M4: secondary attacks with a cadence wait a random part of it before their first use.
+  const extra = def.extraAttacks;
+  if (extra !== undefined)
+    for (let k = 0; k < extra.length && k < ai.cooldowns.length; k++) {
+      const every = extra[k]!.every;
+      if (every !== undefined) ai.cooldowns[k] = rng.range(0, every);
+    }
   refreshSight(state, e);
 }
 
@@ -108,9 +119,10 @@ export function stop(e: Enemy): void {
   e.vy = 0;
 }
 
-/** Sets the velocity along the unit direction at `fraction` of the kind's top speed. */
+/** Sets the velocity along the unit direction at `fraction` of the kind's top speed (× Hasted). */
 export function moveAlong(e: Enemy, dirX: number, dirY: number, fraction: number): void {
-  const speed = enemyDef(e.kind).speed * fraction;
+  const haste = e.mods.length > 0 ? moveSpeedMult(e) : 1;
+  const speed = enemyDef(e.kind).speed * fraction * haste;
   e.vx = dirX * speed;
   e.vy = dirY * speed;
 }
@@ -146,13 +158,32 @@ export function faceVelocity(e: Enemy): void {
 }
 
 /**
- * Starts the kind's attack along the unit direction, stops, and sets the next cooldown
- * (the attack's cooldown plus up to cooldownJitter). Returns false if it couldn't start.
+ * Starts attack `def` along the unit direction (`aim`: a targeted attack's point, a line's
+ * length), stops, and sets the next cooldown (the attack's cooldown plus up to cooldownJitter).
+ * Returns false if it couldn't start.
  */
-export function attack(state: GameState, e: Enemy, def: AttackDef, dirX: number, dirY: number): boolean {
-  if (!startEnemyAttack(state, e, dirX, dirY)) return false;
-  e.ai.cooldown = def.cooldown + state.aiRng.range(0, state.tuning.ai.cooldownJitter);
+export function attack(
+  state: GameState,
+  e: Enemy,
+  def: AttackDef,
+  dirX: number,
+  dirY: number,
+  aim?: AttackAim,
+): boolean {
+  if (!startEnemyAttack(state, e, dirX, dirY, def, aim)) return false;
+  const haste = e.mods.length > 0 ? attackSpeedMult(e) : 1;
+  e.ai.cooldown = def.cooldown / haste + state.aiRng.range(0, state.tuning.ai.cooldownJitter);
   stop(e);
   setMode(e, 'windup');
   return true;
+}
+
+/**
+ * A running dash (EnemySpecial.dashSpeed > 0: lunge, charge) sets the velocity along the dash at
+ * its own speed, above the kind's top speed.
+ */
+export function dashVelocity(e: Enemy): void {
+  const s = e.special;
+  e.vx = s.dashX * s.dashSpeed;
+  e.vy = s.dashY * s.dashSpeed;
 }

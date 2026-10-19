@@ -9,7 +9,22 @@ export const LAYOUT: Record<EnemyKind, { shadowRx: number; shadowRy: number; sha
   shieldbearer: { shadowRx: 2.5, shadowRy: 1.05, shadowY: 1.55, foot: 1.6 },
   ember_archer: { shadowRx: 1.45, shadowRy: 0.65, shadowY: 1.15, foot: 1.3 },
   dummy: { shadowRx: 1.6, shadowRy: 0.65, shadowY: 1.35, foot: 1.4 },
+  // M4 placeholders (enemies agent): drawn as dummies until the visuals agent adds their looks.
+  bog_lurker: { shadowRx: 1.7, shadowRy: 0.7, shadowY: 1.35, foot: 1.4 },
+  tar_hulk: { shadowRx: 2.6, shadowRy: 1.1, shadowY: 1.9, foot: 1.9 },
+  frost_wisp: { shadowRx: 1.3, shadowRy: 0.55, shadowY: 1.1, foot: 1.2 },
+  stormcaller: { shadowRx: 1.5, shadowRy: 0.65, shadowY: 1.2, foot: 1.3 },
+  kiln_mite: { shadowRx: 0.9, shadowRy: 0.4, shadowY: 0.6, foot: 0.7 },
+  brood_kiln: { shadowRx: 2.6, shadowRy: 1.1, shadowY: 1.9, foot: 1.9 },
+  tar_matriarch: { shadowRx: 3.8, shadowRy: 1.6, shadowY: 2.8, foot: 2.8 },
+  cinder_warden: { shadowRx: 4.2, shadowRy: 1.8, shadowY: 3.1, foot: 3.1 },
 };
+
+/** M4 placeholder (enemies agent): kinds without their own sprites yet borrow the dummy's. */
+const DRAWN: ReadonlySet<string> = new Set(['tinderling', 'shieldbearer', 'ember_archer', 'dummy']);
+function lookOf(kind: EnemyKind): string {
+  return DRAWN.has(kind) ? kind : 'dummy';
+}
 
 /** Tinderling flame tongues: x, y, scale. */
 export const FLAME_POS = [
@@ -37,7 +52,7 @@ export function buildRig(kind: EnemyKind, atlas: Atlas, root: Container, lift: C
   const L = LAYOUT[kind];
   const sprite = (name: string) => new Sprite(atlas.get(name));
   const r: EnemyRig = {
-    flash: sprite(`${kind}_flash`),
+    flash: sprite(`${lookOf(kind)}_flash`),
     face: null,
     flames: [],
     legs: [],
@@ -70,7 +85,7 @@ export function buildRig(kind: EnemyKind, atlas: Atlas, root: Container, lift: C
     }
   }
   root.addChild(lift);
-  lift.addChild(sprite(`${kind}_body`));
+  lift.addChild(sprite(`${lookOf(kind)}_body`));
   r.flash.alpha = 0;
   lift.addChild(r.flash);
   if (kind === 'tinderling') {

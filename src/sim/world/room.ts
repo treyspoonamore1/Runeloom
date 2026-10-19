@@ -6,7 +6,8 @@ export interface RoomHeader {
   name: string;
   level: number;
   exits: { dir: string; room: string }[];
-  spawns: { marker: string; kind: 'enemy' | 'pack'; id: string; count: number }[];
+  /** M4: `rarity` from a trailing `magic` or `rare` word (CONTENT §5 monster rarity). */
+  spawns: { marker: string; kind: 'enemy' | 'pack'; id: string; count: number; rarity?: 'magic' | 'rare' }[];
   links: { door: string; condition: string }[];
 }
 
@@ -93,13 +94,26 @@ function parseHeaderLine(h: RoomHeader, line: string, lineNo: number): void {
       if ((kind !== 'enemy' && kind !== 'pack') || !id) {
         throw new RoomParseError('@spawn target must be enemy:<id> or pack:<id>', lineNo);
       }
-      const count = args[2] ? Number(args[2]) : 1;
-      h.spawns.push({ marker: args[0]!, kind, id, count });
+      // M4 (enemies agent): `@spawn <d> enemy:<id> [count] [magic|rare]`, `@spawn <d> pack:<id> [magic|rare]`.
+      const rest = args.slice(2);
+      const last = rest[rest.length - 1];
+      const rarity = last === 'magic' || last === 'rare' ? last : undefined;
+      if (rarity) rest.pop();
+      const count = rest[0] ? Number(rest[0]) : 1;
+      if (!Number.isInteger(count) || count < 1 || rest.length > 1)
+        throw new RoomParseError('@spawn count must be a positive integer', lineNo);
+      h.spawns.push(
+        rarity ? { marker: args[0]!, kind, id, count, rarity } : { marker: args[0]!, kind, id, count },
+      );
       break;
     }
     case 'link':
       need(2);
       h.links.push({ door: args[0]!, condition: args[1]! });
+      break;
+    case 'note':
+      // M4 (enemies agent): accepted so the boss rooms parse; the world agent owns @note.
+      need(2);
       break;
     default:
       throw new RoomParseError(`unknown header @${key}`, lineNo);
