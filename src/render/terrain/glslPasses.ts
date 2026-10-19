@@ -213,12 +213,13 @@ void main() {
   float fg = max(g.r, fieldsAt(p).r * 0.5);
   rgb += ${c3(C.fireGlow)} * fg * ${f1(FX.fireGlow)} * (1.0 - a);
   rgb += ${c3(C.stormGlow)} * g.g * ${f1(FX.stormGlow)} * (1.0 - a);
-  // Hostile hazards (world or enemy owned) get a pulsing red-magenta edge (DESIGN §14).
-  float hz = max(m.b, m.a);
-  if (hz > 0.05) {
+  // Hostile hazards (world or enemy owned) get a pulsing red-magenta edge (DESIGN §14). The edge
+  // follows the outline of the whole hazard area (m.b, any owner) where it belongs to hostile
+  // cells (m.a), so a player-owned part of the same pool or fire gets no line across it.
+  if (m.a > 0.05) {
     float pulse = mix(${f1(FX.hazardAlphaMin)}, ${f1(FX.hazardAlphaMax)},
       0.5 + 0.5 * sin(uTime * TAU * ${f1(FX.hazardHz)}));
-    float e = band(hz - 0.62, ${f1(L.hazard * 0.5)}, aa) * pulse;
+    float e = band(m.b - 0.62, ${f1(L.hazard * 0.5)}, aa) * smoothstep(0.2, 0.5, m.a) * pulse;
     rgb = mix(rgb, ${c3(C.hazard)}, e);
     a = mix(a, 1.0, e);
   }

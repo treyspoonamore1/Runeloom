@@ -162,8 +162,15 @@ describe('TerrainPack fields and masks', () => {
     grid.fire[b] = 128;
     grid.owner[b] = OWNER.player;
     tick(grid, pack);
-    expect(texel(pack.masks, a)[2]).toBe(255);
-    expect(texel(pack.masks, b)[2]).toBe(0);
+    // B: hazard of any owner (the edge follows its outline); A: hostile only (where the edge shows).
+    expect(texel(pack.masks, a).slice(2)).toEqual([255, 255]);
+    expect(texel(pack.masks, b).slice(2)).toEqual([255, 0]);
+    const c = cellOf(grid, col('~'));
+    grid.charge[c] = 20;
+    grid.chargeFalloff[c] = 1;
+    grid.owner[c] = OWNER.enemy;
+    tick(grid, pack);
+    expect(texel(pack.masks, c).slice(2)).toEqual([255, 255]);
   });
 
   it('keeps the previous upload in the other field buffer', () => {

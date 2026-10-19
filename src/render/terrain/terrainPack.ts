@@ -10,7 +10,7 @@ import { TERRAIN_FX } from './terrainColors';
  *
  *   codes  (nearest)  R display ground · G flags · B phase · A true ground
  *   fields (linear)   R fire · G charge strength · B smoke · A steam      (two copies: prev/cur)
- *   masks  (linear)   R oil · G wet · B hostile fire · A hostile charge
+ *   masks  (linear)   R oil · G wet · B hazard (fire or charge, any owner) · A hostile hazard
  *   glow   (linear, one texel per tile, blurred)  R fire · G charge · B smoke · A steam
  *
  * "Display ground" is what the floor shader paints: props (crates, barrels, barricades, braziers,
@@ -320,9 +320,9 @@ export class TerrainPack {
         const oil = surface[i] === sOil ? 255 : 0;
         const wt = wet[i]!;
         const wetV = wt === 0 ? 0 : Math.min(255, wt * wetScale);
-        const hf = hostile && f > 0 ? 255 : 0;
-        const hc = hostile && ch > 0 ? 255 : 0;
-        const mw = oil | (wetV << 8) | (hf << 16) | (hc << 24);
+        const hz = f > 0 || ch > 0 ? 255 : 0;
+        const hh = hostile ? hz : 0;
+        const mw = oil | (wetV << 8) | (hz << 16) | (hh << 24);
         if (masks32[i] !== mw) {
           masks32[i] = mw;
           if (i < m0) m0 = i;
