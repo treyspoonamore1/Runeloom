@@ -13,18 +13,21 @@ import {
   type SimEvent,
 } from '../../../src/sim';
 import { maxRuneLevel, runeXpToNext, xpToNext } from '../../../data/progression';
+import { killXp } from '../../../data/loot';
 import { adventure, giveRune } from './helpers';
 import { ofType } from '../combat/helpers';
 
 const events = (s: { events: SimEvent[] }) => s.events;
 
 describe('XP per kill (DESIGN §7)', () => {
-  it('is base life × 1.12^(area level − 1) × rarity, with boss overrides', () => {
+  it('is base life × growth^(area level − 1) × rarity, with boss overrides', () => {
+    const g = killXp.growth;
     expect(baseKillXp('tinderling')).toBe(14);
+    expect(baseKillXp('tar_matriarch')).toBe(killXp.baseOverride.tar_matriarch);
     expect(killXpFor('tinderling', 1, 'normal')).toBe(14);
-    expect(killXpFor('tinderling', 5, 'normal')).toBe(Math.round(14 * 1.12 ** 4));
-    expect(killXpFor('shieldbearer', 3, 'magic')).toBe(Math.round(90 * 1.12 * 1.12 * 1.7));
-    expect(killXpFor('ember_archer', 2, 'rare')).toBe(Math.round(40 * 1.12 * 4));
+    expect(killXpFor('tinderling', 5, 'normal')).toBe(Math.round(14 * g ** 4));
+    expect(killXpFor('shieldbearer', 3, 'magic')).toBe(Math.round(90 * g * g * 1.7));
+    expect(killXpFor('ember_archer', 2, 'rare')).toBe(Math.round(40 * g * 4));
     expect(killXpFor('dummy', 9, 'normal')).toBe(0);
   });
 
@@ -36,7 +39,7 @@ describe('XP per kill (DESIGN §7)', () => {
     const xp = ofType(events(state), 'xpGained');
     expect(xp).toHaveLength(1);
     expect(xp[0]!.amount).toBe(90);
-    // Level 1 → 2 needs 30, 2 → 3 needs 138: 90 XP is one level and 60 over.
+    // 90 XP is one level (xpToNext(1)) and the rest toward the next.
     expect(state.hero.level).toBe(2);
     expect(state.hero.xp).toBe(90 - xpToNext(1));
     const socketed = new Set(state.weaves.slots.flatMap((s) => s.runes ?? []));
@@ -117,5 +120,24 @@ describe('rune XP', () => {
   it('the curve is increasing and positive', () => {
     for (let l = 1; l < maxRuneLevel; l++) expect(runeXpToNext(l + 1)).toBeGreaterThan(runeXpToNext(l));
     expect(runeXpToNext(1)).toBeGreaterThan(0);
+  });
+});
+
+describe('Brood Kiln mites (M4 balance pass)', () => {
+  it('pay no XP and drop nothing when a kiln spawned them; placed mites still pay', () => {
+    const state = adventure();
+    const kiln = spawnEnemy(state, 'brood_kiln', 40, 40);
+    const spawned = spawnEnemy(state, 'kiln_mite', 100, 60, { parentId: kiln.id });
+    const placed = spawnEnemy(state, 'kiln_mite', 110, 60);
+    state.events.length = 0;
+    for (let i = 0; i < 50; i++) {
+      const m = spawnEnemy(state, 'kiln_mite', 100, 60, { parentId: kiln.id });
+      killEnemy(state, m, PLAYER_ID, 'hit');
+    }
+    killEnemy(state, spawned, PLAYER_ID, 'hit');
+    expect(ofType(events(state), 'xpGained')).toHaveLength(0);
+    expect(state.loot).toHaveLength(0);
+    killEnemy(state, placed, PLAYER_ID, 'hit');
+    expect(ofType(events(state), 'xpGained')).toHaveLength(1);
   });
 });

@@ -100,6 +100,15 @@ export function kiterInput(state: GameState): InputFrame {
   return out;
 }
 
+/**
+ * Where the last kiterInput call wanted to go (an enemy, the spot behind a shield, water, or the
+ * room's spawn when nothing is left), or `on: false`. Read-only scratch for wrappers that add
+ * pathfinding around walls (bots/campaignNav.ts); reading it changes nothing.
+ */
+export function kiterGoal(): Readonly<{ x: number; y: number; on: boolean }> {
+  return goal;
+}
+
 /** Sets `goal` to where the bot wants to fight: near its preferred target, behind shields. */
 function pickGoal(state: GameState, canStrike: boolean): void {
   const p = state.player;
@@ -183,7 +192,9 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
   const qy = p.y + dy * sp * T;
   for (const e of live) {
     const a = e.attack;
-    if (a.phase === 'windup') {
+    // M4: a running dash (the Warden's charge, a Lurker's lunge) is as dangerous as its telegraph.
+    const dashing = a.phase === 'active' && e.special.dashSpeed > 0 && !e.special.dashHit;
+    if (a.phase === 'windup' || dashing) {
       const tl = a.timeLeft < T ? a.timeLeft : T;
       const hx = p.x + dx * sp * tl;
       const hy = p.y + dy * sp * tl;

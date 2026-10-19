@@ -141,8 +141,9 @@ describe('kiter bot vs the M4 enemies', () => {
       return s;
     };
     // Frost breaks his Superheat when he stands in water (the bot fights from the water).
-    expectWin(fight('Cinder Warden (K10), L10, Frost Bolt in Q', make(false, true), 300), 300);
+    // Limits with the M4 balance pass's 5,000 life (273 s and 314 s at rune level 1).
+    expectWin(fight('Cinder Warden (K10), L10, Frost Bolt in Q', make(false, true), 400), 400);
     // Fire Bolt and Strike only: Superheat is never broken.
-    expectWin(fight('Cinder Warden (K10), L10, no Frost', make(true, false), 400), 400);
+    expectWin(fight('Cinder Warden (K10), L10, no Frost', make(true, false), 500), 500);
   });
 }, 120_000);

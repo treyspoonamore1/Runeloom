@@ -151,6 +151,18 @@ describe('rules 17 and 18: Oiled', () => {
     expect(s.grid.owner[idx(s, lit[0]!, 40)]).toBe(OWNER.enemy);
     expect(s.grid.ground[idx(s, lit[0]!, 40)]).toBe(MAT.stone);
   });
+
+  it("rule 18: the trail is left behind, so it doesn't keep re-igniting the entity (regression)", () => {
+    const s = room('.', 30, 20, 30, 40);
+    oilRect(s, 26, 36, 34, 44);
+    run(s, 1);
+    place(s, 40, 40);
+    applyIgnite(s, s.player, 3, 3, 5); // an enemy (id 5) ignited the Oiled player
+    // Walk away over stone for 4 s: the Ignite (3 s) runs out although Oiled lasts 5 s.
+    run(s, 240, 0, undefined, [1, 0]);
+    expect(isOiled(s.player)).toBe(true);
+    expect(s.player.ailments.ignite.timeLeft).toBe(0);
+  });
 });
 
 describe('rule 19: arcs between Wet entities', () => {

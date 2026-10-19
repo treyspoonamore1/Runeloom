@@ -93,7 +93,7 @@ describe('area level scaling (DESIGN §7)', () => {
     const m = spawnEnemy(s, 'tar_matriarch', 30, 30);
     const w = spawnEnemy(s, 'cinder_warden', 60, 30);
     expect([m.maxLife, m.areaLevel]).toEqual([900, 8]);
-    expect([w.maxLife, w.areaLevel]).toEqual([3500, 10]);
+    expect([w.maxLife, w.areaLevel]).toEqual([5000, 10]);
     expect(enemyAttackPacket(s, w, enemies.cinder_warden.attack).base.fire).toBe(40);
     expect(enemyAttackPacket(s, m, enemies.tar_matriarch.attack).base.physical).toBe(30);
   });
