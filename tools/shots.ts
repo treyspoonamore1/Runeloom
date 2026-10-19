@@ -3,6 +3,8 @@
  *   npm run shots [-- --scene room] [--milestone m0] [--ticks N] [--viewport 390x844]
  *   npm run shots -- --lab [--station 3,7]   Chemistry Lab station storyboards into shots/lab/
  *   npm run shots -- --set creature [--milestone m3]   entities on the chemistry grid (wet, oiled, falls, arcs...)
+ *   npm run shots -- --set rooms [--region kiln] [--milestone m4]   every room on load, as an adventure game,
+ *       into shots/rooms/<milestone>_<region>_<room>.png (--ticks N steps idle first)
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
@@ -17,6 +19,7 @@ import { ArgError, parseArgs, parseViewport, requireInt, runCli } from './lib/ar
 import { scenarioFrames } from './lib/frames';
 import { labShots } from './lib/labShots';
 import { creatureShotIds, runCreatureShot } from './lib/creatureShots';
+import { listRoomIds } from './lib/rooms';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -42,7 +45,8 @@ runCli(async () => {
     viewport: { kind: 'string', default: '1280x720' },
     lab: { kind: 'boolean' },
     station: { kind: 'string' },
-    set: { kind: 'string', help: "'creature': entities on the chemistry grid (lab stations)" },
+    set: { kind: 'string', help: "'creature': entities on the chemistry grid; 'rooms': every room on load" },
+    region: { kind: 'string', help: "--set rooms: only rooms whose id starts with this, e.g. 'kiln'" },
   });
   const viewport = parseViewport(a.viewport!);
   const ticks = requireInt('ticks', a.ticks, 0);
@@ -92,7 +96,32 @@ runCli(async () => {
         written.push(file);
         if (errors.length) console.warn(`warning: page errors in creature shot ${id}: ${errors.join('; ')}`);
       }
-    } else if (a.set !== undefined) throw new ArgError(`Unknown --set "${a.set}". Available: creature`);
+    } else if (a.set === 'rooms') {
+      const dir = join(SHOTS_DIR, 'rooms');
+      mkdirSync(dir, { recursive: true });
+      const ids = listRoomIds().filter((id) => a.region === undefined || id.startsWith(`${a.region}/`));
+      if (ids.length === 0) throw new ArgError(`No rooms in region "${a.region}"`);
+      await page.goto(`http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`);
+      await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+      for (const id of ids) {
+        errors.length = 0;
+        await page.evaluate(
+          ([roomId, n]) => {
+            const s = window.__runeloom!.session;
+            s.reset({ roomId, mode: 'adventure' });
+            for (let i = 0; i < n; i++) s.step({ moveX: 0, moveY: 0, aimX: 0, aimY: 0, buttons: 0 });
+          },
+          [id, ticks] as const,
+        );
+        await page.evaluate(
+          () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
+        );
+        const file = join(dir, `${milestone}_${id.replace(/\//g, '_')}.png`);
+        await page.screenshot({ path: file, timeout: 120_000 });
+        written.push(file);
+        if (errors.length) console.warn(`warning: page errors in room ${id}: ${errors.join('; ')}`);
+      }
+    } else if (a.set !== undefined) throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms`);
     for (const scene of a.set === undefined ? selected : []) {
       errors.length = 0;
       await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);

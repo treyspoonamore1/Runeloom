@@ -11,6 +11,7 @@ import { applyHeroEdit, type HeroEdit } from '../sim/hero/edits';
 import type { HeroMods } from '../sim/hero/mods';
 import type { FusePart, HeroState, Item, RuneItem } from '../sim/hero/types';
 import type { Session } from './session';
+import { buildRegionMap, type RegionMap } from '../sim/world/regionMap';
 
 export type { HeroEdit };
 
@@ -49,4 +50,11 @@ export function describeRune(rune: RuneItem): Description {
 
 export function describePart(part: FusePart): Description {
   return { name: part.part, rarity: 'magic', base: `Tier ${part.tier}`, lines: [] };
+}
+
+// ---- Region map (world agent): src/sim/world/regionMap.ts ----
+
+/** The map screen's data: the rooms connected to the current one, laid out from their exits. */
+export function getRegionMap(session: Session): RegionMap {
+  return buildRegionMap(session.state);
 }
