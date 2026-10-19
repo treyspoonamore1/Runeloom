@@ -219,7 +219,21 @@ export class MomentsView {
     }
   }
 
-  update(dt: number, w: number, h: number, scale: number, ox: number, oy: number, screenScale: number): void {
+  /** playerDead: the state's flag; a living player lifts the death dim even without a respawn event. */
+  update(
+    dt: number,
+    w: number,
+    h: number,
+    scale: number,
+    ox: number,
+    oy: number,
+    screenScale: number,
+    playerDead: boolean,
+  ): void {
+    if (this.deadT >= 0 && !playerDead) {
+      this.deadT = -1;
+      this.respawnT = 0;
+    }
     for (const s of [this.black, this.flash]) {
       s.width = w;
       s.height = h;

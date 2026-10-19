@@ -104,7 +104,7 @@ export class M4Layers {
     this.state = s;
     this.loot.update(s, dt);
     this.moments.follow(px, py);
-    this.moments.update(dt, screenW, screenH, xf.scale, xf.ox, xf.oy, xf.screenScale);
+    this.moments.update(dt, screenW, screenH, xf.scale, xf.ox, xf.oy, xf.screenScale, s.player.dead);
     this.rarity.update(s, enemies, dt, xf);
     this.tele.update(s, this.signals, dt);
     this.objects.update(s, dt);

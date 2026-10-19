@@ -320,8 +320,9 @@ export class LoomStoneLook extends Look {
     const on = smoothstep(0, 1, this.k);
     const pulse = 0.5 + 0.5 * Math.sin(f.t * 2.2);
     this.rune.tint = mixRgb(C.loomRuneOff, C.loomRune, on);
-    this.runeGlow.alpha = on * (0.45 + 0.25 * pulse);
-    this.runeGlow.scale.set(1.6 + 0.3 * pulse);
+    // A small glow on the rune only, so the stone itself stays stone-colored.
+    this.runeGlow.alpha = on * (0.3 + 0.2 * pulse);
+    this.runeGlow.scale.set(0.95 + 0.15 * pulse);
     this.ring.alpha = on * 0.85;
     this.ring.rotation = f.t * F.ringSpin;
     this.ring.scale.set(3.4 * (0.6 + 0.4 * on), 3.4 * (0.6 + 0.4 * on) * 0.5);
