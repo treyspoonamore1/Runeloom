@@ -14,23 +14,26 @@ import { GRID_HZ } from './terrainPack';
 const SURFACES = /* glsl */ `
 vec3 applyWet(vec3 col, vec2 p, float wet, float aa) {
   float k = smoothstep(0.35, 0.6, wet + (vnoise(p * 1.3) - 0.5) * 0.25);
-  vec3 dark = col * vec3(0.7, 0.72, 0.78);
+  // Wet ground is darker and a little more saturated (multiplied by itself).
+  vec3 dark = col * mix(vec3(1.0), col, 0.55) * 0.86;
   col = mix(col, dark, k);
-  float gloss = smoothstep(0.74, 0.8, vnoise(p * vec2(0.5, 1.6) + vec2(uTime * 0.04, 0.0)));
-  return col + gloss * k * 0.16;
+  // A soft, broad sheen rather than spots.
+  float gloss = smoothstep(0.55, 0.8, vnoise(p * 0.3 + vec2(uTime * 0.03, 0.0)));
+  return col + gloss * k * 0.07;
 }
 
 vec3 applyOil(vec3 col, vec2 p, float oil, bool onWater, float aa) {
-  float edge = 0.5 + (vnoise(p * 1.6) - 0.5) * 0.3;
+  float edge = 0.5 + (vnoise(p * 0.8) - 0.5) * 0.3;
   float d = oil - edge;
   if (d < -0.2) return col;
-  float film = fbm(p * 0.3 + vec2(uTime * 0.035, -uTime * 0.025));
-  vec3 rainbow = 0.5 + 0.5 * cos(TAU * (film * 2.2 + vec3(0.0, 0.33, 0.67)));
-  float bandK = smoothstep(0.4, 0.7, vnoise(p * 0.55 + vec2(-uTime * 0.05, uTime * 0.03)));
-  vec3 oc = mix(${c3(C.oil)}, rainbow * 0.7, 0.26 * bandK);
+  // Thin-film sheen: broad rainbow bands drifting slowly across the slick.
+  float film = vnoise(p * 0.11 + vec2(uTime * 0.02, -uTime * 0.015));
+  vec3 rainbow = 0.5 + 0.5 * cos(TAU * (film * 1.6 + p.x * 0.015 + vec3(0.0, 0.33, 0.67)));
+  float bandK = smoothstep(0.45, 0.75, vnoise(p * 0.18 + vec2(-uTime * 0.03, uTime * 0.02)));
+  vec3 oc = mix(${c3(C.oil)}, rainbow * 0.7, 0.3 * bandK);
   if (onWater) oc = mix(oc, col, 0.18);
-  float spec = smoothstep(0.8, 0.86, vnoise(p * 1.1 + vec2(uTime * 0.02, 0.0)));
-  oc += spec * 0.22;
+  float spec = smoothstep(0.82, 0.88, vnoise(p * 0.45 + vec2(uTime * 0.02, 0.0)));
+  oc += spec * 0.18;
   float inside = smoothstep(-aa, aa, d);
   col = mix(col, oc, inside);
   return mix(col, ${c3(C.oilEdge)}, band(d, ${f1(L.detail * 0.55)}, aa) * 0.85);
@@ -46,15 +49,15 @@ vec3 applyCharge(vec3 col, vec2 p, float cs, float aa) {
   float halo = 0.0;
   for (int l = 0; l < 2; l++) {
     float fl = float(l);
-    vec2 q = p * (0.32 + 0.14 * fl) + vec2(uTime * 0.9 + fl * 7.3, tq * 0.731 + fl * 3.1);
-    float n = (vnoise(q) + 0.5 * vnoise(q * 2.7 + 5.0)) / 1.5;
-    float r = abs(n - 0.5);
-    float gate = smoothstep(0.62 - 0.25 * k, 0.75 - 0.25 * k, vnoise(p * 0.22 + vec2(tq * 0.37, fl * 11.0)));
-    arcs = max(arcs, gate * (1.0 - smoothstep(0.006, 0.014 + aa * 0.25, r)));
-    halo = max(halo, gate * (1.0 - smoothstep(0.01, 0.06, r)));
+    vec2 q = p * (0.45 + 0.2 * fl) + vec2(uTime * 0.9 + fl * 7.3, tq * 0.731 + fl * 3.1);
+    float n = (lnoise(q) + 0.45 * lnoise(q * 2.9 + 5.0)) / 1.45;
+    float r = abs(n - 0.5) / max(fwidth(n) / max(aa, 1e-4), 0.05);
+    float gate = smoothstep(0.68 - 0.1 * k, 0.76 - 0.1 * k, vnoise(p * 0.2 + vec2(tq * 0.37, fl * 11.0)));
+    arcs = max(arcs, gate * (1.0 - smoothstep(0.05, 0.05 + aa * 1.5, r)));
+    halo = max(halo, gate * (1.0 - smoothstep(0.08, 0.35, r)));
   }
-  col = mix(col, ${c3(C.stormGlow)}, halo * 0.7 * k);
-  col = mix(col, mix(${c3(C.stormCore)}, vec3(1.0), 0.25), arcs * k);
+  col = mix(col, ${c3(C.stormGlow)}, halo * 0.75 * k);
+  col = mix(col, ${c3(C.stormCore)}, arcs * k);
   return col;
 }
 `;
@@ -228,7 +231,7 @@ void main() {
   if (smoke > 0.004) {
     vec2 q = p * 0.3 + vec2(uTime * 0.1, uTime * 0.28);
     float n = fbm(q);
-    float cloud = smoothstep(0.32, 0.7, smoothstep(0.0, 0.6, smoke) * 0.75 + n * 0.55 - 0.18);
+    float cloud = smoothstep(0.25, 0.8, smoothstep(0.0, 0.6, smoke) * 0.75 + n * 0.6 - 0.2);
     float lit = smoothstep(0.5, 0.75, fbm(q + vec2(-0.35, -0.45)));
     vec3 col = mix(${c3(C.smoke)}, ${c3(C.smokeLight)}, lit * 0.8);
     // Oil fires give darker, sootier smoke.

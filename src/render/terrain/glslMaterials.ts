@@ -1,39 +1,6 @@
-import { MAT, type MaterialId } from '../../../data/materials';
+import { edgeTable } from './glslEdges';
 import { c3, f1 } from './glslLib';
 import { TERRAIN as C, TERRAIN_FX as FX, TERRAIN_LINE as L } from './terrainColors';
-
-/** Line drawn where a material meets a lower-priority one: [color, width in cells, priority]. */
-const EDGES: Partial<Record<MaterialId, [number, number, number]>> = {
-  deep_water: [C.ink, L.deep, 10],
-  pit: [C.ink, L.deep, 9],
-  shallow_water: [C.ink, L.shore, 8],
-  ice_bridge: [C.iceEdge, L.ground, 7],
-  ice: [C.iceEdge, L.ground, 7],
-  wood: [C.woodGap, L.ground, 6],
-  bramble: [C.brambleDark, L.ground, 5],
-  grass: [C.grassEdge, L.ground, 4],
-  mud: [C.mudDark, L.ground, 3],
-  metal_floor: [C.metalDark, L.ground, 3],
-  dirt: [C.dirtEdge, L.ground, 2],
-  ash: [C.ashDark, L.detail, 1],
-};
-
-function edgeTable(): string {
-  const n = Object.keys(MAT).length;
-  const col: string[] = [];
-  const wid: string[] = [];
-  const pri: string[] = [];
-  for (let code = 0; code < n; code++) {
-    const id = (Object.keys(MAT) as MaterialId[]).find((k) => MAT[k] === code)!;
-    const e = EDGES[id];
-    col.push(c3(e ? e[0] : 0));
-    wid.push(f1(e ? e[1] : 0));
-    pri.push(String(e ? e[2] : 0));
-  }
-  return `const vec3 EDGE_COL[${n}] = vec3[${n}](${col.join(', ')});
-const float EDGE_W[${n}] = float[${n}](${wid.join(', ')});
-const int EDGE_P[${n}] = int[${n}](${pri.join(', ')});`;
-}
 
 /**
  * Ground classification and material looks. classify() picks, per pixel, the material with the
@@ -168,7 +135,7 @@ vec3 shadeGrass(vec2 p, float aa) {
 
 /** Thorny clumps: rounded leaf masses with dark creases and pale thorns. */
 vec3 shadeBramble(vec2 p, float aa) {
-  vec2 q = p * 1.15;
+  vec2 q = p * 0.6;
   vec2 i = floor(q);
   float f1d = 9.0;
   float f2d = 9.0;
@@ -184,43 +151,48 @@ vec3 shadeBramble(vec2 p, float aa) {
   }
   // Each clump is lit from the top-left: lighter toward its upper-left side.
   vec2 rel = (q - site);
-  float lit = clamp(0.55 - dot(rel, vec2(0.7, 0.7)), 0.0, 1.0);
-  vec3 col = mix(${c3(C.bramble)}, ${c3(C.brambleLight)}, lit);
-  col = mix(col, ${c3(C.brambleDark)}, 1.0 - smoothstep(0.0, 0.12 + aa, f2d - f1d));
+  float lit = clamp(0.6 - dot(rel, vec2(0.75, 0.75)) - f1d * 0.2, 0.0, 1.0);
+  vec3 col = mix(${c3(C.bramble)}, ${c3(C.brambleLight)}, smoothstep(0.25, 0.75, lit));
+  // Leaf texture inside each clump, dark creases between clumps.
+  col *= 0.92 + 0.16 * vnoise(p * 2.6);
+  col = mix(col, ${c3(C.brambleDark)}, 1.0 - smoothstep(0.0, 0.1 + aa * 0.6, f2d - f1d));
   // Thorns: short pale spikes scattered on a finer lattice.
-  vec2 tq = p * 2.2;
+  vec2 tq = p * 1.3;
   ivec2 tc = ivec2(floor(tq));
   float th = hash2(tc, 311);
-  if (th < 0.4) {
-    vec2 tf = (tq - vec2(tc)) / 2.2;
-    vec2 c0 = vec2(0.12 + hash2(tc, 312) * 0.22, 0.12 + hash2(tc, 313) * 0.22);
+  if (th < 0.45) {
+    vec2 tf = (tq - vec2(tc)) / 1.3;
+    vec2 c0 = vec2(0.2 + hash2(tc, 312) * 0.37, 0.2 + hash2(tc, 313) * 0.37);
     float ang = th * 40.0;
-    vec2 dir = vec2(cos(ang), sin(ang)) * 0.16;
-    float d = segDist(tf, c0 - dir, c0 + dir * 0.4);
-    col = mix(col, ${c3(C.ink)}, band(d, 0.05, aa) * 0.8);
-    col = mix(col, ${c3(C.thorn)}, band(segDist(tf, c0 - dir * 0.9, c0), 0.025, aa));
+    vec2 dir = vec2(cos(ang), sin(ang)) * 0.24;
+    // A curved thorn: dark base stroke, pale tip.
+    float d = segDist(tf, c0 - dir, c0 + dir * 0.5);
+    col = mix(col, ${c3(C.ink)}, band(d, 0.06, aa) * 0.85);
+    col = mix(col, ${c3(C.thorn)}, band(segDist(tf, c0 - dir * 0.95, c0 - dir * 0.2), 0.035, aa));
   }
   return col;
 }
 
 vec3 shadeWood(vec2 p, int flags, float aa) {
-  float row = floor(p.y);
+  float ph = 4.0 / 3.0;
+  float row = floor(p.y / ph);
   float off = hash2(ivec2(int(row), 0), 401) * 4.0;
   float u = p.x + off;
   float seg = floor(u / 4.0);
   ivec2 id = ivec2(int(seg), int(row));
   vec3 col = pick3(${c3(C.wood)}, ${c3(C.woodLight)}, ${c3(C.woodDark)}, hash2(id, 402));
   // Grain: soft streaks along the plank.
-  float grain = vnoise(vec2(u * 0.6, p.y * 7.0 + hash2(id, 403) * 10.0));
+  float grain = vnoise(vec2(u * 0.5, p.y * 5.0 + hash2(id, 403) * 10.0));
   col *= 0.94 + grain * 0.1;
   vec3 gap = (flags & F_OVER_WATER) != 0 ? ${c3(C.deepShade)} : ${c3(C.woodGap)};
-  float fy = p.y - row;
-  float gy = min(fy, 1.0 - fy);
+  float fy = (p.y - row * ph) / ph;
+  float gy = min(fy, 1.0 - fy) * ph;
   float fu = u - seg * 4.0;
   float gx = min(fu, 4.0 - fu);
   col = mix(col, gap, max(band(gy, 0.07, aa), band(gx, 0.06, aa)));
   // Nails near each plank end.
-  float nd = min(length(vec2(fu - 0.35, fy - 0.5)), length(vec2(fu - 3.65, fy - 0.5)));
+  float ny = (fy - 0.5) * ph;
+  float nd = min(length(vec2(fu - 0.35, ny)), length(vec2(fu - 3.65, ny)));
   col = mix(col, ${c3(C.woodGap)}, 1.0 - smoothstep(0.07 - aa, 0.07 + aa, nd));
   return col;
 }
@@ -346,19 +318,23 @@ vec3 shadeMud(vec2 p, float aa) {
 }
 
 vec3 shadeMetal(vec2 p, float aa) {
-  vec2 plate = floor(p / 2.0);
-  vec2 f = p - plate * 2.0;
-  vec3 col = ${c3(C.metal)} * (0.97 + hash2(ivec2(plate), 701) * 0.06);
-  col *= 0.97 + vnoise(vec2(p.x * 0.4, p.y * 7.0)) * 0.05;
+  // One riveted plate per tile, bevelled: light top-left lip, dark bottom-right.
+  vec2 plate = floor(p / 4.0);
+  vec2 f = p - plate * 4.0;
+  vec3 col = ${c3(C.metal)} * (0.96 + hash2(ivec2(plate), 701) * 0.08);
+  col *= 0.97 + vnoise(vec2(p.x * 0.25, p.y * 5.0)) * 0.05;
   float lo = min(f.x, f.y);
   float hi = max(f.x, f.y);
-  col = mix(col, ${c3(C.metalLight)}, 1.0 - smoothstep(0.16 - aa, 0.16 + aa, lo));
-  col = mix(col, ${c3(C.metalDark)}, smoothstep(1.84 - aa, 1.84 + aa, hi));
-  col = mix(col, ${c3(C.rivet)}, 1.0 - smoothstep(0.045 - aa, 0.045 + aa, min(lo, 2.0 - hi)));
-  vec2 rc = vec2(f.x < 1.0 ? 0.42 : 1.58, f.y < 1.0 ? 0.42 : 1.58);
+  col = mix(col, ${c3(C.metalLight)}, 1.0 - smoothstep(0.22 - aa, 0.22 + aa, lo));
+  col = mix(col, ${c3(C.metalDark)}, smoothstep(3.78 - aa, 3.78 + aa, hi));
+  col = mix(col, ${c3(C.rivet)}, 1.0 - smoothstep(0.06 - aa, 0.06 + aa, min(lo, 4.0 - hi)));
+  // A diagonal tread line across the plate.
+  float tread = abs(fract((f.x + f.y) * 0.25) - 0.5);
+  col = mix(col, ${c3(C.metalLight)}, band(tread, 0.025, aa * 0.25) * 0.5);
+  vec2 rc = vec2(f.x < 2.0 ? 0.6 : 3.4, f.y < 2.0 ? 0.6 : 3.4);
   float rd = length(f - rc);
-  col = mix(col, ${c3(C.rivet)}, 1.0 - smoothstep(0.14 - aa, 0.14 + aa, rd));
-  col = mix(col, ${c3(C.metalLight)}, 1.0 - smoothstep(0.05 - aa, 0.05 + aa, length(f - rc + 0.04)));
+  col = mix(col, ${c3(C.rivet)}, 1.0 - smoothstep(0.2 - aa, 0.2 + aa, rd));
+  col = mix(col, ${c3(C.metalLight)}, 1.0 - smoothstep(0.07 - aa, 0.07 + aa, length(f - rc + 0.06)));
   return col;
 }
 
@@ -375,11 +351,16 @@ vec3 shadeAsh(vec2 p, float aa) {
 
 vec3 shadePit(vec2 p, float aa) {
   vec3 col = ${c3(C.pit)};
-  // The far bank's face drops into the pit under its upper edge.
-  int up = groundAt(ivec2(floor(vec2(p.x, p.y - 1.0))));
-  if (up != M_PIT) {
-    float t = fract(p.y);
-    col = mix(${c3(C.pitWall)}, col, smoothstep(0.1, 1.0, t));
+  // The far bank's earth face drops into the pit under its upper edge (1.5 cells), with strata.
+  float y = p.y;
+  bool up1 = groundAt(ivec2(floor(vec2(p.x, y - 1.0)))) != M_PIT;
+  bool up2 = groundAt(ivec2(floor(vec2(p.x, y - 2.0)))) != M_PIT;
+  float d = up1 ? fract(y) : (up2 ? 1.0 + fract(y) : 9.0);
+  if (d < 1.6) {
+    vec3 face = mix(${c3(C.pitWall)}, col, smoothstep(0.2, 1.6, d));
+    float strata = band(fract(d * 1.6 + vnoise(vec2(p.x * 0.7, 0.0)) * 0.4) - 0.5, 0.06, aa);
+    face = mix(face, face * 0.7, strata * (1.0 - smoothstep(0.8, 1.6, d)));
+    col = face;
   }
   return col;
 }

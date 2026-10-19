@@ -57,22 +57,47 @@ function tileGeometry(width: number, height: number, tilesW: number, tilesH: num
   return new MeshGeometry({ positions: pos, uvs: new Float32Array(n * 8), indices: new Uint32Array(n * 6) });
 }
 
-/** Enables the quads of tiles whose glow channel c0 or c1 is non-zero; returns how many. */
-function activateTiles(geom: MeshGeometry, glow: Uint8Array, c0: number, c1: number): number {
+/**
+ * Enables the quads of tiles near a tile whose glow channel c0 or c1 is non-zero (one tile
+ * around, two below, since flames and clouds rise north of their cells); returns how many.
+ */
+function activateTiles(
+  geom: MeshGeometry,
+  glow: Uint8Array,
+  tilesW: number,
+  tilesH: number,
+  c0: number,
+  c1: number,
+): number {
   const idx = geom.indices;
-  const n = idx.length / 6;
   let active = 0;
-  for (let k = 0; k < n; k++) {
-    const on = glow[k * 4 + c0]! > 0 || glow[k * 4 + c1]! > 0;
-    const b = k * 4;
-    const o = k * 6;
-    if (on) active++;
-    idx[o] = on ? b : 0;
-    idx[o + 1] = on ? b + 1 : 0;
-    idx[o + 2] = on ? b + 2 : 0;
-    idx[o + 3] = on ? b : 0;
-    idx[o + 4] = on ? b + 2 : 0;
-    idx[o + 5] = on ? b + 3 : 0;
+  for (let ty = 0; ty < tilesH; ty++) {
+    for (let tx = 0; tx < tilesW; tx++) {
+      let on = false;
+      for (let dy = -1; dy <= 2 && !on; dy++) {
+        const y = ty + dy;
+        if (y < 0 || y >= tilesH) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = tx + dx;
+          if (x < 0 || x >= tilesW) continue;
+          const k = (y * tilesW + x) * 4;
+          if (glow[k + c0]! > 0 || glow[k + c1]! > 0) {
+            on = true;
+            break;
+          }
+        }
+      }
+      const k = ty * tilesW + tx;
+      const b = k * 4;
+      const o = k * 6;
+      if (on) active++;
+      idx[o] = on ? b : 0;
+      idx[o + 1] = on ? b + 1 : 0;
+      idx[o + 2] = on ? b + 2 : 0;
+      idx[o + 3] = on ? b : 0;
+      idx[o + 4] = on ? b + 2 : 0;
+      idx[o + 5] = on ? b + 3 : 0;
+    }
   }
   geom.indexBuffer.update();
   return active;
@@ -253,9 +278,9 @@ export class TerrainView {
 
   /** Points the fire and air quads at the tiles with fire/charge and smoke/steam. */
   private activate(): void {
-    const glow = this.pack!.glow;
-    this.fire.visible = activateTiles(this.fireGeom!, glow, 0, 1) > 0;
-    this.air.visible = activateTiles(this.airGeom!, glow, 2, 3) > 0;
+    const { glow, tilesW, tilesH } = this.pack!;
+    this.fire.visible = activateTiles(this.fireGeom!, glow, tilesW, tilesH, 0, 1) > 0;
+    this.air.visible = activateTiles(this.airGeom!, glow, tilesW, tilesH, 2, 3) > 0;
   }
 
   private uploadDirty(): void {

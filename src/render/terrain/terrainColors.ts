@@ -50,7 +50,7 @@ export const TERRAIN = {
   ashLight: 0xc2bcbf,
   ember: 0xff8a3a,
   pit: FLAT_GROUND.pit!,
-  pitWall: 0x4a3530,
+  pitWall: 0x7a5646,
   wallTop: PAL.wallTop,
   pylon: 0x9aa6b2,
   oil: 0x3a2a4a,
@@ -117,7 +117,7 @@ export const TERRAIN_FX = {
   airLift: 1.5,
   /** Additive glow strength around fire and charge. */
   fireGlow: 0.45,
-  stormGlow: 0.4,
+  stormGlow: 0.3,
 } as const;
 
 /** F1 material overlay colors, by material id (also the legend in the overlay menu). */

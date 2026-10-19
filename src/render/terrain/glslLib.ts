@@ -85,6 +85,17 @@ float vnoise(vec2 p) {
   float e = hash2(c + ivec2(1, 1), 1001);
   return mix(mix(a, b, u.x), mix(d, e, u.x), u.y);
 }
+/** Value noise with linear interpolation: its ridges are straight segments (lightning zigzags). */
+float lnoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = p - i;
+  ivec2 c = ivec2(i);
+  float a = hash2(c, 1002);
+  float b = hash2(c + ivec2(1, 0), 1002);
+  float d = hash2(c + ivec2(0, 1), 1002);
+  float e = hash2(c + ivec2(1, 1), 1002);
+  return mix(mix(a, b, f.x), mix(d, e, f.x), f.y);
+}
 float fbm(vec2 p) {
   float v = 0.5 * vnoise(p);
   v += 0.25 * vnoise(p * 2.03 + vec2(17.1, 3.7));

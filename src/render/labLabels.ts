@@ -6,7 +6,7 @@ import { LINE, PAL } from './palette';
 /** Lab plaque look. Lengths in cells. */
 const PLAQUE = {
   /** Text cap height, cells. */
-  textCells: 1.5,
+  textCells: 1.8,
   /** Font size the text is rasterized at (then scaled to textCells). */
   fontPx: 36,
   padX: 0.7,
