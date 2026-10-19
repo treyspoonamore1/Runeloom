@@ -106,3 +106,19 @@ export { kiterInput } from './bots/kiter';
 export * from './weave';
 export { createGrid, cellIndex, inGrid, gridWalkable, materialOf, type Grid } from './grid/grid';
 export { applyElement, type TerrainElement, type Footprint, type ElementApplication } from './grid/paint';
+export { stepGrid, busy as gridCellBusy } from './grid/tick';
+export { markActive, activeCount, type ActiveSet } from './grid/active';
+export { wakeRegion, wakeAll, syncWalkability } from './grid/region';
+export { setGround, WORLD_SOURCE_ID, gridTicks } from './grid/cells';
+export {
+  cellAt,
+  chargeEventInfo,
+  iceCrackProgress,
+  terrainFireDps,
+  refLife,
+  areaLevel,
+  hazardHurts,
+  type CellView,
+} from './grid/query';
+export type { ChargeEvent, Blast } from './grid/grid';
+export type { CellBounds, ElectrifyFields } from './events';

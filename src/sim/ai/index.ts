@@ -4,7 +4,7 @@ import { actionSpeed } from '../combat/ailments';
 import { DT } from '../core/constants';
 import type { GameState } from '../state';
 import { aggro, deaggro, measurePlayer, refreshSight, setMode, sightDue, stop, toPlayer } from './common';
-import { buildFlowField, tileAt } from './flowField';
+import { buildFlowField, syncFlowWalkable, tileAt } from './flowField';
 import { stepKite } from './kite';
 import { stepShield } from './shield';
 import { stepSwarm } from './swarm';
@@ -13,14 +13,16 @@ export { aggro } from './common';
 
 /**
  * Once per tick, after the player moves and before enemies think: rebuilds the flow field toward
- * the player when they entered a new tile or `flowRecomputeTicks` passed (skipped with no
+ * the player when they entered a new tile, the terrain's walkability changed (grid.walkVersion)
+ * or `flowRecomputeTicks` passed (skipped with no
  * enemies, while the player is dead, or with AI off).
  */
 export function prepareEnemyAI(state: GameState): void {
   if (state.cheats.noAI || state.player.dead || state.enemies.length === 0) return;
   const f = state.flow;
   const goal = tileAt(f, state.player.x, state.player.y);
-  if (goal !== f.goalTile || state.tick - f.builtTick >= state.tuning.ai.flowRecomputeTicks)
+  const terrainChanged = syncFlowWalkable(f, state.room, state.grid.walkVersion);
+  if (terrainChanged || goal !== f.goalTile || state.tick - f.builtTick >= state.tuning.ai.flowRecomputeTicks)
     buildFlowField(f, goal, state.tick);
 }
 

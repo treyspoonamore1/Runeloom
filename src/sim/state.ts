@@ -62,6 +62,8 @@ export interface GameState {
   player: PlayerState;
   /** Spell-runtime stream: Lob branch landing points (and later spell randomness). */
   spellRng: Rng;
+  /** Chemistry grid rolls only: fire spread (rule 2) and Storm ignition (rule 14). */
+  gridRng: Rng;
   /** Weave slots (LMB, RMB, Q, E), spindle and trigger timers (weave/runtime/loadout.ts). */
   weaves: WeaveLoadout;
   /**
@@ -136,6 +138,7 @@ export function createGame(opts: CreateGameOptions): GameState {
   const combatRng = rng.fork('combat');
   const aiRng = rng.fork('ai');
   const spellRng = rng.fork('spell');
+  const gridRng = rng.fork('grid');
   const mode = opts.mode ?? 'sandbox';
   const weaves = createWeaveLoadout(opts.loadout ?? DEFAULT_LOADOUT, tuning);
   const state: GameState = {
@@ -151,6 +154,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     grid: createGrid(room),
     player: createPlayer(room.spawnX, room.spawnY, tuning),
     spellRng,
+    gridRng,
     weaves,
     loadout: legacyLoadout(weaves),
     spells: [],

@@ -208,4 +208,6 @@ export const oil = {
   burnSeconds: 2,
   /** Terrain-fire DPS multiplier on burning oil. */
   fireDpsMult: 2,
-} as const;
+  /** Smoke while burning. */
+  smoke: 'dense',
+} as const satisfies { smoke: Flammability['smoke'] } & Record<string, unknown>;

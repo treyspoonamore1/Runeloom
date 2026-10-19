@@ -10,3 +10,5 @@ export const TILE_CELLS = 4;
 export const CELL_PX = 8;
 /** Spatial hash bucket edge in cells (DESIGN §12). */
 export const SPATIAL_BUCKET_CELLS = 8;
+/** Chemistry grid ticks per second (DESIGN §6.1). Grid timers count these. */
+export const GRID_HZ = SIM_HZ / GRID_EVERY;
