@@ -10,7 +10,7 @@ import { stepKnockback } from './knockback';
 import { readGround } from './ground';
 import { isStunned } from './terrainState';
 import { stepEnemyPassive } from '../ai/passive';
-import { ignoresGround, locomotionOf, movementRoom, swimMove } from './locomotion';
+import { floatRoom, swimMove, traitsOf } from './locomotion';
 
 // Scratch: separation velocity per enemy index and a body for moveCircle.
 let sepX = new Float64Array(64);
@@ -67,13 +67,14 @@ export function stepEnemies(state: GameState): void {
     const ts = e.terrain;
     const mvx = ts.slideX + sepX[i]!;
     const mvy = ts.slideY + sepY[i]!;
-    const room = movementRoom(state, e.kind);
+    const traits = traitsOf(e.kind);
+    const room = traits.floats ? floatRoom(state.room) : state.room;
     if (mvx !== 0 || mvy !== 0) {
       body.x = e.x;
       body.y = e.y;
       body.vx = mvx;
       body.vy = mvy;
-      if (locomotionOf(e.kind) === 'swim') swimMove(state, body, mvx * DT, mvy * DT);
+      if (traits.swims) swimMove(state, body, mvx * DT, mvy * DT);
       else if (moveCircle(room, body, e.radius, mvx * DT, mvy * DT) && ts.onIce) {
         // Sliding into a wall loses the part of the slide pointing into it.
         ts.slideX = body.vx - sepX[i]!;
@@ -95,7 +96,7 @@ export function stepEnemies(state: GameState): void {
  */
 function walkVelocity(state: GameState, e: Enemy): void {
   let ts = e.terrain;
-  if (ignoresGround(e.kind)) {
+  if (traitsOf(e.kind).groundless) {
     // Floating (or fixed): the ground neither slows nor slides it.
     ts.moveMult = 1;
     ts.onIce = false;

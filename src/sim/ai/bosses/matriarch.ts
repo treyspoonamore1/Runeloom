@@ -1,5 +1,6 @@
 /**
- * Tar Matriarch (CONTENT §5, K5): a slow Tar Hulk elite that leaves an oil trail (ai/passive.ts).
+ * Tar Matriarch (CONTENT §5, K5): a slow Tar Hulk elite. She leaves no oil trail of her own (standing
+ * in her own burning oil melted her in about 10 s); her globs and her Hulks bring the oil.
  * - Slam (EnemyAI.cooldowns[0]): when the player is within reach, a 6-cell circle around her for
  *   30 with 4 cells of knockback, after a 1.0 s telegraph.
  * - Tar glob (cooldowns[1]): at a player she can see within range, a lobbed glob landing where

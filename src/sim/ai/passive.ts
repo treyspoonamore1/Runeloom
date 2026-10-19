@@ -4,7 +4,7 @@
  * - Always Wet (Bog Lurker): Wet is topped up wherever it is.
  * - Swimmers: trapped while the cell under them isn't water (frozen), free when it thaws
  *   ('lurkerTrapped'); being trapped cancels a windup and stops a lunge.
- * - Oil trail (Tar Hulk, Matriarch): oil on the cells around its center whenever it enters a new
+ * - Oil trail (Tar Hulk): oil on the cells around its center whenever it enters a new
  *   cell (combat/oil.ts).
  * - Fuse (Tar Hulk): Ignited while Oiled lights a fuse ('hulkFuse'); Wet puts it out
  *   ('hulkFuseOut'); when it runs out the Hulk explodes and dies (actors/hulkBlast.ts).
@@ -13,7 +13,7 @@
 import { enemyDef, type EnemyChemistry } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
 import { explodeHulk } from '../actors/hulkBlast';
-import { isWaterAt, locomotionOf } from '../actors/locomotion';
+import { isWaterAt, traitsOf } from '../actors/locomotion';
 import { isOiled } from '../actors/terrainState';
 import { isIgnited } from '../combat/ailments';
 import { endDash } from '../combat/dash';
@@ -26,6 +26,8 @@ import { stepBossPassive } from './bosses/phases';
 const TIME_EPSILON = 1e-9;
 
 export function stepEnemyPassive(state: GameState, e: Enemy): void {
+  const t = traitsOf(e.kind);
+  if (!t.passive) return;
   const def = enemyDef(e.kind);
   const chem = def.chemistry;
   if (chem !== undefined) {
@@ -34,7 +36,7 @@ export function stepEnemyPassive(state: GameState, e: Enemy): void {
     if (chem.explodes !== undefined) stepFuse(state, e, chem.explodes);
     if (e.dead) return;
   }
-  if (locomotionOf(e.kind) === 'swim') checkTrapped(state, e);
+  if (t.swims) checkTrapped(state, e);
   if (e.boss !== null) stepBossPassive(state, e);
 }
 

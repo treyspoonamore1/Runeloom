@@ -9,21 +9,20 @@
  * Floating and fixed kinds ignore the ground (no Wet, Oiled, burning ground, charge or falls);
  * swimmers read the ground but never fall (actors/terrain.ts).
  */
-import { enemyDef, type EnemyKind } from '../../../data/enemies';
-import type { Locomotion } from '../../../data/enemyTypes';
+import { enemies, type EnemyKind } from '../../../data/enemies';
+import type { EnemyDef, Locomotion } from '../../../data/enemyTypes';
 import { materialByCode } from '../../../data/materials';
 import type { GameState } from '../state';
 import type { Room } from '../world/room';
 import type { CircleBody } from './collision';
 
 export function locomotionOf(kind: EnemyKind): Locomotion {
-  return enemyDef(kind).locomotion ?? 'walk';
+  return traits[kind]!.locomotion;
 }
 
 /** True if the kind ignores the ground under it (floats or is fixed in place). */
 export function ignoresGround(kind: EnemyKind): boolean {
-  const l = locomotionOf(kind);
-  return l === 'float' || l === 'fixed';
+  return traits[kind]!.groundless;
 }
 
 /** True if the cell under (x, y) is water (shallow, deep or oily). Outside the grid: false. */
@@ -51,7 +50,7 @@ export function floatRoom(room: Room): Room {
 
 /** The room a kind's collision runs against (moveCircle, knockback). */
 export function movementRoom(state: GameState, kind: EnemyKind): Room {
-  return locomotionOf(kind) === 'float' ? floatRoom(state.room) : state.room;
+  return traits[kind]!.floats ? floatRoom(state.room) : state.room;
 }
 
 /**
@@ -79,4 +78,37 @@ export function swimMove(state: GameState, body: CircleBody, dx: number, dy: num
     }
   }
   body.vx = body.vy = 0;
+}
+
+/** Per-kind flags the hot paths read instead of the full EnemyDef (one lookup per enemy). */
+export interface KindTraits {
+  locomotion: Locomotion;
+  swims: boolean;
+  floats: boolean;
+  /** Floats or is fixed: the ground's effects pass it by. */
+  groundless: boolean;
+  /** Has per-tick M4 chemistry or boss bookkeeping (ai/passive.ts). */
+  passive: boolean;
+}
+
+const traits: Record<string, KindTraits> = {};
+for (const [kind, def] of Object.entries(enemies) as [string, EnemyDef][]) {
+  const locomotion = def.locomotion ?? 'walk';
+  const c = def.chemistry;
+  const swims = locomotion === 'swim';
+  traits[kind] = {
+    locomotion,
+    swims,
+    floats: locomotion === 'float',
+    groundless: locomotion === 'float' || locomotion === 'fixed',
+    passive:
+      swims ||
+      def.isBoss === true ||
+      (c !== undefined &&
+        (c.alwaysWet === true || c.oilTrailRadius !== undefined || c.explodes !== undefined)),
+  };
+}
+
+export function traitsOf(kind: EnemyKind): KindTraits {
+  return traits[kind]!;
 }

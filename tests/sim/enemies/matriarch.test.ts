@@ -90,7 +90,7 @@ describe('Tar Matriarch', () => {
     expect(ofType(run(s, 200), 'bossSummon')).toHaveLength(0);
   });
 
-  it('leaves an oil trail like her Hulks', () => {
+  it('leaves no oil trail of her own (her globs and Hulks bring the oil)', () => {
     const s = pit(90, 30);
     const m = s.enemies.find((e) => e.kind === 'tar_matriarch')!;
     aggro(s, m);
@@ -98,7 +98,7 @@ describe('Tar Matriarch', () => {
     const x0 = m.x;
     run(s, 120);
     expect(m.x).toBeGreaterThan(x0 + 5);
-    expect(s.grid.surface[idx(s, x0 + 3, m.y)]).toBe(SURFACE.oil);
+    expect(s.grid.surface[idx(s, x0 + 3, m.y)]).toBe(SURFACE.none);
     expect(isWaterAt(s, m.x, m.y)).toBe(false);
   });
 });

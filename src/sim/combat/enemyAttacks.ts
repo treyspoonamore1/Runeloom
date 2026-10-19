@@ -24,12 +24,10 @@ const TIME_EPSILON = 1e-9;
  * kind's primary attack. Null for kinds that never attack (dummies, Brood Kilns).
  */
 export function attackDefFor(e: Enemy): AttackDef | null {
+  const primary = enemyDef(e.kind).attack;
   const name = e.attack.name;
-  if (name !== '') {
-    const def = attackByName(e.kind, name);
-    if (def) return def;
-  }
-  return enemyDef(e.kind).attack;
+  if (name === '' || (primary !== null && primary.name === name)) return primary;
+  return attackByName(e.kind, name) ?? primary;
 }
 
 /**
@@ -122,7 +120,7 @@ export function stepEnemyAttack(state: GameState, e: Enemy): void {
   if (a.phase === 'active' && def.dash && e.special.dashSpeed > 0)
     stepDash(state, e, def.dash, enemyAttackPacket(state, e, def), def.knockback);
   if (e.dead) return;
-  const haste = attackSpeedMult(e);
+  const haste = e.mods.length > 0 ? attackSpeedMult(e) : 1;
   a.timeLeft -= DT * speed;
   while (a.phase !== 'none' && a.timeLeft <= TIME_EPSILON) {
     if (a.phase === 'windup') {

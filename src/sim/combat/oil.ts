@@ -1,6 +1,6 @@
 /**
- * Oil that enemies put on the ground (M4): the Tar Matriarch's glob splats, Tar Hulk and
- * Matriarch trails. Oil goes on walkable and water cells (it floats, DESIGN §6.2); oil spilled
+ * Oil that enemies put on the ground (M4): the Tar Matriarch's glob splats and Tar Hulk
+ * trails. Oil goes on walkable and water cells (it floats, DESIGN §6.2); oil spilled
  * into fire catches at once, like a barrel's spill (grid/tick.ts explode).
  */
 import { SURFACE, materialByCode, oil } from '../../../data/materials';

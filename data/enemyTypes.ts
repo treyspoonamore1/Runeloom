@@ -200,7 +200,7 @@ export interface EnemyChemistry {
   ignoresHazards?: boolean;
   /** Always Wet, wherever it is (Bog Lurker). */
   alwaysWet?: boolean;
-  /** Leaves oil on the cells within this radius of its center as it walks (Tar Hulk, Tar Matriarch). */
+  /** Leaves oil on the cells within this radius of its center as it walks (Tar Hulk). */
   oilTrailRadius?: number;
   /**
    * Ignited while Oiled, it explodes `fuse` s later (Tar Hulk): a world-owned fire burst of
