@@ -5,6 +5,10 @@ import { AiOverlay } from './aiOverlay';
 import { AilmentFx } from './ailmentFx';
 import { ailmentAtlasEntries } from './ailmentShapes';
 import { AmbientView } from './ambientView';
+import { labStations, type LabStation } from '../../data/lab';
+import { LabLabels } from './labLabels';
+import { DEBUG_BITS } from './terrain/glslDebug';
+import { TerrainView } from './terrain/terrainView';
 import { Atlas } from './atlas';
 import { Camera } from './camera';
 import { CombatEvents } from './combatEvents';
@@ -33,6 +37,12 @@ export interface Overlays {
   hitboxes: boolean;
   /** Enemy AI targets, modes and attack ranges. */
   aiTargets: boolean;
+  /** Grid overlays (M3): flat material colors, fire heat, charge, wet, effect owner. */
+  material: boolean;
+  fire: boolean;
+  charge: boolean;
+  wet: boolean;
+  owner: boolean;
 }
 
 export interface Renderer {
@@ -55,7 +65,21 @@ export interface Renderer {
    */
   handleEvents(events: readonly SimEvent[]): void;
   /** Live view counts, for benchmarks and the debug overlay. */
-  stats(): { enemies: number; projectiles: number; particles: number; playerFxAlpha: number };
+  stats(): {
+    enemies: number;
+    projectiles: number;
+    particles: number;
+    playerFxAlpha: number;
+    /** CPU ms of the last terrain pack + upload (0 on frames without a grid change). */
+    terrainUploadMs: number;
+    /** CPU ms of the last terrain pack alone. */
+    terrainPackMs: number;
+  };
+  /**
+   * Chemistry Lab plaques: the stations whose labels to draw. By default the lab scene
+   * (`?scene=lab`) shows data/lab.ts `labStations` and other scenes none.
+   */
+  setLabStations(stations: readonly LabStation[]): void;
   destroy(): void;
 }
 
@@ -77,9 +101,11 @@ function smoothstep(a: number, b: number, v: number): number {
  * The renderer. Reads sim state and never writes it (CLAUDE.md rule 2). All animation state
  * (camera, springs, particles, shake) lives here, driven by frameDt.
  *
- * World layers, bottom to top (1 unit = 1 cell): baked room → ambient → corpses → enemy
- * shadows → player bolts and effects (dimmed when busy) → enemy telegraphs → ember glows →
- * enemies → afterimages → player → enemy shots → readable effects (clanks, hurt) → debug.
+ * World layers, bottom to top (1 unit = 1 cell): grid terrain floor → baked blocks and props →
+ * brazier flames → terrain fire, glow and hazard edges → corpses → enemy shadows → player bolts
+ * and effects (dimmed when busy) → enemy telegraphs → ember glows → enemies → afterimages →
+ * player → smoke and steam → enemy shots → readable effects (clanks, hurt) → lab plaques → debug
+ * (AI, grid overlays, hitboxes).
  * Screen layers: damage numbers, AI labels, hurt vignette.
  */
 export async function createRenderer(host: HTMLElement, state: GameState): Promise<Renderer> {
@@ -92,6 +118,8 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     autoDensity: true,
     // The game loop renders once per frame after updating; no second rAF loop.
     autoStart: false,
+    // The terrain shader is GLSL (src/render/terrain).
+    preference: 'webgl',
   });
   host.appendChild(app.canvas);
 
@@ -103,8 +131,12 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     ...formAtlasEntries(),
   ]);
   const world = new Container();
+  const terrain = new TerrainView();
   const room = new RoomView();
   const ambient = new AmbientView();
+  const labels = new LabLabels();
+  const labScene = new URLSearchParams(location.search).get('scene') === 'lab';
+  let labOverride: readonly LabStation[] | null = null;
   const player = new PlayerView();
   const overlay = new OverlayView();
   const enemies = new EnemyLayer(atlas);
@@ -117,8 +149,10 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const ai = new AiOverlay();
   const shake = new Shake();
   world.addChild(
+    terrain.ground,
     room.root,
     ambient.root,
+    terrain.fire,
     enemies.corpses,
     enemies.shadows.container,
     forms.ground,
@@ -134,17 +168,29 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     player.ghostLayer,
     player.root,
     ailments.threat,
+    terrain.air,
     projectiles.enemy,
     fx.top,
     ailments.icons.pool.container,
+    labels.root,
     ai.world,
+    terrain.debug,
     overlay.root,
   );
   app.stage.addChild(world, ailments.edge, numbers.root, ai.labels, ailments.debug.labels, fx.vignette);
   ai.hide();
 
   const camera = new Camera();
-  const overlays: Overlays = { grid: false, hitboxes: false, aiTargets: false };
+  const overlays: Overlays = {
+    grid: false,
+    hitboxes: false,
+    aiTargets: false,
+    material: false,
+    fire: false,
+    charge: false,
+    wet: false,
+    owner: false,
+  };
   let time = 0;
   let current = state;
   let dim = 1;
@@ -163,8 +209,11 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
 
   const setRoom = (s: GameState): void => {
     current = s;
-    const map = room.build(s.room);
+    terrain.setGrid(s.grid);
+    const map = room.build(s.room, s.grid);
+    room.sync(s.grid, terrain.blockCells);
     ambient.build(map);
+    labels.set(labOverride ?? (labScene ? labStations : []));
     player.reset();
     overlay.invalidate();
     enemies.reset();
@@ -199,6 +248,17 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       world.scale.set(camera.scale);
       world.position.set(ox, oy);
 
+      terrain.debugFlags =
+        (overlays.material ? DEBUG_BITS.material : 0) |
+        (overlays.fire ? DEBUG_BITS.fire : 0) |
+        (overlays.charge ? DEBUG_BITS.charge : 0) |
+        (overlays.wet ? DEBUG_BITS.wet : 0) |
+        (overlays.owner ? DEBUG_BITS.owner : 0);
+      const version = terrain.version;
+      terrain.update(s.grid, time);
+      // Burnable props char and vanish with their cells (16 cells per prop, cheap); blocks
+      // re-bake only when the count of block cells changes.
+      if (terrain.version !== version) room.sync(s.grid, terrain.blockCells);
       ambient.update(time);
       player.animSpeed = actionSpeed(s, p);
       player.castTint = castTint(s);
@@ -241,8 +301,15 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       projectiles: projectiles.count,
       particles: fx.particleCount + ailments.particleCount + forms.particleCount,
       playerFxAlpha: dim,
+      terrainUploadMs: terrain.lastUploadMs,
+      terrainPackMs: terrain.lastPackMs,
     }),
+    setLabStations(stations) {
+      labOverride = stations;
+      labels.set(stations);
+    },
     destroy() {
+      terrain.destroy();
       app.destroy(true, { children: true });
     },
   };
