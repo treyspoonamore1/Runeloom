@@ -1,8 +1,9 @@
 # Region room solutions (M4)
 
-Intended solutions for the Emberwood and Sunken Kiln puzzle rooms. They become scripted solution
-tests (BUILD_PLAN M4 task 10) once the world agent's driver lands. K5 and K10 (boss rooms) are not
-covered here.
+Intended solutions for the Emberwood and Sunken Kiln puzzle rooms. Each one is a scripted
+solution test (BUILD_PLAN M4 task 10) in `tests/sim/world/emberwoodSolutions.test.ts` and
+`tests/sim/world/kilnSolutions.test.ts`; keep them in step. K5 and K10 (boss rooms) are not covered
+here.
 
 Conventions:
 
@@ -16,7 +17,7 @@ Conventions:
 - Enemies are not part of the puzzle steps. Tests can clear them first (`killall`) or run with
   `cheats.noAI`, unless the step says the enemies matter.
 - Static gating (exits, pickups and chests reachable only with the verb the room teaches) is
-  already tested in `tests/sim/world/regionRooms.test.ts`.
+  also tested in `tests/sim/world/regionRooms.test.ts`.
 
 ## E1 Loomstone Glade: burn a bramble wall
 
@@ -76,16 +77,20 @@ Pass: at least one full column of bridge tiles (both rows) is deep water while t
 the east bank, and no Tinderling is east of x = 34. Note: Tinderlings that run onto the bridge
 light it themselves (rule 22), which also counts.
 
+Measured (tests/sim/world/emberwoodSolutions.test.ts, AI on): the wood's 6 s burn lets the front
+of a pack that is right behind the player across before the bridge drops; in the test 4 of the 8
+Tinderlings cross and 4 are cut off on the west bank.
+
 ## E4 Old Mill: barrels, and a Heart Seed behind crates
 
 Weave: LMB `Cast > Bolt[Fire]` (cx 2).
 
 Heart Seed (8, 29) in the crate-sealed storeroom:
 
-1. Walk to the dirt lane at (14, 28), east of the crate wall (x 11–12, y 26–29).
-2. Cast `Bolt[Fire]` at (12, 28). The bolt stops on the crate and lights it; fire spreads
+1. Walk to the dirt lane at (14, 29), east of the crate wall (x 11–12, y 26–29).
+2. Cast `Bolt[Fire]` at (12, 29). The bolt stops on the crate and lights it; fire spreads
    crate to crate.
-3. Step back to (18, 28). The crates reach the oil barrel at (10, 27), which explodes 1 s after
+3. Step back to (19, 29). The crates reach the oil barrel at (10, 27), which explodes 1 s after
    it lights (4-cell world fire, hurts the player).
 4. When the crates are ash (about 6 s), walk in to (8, 29).
 
@@ -192,7 +197,7 @@ layers split by stone firebreaks, so each must be lit separately.
    bramble (x 31–41) burns around the stone dais.
 4. Walk to (35, 17) and open the chest `k` (36, 17): +1 Kiln small key.
 5. Leave by the vault entrance, go round by the north courtyard (y 11) to the east lane (43, 17),
-   then east to (52, 17). The locked door K (53, 17–18) opens with the key. Exit east at (57, 17).
+   then east to (52, 17). The one-tile locked door K (53, 17) opens with the key. Exit east at (57, 17).
 
 Pass: key taken, K opened, east exit reached.
 
@@ -269,16 +274,19 @@ lane's east wall:
 
 | Lane | Block    | Plate    | Lane rows | Lob[Frost] aims (cells)                   |
 | ---- | -------- | -------- | --------- | ----------------------------------------- |
-| A    | (16, 7)  | (41, 7)  | 6–8       | (92, 30), (100, 30), (108, 30), (115, 30) |
-| B    | (16, 24) | (41, 24) | 23–25     | (92, 98), (100, 98), (108, 98), (115, 98) |
+| A    | (16, 7)  | (41, 7)  | 6–8       | (92, 30), (100, 30), (108, 30), (116, 30) |
+| B    | (16, 24) | (41, 24) | 23–25     | (92, 98), (100, 98), (108, 98), (116, 98) |
 
 For each lane:
 
-1. Stand on the lane ice west of the block, at (14, 7) (lane B: (14, 24)).
+1. Stand at the east end of the lane's west runway, (20, 7) (lane B: (20, 24)). Lob reaches
+   40 cells, so the far aims are out of range from further back.
 2. Cast the four `Lob[Frost]` aims (each burst freezes about 10 cells; the pool is 32). The pool
    part of the lane becomes ice bridge.
-3. Push the block east (walk into it). It slides across the ice and the bridge and stops on the
-   plate against the wall. Do this within 8 s of the first lob.
+3. Walk back to the stone at (12, 7) (lane B: (12, 24)), stop on the lane's center line (ice is
+   slippery: an off-center push slides past the block), and walk east into the block. It slides
+   across the ice and the bridge and stops on the plate against the wall. Do this within 8 s of
+   the first lob.
 
 Then:
 
