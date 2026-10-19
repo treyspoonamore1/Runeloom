@@ -23,7 +23,13 @@ import {
   activeCount,
   PLAYER_ID,
   NEUTRAL_INPUT,
+  GRID_EVERY,
+  applyBlasts,
+  kiterInput,
+  startArenaWave,
+  createGrid,
   type GameState,
+  type InputFrame,
 } from '../src/sim';
 import { MAT, OWNER } from '../data/materials';
 import { parseArgs, requireInt, runCli } from './lib/args';
@@ -41,8 +47,13 @@ export interface Bench {
   reportOnly?: boolean;
   /** Extra line after the result (e.g. the mean active-cell share). */
   note?: () => string;
-  /** Builds the workload; returns a function that advances one tick. */
-  setup(): () => void;
+  /** Called once after warmup, before the measured ticks. */
+  onMeasureStart?: () => void;
+  /**
+   * Builds the workload; returns a function that advances one tick. If it returns a number, that
+   * is the tick's sample in ms (a bench that times only part of its tick); else the call is timed.
+   */
+  setup(): () => number | void;
 }
 
 const ENTITY_BUDGET_MS = 2.7;
@@ -61,6 +72,41 @@ function scenarioBench(scenarioId: string): Bench {
   };
 }
 
+/**
+ * Entity benches time the entity step apart from the chemistry grid tick, which DESIGN §12
+ * budgets on its own (2.0 ms): the grid never ticks inside `step` (its clock is parked), and
+ * `splitStep` runs it (and its blasts) every GRID_EVERY non-hitstop ticks, timing it into
+ * `gridMs`. The order of work is the same as in `step`.
+ */
+function splitStepper(state: GameState) {
+  state.grid.clock = Number.NEGATIVE_INFINITY;
+  let clock = 0;
+  const gridMs: number[] = [];
+  return {
+    gridMs,
+    step(input: InputFrame): number {
+      const hitstop = state.hitstopLeft > 0;
+      const t0 = performance.now();
+      step(state, input);
+      const t1 = performance.now();
+      if (!hitstop && ++clock >= GRID_EVERY) {
+        clock = 0;
+        stepGrid(state);
+        applyBlasts(state);
+        gridMs.push(performance.now() - t1);
+      }
+      return t1 - t0;
+    },
+  };
+}
+
+/** The note line for a split bench: the grid tick's own numbers against its budget. */
+function gridNote(ms: number[], extra = ''): string {
+  const g = summarize(ms);
+  const ok = g.mean <= GRID_BUDGET_MS && g.p99 <= GRID_BUDGET_MS ? 'OK' : 'OVER BUDGET';
+  return `grid tick mean ${g.mean.toFixed(4)} ms p99 ${g.p99.toFixed(4)} ms, budget ${GRID_BUDGET_MS} ms ${ok}${extra}`;
+}
+
 const STRESS_ENEMIES = { tinderling: 180, ember_archer: 75, shieldbearer: 45 };
 const STRESS_BOLTS = 2000;
 
@@ -68,8 +114,10 @@ const STRESS_BOLTS = 2000;
  * DESIGN §12 stress: 300 aggroed enemies with AI (60% Tinderlings, 25% archers, 15%
  * Shieldbearers) closing on a god-mode player, and 2,000 live player Bolt instances (the spell
  * runtime's `Cast > Bolt[Fire]`) flying in the arena. Bolts deal no damage and no knockback so
- * the load stays constant (as the M1 projectile version); ended bolts are replaced each tick from random open cells in random directions (a
- * bench-only Rng, so sim streams are untouched). The top-up is timed with the step.
+ * the load stays constant (as the M1 projectile version), and since M3 no terrain footprint
+ * either (a burning arena would kill the crowd; the Wilds bench carries the terrain load); ended
+ * bolts are replaced each tick from random open cells in random directions (a bench-only Rng, so
+ * sim streams are untouched). The top-up is timed with the step.
  */
 function stressBench(): Bench {
   return {
@@ -84,8 +132,14 @@ function stressBench(): Bench {
       // One fire owns every bolt: a bench-only program copy without the per-cast cap.
       const program = { ...state.weaves.slots[0]!.program!, spawnCap: Infinity };
       const cast = openCast(state, -1, 'cast', program);
-      // Bench-only copy of the bolt spec without knockback, so hits don't scatter the crowd.
-      const spec = { ...program.root, knockback: 0 };
+      // Bench-only copy of the bolt spec without knockback (hits don't scatter the crowd) and
+      // without a terrain footprint.
+      const root = program.root;
+      const spec = {
+        ...root,
+        knockback: 0,
+        terrain: { ...root.terrain, footprint: { kind: 'none' as const } },
+      };
       const harmless = makePacket(0, { fire: 1 }, 0, state.tuning.combat.critMultiplier);
       const topUp = (s: GameState) => {
         for (let live = s.stats.spells; live < STRESS_BOLTS; live++) {
@@ -122,6 +176,70 @@ function stressBench(): Bench {
       return () => {
         topUp(state);
         step(state, { ...NEUTRAL_INPUT, aimX: state.player.x + 1, aimY: state.player.y });
+      };
+    },
+  };
+}
+
+/**
+ * M3: the kiter bot fighting arena waves in the Wilds (grass, water, oil, barrels, metal) with
+ * fire, frost and storm weaves on all four slots (two cast, Pulse and On Dodge), god mode and
+ * free mana so it never stops, while enemies and the player take terrain damage. Starts at wave
+ * 30 (66 enemies, growing to 80); burnt meadows regrow every 10 s. Entity step budget; the grid
+ * tick is timed apart (splitStepper).
+ */
+function wildsTerrainBench(): Bench {
+  let split: ReturnType<typeof splitStepper> | null = null;
+  let state: GameState | null = null;
+  let enemies = 0;
+  let active = 0;
+  let samples = 0;
+  return {
+    id: 'entity:wilds_terrain',
+    description: 'Entity step, kiter bot vs Wilds arena waves with fire/frost/storm terrain',
+    budgetMs: ENTITY_BUDGET_MS,
+    note: () =>
+      gridNote(
+        split?.gridMs ?? [],
+        `; mean ${(enemies / Math.max(1, samples)).toFixed(0)} enemies, ` +
+          `${((100 * active) / Math.max(1, samples) / (state ? state.grid.ground.length : 1)).toFixed(1)}% cells active`,
+      ),
+    onMeasureStart() {
+      split!.gridMs.length = 0;
+      enemies = active = samples = 0;
+    },
+    setup() {
+      const s = createGame({ seed: 1, roomText: loadRoomText('test/wilds'), mode: 'arena' });
+      state = s;
+      s.cheats.god = true;
+      s.cheats.infiniteMana = true;
+      applyLoadoutSpec(s, {
+        spindleId: 'test_spindle',
+        capacity: 99,
+        notations: [
+          'Cast > Bolt[Fire, Storm]',
+          'Cast > Strike[Frost]',
+          'Pulse > Lob[Storm, Saturate]',
+          'OnDodge > Nova[Frost, Saturate]',
+        ],
+      });
+      // Wave 30: 66 enemies at area level 11, so the crowd outlives the bot's damage.
+      startArenaWave(s, 30);
+      split = splitStepper(s);
+      // The meadows regrow (ash back to grass, untimed) every 10 s, so fire keeps finding fuel.
+      const pristine = createGrid(s.room);
+      const g = s.grid;
+      let t = 0;
+      return () => {
+        if (++t % 600 === 0)
+          for (let i = 0; i < g.ground.length; i++)
+            if (g.ground[i] === MAT.ash && pristine.ground[i] === MAT.grass && g.fire[i] === 0)
+              g.ground[i] = MAT.grass;
+        const ms = split!.step(kiterInput(s));
+        enemies += s.enemies.length;
+        active += activeCount(s.grid.active);
+        samples++;
+        return ms;
       };
     },
   };
@@ -181,6 +299,7 @@ export const benches: Bench[] = [
   scenarioBench('weave_mix'),
   scenarioBench('weave_events'),
   stressBench(),
+  wildsTerrainBench(),
   weave14Bench(),
   gridTypicalBench(),
   gridWorstBench(),
@@ -287,11 +406,12 @@ interface Result extends Summary {
 function runBench(b: Bench, ticks: number, warmup: number): Result {
   const tick = b.setup();
   for (let i = 0; i < warmup; i++) tick();
+  b.onMeasureStart?.();
   const samples = new Float64Array(ticks);
   for (let i = 0; i < ticks; i++) {
     const t0 = performance.now();
-    tick();
-    samples[i] = performance.now() - t0;
+    const own = tick();
+    samples[i] = typeof own === 'number' ? own : performance.now() - t0;
   }
   const s = summarize(samples);
   return {
