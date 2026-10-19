@@ -1,4 +1,4 @@
-/** CONTENT §2 reference weaves: the "Behavior to test" parts that don't need terrain (terrain is M3). */
+/** CONTENT §2 reference weaves: the "Behavior to test" parts on entities (terrain parts: tests/sim/terrain/referenceTerrain.test.ts). */
 import { describe, expect, it } from 'vitest';
 import {
   Button,
