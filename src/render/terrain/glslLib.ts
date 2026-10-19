@@ -56,6 +56,8 @@ uniform float uTime;
 uniform float uMix;
 uniform float uTick;
 uniform float uFlags;
+/** Electrify pulses: x, y (cells), age (s), strength (0 = none). */
+uniform vec4 uPulses[4];
 
 ${materialConsts}
 const int F_OIL = ${FLAG.oil};

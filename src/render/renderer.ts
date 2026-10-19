@@ -8,6 +8,7 @@ import { AmbientView } from './ambientView';
 import { labStations, type LabStation } from '../../data/lab';
 import { LabLabels } from './labLabels';
 import { DEBUG_BITS } from './terrain/glslDebug';
+import { TerrainFx } from './terrain/terrainFx';
 import { TerrainView } from './terrain/terrainView';
 import { Atlas } from './atlas';
 import { Camera } from './camera';
@@ -148,11 +149,13 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const forms = new FormLayer(atlas, fx);
   const ai = new AiOverlay();
   const shake = new Shake();
+  const terrainFx = new TerrainFx(atlas, shake);
   world.addChild(
     terrain.ground,
     room.root,
     ambient.root,
     terrain.fire,
+    terrainFx.ground,
     enemies.corpses,
     enemies.shadows.container,
     forms.ground,
@@ -169,6 +172,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     player.root,
     ailments.threat,
     terrain.air,
+    terrainFx.top,
     projectiles.enemy,
     fx.top,
     ailments.icons.pool.container,
@@ -220,6 +224,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     projectiles.reset();
     telegraphs.reset();
     fx.reset();
+    terrainFx.reset();
     ailments.reset();
     forms.reset();
     numbers.reset();
@@ -256,6 +261,8 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
         (overlays.owner ? DEBUG_BITS.owner : 0);
       const version = terrain.version;
       terrain.update(s.grid, time);
+      terrainFx.update(dt);
+      terrain.setPulses(terrainFx.pulses, terrainFx.clock);
       // Burnable props char and vanish with their cells (16 cells per prop, cheap); blocks
       // re-bake only when the count of block cells changes.
       if (terrain.version !== version) room.sync(s.grid, terrain.blockCells);
@@ -295,11 +302,12 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     setRoom,
     handleEvents(list) {
       events.handle(list);
+      terrainFx.handle(list, current);
     },
     stats: () => ({
       enemies: enemies.count,
       projectiles: projectiles.count,
-      particles: fx.particleCount + ailments.particleCount + forms.particleCount,
+      particles: fx.particleCount + ailments.particleCount + forms.particleCount + terrainFx.particleCount,
       playerFxAlpha: dim,
       terrainUploadMs: terrain.lastUploadMs,
       terrainPackMs: terrain.lastPackMs,
