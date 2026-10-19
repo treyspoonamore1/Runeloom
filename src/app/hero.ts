@@ -27,7 +27,10 @@ export function getHeroMods(session: Session): Readonly<HeroMods> {
 
 /** Applies a menu command now (between ticks). Returns null on success, else why it failed. */
 export function sendHeroEdit(session: Session, edit: HeroEdit): string | null {
-  return applyHeroEdit(session.state, edit);
+  const err = applyHeroEdit(session.state, edit);
+  // 'travel' and 'rest' change rooms between ticks: let the renderer rebuild now.
+  session.syncRoom();
+  return err;
 }
 
 /** Display text for tooltips: a name, its rarity color class, and one line per stat. */
