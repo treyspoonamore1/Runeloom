@@ -2,6 +2,7 @@ import { Container, Sprite, type Texture } from 'pixi.js';
 import type { Ailments } from '../sim';
 import type { Atlas } from './atlas';
 import { AIL, mixRgb, type BodyBox } from './ailmentPalette';
+import { CREATURE } from './creaturePalette';
 import type { ImmediatePool } from './particles';
 
 const FLAMES = 3;
@@ -29,6 +30,10 @@ export interface PartsFrame {
   burnRatio: number;
   /** Sideways velocity as a fraction of top speed, -1…1 (flames trail behind). */
   lean: number;
+  /** Grid chemistry (M3): Wet, Oiled, and a doused Tinderling (grey while out). */
+  wet: boolean;
+  oiled: boolean;
+  doused: boolean;
 }
 
 /** Shared textures for the drawn parts. */
@@ -57,6 +62,9 @@ export class AilmentParts {
   private lean = 0;
   private frozen = false;
   private chill = 0;
+  private wet = false;
+  private oiled = false;
+  private doused = false;
   private zapTimer = 0;
   private zapLit = 0;
   /** Per arc: x, y (body-local), rotation, length, thickness (signed), alpha. */
@@ -111,6 +119,7 @@ export class AilmentParts {
     this.emberAcc = this.flakeAcc = this.sparkAcc = 0;
     this.zapLit = 0;
     this.frozen = this.wasFrozen = this.justFroze = this.justThawed = false;
+    this.wet = this.oiled = this.doused = false;
     this.tintKey = -1;
     this.tintTarget.tint = 0xffffff;
   }
@@ -120,11 +129,19 @@ export class AilmentParts {
     return this.burn > 0 || this.meltLeft > 0 || this.tintKey !== 0 || this.zapLit > 0;
   }
 
+  /** Oiled and burning (rule 18): the flames are bigger and redder (CreatureFx adds smoke and a danger glow). */
+  get oilFire(): boolean {
+    return this.oiled && this.burn > 0;
+  }
+
   update(a: Ailments, f: PartsFrame): void {
     const dt = f.dt;
     this.time += dt;
     this.lean = f.lean;
     this.chill = a.chill;
+    this.wet = f.wet;
+    this.oiled = f.oiled;
+    this.doused = f.doused;
     const frozen = a.freeze.timeLeft > 0;
     this.frozen = frozen;
     this.justFroze = frozen && !this.wasFrozen;
@@ -158,7 +175,8 @@ export class AilmentParts {
     const h = b.bottom - b.top;
     const t = this.time;
     if (this.burn > 0) {
-      const dim = this.frozen ? 0.6 : 1;
+      const dim = (this.frozen ? 0.6 : 1) * (this.oiled ? CREATURE.oilFireScale : 1);
+      const tint = this.oiled ? CREATURE.oilFireTint : 0xffffff;
       for (let i = 0; i < FLAMES; i++) {
         // Weak ignites show fewer tongues.
         if (i !== 1 && this.burn <= 0.45 + i * 0.08) continue;
@@ -172,7 +190,7 @@ export class AilmentParts {
         p.scaleX = s * (1 - 0.1 * n);
         p.scaleY = s * (1 + 0.22 * n);
         p.rotation = -this.lean * 0.5 + 0.12 * Math.sin(t * 7 + i * 2.1);
-        p.paint(0xffffff, this.frozen ? 0.5 : 1);
+        p.paint(tint, this.frozen ? 0.5 : 1);
       }
     }
     if (!this.frozen && this.chill > AIL.crystalFrom) {
@@ -274,6 +292,12 @@ export class AilmentParts {
       key = c * 8 + b;
       tint = mixRgb(0xffffff, AIL.chillTint, (c / 16) * AIL.chillTintMax);
       if (b > 0) tint = mixRgb(tint, AIL.igniteTint, (b / 4) * 0.5);
+      // Grid chemistry: wet bodies darken and cool, oiled ones go dark and slick, a doused
+      // Tinderling turns grey.
+      if (this.wet) tint = mixRgb(tint, CREATURE.wetTint, CREATURE.wetTintMix);
+      if (this.oiled) tint = mixRgb(tint, CREATURE.oilTint, CREATURE.oilTintMix);
+      if (this.doused) tint = mixRgb(tint, CREATURE.dousedTint, CREATURE.dousedMix);
+      key += (this.wet ? 1 : 0) * 10000 + (this.oiled ? 1 : 0) * 20000 + (this.doused ? 1 : 0) * 40000;
     }
     if (key === this.tintKey) return;
     this.tintKey = key;

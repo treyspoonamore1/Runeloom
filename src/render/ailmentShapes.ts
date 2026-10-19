@@ -1,5 +1,6 @@
 import type { AtlasEntry } from './atlas';
 import { AIL } from './ailmentPalette';
+import { creatureAtlasEntries } from './creatureShapes';
 import { INK } from './combatPalette';
 import type { Pen } from './pen';
 
@@ -197,5 +198,7 @@ export function ailmentAtlasEntries(): AtlasEntry[] {
     e('digit_pct', -0.4, -0.55, 0.4, 0.55, percent),
   ];
   for (let d = 0; d < 10; d++) out.push(e(`digit_${d}`, -0.4, -0.6, 0.4, 0.6, (p) => segments(p, DIGITS[d]!, d === 1 ? -0.16 : 0)));
+  // Grid-chemistry shapes (Wet, Oiled, Blind icons, sheen, charge, scorch, falls) share this atlas slot.
+  out.push(...creatureAtlasEntries());
   return out;
 }

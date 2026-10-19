@@ -3,19 +3,24 @@ import { enemyDef } from '../../data/enemies';
 import type { Ailments, GameState } from '../sim';
 import type { Atlas } from './atlas';
 import { AilmentDebug } from './ailmentDebug';
+import { freezeBurst, rand, shatterBurst, spawnHeld, thawBurst, type BurstTex } from './ailmentBursts';
 import { AIL, BODY, ICON_EXTRA, type BodyBox } from './ailmentPalette';
 import { AilmentParts, type PartsFrame, type PartTextures } from './ailmentParts';
+import { CreatureFx, PLAYER_KEY, type CreatureBody } from './creatureFx';
+import { ICON_BLIND, ICON_OIL, ICON_WET, StatusIcons } from './statusIcons';
+import type { TerrainState } from '../sim/actors/terrainState';
 import type { EnemyLayer } from './enemyLayer';
 import { FX } from './combatPalette';
 import { makeVignette } from './fxView';
 import { FxLayer, ImmediatePool, type FxParticle } from './particles';
 import type { PlayerView } from './playerView';
-import { StatusIcons } from './statusIcons';
 
 const TAU = Math.PI * 2;
 
-function rand(a: number, b: number): number {
-  return a + Math.random() * (b - a);
+
+/** Status icon bits for the grid states (StatusIcons.row). */
+function terrainFlags(T: TerrainState): number {
+  return (T.wetLeft > 0 ? ICON_WET : 0) | (T.oiledLeft > 0 ? ICON_OIL : 0) | (T.blind ? ICON_BLIND : 0);
 }
 
 function anyAilment(a: Ailments): boolean {
@@ -54,13 +59,17 @@ export class AilmentFx {
   private readonly norm: FxLayer;
   private readonly add: FxLayer;
   private readonly tNorm: FxLayer;
-  private readonly t: Record<'dot' | 'glow' | 'spark' | 'crystal' | 'shard' | 'ring' | 'star' | 'puff', Texture>;
+  private readonly t: BurstTex;
   private playerParts: AilmentParts | null = null;
   private budget = 0;
   private rot = 0;
   private time = 0;
   /** Reused per-body input for AilmentParts.update (no per-frame allocation). */
-  private readonly frame: PartsFrame = { dt: 0, burnRatio: 0, lean: 0 };
+  private readonly frame: PartsFrame = { dt: 0, burnRatio: 0, lean: 0, wet: false, oiled: false, doused: false };
+  /** Grid chemistry on bodies (Wet, Oiled, falls, charge, arcs, doused Tinderlings, shields, haze). */
+  readonly creature: CreatureFx;
+  /** Reused per-body input for CreatureFx.body. */
+  private readonly cb: CreatureBody;
 
   constructor(private readonly atlas: Atlas) {
     const dot = atlas.get('dot');
@@ -79,6 +88,7 @@ export class AilmentFx {
     this.fx.addChild(this.norm.container, this.add.container);
     this.threat.addChild(this.overPlayer.container, this.tNorm.container);
     this.icons = new StatusIcons(atlas, 2048);
+    this.creature = new CreatureFx(atlas, this.fx, this.threat, this.norm, this.add, this.tNorm, this.glows);
     this.edge = new Sprite(makeVignette());
     this.edge.alpha = 0;
     this.edge.visible = false;
@@ -92,6 +102,7 @@ export class AilmentFx {
       star: atlas.get('star'),
       puff: atlas.get('puff'),
     };
+    this.cb = { key: 0, kind: '', a: null!, terrain: null!, parts: null!, box: BODY.player, x: 0, y: 0, vx: 0, vy: 0, player: false };
   }
 
   get particleCount(): number {
@@ -103,6 +114,7 @@ export class AilmentFx {
     this.add.clear();
     this.tNorm.clear();
     this.playerParts?.reset();
+    this.creature.reset();
     this.edge.visible = false;
   }
 
@@ -122,6 +134,7 @@ export class AilmentFx {
     this.glows.begin();
     this.over.begin();
     this.overPlayer.begin();
+    this.creature.begin(dt);
     this.icons.begin(dt, xf.screenScale / xf.scale);
     this.debug.begin(debug);
     // Visible world rect (plus a margin): off-screen bodies keep their state but draw nothing.
@@ -140,8 +153,13 @@ export class AilmentFx {
       const v = enemies.view(e.id);
       if (!v || v.dying >= 0) continue;
       const a = e.ailments;
+      const T = e.terrain;
+      // Cheap per-enemy looks that must stay current even without ailments.
+      this.creature.enemyState(v, dt);
+      v.glowMul = a.freeze.timeLeft > 0 ? 0.25 : e.kind === 'tinderling' && T.wetLeft > 0 ? 0 : 1;
       let parts = v.ailParts;
-      if (!anyAilment(a) && !(parts && parts.active)) continue;
+      if (!anyAilment(a) && !CreatureFx.active(T) && !this.creature.hasCrackle(e.id) && !(parts && parts.active))
+        continue;
       const box = BODY[e.kind];
       if (!parts) {
         parts = v.ailParts = new AilmentParts(this.atlas, box, v.root);
@@ -158,18 +176,22 @@ export class AilmentFx {
       f.dt = dt;
       f.burnRatio = burnRatio;
       f.lean = lean;
+      f.wet = T.wetLeft > 0;
+      f.oiled = T.oiledLeft > 0;
+      f.doused = e.kind === 'tinderling' && f.wet;
       parts.update(a, f);
-      v.glowMul = a.freeze.timeLeft > 0 ? 0.25 : 1;
       const rx = v.root.x;
       const ry = v.root.y;
       if (rx < vx0 || rx > vx1 || ry < vy0 || ry > vy1) continue;
       parts.draw(this.over, this.partTex, v.root.x, v.root.y + v.lift.y - v.lift.pivot.y);
       this.body(parts, a, box, v.root.x, v.root.y, vx, run, dt, this.norm);
+      this.creatureBody(e.id, e.kind, a, T, parts, box, rx, ry, vx, vy, false, dt);
       const top = v.root.y + box.top - this.icons.lift - (ICON_EXTRA[e.kind] ?? 0);
-      this.icons.row(a, v.root.x, top);
+      this.icons.row(a, v.root.x, top, terrainFlags(T));
       this.debug.label(a, v.root.x + box.w + 0.4, v.root.y + box.top * 0.5, xf);
     }
     this.updatePlayer(s, player, dt, xf);
+    this.creature.end(dt, s, enemies, player);
     this.glows.end();
     this.over.end();
     this.overPlayer.end();
@@ -189,7 +211,9 @@ export class AilmentFx {
       if (parts) parts.root.visible = false;
       return;
     }
-    if (!anyAilment(a) && !(parts && parts.active)) return;
+    const T = p.terrain;
+    if (!anyAilment(a) && !CreatureFx.active(T) && !this.creature.hasCrackle(PLAYER_KEY) && !(parts && parts.active))
+      return;
     const box = BODY.player;
     if (!parts) {
       parts = this.playerParts = new AilmentParts(this.atlas, box, player.lift);
@@ -203,12 +227,16 @@ export class AilmentFx {
     f.dt = dt;
     f.burnRatio = a.ignite.dps / Math.max(1, p.maxLife);
     f.lean = lean;
+    f.wet = T.wetLeft > 0;
+    f.oiled = T.oiledLeft > 0;
+    f.doused = false;
     parts.update(a, f);
     const x = player.root.x;
     const y = player.root.y;
     parts.draw(this.overPlayer, this.partTex, x + player.lift.x, y + player.lift.y);
     this.body(parts, a, box, x, y, p.vx, run, dt, this.tNorm);
-    this.icons.row(a, x, y + box.top - this.icons.lift);
+    this.creatureBody(PLAYER_KEY, 'player', a, T, parts, box, x, y, p.vx, p.vy, true, dt);
+    this.icons.row(a, x, y + box.top - this.icons.lift, terrainFlags(T));
     this.debug.label(a, x + box.w + 0.4, y + box.top * 0.5, xf);
   }
 
@@ -279,89 +307,33 @@ export class AilmentFx {
         }
       }
     }
-    if (parts.justFroze) this.freezeBurst(x, cy, box, layer);
-    if (parts.justThawed) this.thawBurst(x, cy, box, layer);
+    if (parts.justFroze) freezeBurst(layer, this.t, x, cy, box);
+    if (parts.justThawed) thawBurst(layer, this.t, x, cy, box);
+  }
+
+  private creatureBody(key: number, kind: string, a: Ailments, T: TerrainState, parts: AilmentParts, box: BodyBox, x: number, y: number, vx: number, vy: number, player: boolean, dt: number): void {
+    const b = this.cb;
+    b.key = key;
+    b.kind = kind;
+    b.a = a;
+    b.terrain = T;
+    b.parts = parts;
+    b.box = box;
+    b.x = x;
+    b.y = y;
+    b.vx = vx;
+    b.vy = vy;
+    b.player = player;
+    this.creature.body(b, dt);
   }
 
   private spawn(layer: FxLayer, tex: Texture, x: number, y: number, vx: number, vy: number, life: number, tint: number, s0: number, s1: number): FxParticle | null {
-    const p = layer.spawn(tex, x, y, vx, vy, life, tint, s0, s1);
-    if (p) p.hold = 0.4;
-    return p;
-  }
-
-  /** Radial burst of n particles. */
-  private burst(layer: FxLayer, tex: Texture, x: number, y: number, n: number, sp: [number, number], life: [number, number], tints: readonly number[], s: [number, number], jitter: number, cfg: (p: FxParticle) => void): void {
-    for (let i = 0; i < n; i++) {
-      const ang = rand(0, TAU);
-      const v = rand(sp[0], sp[1]);
-      const p = this.spawn(layer, tex, x + rand(-jitter, jitter), y + rand(-jitter, jitter), Math.cos(ang) * v, Math.sin(ang) * v, rand(life[0], life[1]), tints[i % tints.length]!, s[0], s[1]);
-      if (!p) return;
-      p.rotation = rand(0, TAU);
-      cfg(p);
-    }
-  }
-
-  /** Crystallize: a cold ring snaps inward and glints flash on the block. */
-  private freezeBurst(x: number, y: number, box: BodyBox, layer: FxLayer): void {
-    const r = Math.max(box.w, (box.bottom - box.top) / 2);
-    const ring = this.spawn(layer, this.t.ring, x, y, 0, 0, 0.2, AIL.frost, r * 1.8, r * 0.9);
-    if (ring) ring.hold = 0;
-    this.burst(layer, this.t.star, x, y, 3, [0, 0], [0.18, 0.28], [0xffffff], [0.9, 0.2], r * 0.6, (p) => (p.a0 = 0.9));
-    this.burst(layer, this.t.crystal, x, y, 5, [4, 8], [0.25, 0.4], [0xffffff], [0.4, 0.15], r * 0.4, (p) => {
-      p.drag = 5;
-      p.spin = rand(-6, 6);
-    });
-  }
-
-  /** Thaw: the block cracks, a few chips fall and water drips. */
-  private thawBurst(x: number, y: number, box: BodyBox, layer: FxLayer): void {
-    const r = Math.max(box.w, (box.bottom - box.top) / 2);
-    this.burst(layer, this.t.shard, x, y, 5, [3, 8], [0.35, 0.55], [AIL.ice, 0xffffff], [0.7, 0.45], r * 0.6, (p) => {
-      p.spin = rand(-8, 8);
-      p.grav = 18;
-      p.drag = 2;
-    });
-    this.burst(layer, this.t.dot, x, y + r * 0.3, 7, [1, 4], [0.35, 0.6], [AIL.water, 0xd8f4ff], [0.16, 0.1], r * 0.8, (p) => {
-      p.grav = 22;
-    });
-    this.burst(layer, this.t.puff, x, y, 3, [1, 3], [0.4, 0.6], [0xe8f8ff], [0.5, 1.1], r * 0.5, (p) => {
-      p.a0 = 0.5;
-      p.grav = -3;
-    });
+    return spawnHeld(layer, tex, x, y, vx, vy, life, tint, s0, s1);
   }
 
   /** A frozen enemy died: ice shards burst out (no corpse), with a bright frost flash. */
   shatter(x: number, y: number, kind: string): void {
-    const box = BODY[kind as keyof typeof BODY] ?? BODY.tinderling;
-    const cy = y + (box.top + box.bottom) / 2;
-    const r = Math.max(box.w, (box.bottom - box.top) / 2);
-    const L = this.norm;
-    // Frost flash: a short cold bloom (normal blend: additive bleaches light ground) and a white core.
-    const flash = this.spawn(L, this.t.glow, x, cy, 0, 0, 0.2, AIL.frost, r * 2.2, r * 2.8);
-    if (flash) {
-      flash.hold = 0.1;
-      flash.a0 = 0.8;
-    }
-    const core = this.spawn(this.add, this.t.glow, x, cy, 0, 0, 0.1, 0xffffff, r * 1.3, r * 0.8);
-    if (core) core.hold = 0.3;
-    const ring = this.spawn(L, this.t.ring, x, cy, 0, 0, 0.24, AIL.frost, r * 0.8, r * 2.6);
-    if (ring) ring.hold = 0.1;
-    this.burst(L, this.t.shard, x, cy, AIL.shatterShards, [10, 24], [0.5, 0.9], [AIL.ice, 0xffffff, 0x9fdcff, 0xd8f4ff], [1.25, 0.8], r * 0.5, (p) => {
-      p.spin = rand(-14, 14);
-      p.drag = 3;
-      p.grav = 14;
-    });
-    this.burst(L, this.t.shard, x, cy, 8, [3, 9], [0.4, 0.7], [0xffffff, AIL.ice], [0.8, 0.55], r * 0.7, (p) => {
-      p.spin = rand(-10, 10);
-      p.drag = 2;
-      p.grav = 18;
-    });
-    this.burst(L, this.t.star, x, cy, 4, [2, 6], [0.15, 0.3], [0xffffff], [1.2, 0.3], r * 0.8, (p) => (p.drag = 4));
-    this.burst(L, this.t.puff, x, cy, 5, [1, 4], [0.5, 0.8], [0xeafaff, 0xcfeefc], [0.7, 1.6], r * 0.6, (p) => {
-      p.a0 = 0.55;
-      p.drag = 2;
-      p.grav = -2;
-    });
+    shatterBurst(this.norm, this.add, this.t, x, y, kind);
   }
 
   /** Subtle screen-edge tint while the player burns, is chilled or frozen (never dimmed). */
@@ -376,9 +348,15 @@ export class AilmentFx {
     } else if (!p.dead && a.ignite.timeLeft > 0) {
       alpha = AIL.edgeBurn * (0.8 + 0.2 * Math.sin(this.time * 9) * Math.sin(this.time * 3.7));
       tint = AIL.fire;
-    } else if (!p.dead && a.chill > 0) {
-      alpha = AIL.edgeChill * (a.chill / 100);
-      tint = AIL.frost;
+    } else {
+      const hz = this.creature.haze(s);
+      if (hz) {
+        alpha = hz.alpha;
+        tint = hz.tint;
+      } else if (!p.dead && a.chill > 0) {
+        alpha = AIL.edgeChill * (a.chill / 100);
+        tint = AIL.frost;
+      }
     }
     const e = this.edge;
     const k = 1 - Math.exp(-dt / 0.12);
