@@ -50,6 +50,40 @@ describe('SpatialHash', () => {
     expect(out).toEqual([1, 0, 2]);
   });
 
+  it('query fills hits like queryCircle, and anyNear is false only when every query in its cells is empty', () => {
+    const rng = new Rng(99);
+    let ruledOut = 0;
+    for (let round = 0; round < 20; round++) {
+      const w = 40 + rng.int(200);
+      const h = 40 + rng.int(150);
+      const hash = new SpatialHash(w, h, 8);
+      const bodies: HashBody[] = Array.from({ length: rng.int(40) }, () => ({
+        x: rng.range(-10, w + 10),
+        y: rng.range(-10, h + 10),
+        radius: rng.range(0.5, 4),
+        dead: rng.chance(0.1),
+      }));
+      hash.rebuild(bodies);
+      const out: number[] = [];
+      for (let q = 0; q < 200; q++) {
+        const x = rng.range(-5, w + 5);
+        const y = rng.range(-5, h + 5);
+        const r = rng.range(0, 6);
+        hash.queryCircle(x, y, r, out);
+        const n = hash.query(x, y, r);
+        expect(Array.from(hash.hits.subarray(0, n))).toEqual(out);
+        const near = hash.anyNear(Math.floor(x - r), Math.floor(y - r), Math.floor(x + r), Math.floor(y + r));
+        if (!near) {
+          expect(n).toBe(0);
+          ruledOut++;
+        }
+      }
+    }
+    // Both branches ran: some queries were ruled out, some found bodies.
+    expect(ruledOut).toBeGreaterThan(0);
+    expect(ruledOut).toBeLessThan(20 * 200);
+  });
+
   it('empties on rebuild', () => {
     const hash = new SpatialHash(64, 64, 8);
     hash.rebuild([{ x: 3, y: 3, radius: 1 }]);

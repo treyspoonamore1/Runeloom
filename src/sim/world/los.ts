@@ -28,10 +28,12 @@ export function segmentClear(
   const stepX = dx > 0 ? 1 : dx < 0 ? -1 : 0;
   const stepY = dy > 0 ? 1 : dy < 0 ? -1 : 0;
   // Parametric distance (0..1 along the segment) to the next vertical / horizontal cell edge.
-  const tDeltaX = stepX !== 0 ? stepX / dx : Infinity;
-  const tDeltaY = stepY !== 0 ? stepY / dy : Infinity;
-  let tMaxX = stepX > 0 ? (cx + 1 - x0) / dx : stepX < 0 ? (cx - x0) / dx : Infinity;
-  let tMaxY = stepY > 0 ? (cy + 1 - y0) / dy : stepY < 0 ? (cy - y0) / dy : Infinity;
+  // Number.POSITIVE_INFINITY, not the global `Infinity`: with the global, V8 keeps these loop
+  // floats boxed and allocates a heap number on every step.
+  const tDeltaX = stepX !== 0 ? stepX / dx : Number.POSITIVE_INFINITY;
+  const tDeltaY = stepY !== 0 ? stepY / dy : Number.POSITIVE_INFINITY;
+  let tMaxX = stepX > 0 ? (cx + 1 - x0) / dx : stepX < 0 ? (cx - x0) / dx : Number.POSITIVE_INFINITY;
+  let tMaxY = stepY > 0 ? (cy + 1 - y0) / dy : stepY < 0 ? (cy - y0) / dy : Number.POSITIVE_INFINITY;
   let left = (ex > cx ? ex - cx : cx - ex) + (ey > cy ? ey - cy : cy - ey);
   for (;;) {
     if (cx < 0 || cy < 0 || cx >= w || cy >= h || mask[cy * w + cx] === 1) return false;

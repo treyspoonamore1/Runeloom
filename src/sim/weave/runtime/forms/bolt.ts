@@ -29,13 +29,14 @@ export function initBolt(b: SpellInstance): void {
 }
 
 // Scratch for the per-tick candidates; stepBolt never runs nested.
-const found: number[] = [];
 const order: number[] = [];
 const dist2: number[] = [];
 
 /** Enemies the bolt may still hit near its sweep, nearest to its start first (ties: array order). */
 function gather(state: GameState, b: SpellInstance, cx: number, cy: number, r: number): number {
-  const n = state.enemyHash.queryCircle(cx, cy, r, found);
+  const n = state.enemyHash.query(cx, cy, r);
+  if (n === 0) return 0;
+  const found = state.enemyHash.hits;
   let m = 0;
   for (let k = 0; k < n; k++) {
     const idx = found[k]!;
@@ -145,7 +146,19 @@ export function stepBolt(state: GameState, b: SpellInstance): void {
     Math.floor((b.x > ex ? b.x : ex) + r),
     Math.floor((b.y > ey ? b.y : ey) + r),
   );
-  const candidates = gather(state, b, b.x + dx / 2, b.y + dy / 2, dist / 2 + r);
+  // Candidates near the sweep. Most bolts fly through empty buckets, which anyNear rules out
+  // first: it takes integers, while gather's float arguments are boxed when it isn't inlined.
+  const cx = b.x + dx / 2;
+  const cy = b.y + dy / 2;
+  const cr = dist / 2 + r;
+  const candidates = state.enemyHash.anyNear(
+    Math.floor(cx - cr),
+    Math.floor(cy - cr),
+    Math.floor(cx + cr),
+    Math.floor(cy + cr),
+  )
+    ? gather(state, b, cx, cy, cr)
+    : 0;
   for (let i = 0; i < steps; i++) {
     const nx = b.x + sx;
     const ny = b.y + sy;

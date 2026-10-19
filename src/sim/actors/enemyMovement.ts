@@ -10,14 +10,13 @@ import { stepKnockback } from './knockback';
 import { readGround } from './ground';
 import { isStunned } from './terrainState';
 
-// Scratch: separation velocity per enemy index, neighbor query results, and a body for moveCircle.
+// Scratch: separation velocity per enemy index and a body for moveCircle.
 let sepX = new Float64Array(64);
 let sepY = new Float64Array(64);
-const near: number[] = [];
 const body: CircleBody = { x: 0, y: 0, vx: 0, vy: 0 };
-// Separation push accumulated for the enemy being processed.
-let accX = 0;
-let accY = 0;
+// Separation push (x, y) accumulated for the enemy being processed. A typed array, not module
+// `let`s: writing a float to a module variable allocates a heap number every time.
+const acc = new Float64Array(2);
 
 /**
  * The enemy phase of a tick:
@@ -132,22 +131,41 @@ function computeSeparation(state: GameState): void {
   const t = state.tuning.enemies;
   const p = state.player;
   const pr = state.tuning.player.radius;
+  const hash = state.enemyHash;
   for (let i = 0; i < n; i++) {
     const e = list[i]!;
     if (e.dead || enemyDef(e.kind).knockbackScale === 0 || isFrozen(e)) continue;
-    accX = 0;
-    accY = 0;
-    const count = state.enemyHash.queryCircle(e.x, e.y, e.radius, near);
+    // Neighbors in the hash's query order (the push sums depend on it). This is pushFrom written
+    // out: called per neighbor, it boxed its float arguments whenever V8 didn't inline it.
+    const count = hash.query(e.x, e.y, e.radius);
+    const near = hash.hits;
+    const stiffness = t.separationStiffness;
+    let ax = 0;
+    let ay = 0;
     for (let k = 0; k < count; k++) {
       const j = near[k]!;
       if (j === i) continue;
       const o = list[j]!;
       if (o.dead) continue;
-      pushFrom(e, o.x, o.y, o.radius, i < j ? -1 : 1, t.separationStiffness);
+      const dx = e.x - o.x;
+      const dy = e.y - o.y;
+      const rr = e.radius + o.radius;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= rr * rr) continue;
+      const d = Math.sqrt(d2);
+      const push = (rr - d) * stiffness;
+      if (d === 0) {
+        ax += (i < j ? -1 : 1) * push;
+        continue;
+      }
+      ax += (dx / d) * push;
+      ay += (dy / d) * push;
     }
-    if (!p.dead) pushFrom(e, p.x, p.y, pr, -1, t.separationStiffness);
-    let px = accX;
-    let py = accY;
+    acc[0] = ax;
+    acc[1] = ay;
+    if (!p.dead) pushFrom(e, p.x, p.y, pr, -1, stiffness);
+    let px = acc[0]!;
+    let py = acc[1]!;
     const sp2 = px * px + py * py;
     const max = t.separationMaxSpeed;
     if (sp2 > max * max) {
@@ -160,7 +178,10 @@ function computeSeparation(state: GameState): void {
   }
 }
 
-/** Adds to (accX, accY) the push on `e` away from a body at (ox, oy) with radius `or`. */
+/**
+ * Adds to `acc` the push on `e` away from a body at (ox, oy) with radius `or` (the player; the
+ * neighbor loop in computeSeparation does the same inline).
+ */
 function pushFrom(e: Enemy, ox: number, oy: number, or: number, tieSign: number, stiffness: number): void {
   const dx = e.x - ox;
   const dy = e.y - oy;
@@ -170,9 +191,9 @@ function pushFrom(e: Enemy, ox: number, oy: number, or: number, tieSign: number,
   const d = Math.sqrt(d2);
   const push = (rr - d) * stiffness;
   if (d === 0) {
-    accX += tieSign * push;
+    acc[0]! += tieSign * push;
     return;
   }
-  accX += (dx / d) * push;
-  accY += (dy / d) * push;
+  acc[0]! += (dx / d) * push;
+  acc[1]! += (dy / d) * push;
 }

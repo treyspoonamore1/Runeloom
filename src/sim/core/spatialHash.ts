@@ -24,9 +24,16 @@ export class SpatialHash {
   count = 0;
   /** Largest radius in the hash, so queries reach bodies centered in neighboring buckets. */
   maxRadius = 0;
+  /**
+   * Results of the last `query`: indices into the rebuilt array. Overwritten by the next query
+   * and replaced (grown) by a rebuild, so read it right after the query.
+   */
+  hits = new Int32Array(INITIAL_CAPACITY);
   private readonly bucketStart: Int32Array;
-  private items = new Int32Array(INITIAL_CAPACITY);
+  // Rebuild scratch, per live body in array order: its bucket and its index in `bodies`.
   private bucketOf = new Int32Array(INITIAL_CAPACITY);
+  private liveIndex = new Int32Array(INITIAL_CAPACITY);
+  // The snapshot in bucket order (bucket k's bodies are slots bucketStart[k]..bucketStart[k+1]-1).
   private xs = new Float64Array(INITIAL_CAPACITY);
   private ys = new Float64Array(INITIAL_CAPACITY);
   private rs = new Float64Array(INITIAL_CAPACITY);
@@ -54,15 +61,16 @@ export class SpatialHash {
   }
 
   private ensure(n: number): void {
-    if (n <= this.items.length) return;
-    let cap = this.items.length;
+    if (n <= this.bucketOf.length) return;
+    let cap = this.bucketOf.length;
     while (cap < n) cap *= 2;
-    this.items = new Int32Array(cap);
     this.bucketOf = new Int32Array(cap);
+    this.liveIndex = new Int32Array(cap);
     this.xs = new Float64Array(cap);
     this.ys = new Float64Array(cap);
     this.rs = new Float64Array(cap);
     this.srcIndex = new Int32Array(cap);
+    this.hits = new Int32Array(cap);
   }
 
   /** Re-buckets every live body. Indices returned by queries refer to `bodies`. */
@@ -77,17 +85,22 @@ export class SpatialHash {
       if (b.dead) continue;
       const bucket = this.row(b.y) * this.cols + this.col(b.x);
       this.bucketOf[n] = bucket;
-      this.xs[n] = b.x;
-      this.ys[n] = b.y;
-      this.rs[n] = b.radius;
-      this.srcIndex[n] = i;
+      this.liveIndex[n] = i;
       if (b.radius > maxR) maxR = b.radius;
       start[bucket + 1]!++;
       n++;
     }
     for (let k = 1; k < start.length; k++) start[k]! += start[k - 1]!;
     // Fill buckets in array order; `start[bucket]` advances, then is restored by shifting.
-    for (let j = 0; j < n; j++) this.items[start[this.bucketOf[j]!]!++] = j;
+    for (let j = 0; j < n; j++) {
+      const k = start[this.bucketOf[j]!]!++;
+      const i = this.liveIndex[j]!;
+      const b = bodies[i]!;
+      this.xs[k] = b.x;
+      this.ys[k] = b.y;
+      this.rs[k] = b.radius;
+      this.srcIndex[k] = i;
+    }
     for (let k = start.length - 1; k > 0; k--) start[k] = start[k - 1]!;
     start[0] = 0;
     this.count = n;
@@ -99,7 +112,37 @@ export class SpatialHash {
    * how many there are.
    */
   queryCircle(x: number, y: number, r: number, out: number[]): number {
-    out.length = 0;
+    const n = this.query(x, y, r);
+    // Shrinking an array is costly; skip it when the length is already right.
+    if (out.length !== n) out.length = 0;
+    const hits = this.hits;
+    for (let k = 0; k < n; k++) out[k] = hits[k]!;
+    return n;
+  }
+
+  /**
+   * False only if `query` finds nothing for any circle that lies within the cells x0..x1 ×
+   * y0..y1 (integers, inclusive): no body is in the buckets such a query could scan. A cheap
+   * test for hot callers whose queries are mostly empty (integer arguments, nothing to box).
+   */
+  anyNear(x0: number, y0: number, x1: number, y1: number): boolean {
+    if (this.count === 0) return false;
+    // Two cells beyond maxRadius cover the circle's last cell and the rounding in query's reach.
+    const m = Math.ceil(this.maxRadius) + 2;
+    const c0 = this.col(x0 - m);
+    const c1 = this.col(x1 + m);
+    const r0 = this.row(y0 - m);
+    const r1 = this.row(y1 + m);
+    const start = this.bucketStart;
+    for (let row = r0; row <= r1; row++) {
+      const b = row * this.cols;
+      if (start[b + c1 + 1]! > start[b + c0]!) return true;
+    }
+    return false;
+  }
+
+  /** queryCircle into `hits` instead of an array (same indices, same order). Returns how many. */
+  query(x: number, y: number, r: number): number {
     if (this.count === 0) return 0;
     const reach = r + this.maxRadius;
     const c0 = this.col(x - reach);
@@ -107,18 +150,23 @@ export class SpatialHash {
     const r0 = this.row(y - reach);
     const r1 = this.row(y + reach);
     const start = this.bucketStart;
+    const xs = this.xs;
+    const ys = this.ys;
+    const rs = this.rs;
+    const src = this.srcIndex;
+    const hits = this.hits;
+    const cols = this.cols;
+    let m = 0;
     for (let row = r0; row <= r1; row++) {
-      for (let col = c0; col <= c1; col++) {
-        const bucket = row * this.cols + col;
-        for (let k = start[bucket]!; k < start[bucket + 1]!; k++) {
-          const j = this.items[k]!;
-          const dx = this.xs[j]! - x;
-          const dy = this.ys[j]! - y;
-          const rr = this.rs[j]! + r;
-          if (dx * dx + dy * dy <= rr * rr) out.push(this.srcIndex[j]!);
-        }
+      // Buckets c0..c1 of a row are contiguous slots, in bucket order.
+      const end = start[row * cols + c1 + 1]!;
+      for (let k = start[row * cols + c0]!; k < end; k++) {
+        const dx = xs[k]! - x;
+        const dy = ys[k]! - y;
+        const rr = rs[k]! + r;
+        if (dx * dx + dy * dy <= rr * rr) hits[m++] = src[k]!;
       }
     }
-    return out.length;
+    return m;
   }
 }
