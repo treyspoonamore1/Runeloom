@@ -51,6 +51,7 @@ function spawnEnemyLine(
   rarity: EnemyRarity,
 ): void {
   if (!isEnemyKind(id)) throw new Error(`Unknown enemy kind "${id}"`);
+  if (enemyDef(id).isBoss) rarity = 'normal';
   const kinds: EnemyKind[] = new Array<EnemyKind>(count).fill(id);
   const swims = enemyDef(id).locomotion === 'swim';
   if (rarity === 'normal' && !swims) {

@@ -13,8 +13,8 @@ const MIN_LUNGE = 1;
 /**
  * Bog Lurker (CONTENT §5): drifts submerged toward the player through its water
  * ('lurk'; actors/locomotion.ts keeps it in water, so it waits at the shore nearest them).
- * When the player is within the lunge's range with line of sight and it is off cooldown, it
- * surfaces ('lurkerSurface') and lunges: a 1.2 s ripple telegraph along the planned path, then a
+ * When the player is within the lunge's range with line of sight, the water lets the lunge
+ * reach them and it is off cooldown, it surfaces ('lurkerSurface') and lunges: a 1.2 s ripple telegraph along the planned path, then a
  * dash at 32 cells/s through the water that bites on contact. After the lunge it submerges
  * again ('lurkerSubmerge'). Trapped in ice it does nothing (ai/index.ts).
  */
@@ -27,8 +27,10 @@ export function stepLurker(state: GameState, e: Enemy, b: Lurker, def: AttackDef
   }
   if (toPlayer.gap <= def.range && ai.cooldown <= 0 && ai.los && def.dash) {
     const len = planDash(state, e, def.dash, toPlayer.ux, toPlayer.uy, toPlayer.dist);
+    // Only when the water lets the lunge reach them (a player well up the bank is safe).
+    const reaches = toPlayer.gap - len <= def.dash.reach;
     const aim = { length: dashLineLength(e, len < MIN_LUNGE ? 0 : len) };
-    if (attack(state, e, def, toPlayer.ux, toPlayer.uy, aim)) {
+    if (reaches && attack(state, e, def, toPlayer.ux, toPlayer.uy, aim)) {
       s.submerged = false;
       emit(state, { type: 'lurkerSurface', id: e.id, x: e.x, y: e.y });
       return;

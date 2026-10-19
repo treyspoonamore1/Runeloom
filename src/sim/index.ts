@@ -151,3 +151,30 @@ export { isDoused, burningOwner } from './actors/chemistry';
 export { hurtsEnemies } from './ai/hazards';
 export { extinguish, teamOf, teamOfSource, shockFor } from './combat/ailments';
 export { dealDirectDamage } from './combat/hits';
+// M4 enemies and bosses.
+export {
+  AI_SLOTS,
+  createEnemySpecial,
+  createBossState,
+  type EnemySpecial,
+  type BossState,
+} from './actors/enemies';
+export {
+  rollMods,
+  rarityLifeMult,
+  rarityMinions,
+  shippedMods,
+  moveSpeedMult,
+  attackSpeedMult,
+} from './actors/rarity';
+export { isWaterAt, locomotionOf, ignoresGround, floatRoom } from './actors/locomotion';
+export { explodeHulk } from './actors/hulkBlast';
+export { enemyTakenMult } from './actors/chemistry';
+export { spillOil } from './combat/oil';
+export { attackFootprint, orientShape, type AttackAim } from './combat/enemyAttacks';
+export { planDash, dashLineLength } from './combat/dash';
+export { stepEnemyPassive } from './ai/passive';
+export { strikePoint } from './ai/target';
+export { floodArena } from './ai/bosses/flood';
+export { brazierCenters, stepBrazierStorm } from './ai/bosses/braziers';
+export { phaseThresholds, enterPhase, setSuperheat } from './ai/bosses/phases';

@@ -21,7 +21,9 @@ import { forms, runeIds, runes, runeShips, shipsThrough } from '../data/runes';
 import { spindles, testSpindle } from '../data/spindles';
 import { scenes } from '../src/app/scenes';
 import { defaultTuning } from '../data/tuning';
-import { isEnemyKind } from '../data/enemies';
+import { enemies, enemyDef, isEnemyKind } from '../data/enemies';
+import { isPackId, packs } from '../data/packs';
+import { isMonsterMod, monsterMods } from '../data/monsterMods';
 import { checkPositiveNumbers, missingRefs, spawnMarkerDiffs } from './lib/checks';
 import { listRoomIds, loadRoomText } from './lib/rooms';
 
@@ -60,8 +62,10 @@ for (const [id, data] of parsed) {
   for (const sp of data.header.spawns) {
     if (sp.kind === 'enemy' && !isEnemyKind(sp.id))
       errors.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} is not in data/enemies.ts`);
-    if (sp.kind === 'pack')
-      warnings.push(`rooms/${id}.txt: @spawn ${sp.marker} pack:${sp.id} (packs arrive in M4)`);
+    if (sp.kind === 'pack' && !isPackId(sp.id))
+      errors.push(`rooms/${id}.txt: @spawn ${sp.marker} pack:${sp.id} is not in data/packs.ts`);
+    if (sp.rarity && sp.kind === 'enemy' && isEnemyKind(sp.id) && enemyDef(sp.id).isBoss)
+      errors.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} is a boss and can't be ${sp.rarity}`);
   }
   const d = spawnMarkerDiffs(data);
   for (const m of d.usedNotDeclared)
@@ -69,6 +73,30 @@ for (const [id, data] of parsed) {
   for (const m of d.declaredNotUsed)
     warnings.push(`rooms/${id}.txt: @spawn ${m} is declared but not placed in the grid`);
 }
+
+// Enemies, packs and monster mods (M4): cross-references and numbers.
+for (const [kind, def] of Object.entries(enemies)) {
+  const at = `data/enemies ${kind}`;
+  for (const p of checkFinite(def)) errors.push(`${at}: ${p}`);
+  const b = def.behavior;
+  if (b.kind === 'spawner' && !isEnemyKind(b.spawn)) errors.push(`${at}: spawns unknown kind "${b.spawn}"`);
+  const names = new Set<string>();
+  for (const a of [def.attack, ...('extraAttacks' in def ? def.extraAttacks : [])]) {
+    if (!a) continue;
+    if (names.has(a.name)) errors.push(`${at}: attack name "${a.name}" repeats`);
+    names.add(a.name);
+  }
+}
+for (const [id, pack] of Object.entries(packs)) {
+  const kinds = pack.members.map((m) => m.kind as string);
+  for (const k of [...kinds, pack.leader, pack.minion])
+    if (!isEnemyKind(k)) errors.push(`data/packs ${id}: unknown enemy kind "${k}"`);
+  if (!kinds.includes(pack.leader)) errors.push(`data/packs ${id}: leader "${pack.leader}" isn't a member`);
+  for (const m of pack.members)
+    if (!(m.min >= 1 && m.max >= m.min)) errors.push(`data/packs ${id}: ${m.kind} count ${m.min}-${m.max}`);
+}
+for (const id of Object.keys(monsterMods))
+  if (!isMonsterMod(id)) errors.push(`data/monsterMods ${id}: bad id`);
 
 // Runes (data/runes): ids, names, cross-references, numbers.
 const notations = new Map<string, string>();
