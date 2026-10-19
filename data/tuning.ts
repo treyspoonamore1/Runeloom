@@ -312,6 +312,11 @@ export const defaultTuning = {
     zoom: 1,
     /** Cells of void the view may show beyond the room edge when the room is larger than the view. */
     edgeMargin: 2,
+    /**
+     * Fraction of the screen height the bottom HUD covers. The view may scroll this far past a
+     * room's bottom edge, and small rooms center above it, so nothing hides behind the hotbar.
+     */
+    hudInset: 0.28,
   },
   /** Rooms, exits and puzzle objects (M4, src/sim/world). */
   world: {

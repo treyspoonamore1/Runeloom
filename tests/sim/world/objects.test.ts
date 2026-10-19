@@ -3,6 +3,7 @@ import {
   applyElement,
   createGame,
   killEnemy,
+  parseLinkCondition,
   PLAYER_ID,
   spawnEnemy,
   step,
@@ -288,6 +289,23 @@ describe('cleared', () => {
     const empty = inlineRoom(ROOM.replace('@spawn 1 enemy:tinderling\n', '').replace('.1.', '...'));
     run(empty, 1);
     expect(obj(empty, 'door').on).toBe(true);
+  });
+});
+
+describe('sealed', () => {
+  it('never opens (the K10 storm door), and validate accepts it as a link', () => {
+    const s = inlineRoom(`@id t/sealed
+@level 1
+@link D sealed
+#########
+#...x...#
+####D####
+#.......#
+#########
+`);
+    run(s, 30);
+    expect(obj(s, 'door').on).toBe(false);
+    expect(parseLinkCondition('sealed')).toEqual({ kind: 'sealed' });
   });
 });
 

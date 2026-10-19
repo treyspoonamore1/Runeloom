@@ -120,11 +120,9 @@ runCli(async () => {
           throw new ArgError(`Unknown or unauthored room "${s}". Available: ${all.join(', ')}`);
         for (const view of ['fit', 'play'] as const) {
           errors.length = 0;
-          await page.goto(`http://127.0.0.1:${port}/?scene=room&seed=${SEED}&paused=1`);
+          await page.goto(`http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`);
           await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
-          const dropped = await showRoom(page, regionRooms[s], view);
-          if (view === 'fit' && dropped.length)
-            console.warn(`note: ${s} shown without ${dropped.join('; ')}`);
+          await showRoom(page, regionRooms[s], view);
           const file = join(SHOTS_DIR, `${milestone}_room_${s}_${view}.png`);
           await page.screenshot({ path: file, timeout: 120_000 });
           written.push(file);
@@ -181,7 +179,9 @@ runCli(async () => {
     } else if (a.set === 'gallery') {
       const url = `http://127.0.0.1:${port}/?scene=gallery`;
       const only = a.section?.split(',');
-      written.push(...(await galleryShots(page, url, { dir: SHOTS_DIR, milestone, only, perf: a.perf === true })));
+      written.push(
+        ...(await galleryShots(page, url, { dir: SHOTS_DIR, milestone, only, perf: a.perf === true })),
+      );
       if (errors.length) console.warn(`warning: page errors in the gallery: ${errors.join('; ')}`);
     } else if (a.set !== undefined)
       throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload, ui, gallery`);
