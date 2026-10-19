@@ -43,7 +43,8 @@ function plaque(s: LabStation): Container {
   const k = PLAQUE.textCells / PLAQUE.fontPx;
   const maxW = s.rect.w * T + PLAQUE.wrapExtra - PLAQUE.padX * 2;
   const text = new Text({
-    text: s.label,
+    // Keep numbers with their units ("6 s") on one line.
+    text: s.label.replace(/(\d) s\b/g, '$1\u00a0s'),
     resolution: 2,
     style: {
       fontFamily: 'Arial Black, Arial, sans-serif',

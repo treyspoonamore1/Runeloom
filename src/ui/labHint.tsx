@@ -1,4 +1,4 @@
-/** Chemistry Lab controls: the hint in the corner, R to run the station you stand at, Shift+R for all. */
+/** Chemistry Lab controls: the hint in the bottom-left corner (clear of the plaques), R to run the station you stand at, Shift+R for all. */
 import { h, render } from 'preact';
 import { labStations } from '../../data/lab';
 import { nearestStation } from '../sim';
@@ -11,8 +11,8 @@ export const LAB_SCENE = 'lab';
 
 const HINT_STYLE: Record<string, string> = {
   position: 'fixed',
-  top: '8px',
-  right: '8px',
+  bottom: '8px',
+  left: '8px',
   padding: '6px 10px',
   background: 'rgba(14, 19, 24, 0.82)',
   border: '1px solid #2c3a45',
