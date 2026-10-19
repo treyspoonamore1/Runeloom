@@ -14,6 +14,7 @@ import { fireCell, frostCell, steamAround, stormCell, type CellContext } from '.
 import { flush, flushFx } from './fx';
 import { rasterize } from './raster';
 import { materialByCode } from '../../../data/materials';
+import { elementOnObjects } from '../world/objectHits';
 
 /** Elements that change terrain. Tide and Gale arrive in M8. */
 export type TerrainElement = 'fire' | 'frost' | 'storm' | 'tide' | 'gale';
@@ -78,6 +79,8 @@ export function paintElement(state: GameState, app: ElementApplication): void {
   cells.set(list.cells.subarray(0, n));
   const c: CellContext = { owner: app.owner, durationMult: app.durationMult };
   g.version++;
+  // M4 puzzle objects: Fire lights braziers and melts ice blocks, Storm powers switches.
+  elementOnObjects(state, app.element, cells, n);
   switch (app.element) {
     case 'fire':
       for (let k = 0; k < n; k++) {

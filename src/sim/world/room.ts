@@ -8,6 +8,12 @@ export interface RoomHeader {
   exits: { dir: string; room: string }[];
   spawns: { marker: string; kind: 'enemy' | 'pack'; id: string; count: number }[];
   links: { door: string; condition: string }[];
+  /**
+   * `@note <char> <text>` (M4): when an object of that tile character activates (a switch is
+   * powered, a door opens, a chest opens, a pickup is taken, a Loom Stone wakes), the sim sends a
+   * 'note' event with the text for the UI to show.
+   */
+  notes: { char: string; text: string }[];
 }
 
 /** A parsed room file (CONTENT §6), before it becomes simulation data. */
@@ -29,7 +35,7 @@ export class RoomParseError extends Error {
 }
 
 export function parseRoom(text: string): RoomData {
-  const header: RoomHeader = { id: '', name: '', level: 1, exits: [], spawns: [], links: [] };
+  const header: RoomHeader = { id: '', name: '', level: 1, exits: [], spawns: [], links: [], notes: [] };
   const rows: string[] = [];
   let firstRowLine = 0;
   const lines = text.split('\n');
@@ -61,6 +67,8 @@ export function parseRoom(text: string): RoomData {
   return { header, tilesW, tilesH: rows.length, rows };
 }
 
+const EXIT_DIRS: readonly string[] = ['w', 'e', 'n', 's'];
+
 function parseHeaderLine(h: RoomHeader, line: string, lineNo: number): void {
   const [key, ...args] = line.slice(1).trim().split(/\s+/);
   const need = (n: number): void => {
@@ -85,6 +93,8 @@ function parseHeaderLine(h: RoomHeader, line: string, lineNo: number): void {
     }
     case 'exit':
       need(2);
+      if (!EXIT_DIRS.includes(args[0]!))
+        throw new RoomParseError('@exit direction must be w, e, n or s', lineNo);
       h.exits.push({ dir: args[0]!, room: args[1]! });
       break;
     case 'spawn': {
@@ -101,6 +111,13 @@ function parseHeaderLine(h: RoomHeader, line: string, lineNo: number): void {
       need(2);
       h.links.push({ door: args[0]!, condition: args[1]! });
       break;
+    case 'note': {
+      need(2);
+      if (args[0]!.length !== 1) throw new RoomParseError('@note needs one tile character', lineNo);
+      // Keep the text as written (single spaces between words).
+      h.notes.push({ char: args[0]!, text: args.slice(1).join(' ') });
+      break;
+    }
     default:
       throw new RoomParseError(`unknown header @${key}`, lineNo);
   }
@@ -126,6 +143,8 @@ export interface Room {
   spawnMarkers: { marker: string; x: number; y: number }[];
   /** `@spawn` headers, in file order. */
   spawns: RoomHeader['spawns'];
+  /** Every header (exits, links, notes, …) as parsed. */
+  header: RoomHeader;
   /** Player start in cells: the first Loom Stone `x`, else the room center. */
   spawnX: number;
   spawnY: number;
@@ -175,6 +194,7 @@ export function buildRoom(data: RoomData): Room {
     shotSolid,
     spawnMarkers,
     spawns: data.header.spawns,
+    header: data.header,
     spawnX,
     spawnY,
   };

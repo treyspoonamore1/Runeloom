@@ -1,0 +1,12 @@
+@id test/puzzle_ice
+@name Ice Slide
+@level 1
+@link D plates:all
+#############
+#...........#
+#.x.IiiiiiiT#
+#...........#
+#.....I.....#
+######D######
+#...........#
+#############

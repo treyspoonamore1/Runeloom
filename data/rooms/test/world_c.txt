@@ -1,0 +1,9 @@
+@id test/world_c
+@name Test Hollow
+@level 1
+@exit n test/world_a
+####^#####
+#........#
+#.x....H.#
+#......L.#
+##########

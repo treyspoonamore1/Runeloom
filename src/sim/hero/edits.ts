@@ -9,6 +9,7 @@
  */
 import type { EquipSlot } from './types';
 import type { GameState } from '../state';
+import { restAtLoomStone, travelToLoomStone } from '../world/adventure';
 
 export type HeroEdit =
   | { kind: 'equip'; uid: number; slot: EquipSlot }
@@ -29,6 +30,9 @@ export type HeroEdit =
 
 /** Applies an edit if it is legal; returns why not, or null when it applied. Stub. */
 export function applyHeroEdit(state: GameState, edit: HeroEdit): string | null {
-  void state;
+  // ---- World edits (world/puzzles agent): Loom Stone rest and fast travel (world/adventure.ts) ----
+  if (edit.kind === 'travel') return travelToLoomStone(state, edit.roomId, edit.key);
+  if (edit.kind === 'rest') return restAtLoomStone(state);
+  // ---- end of world edits ----
   return `${edit.kind}: not available yet`;
 }

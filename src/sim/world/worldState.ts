@@ -22,7 +22,10 @@ export type Edge = 'w' | 'e' | 'n' | 's';
 
 /** How the player arrives in a room. */
 export type Arrival =
-  /** Walked through an exit: placed just inside the target room's opposite edge exit. */
+  /**
+   * Walked through an exit: `from` is the edge of the room the player LEFT by, so they are placed
+   * just inside the target room's opposite edge exit (left by 'e' → arrive at the 'w' edge).
+   */
   | { kind: 'edge'; from: Edge }
   /** Respawn or fast travel: at the Loom Stone with this object key. */
   | { kind: 'loomStone'; key: string }
@@ -57,7 +60,19 @@ export interface WorldState {
   /** Boss enemy ids defeated, e.g. "tar_matriarch". */
   bossesDefeated: string[];
   /** A transition requested this step, applied at the end of the step. Null otherwise. */
-  pending: { roomId: string; arrival: Arrival } | null;
+  pending: PendingTransition | null;
+}
+
+/**
+ * Why the room changes. 'respawn' (death) and 'rest' repopulate every room before entering;
+ * 'exit' and 'travel' don't. Absent means 'exit'.
+ */
+export type TransitionReason = 'exit' | 'respawn' | 'rest' | 'travel';
+
+export interface PendingTransition {
+  roomId: string;
+  arrival: Arrival;
+  reason?: TransitionReason;
 }
 
 export function createWorldState(roomId: string): WorldState {
@@ -71,6 +86,22 @@ export function createWorldState(roomId: string): WorldState {
     bossesDefeated: [],
     pending: null,
   };
+}
+
+/** The dungeon (key ring) a room belongs to: its id's region prefix ("kiln/k3_x" → "kiln"). */
+export function dungeonOf(roomId: string): string {
+  const slash = roomId.indexOf('/');
+  return slash < 0 ? roomId : roomId.slice(0, slash);
+}
+
+/** The Loom Stone id stored in `loomStones`: `${roomId}#${objectKey}`. */
+export function loomStoneId(roomId: string, key: string): string {
+  return `${roomId}#${key}`;
+}
+
+/** A deep copy (saves, replays, tests). */
+export function cloneWorld(w: WorldState): WorldState {
+  return JSON.parse(JSON.stringify(w)) as WorldState;
 }
 
 /** Flags for a room, created on first use. */
@@ -116,5 +147,6 @@ export function hashWorld(h: Hasher, w: WorldState): void {
   if (w.pending) {
     h.string(w.pending.roomId).byte(0);
     hashArrival(h, w.pending.arrival);
+    h.string(w.pending.reason ?? 'exit').byte(0);
   }
 }

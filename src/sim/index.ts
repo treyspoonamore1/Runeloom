@@ -151,3 +151,49 @@ export { isDoused, burningOwner } from './actors/chemistry';
 export { hurtsEnemies } from './ai/hazards';
 export { extinguish, teamOf, teamOfSource, shockFor } from './combat/ailments';
 export { dealDirectDamage } from './combat/hits';
+// ---- M4 world and puzzles (src/sim/world, src/sim/bots/script.ts) ----
+export {
+  createWorldState,
+  roomFlags,
+  dungeonOf,
+  loomStoneId,
+  cloneWorld,
+  type WorldState,
+  type RoomFlags,
+  type RoomSource,
+  type Edge,
+  type Arrival,
+  type PendingTransition,
+  type TransitionReason,
+} from './world/worldState';
+export {
+  buildObjects,
+  stepObjects,
+  objectAt,
+  objectCenter,
+  OBJECT_KIND_BY_CHAR,
+  OBJECT_CHAR,
+  type ObjectKind,
+  type WorldObject,
+} from './world/objects';
+export { enterRoom, processTransition, requestRespawn } from './world/transition';
+export {
+  createAdventure,
+  newGameHero,
+  NEW_GAME_LOADOUT,
+  loomStoneHere,
+  restAtLoomStone,
+  travelToLoomStone,
+  type AdventureOptions,
+} from './world/adventure';
+export {
+  buildRegionMap,
+  layoutRooms,
+  type RegionMap,
+  type MapNode,
+  type MapLoomStone,
+} from './world/regionMap';
+export { parseLinkCondition, linkMet, type LinkCondition } from './world/objectLinks';
+export { markRoomCleared, repopulateRooms, roomBossKinds, bossRoomDone } from './world/roomClear';
+export { exitTilesOn, exitEdge, arrivalPoint, EXIT_CHAR, OPPOSITE } from './world/exits';
+export type { WorldEvent } from './world/worldEvents';

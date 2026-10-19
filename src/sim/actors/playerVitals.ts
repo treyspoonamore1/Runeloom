@@ -6,6 +6,7 @@ import type { PlayerState } from './player';
 import { cancelCast } from '../weave/runtime/castState';
 import { clearAilments } from '../combat/ailments';
 import { resetTerrainState } from './terrainState';
+import { requestRespawn } from '../world/transition';
 
 type CombatTuning = Tuning['combat'];
 
@@ -69,6 +70,8 @@ export function respawnPlayer(state: GameState): void {
   p.iframesLeft = t.player.respawnIframes;
   resetTerrainState(p.terrain, p.x, p.y);
   emit(state, { type: 'playerRespawn', x: p.x, y: p.y });
+  // M4 adventure: back at the respawn Loom Stone (maybe another room) at the end of this step.
+  if (state.mode === 'adventure') requestRespawn(state);
 }
 
 /** Full life and mana for the player's level, alive. */

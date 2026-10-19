@@ -1,0 +1,12 @@
+@id test/puzzle_braziers
+@name Two Braziers
+@level 1
+@exit w test/puzzle_block
+@link D braziers:all
+#############
+#..B.....B..#
+<...........#
+#.....x.....#
+######D######
+#.....L.....#
+#############

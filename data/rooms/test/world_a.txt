@@ -1,0 +1,11 @@
+@id test/world_a
+@name Test Glade
+@level 1
+@exit e test/world_b
+@exit s test/world_c
+##########
+#........#
+#..x.....>
+#........>
+#........#
+####v#####
