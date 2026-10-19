@@ -66,15 +66,18 @@ export class RoomView {
   map: TileMap | null = null;
   private grid: Grid | null = null;
   private blockCells = -1;
+  /** Tiles (index ty·w + tx) drawn by the M4 object layer instead of the bake: doors, chests, blocks, Loom Stones. */
+  private owned: ReadonlySet<number> = new Set();
 
   constructor() {
     this.root.addChild(this.shadows, this.blocks, this.props, this.burnables);
   }
 
-  build(room: Room, grid: Grid): TileMap {
+  build(room: Room, grid: Grid, owned: ReadonlySet<number> = new Set()): TileMap {
     const map = new TileMap(room);
     this.map = map;
     this.grid = grid;
+    this.owned = owned;
     this.blockCells = -1;
     this.bakeBlocks();
     this.props.clear();
@@ -110,7 +113,7 @@ export class RoomView {
   /** A tile is raised if the room says so and the grid still has a block at its center. */
   private raised(tx: number, ty: number): boolean {
     const map = this.map!;
-    if (!map.isRaised(tx, ty)) return false;
+    if (!map.isRaised(tx, ty) || this.owned.has(ty * map.w + tx)) return false;
     const grid = this.grid!;
     const i = (ty * T + (T >> 1)) * grid.width + tx * T + (T >> 1);
     return isBlockCode(grid.ground[i]!);
@@ -177,6 +180,8 @@ export class RoomView {
     for (let ty = 0; ty < map.h; ty++) {
       for (let tx = 0; tx < map.w; tx++) {
         const prop = map.at(tx, ty)!.prop;
+        // Braziers keep their baked bowl; the object layer draws the rest of an owned tile.
+        if (prop !== 'brazier' && this.owned.has(ty * map.w + tx)) continue;
         const x = tx * T;
         const y = ty * T;
         if (prop === 'crate' || prop === 'barricade' || prop === 'barrel') {

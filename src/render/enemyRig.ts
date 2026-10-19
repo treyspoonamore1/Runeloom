@@ -1,29 +1,29 @@
 import { Container, Sprite } from 'pixi.js';
-import type { EnemyKind } from '../../data/enemies';
 import type { Atlas } from './atlas';
 import { ENEMY as C } from './combatPalette';
+import type { BeastRig } from './bestiary/beastRig';
+import { SMALL_RIGS } from './bestiary/beastRig';
+import { BIG_RIGS } from './bestiary/beastRigBig';
+import { isM4Kind, M4_LOOK } from './bestiary/bestiaryPalette';
 
-/** Per-kind layout: shadow size, feet height (lift pivot), face offset scale. */
-export const LAYOUT: Record<EnemyKind, { shadowRx: number; shadowRy: number; shadowY: number; foot: number }> = {
+export interface KindLayout {
+  shadowRx: number;
+  shadowRy: number;
+  shadowY: number;
+  foot: number;
+}
+
+/** Per-kind layout of the M1 kinds: shadow size, feet height (lift pivot). M4 kinds: M4_LOOK. */
+export const LAYOUT: Record<'tinderling' | 'shieldbearer' | 'ember_archer' | 'dummy', KindLayout> = {
   tinderling: { shadowRx: 1.25, shadowRy: 0.55, shadowY: 0.75, foot: 0.85 },
   shieldbearer: { shadowRx: 2.5, shadowRy: 1.05, shadowY: 1.55, foot: 1.6 },
   ember_archer: { shadowRx: 1.45, shadowRy: 0.65, shadowY: 1.15, foot: 1.3 },
   dummy: { shadowRx: 1.6, shadowRy: 0.65, shadowY: 1.35, foot: 1.4 },
-  // M4 placeholders (enemies agent): drawn as dummies until the visuals agent adds their looks.
-  bog_lurker: { shadowRx: 1.7, shadowRy: 0.7, shadowY: 1.35, foot: 1.4 },
-  tar_hulk: { shadowRx: 2.6, shadowRy: 1.1, shadowY: 1.9, foot: 1.9 },
-  frost_wisp: { shadowRx: 1.3, shadowRy: 0.55, shadowY: 1.1, foot: 1.2 },
-  stormcaller: { shadowRx: 1.5, shadowRy: 0.65, shadowY: 1.2, foot: 1.3 },
-  kiln_mite: { shadowRx: 0.9, shadowRy: 0.4, shadowY: 0.6, foot: 0.7 },
-  brood_kiln: { shadowRx: 2.6, shadowRy: 1.1, shadowY: 1.9, foot: 1.9 },
-  tar_matriarch: { shadowRx: 3.8, shadowRy: 1.6, shadowY: 2.8, foot: 2.8 },
-  cinder_warden: { shadowRx: 4.2, shadowRy: 1.8, shadowY: 3.1, foot: 3.1 },
 };
 
-/** M4 placeholder (enemies agent): kinds without their own sprites yet borrow the dummy's. */
-const DRAWN: ReadonlySet<string> = new Set(['tinderling', 'shieldbearer', 'ember_archer', 'dummy']);
-function lookOf(kind: EnemyKind): string {
-  return DRAWN.has(kind) ? kind : 'dummy';
+export function layoutOf(kind: string): KindLayout {
+  if (isM4Kind(kind)) return M4_LOOK[kind];
+  return LAYOUT[kind as keyof typeof LAYOUT] ?? LAYOUT.tinderling;
 }
 
 /** Tinderling flame tongues: x, y, scale. */
@@ -45,14 +45,17 @@ export interface EnemyRig {
   arrow: Sprite | null;
   /** Shieldbearer: char marks over the shield. */
   scorch: Sprite | null;
+  /** M4 kinds: their parts and poses (bestiary/), and the container that scales their art to the sim radius. */
+  beast: BeastRig | null;
+  art: Container;
 }
 
 /** Builds a kind's layered sprites into `root` (feet, legs) and `lift` (everything that bobs). */
-export function buildRig(kind: EnemyKind, atlas: Atlas, root: Container, lift: Container): EnemyRig {
-  const L = LAYOUT[kind];
+export function buildRig(kind: string, atlas: Atlas, root: Container, lift: Container): EnemyRig {
+  const L = layoutOf(kind);
   const sprite = (name: string) => new Sprite(atlas.get(name));
   const r: EnemyRig = {
-    flash: sprite(`${lookOf(kind)}_flash`),
+    flash: sprite(`${kind}_flash`),
     face: null,
     flames: [],
     legs: [],
@@ -61,9 +64,24 @@ export function buildRig(kind: EnemyKind, atlas: Atlas, root: Container, lift: C
     strings: [],
     arrow: null,
     scorch: null,
+    beast: null,
+    art: root,
   };
   lift.pivot.set(0, L.foot);
   lift.position.set(0, L.foot);
+  if (isM4Kind(kind)) {
+    const art = new Container();
+    root.addChild(art);
+    art.addChild(lift);
+    const body = sprite(`${kind}_body`);
+    lift.addChild(body);
+    r.flash.alpha = 0;
+    lift.addChild(r.flash);
+    const make = SMALL_RIGS[kind] ?? BIG_RIGS[kind];
+    r.beast = make ? make(atlas, art, lift, body, r.flash) : null;
+    r.art = art;
+    return r;
+  }
   if (kind === 'tinderling') {
     for (const [lx, ly] of [
       [-0.7, 0.7],
@@ -85,7 +103,7 @@ export function buildRig(kind: EnemyKind, atlas: Atlas, root: Container, lift: C
     }
   }
   root.addChild(lift);
-  lift.addChild(sprite(`${lookOf(kind)}_body`));
+  lift.addChild(sprite(`${kind}_body`));
   r.flash.alpha = 0;
   lift.addChild(r.flash);
   if (kind === 'tinderling') {

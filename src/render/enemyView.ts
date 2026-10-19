@@ -1,15 +1,20 @@
 import { Container, Sprite } from 'pixi.js';
 import { actionSpeed, PLAYER_ID, type Enemy, type GameState } from '../sim';
 import type { DamageType } from '../../data/combatTypes';
-import { enemyDef, type EnemyKind } from '../../data/enemies';
+import type { EnemySignal } from '../app/m4Signals';
+import { m4AttackKey } from '../app/m4Wiring';
 import type { Atlas } from './atlas';
 import type { AilmentParts } from './ailmentParts';
 import { mixRgb } from './ailmentPalette';
 import { ENEMY as C, HIT_FLASH } from './combatPalette';
 import { angleDelta, clamp, smoothstep, TAU } from './mathx';
 import { BOW_TIP_X, BOW_TIP_Y } from './enemyShapes';
-import { buildRig, FLAME_POS, LAYOUT } from './enemyRig';
+import { buildRig, FLAME_POS, layoutOf } from './enemyRig';
 import { CREATURE } from './creaturePalette';
+import type { BeastCtx, BeastRig } from './bestiary/beastRig';
+import type { BeastFx } from './bestiary/beastFx';
+import { isM4Kind, M4_LOOK } from './bestiary/bestiaryPalette';
+import { kindAttack, kindSpeed } from './kindInfo';
 
 /** A doused Tinderling is washed ashen: its white flash silhouette, grey, at this alpha. */
 const ASH = CREATURE.ash;
@@ -38,6 +43,15 @@ export class EnemyView {
   private readonly scorch: Sprite | null;
   /** A doused Tinderling: its flames are out. */
   private doused = false;
+  /** M4 kinds: kind-specific parts and poses, the art scale container and its frame context. */
+  private readonly beast: BeastRig | null;
+  private readonly art: Container;
+  private artScale = 1;
+  private ctx: BeastCtx | null = null;
+  /** Windup length of attacks the kind's def doesn't describe, seen when the windup started. */
+  private windName = '';
+  private windTotal = 0;
+  private windPrev = 0;
 
   enemy: Enemy | null = null;
   shadow: FxParticle | null = null;
@@ -76,10 +90,12 @@ export class EnemyView {
   y = 0;
 
   constructor(
-    readonly kind: EnemyKind,
+    readonly kind: string,
     atlas: Atlas,
   ) {
     const r = buildRig(kind, atlas, this.root, this.lift);
+    this.beast = r.beast;
+    this.art = r.art;
     this.flash = r.flash;
     this.face = r.face;
     this.flames = r.flames;
@@ -113,6 +129,10 @@ export class EnemyView {
     for (const f of this.flames) f.visible = true;
     if (this.held) this.held.visible = true;
     if (this.scorch) this.scorch.alpha = 0;
+    this.windName = '';
+    this.artScale = isM4Kind(this.kind) ? e.radius / M4_LOOK[this.kind].radius : 1;
+    if (this.art !== this.root) this.art.scale.set(this.artScale);
+    this.beast?.reset();
   }
 
   /** A Tinderling went out (Wet) or relit: its flames hide or show (CreatureFx). */
@@ -172,10 +192,14 @@ export class EnemyView {
     this.topple = (this.recoilX >= 0 ? 1 : -1) * (0.9 + Math.random() * 0.4);
     for (const f of this.flames) f.visible = false;
     if (this.arrow) this.arrow.visible = false;
+    this.beast?.die();
   }
 
-  /** Per-frame update of a live enemy at interpolated (x, y). */
-  update(state: GameState, x: number, y: number, dt: number): void {
+  /**
+   * Per-frame update of a live enemy at interpolated (x, y). M4 kinds also take their derived
+   * signals (m4Signals.ts) and the beast particle layers.
+   */
+  update(state: GameState, x: number, y: number, dt: number, sig?: EnemySignal, beastFx?: BeastFx): void {
     const e = this.enemy!;
     // Chill slows the procedural animation by the sim's action speed; Freeze stops it.
     const sp = actionSpeed(state, e);
@@ -187,9 +211,9 @@ export class EnemyView {
     const k = 1 - Math.exp(-dt / 0.06);
     this.velX += ((e.x - e.prevX) * 60 - this.velX) * k;
     this.velY += ((e.y - e.prevY) * 60 - this.velY) * k;
-    const def = enemyDef(e.kind);
+    const topSpeed = kindSpeed(e.kind);
     const speed = Math.hypot(this.velX, this.velY);
-    const norm = def.speed > 0 ? 1 / def.speed : 0;
+    const norm = topSpeed > 0 ? 1 / topSpeed : 0;
     this.run += (Math.min(1, speed * norm) - this.run) * k;
 
     // Facing: attack direction while attacking, else the target (archer) or the sim facing.
@@ -216,7 +240,8 @@ export class EnemyView {
 
     // Windup anticipation: lean back and crouch; lunge forward on release.
     let wind = 0;
-    if (a.phase === 'windup' && def.attack) wind = smoothstep(0, 1, 1 - a.timeLeft / def.attack.windup);
+    if (a.phase === 'windup') wind = smoothstep(0, 1, 1 - a.timeLeft / this.windupOf(a.name, a.timeLeft));
+    else this.windName = '';
     this.lungeT = Math.max(0, this.lungeT - dt);
     const lunge = this.lungeT > 0 ? Math.sin((this.lungeT / 0.16) * Math.PI) * 0.6 : 0;
     const off = lunge - wind * C.windupLean;
@@ -224,7 +249,8 @@ export class EnemyView {
     // Bob and waddle.
     this.bobPhase += (speed * dt * Math.PI) / C.bobStride;
     const b = Math.abs(Math.sin(this.bobPhase + this.phase));
-    const hop = b * C.bobHeight * this.run * (e.kind === 'shieldbearer' ? 0.7 : 1);
+    const hopK = e.kind === 'shieldbearer' ? 0.7 : this.artScale !== 1 || isM4Kind(this.kind) ? this.hopScale() : 1;
+    const hop = b * C.bobHeight * this.run * hopK;
     const waddle = Math.sin(this.bobPhase + this.phase) * 0.12 * this.run;
 
     if (sp === 0) this.deformVel = this.wobbleVel = 0;
@@ -237,7 +263,7 @@ export class EnemyView {
     const popScale = pop < 1 ? 0.3 + 0.7 * pop + Math.sin(pop * Math.PI) * 0.25 : 1;
 
     this.root.position.set(x + this.recoilX + cx * off, y + this.recoilY + cy * off * 0.6);
-    this.lift.position.y = LAYOUT[this.kind].foot - hop;
+    this.lift.position.y = layoutOf(this.kind).foot - hop;
     const sq = 1 + this.deform;
     const crouch = 1 - wind * C.windupSquash;
     this.lift.scale.set(popScale * (1 / sq) * (2 - crouch), popScale * sq * crouch);
@@ -257,6 +283,69 @@ export class EnemyView {
     }
     this.animateParts(cx, cy, wind, norm);
     this.placeShadow(x, y, hop);
+    if (this.beast && beastFx) this.updateBeast(e, sig, beastFx, adt, wind, cx, cy);
+  }
+
+  /** Windup seconds of the current attack: the def's, else the length seen when it started. */
+  private windupOf(name: string, left: number): number {
+    const def = kindAttack(this.kind);
+    if (def && def.name === name) return def.windup;
+    if (name !== this.windName || left > this.windPrev) {
+      this.windName = name;
+      this.windTotal = left + 1 / 60;
+    }
+    this.windPrev = left;
+    return Math.max(1e-3, this.windTotal);
+  }
+
+  /** Big M4 bodies bob less. */
+  private hopScale(): number {
+    const r = isM4Kind(this.kind) ? M4_LOOK[this.kind].radius : 1;
+    return r >= 2.5 ? 0.4 : r >= 1.5 ? 0.75 : 1;
+  }
+
+  private updateBeast(e: Enemy, sig: EnemySignal | undefined, fx: BeastFx, dt: number, wind: number, cx: number, cy: number): void {
+    const c = (this.ctx ??= {
+      e,
+      sig,
+      t: 0,
+      dt: 0,
+      wind: 0,
+      attack: undefined,
+      phase: 'none',
+      run: 0,
+      cx: 0,
+      cy: 0,
+      velX: 0,
+      velY: 0,
+      x: 0,
+      y: 0,
+      foot: 0,
+      scale: 1,
+      shadow: null,
+      glow: null,
+      fx,
+    });
+    c.e = e;
+    c.sig = sig;
+    c.t = this.time + this.phase;
+    c.dt = dt;
+    c.wind = wind;
+    c.attack = e.attack.phase === 'none' ? undefined : m4AttackKey(e.attack.name);
+    c.phase = e.attack.phase;
+    c.run = this.run;
+    c.cx = cx;
+    c.cy = cy;
+    c.velX = this.velX;
+    c.velY = this.velY;
+    c.x = this.root.x;
+    c.y = this.root.y;
+    c.foot = layoutOf(this.kind).foot;
+    c.scale = this.artScale;
+    c.shadow = this.shadow;
+    c.glow = this.glow;
+    c.fx = fx;
+    this.beast!.update(c);
   }
 
   private animateParts(cx: number, cy: number, wind: number, norm: number): void {
@@ -317,11 +406,11 @@ export class EnemyView {
   }
 
   private placeShadow(x: number, y: number, hop: number): void {
-    const L = LAYOUT[this.kind];
+    const L = layoutOf(this.kind);
     if (this.shadow) {
-      const s = 1 - hop * 0.6;
+      const s = (1 - hop * 0.6) * this.artScale;
       this.shadow.x = x + this.recoilX * 0.5;
-      this.shadow.y = y + L.shadowY;
+      this.shadow.y = y + L.shadowY * this.artScale;
       this.shadow.scaleX = L.shadowRx * s;
       this.shadow.scaleY = L.shadowRy * s;
       this.shadow.fade(this.root.alpha);
@@ -362,7 +451,7 @@ export class EnemyView {
     this.flash.alpha = this.flashT > 0 ? C.flashAlpha : 0;
     this.lift.rotation = this.topple * ease * 1.25;
     this.lift.scale.set(1 + 0.2 * ease, 1 - 0.4 * ease);
-    this.lift.position.y = LAYOUT[this.kind].foot + ease * 0.3;
+    this.lift.position.y = layoutOf(this.kind).foot + ease * 0.3;
     // Lerp toward the corpse tint.
     this.root.tint = mixRgb(0xffffff, C.corpseTint, ease * 0.45);
     const fadeStart = C.dieTime + C.corpseHold;

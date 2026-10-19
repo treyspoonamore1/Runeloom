@@ -29,6 +29,7 @@ import { ProjectileView } from './projectileView';
 import { RoomView } from './roomView';
 import { Shake } from './shake';
 import { TelegraphView } from './telegraphView';
+import { M4Layers, m4AtlasEntries } from './m4Layers';
 
 /** Debug overlay switches, toggled from the debug UI (F1). */
 export interface Overlays {
@@ -48,6 +49,10 @@ export interface Overlays {
 
 export interface Renderer {
   readonly app: Application;
+  /** The world container (1 unit = 1 cell), for debug scenes that add their own labels. */
+  readonly world: Container;
+  /** Debug scenes: the camera follows this point (cells) instead of the player when set. */
+  follow: { x: number; y: number } | null;
   readonly overlays: Overlays;
   /** Draws the current state, interpolating entities by alpha between the last two ticks. */
   render(state: GameState, alpha: number, frameDt: number): void;
@@ -130,6 +135,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     ...ailmentAtlasEntries(),
     ...elementAtlasEntries(),
     ...formAtlasEntries(),
+    ...m4AtlasEntries(),
   ]);
   const world = new Container();
   const terrain = new TerrainView();
@@ -140,6 +146,9 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const player = new PlayerView();
   const overlay = new OverlayView();
   const enemies = new EnemyLayer(atlas);
+  /** M4: rarity, telegraph accents, objects, loot, moments (cues from state and events). */
+  const shake = new Shake();
+  const m4 = new M4Layers(atlas, enemies, shake);
   const fx = new FxView(atlas);
   const projectiles = new ProjectileView(atlas, fx.pNorm);
   const telegraphs = new TelegraphView(app.renderer);
@@ -147,23 +156,29 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const ailments = new AilmentFx(atlas);
   const forms = new FormLayer(atlas, fx);
   const ai = new AiOverlay();
-  const shake = new Shake();
   const terrainFx = new TerrainFx(atlas, shake);
   world.addChild(
     terrain.ground,
     room.root,
     ambient.root,
+    m4.objects.root,
+    m4.loot.root,
+    m4.fx.under,
     terrain.fire,
     terrainFx.ground,
     enemies.corpses,
     enemies.shadows.container,
+    m4.ground,
+    enemies.beastFx.under,
     forms.ground,
     projectiles.player,
     fx.player,
     telegraphs.root,
+    m4.tele.root,
     enemies.glows.container,
     ailments.glows.container,
     enemies.bodies,
+    enemies.beastFx.over,
     ailments.over.container,
     ailments.fx,
     forms.air,
@@ -174,13 +189,14 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     terrainFx.top,
     projectiles.enemy,
     fx.top,
+    m4.fx.over,
     ailments.icons.pool.container,
     labels.root,
     ai.world,
     terrain.debug,
     overlay.root,
   );
-  app.stage.addChild(world, ailments.edge, numbers.root, ai.labels, ailments.debug.labels, fx.vignette);
+  app.stage.addChild(world, ailments.edge, m4.screen, numbers.root, ai.labels, ailments.debug.labels, fx.vignette);
   ai.hide();
 
   const camera = new Camera();
@@ -197,6 +213,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   let time = 0;
   let current = state;
   let dim = 1;
+  let lastDt = 1 / 60;
   const events = new CombatEvents({
     enemies,
     fx,
@@ -210,12 +227,16 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     state: () => current,
   });
 
+  /** The room the static layers were built for; a different one (M4 room transitions) rebuilds them. */
+  let builtRoom: GameState['room'] | null = null;
   const setRoom = (s: GameState): void => {
     current = s;
     terrain.setGrid(s.grid);
-    const map = room.build(s.room, s.grid);
+    const owned = m4.owned(s);
+    const map = room.build(s.room, s.grid, owned);
     room.sync(s.grid, terrain.blockCells);
-    ambient.build(map);
+    ambient.build(map, owned);
+    builtRoom = s.room;
     labels.set(labOverride ?? (s.room.id === labRoomId ? labStations : []));
     player.reset();
     overlay.invalidate();
@@ -228,16 +249,21 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     forms.reset();
     numbers.reset();
     shake.reset();
+    m4.reset(s);
     camera.snap();
   };
   setRoom(state);
 
-  return {
+  const r: Renderer = {
     app,
+    world,
+    follow: null,
     overlays,
     render(s, alpha, frameDt) {
+      if (s.room !== builtRoom) setRoom(s);
       current = s;
       const dt = Math.max(0, frameDt);
+      lastDt = dt;
       time += dt;
       const p = s.player;
       const x = p.prevX + (p.x - p.prevX) * alpha;
@@ -245,7 +271,9 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
 
       const screen = app.screen;
       const screenScale = screen.height / 720;
-      camera.update(x, y, s.room, screen.width, screen.height, app.renderer.resolution, s.tuning.camera, dt);
+      const fx0 = r.follow?.x ?? x;
+      const fy0 = r.follow?.y ?? y;
+      camera.update(fx0, fy0, s.room, screen.width, screen.height, app.renderer.resolution, s.tuning.camera, dt);
       shake.update(dt, settings.screenShake, screenScale);
       const ox = camera.offsetX + shake.x;
       const oy = camera.offsetY + shake.y;
@@ -272,6 +300,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       enemies.update(s, alpha, dt);
       const xf = { scale: camera.scale, ox, oy, screenScale };
       ailments.update(s, enemies, player, dt, xf, screen.width, screen.height, overlays.hitboxes);
+      m4.update(s, enemies, dt, xf, screen.width, screen.height, x, y);
       projectiles.update(s, alpha, dt);
       forms.update(s, alpha, dt, x, y);
       telegraphs.update(s, dt);
@@ -283,13 +312,14 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       const busy =
         enemies.count +
         projectiles.count / 4 +
-        (fx.particleCount + ailments.particleCount + forms.particleCount) / 40;
+        (fx.particleCount + ailments.particleCount + forms.particleCount + enemies.beastFx.count) / 40;
       const target = 1 - smoothstep(FX.busyStart, FX.busyFull, busy) * (1 - settings.effectDensity);
       dim += (target - dim) * (1 - Math.exp(-dt / 0.3));
       projectiles.player.alpha = dim;
       fx.player.alpha = dim;
       ailments.fx.alpha = dim;
       forms.ground.alpha = forms.air.alpha = dim;
+      enemies.beastFx.over.alpha = dim;
 
       if (overlays.aiTargets) ai.update(s, enemies, camera.scale, ox, oy, screenScale);
       else ai.hide();
@@ -305,11 +335,18 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     handleEvents(list) {
       events.handle(list);
       terrainFx.handle(list, current);
+      m4.handle(current, list, lastDt);
     },
     stats: () => ({
       enemies: enemies.count,
       projectiles: projectiles.count,
-      particles: fx.particleCount + ailments.particleCount + forms.particleCount + terrainFx.particleCount,
+      particles:
+        fx.particleCount +
+        ailments.particleCount +
+        forms.particleCount +
+        terrainFx.particleCount +
+        enemies.beastFx.count +
+        m4.particleCount,
       playerFxAlpha: dim,
       terrainUploadMs: terrain.lastUploadMs,
       terrainPackMs: terrain.lastPackMs,
@@ -323,4 +360,5 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       app.destroy(true, { children: true });
     },
   };
+  return r;
 }

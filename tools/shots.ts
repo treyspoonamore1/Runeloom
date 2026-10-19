@@ -7,6 +7,7 @@
  *   npm run shots -- --set onload [--region kiln] [--milestone m4]   every room on load, as an adventure game,
  *       into shots/rooms/<milestone>_<region>_<room>.png (--ticks N steps idle first)
  *   npm run shots -- --set ui [--milestone m4] [--shot inventory,tree] [--viewport 390x844]   M4 menus and HUD with fixture data
+ *   npm run shots -- --set gallery [--section beasts,loot] [--perf] [--milestone m4]   M4 art gallery
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
@@ -25,6 +26,7 @@ import { listRoomIds } from './lib/rooms';
 import { authoredRegionRooms, showRoom, type RoomShort } from './lib/roomShots';
 import { regionRooms } from '../data/progression';
 import { runUiShot, uiShotIds, uiShotUrl, type UiShotId } from './lib/uiShots';
+import { galleryShots } from './lib/galleryShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -52,12 +54,14 @@ runCli(async () => {
     station: { kind: 'string' },
     set: {
       kind: 'string',
-      help: "'creature': entities on the chemistry grid (lab stations); 'rooms': region rooms (fit and play zoom); 'onload': every room on load as an adventure game; 'ui': M4 menus and HUD",
+      help: "'creature': entities on the chemistry grid (lab stations); 'rooms': region rooms (fit and play zoom); 'onload': every room on load as an adventure game; 'ui': M4 menus and HUD; 'gallery': M4 art",
     },
     room: { kind: 'string', help: 'with --set rooms: comma-separated short ids (e1,k7)' },
     region: { kind: 'string', help: "--set onload: only rooms whose id starts with this, e.g. 'kiln'" },
     port: { kind: 'number', default: 0, help: 'dev server port (0: any free port)' },
     shot: { kind: 'string', help: `with --set ui: some of ${uiShotIds.join(', ')}` },
+    section: { kind: 'string', help: 'gallery sections to shoot, comma-separated (default all, plus crowd)' },
+    perf: { kind: 'boolean', help: 'gallery: measure render time with 300 M4 and 300 M1 enemies' },
   });
   const viewport = parseViewport(a.viewport!);
   const ticks = requireInt('ticks', a.ticks, 0);
@@ -77,7 +81,8 @@ runCli(async () => {
     server = await createServer({
       root: ROOT,
       logLevel: 'error',
-      server: { port, strictPort: true, host: '127.0.0.1' },
+      // No HMR: an edit while shots run must not reload the page mid-capture.
+      server: { port, strictPort: true, host: '127.0.0.1', hmr: false },
     });
     await server.listen();
     browser = await chromium.launch({ headless: true, args: GL_ARGS });
@@ -173,8 +178,13 @@ runCli(async () => {
         await ctx.close();
         if (errors.length) console.warn(`warning: page errors in ui shot ${id}: ${errors.join('; ')}`);
       }
+    } else if (a.set === 'gallery') {
+      const url = `http://127.0.0.1:${port}/?scene=gallery`;
+      const only = a.section?.split(',');
+      written.push(...(await galleryShots(page, url, { dir: SHOTS_DIR, milestone, only, perf: a.perf === true })));
+      if (errors.length) console.warn(`warning: page errors in the gallery: ${errors.join('; ')}`);
     } else if (a.set !== undefined)
-      throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload, ui`);
+      throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload, ui, gallery`);
     for (const scene of a.set === undefined ? selected : []) {
       errors.length = 0;
       await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);

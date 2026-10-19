@@ -20,7 +20,8 @@ export class AmbientView {
   private flameCtx: GraphicsContext | null = null;
   private glowCtx: GraphicsContext | null = null;
 
-  build(map: TileMap): void {
+  /** owned: brazier tiles whose flame the M4 object layer draws (lit or not). */
+  build(map: TileMap, owned: ReadonlySet<number> = new Set()): void {
     for (const f of this.flames) f.root.destroy({ children: true });
     this.flames = [];
     this.flameCtx ??= buildFlame();
@@ -32,7 +33,7 @@ export class AmbientView {
     }
     for (let ty = 0; ty < map.h; ty++) {
       for (let tx = 0; tx < map.w; tx++) {
-        if (map.at(tx, ty)?.prop !== 'brazier') continue;
+        if (map.at(tx, ty)?.prop !== 'brazier' || owned.has(ty * map.w + tx)) continue;
         const root = new Container();
         root.position.set(tx * T + T / 2, ty * T + T / 2 + 0.1);
         const glow = new Graphics(this.glowCtx);
@@ -59,7 +60,7 @@ export class AmbientView {
 }
 
 /** Flame drawn around its base at (0, 0), pointing up. */
-function buildFlame(): GraphicsContext {
+export function buildFlame(): GraphicsContext {
   const ctx = new GraphicsContext();
   const tongue = (s: number, oy: number): GraphicsContext =>
     ctx

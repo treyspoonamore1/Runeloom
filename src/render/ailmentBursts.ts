@@ -1,5 +1,6 @@
 import type { Texture } from 'pixi.js';
-import { AIL, BODY, type BodyBox } from './ailmentPalette';
+import { AIL, type BodyBox } from './ailmentPalette';
+import { bodyBoxOf } from './kindInfo';
 import type { FxLayer, FxParticle } from './particles';
 
 /**
@@ -66,7 +67,7 @@ export function thawBurst(layer: FxLayer, t: BurstTex, x: number, y: number, box
 
 /** A frozen enemy died: ice shards burst out (no corpse), with a bright frost flash. */
 export function shatterBurst(norm: FxLayer, add: FxLayer, t: BurstTex, x: number, y: number, kind: string): void {
-  const box = BODY[kind as keyof typeof BODY] ?? BODY.tinderling;
+  const box = bodyBoxOf(kind);
   const cy = y + (box.top + box.bottom) / 2;
   const r = Math.max(box.w, (box.bottom - box.top) / 2);
   const L = norm;

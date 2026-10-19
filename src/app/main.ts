@@ -15,6 +15,11 @@ import { setFixtureBoss } from '../ui/adventure/hudAdapter';
 
 async function boot(): Promise<void> {
   const params = new URLSearchParams(location.search);
+  if (params.get('scene') === 'gallery') {
+    // The M4 art gallery: render-only, no session, HUD or debug UI.
+    const { bootGallery } = await import('./gallery/galleryMain');
+    return bootGallery();
+  }
   // The demo opens on the adventure title screen; dev URLs with ?scene= go straight to a scene.
   const title = !params.has('scene');
   const scene = title

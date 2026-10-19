@@ -1,6 +1,6 @@
 import { Container, Sprite, type Renderer, type Texture } from 'pixi.js';
 import type { AttackShape, GameState } from '../sim';
-import { enemyDef } from '../../data/enemies';
+import { kindAttack } from './kindInfo';
 import { bakeTexture } from './atlas';
 import { TELEGRAPH as T } from './combatPalette';
 import type { Pen } from './pen';
@@ -87,6 +87,8 @@ export class TelegraphView {
   private readonly slots: Slot[] = [];
   private readonly flashes: Flash[] = [];
   private time = 0;
+  /** Windup lengths of attacks the def table doesn't describe (multi-attack bosses), by enemy id. */
+  private readonly windups = new Map<number, { name: string; total: number; prev: number }>();
 
   constructor(private readonly renderer: Renderer) {}
 
@@ -99,14 +101,14 @@ export class TelegraphView {
     for (const e of state.enemies) {
       if (e.id !== id) continue;
       const a = e.attack;
-      const def = enemyDef(e.kind).attack;
+      const def = kindAttack(e.kind);
       this.flashes.push({
         tex: this.textures(a.name, a.shape),
         shape: a.shape,
         x: a.originX,
         y: a.originY,
         t: 0,
-        strength: def?.projectile ? 0.45 : 1,
+        strength: def?.name === a.name && def.projectile ? 0.45 : 1,
       });
       return;
     }
@@ -119,9 +121,8 @@ export class TelegraphView {
     for (const e of state.enemies) {
       const a = e.attack;
       if (a.phase !== 'windup' || e.dead) continue;
-      const def = enemyDef(e.kind).attack;
-      if (!def) continue;
-      const progress = def.windup > 0 ? Math.max(0, Math.min(1, 1 - a.timeLeft / def.windup)) : 1;
+      const windup = this.windupOf(e.id, e.kind, a.name, a.timeLeft);
+      const progress = windup > 0 ? Math.max(0, Math.min(1, 1 - a.timeLeft / windup)) : 1;
       const slot = this.slot(n++);
       const tex = this.textures(a.name, a.shape);
       this.place(slot, tex, a.shape, a.originX, a.originY);
@@ -152,6 +153,21 @@ export class TelegraphView {
     for (let i = n; i < this.slots.length; i++) this.slots[i]!.root.visible = false;
   }
 
+  /** Windup seconds: the def's when it describes this attack, else the length seen when it started. */
+  windupOf(id: number, kind: string, name: string, left: number): number {
+    const def = kindAttack(kind);
+    if (def && def.name === name) return def.windup;
+    let w = this.windups.get(id);
+    if (!w) this.windups.set(id, (w = { name: '', total: 0, prev: 0 }));
+    if (w.name !== name || left > w.prev) {
+      w.name = name;
+      w.total = left + 1 / 60;
+    }
+    w.prev = left;
+    if (this.windups.size > 512) this.windups.clear();
+    return w.total;
+  }
+
   private slot(i: number): Slot {
     let s = this.slots[i];
     if (!s) {
@@ -175,7 +191,10 @@ export class TelegraphView {
     slot.base.scale.set(1);
   }
 
-  private textures(name: string, shape: AttackShape): ShapeTex {
+  private textures(attack: string, shape: AttackShape): ShapeTex {
+    // Keyed by name and size, so two kinds sharing an attack name never re-bake each other's.
+    const [k0, a0, b0] = dims(shape);
+    const name = `${attack}:${k0}:${a0}:${b0}`;
     const hit = this.cache.get(name);
     if (hit && sameDims(hit, shape)) return hit;
     let x0: number, y0: number, x1: number, y1: number;

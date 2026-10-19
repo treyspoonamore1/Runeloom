@@ -1,10 +1,19 @@
 import { Container } from 'pixi.js';
 import type { Enemy, GameState } from '../sim';
-import type { EnemyKind } from '../../data/enemies';
+import type { M4Signals } from '../app/m4Signals';
 import type { Atlas } from './atlas';
 import { ENEMY } from './combatPalette';
 import { EnemyView } from './enemyView';
 import { ParticlePool } from './particles';
+import { BeastFx } from './bestiary/beastFx';
+import { BESTIARY } from './bestiary/bestiaryPalette';
+
+/** Additive glows per kind (Tinderling embers, the kiln's mouth, the Warden's heat): color, alpha. */
+const GLOWS: Record<string, [number, number]> = {
+  tinderling: [ENEMY.tinderling.glow, 0.5],
+  brood_kiln: [BESTIARY.brood_kiln.fire, 0.5],
+  cinder_warden: [BESTIARY.cinder_warden.heat, 0.3],
+};
 
 /**
  * All enemy views. A view is created (or taken from its kind's pool) the first frame an enemy
@@ -24,10 +33,15 @@ export class EnemyLayer {
   private readonly byId = new Map<number, EnemyView>();
   private readonly live: EnemyView[] = [];
   private readonly dying: EnemyView[] = [];
-  private readonly pools = new Map<EnemyKind, EnemyView[]>();
+  private readonly pools = new Map<string, EnemyView[]>();
   private frame = 0;
+  /** Particles of the M4 kinds (ripples, drips, steam, sparks). */
+  readonly beastFx: BeastFx;
+  /** Derived M4 enemy looks (fuse, Superheat, phase, kiln timer); set by the renderer. */
+  signals: M4Signals | null = null;
 
   constructor(private readonly atlas: Atlas) {
+    this.beastFx = new BeastFx(atlas);
     this.shadows = new ParticlePool(atlas.get('shadow'), 1024);
     this.glows = new ParticlePool(atlas.get('glow'), 1024, 'add');
     this.bodies.sortableChildren = true;
@@ -47,10 +61,13 @@ export class EnemyLayer {
     this.live.length = 0;
     this.dying.length = 0;
     this.byId.clear();
+    this.beastFx.reset();
   }
 
   update(state: GameState, alpha: number, dt: number): void {
     const frame = ++this.frame;
+    const fx = this.beastFx;
+    fx.update(dt);
     for (const e of state.enemies) {
       if (e.dead) continue;
       let v = this.byId.get(e.id);
@@ -58,7 +75,7 @@ export class EnemyLayer {
       v.seen = frame;
       const x = e.prevX + (e.x - e.prevX) * alpha;
       const y = e.prevY + (e.y - e.prevY) * alpha;
-      v.update(state, x, y, dt);
+      v.update(state, x, y, dt, this.signals?.enemy(e.id), fx);
       const z = Math.round(y * 8);
       if (v.root.zIndex !== z) v.root.zIndex = z;
     }
@@ -88,9 +105,10 @@ export class EnemyLayer {
     const v = pool?.pop() ?? new EnemyView(e.kind, this.atlas);
     v.bind(e);
     v.shadow = this.shadows.alloc(this.atlas.get('shadow'));
-    if (e.kind === 'tinderling') {
+    const glow = GLOWS[e.kind];
+    if (glow) {
       v.glow = this.glows.alloc(this.atlas.get('glow'));
-      if (v.glow) v.glow.paint(ENEMY.tinderling.glow, 0.5);
+      if (v.glow) v.glow.paint(glow[0], glow[1]);
     }
     this.bodies.addChild(v.root);
     this.byId.set(e.id, v);

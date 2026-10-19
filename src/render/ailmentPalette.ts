@@ -1,4 +1,3 @@
-import type { EnemyKind } from '../../data/enemies';
 import { ELEMENT } from './combatPalette';
 
 /**
@@ -87,25 +86,17 @@ export interface BodyBox {
   bottom: number;
 }
 
-export const BODY: Record<EnemyKind | 'player', BodyBox> = {
+/** M1 kinds and the player; M4 kinds keep theirs in bestiary/bestiaryPalette.ts (use bodyBoxOf). */
+export const BODY: Record<'tinderling' | 'shieldbearer' | 'ember_archer' | 'dummy' | 'player', BodyBox> = {
   tinderling: { w: 1.25, top: -2.0, bottom: 1.0 },
   shieldbearer: { w: 1.95, top: -2.9, bottom: 1.9 },
   ember_archer: { w: 1.2, top: -2.7, bottom: 1.5 },
   dummy: { w: 1.2, top: -2.35, bottom: 1.6 },
-  // M4 placeholders (enemies agent), from the body radii; the visuals agent replaces them.
-  bog_lurker: { w: 1.6, top: -1.8, bottom: 1.4 },
-  tar_hulk: { w: 2.4, top: -3.2, bottom: 2.2 },
-  frost_wisp: { w: 1.2, top: -2.2, bottom: 1.2 },
-  stormcaller: { w: 1.4, top: -2.8, bottom: 1.5 },
-  kiln_mite: { w: 0.8, top: -1.2, bottom: 0.8 },
-  brood_kiln: { w: 2.5, top: -3.4, bottom: 2.2 },
-  tar_matriarch: { w: 3.6, top: -4.6, bottom: 3.2 },
-  cinder_warden: { w: 4, top: -5.2, bottom: 3.6 },
   player: { w: 1.45, top: -2.05, bottom: 1.45 },
 };
 
 /** Extra height of the status row over kinds whose drawing pokes above `top` (Tinderling flames). */
-export const ICON_EXTRA: Partial<Record<EnemyKind, number>> = { tinderling: 0.4 };
+export const ICON_EXTRA: Partial<Record<string, number>> = { tinderling: 0.4 };
 
 /** Mixes `rgb` toward `to` by t (0–1). */
 export function mixRgb(rgb: number, to: number, t: number): number {

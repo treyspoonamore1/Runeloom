@@ -1,5 +1,5 @@
 import { Container, Sprite, type Texture } from 'pixi.js';
-import { enemyDef } from '../../data/enemies';
+import { bodyBoxOf, kindSpeed } from './kindInfo';
 import type { Ailments, GameState } from '../sim';
 import type { Atlas } from './atlas';
 import { AilmentDebug } from './ailmentDebug';
@@ -160,12 +160,12 @@ export class AilmentFx {
       let parts = v.ailParts;
       if (!anyAilment(a) && !CreatureFx.active(T) && !this.creature.hasCrackle(e.id) && !(parts && parts.active))
         continue;
-      const box = BODY[e.kind];
+      const box = bodyBoxOf(e.kind);
       if (!parts) {
         parts = v.ailParts = new AilmentParts(this.atlas, box, v.root);
         v.lift.addChild(parts.root);
       }
-      const speed = enemyDef(e.kind).speed;
+      const speed = kindSpeed(e.kind);
       const vx = (e.x - e.prevX) * 60;
       const vy = (e.y - e.prevY) * 60;
       const run = speed > 0 ? Math.min(1, Math.hypot(vx, vy) / speed) : 0;
