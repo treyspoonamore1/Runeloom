@@ -86,6 +86,8 @@ export interface Renderer {
    * data/lab.ts `labStations` and other rooms none.
    */
   setLabStations(stations: readonly LabStation[]): void;
+  /** The item-get pose: the hero holds `rune` overhead until null (at least RUNE_GET.minTime). */
+  holdRune(rune: string | null): void;
   destroy(): void;
 }
 
@@ -183,7 +185,9 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     ailments.fx,
     forms.air,
     player.ghostLayer,
+    m4.runeGet.back,
     player.root,
+    m4.runeGet.front,
     ailments.threat,
     terrain.air,
     terrainFx.top,
@@ -196,7 +200,15 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     terrain.debug,
     overlay.root,
   );
-  app.stage.addChild(world, ailments.edge, m4.screen, numbers.root, ai.labels, ailments.debug.labels, fx.vignette);
+  app.stage.addChild(
+    world,
+    ailments.edge,
+    m4.screen,
+    numbers.root,
+    ai.labels,
+    ailments.debug.labels,
+    fx.vignette,
+  );
   ai.hide();
 
   const camera = new Camera();
@@ -273,7 +285,16 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       const screenScale = screen.height / 720;
       const fx0 = r.follow?.x ?? x;
       const fy0 = r.follow?.y ?? y;
-      camera.update(fx0, fy0, s.room, screen.width, screen.height, app.renderer.resolution, s.tuning.camera, dt);
+      camera.update(
+        fx0,
+        fy0,
+        s.room,
+        screen.width,
+        screen.height,
+        app.renderer.resolution,
+        s.tuning.camera,
+        dt,
+      );
       shake.update(dt, settings.screenShake, screenScale);
       const ox = camera.offsetX + shake.x;
       const oy = camera.offsetY + shake.y;
@@ -296,6 +317,9 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       ambient.update(time);
       player.animSpeed = actionSpeed(s, p);
       player.castTint = castTint(s);
+      m4.runeGet.update(dt, x, y);
+      player.raise = m4.runeGet.raise;
+      player.raiseTint = m4.runeGet.tint;
       player.update(p, x, y, s.tuning.player, dt);
       enemies.update(s, alpha, dt);
       const xf = { scale: camera.scale, ox, oy, screenScale };
@@ -355,6 +379,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       labOverride = stations;
       labels.set(stations);
     },
+    holdRune: (rune) => m4.runeGet.hold(rune),
     destroy() {
       terrain.destroy();
       app.destroy(true, { children: true });

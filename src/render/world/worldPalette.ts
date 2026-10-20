@@ -101,3 +101,40 @@ export const MOMENT = {
   deathDim: 0.6,
   respawnFade: 0.5,
 } as const;
+
+/**
+ * Rune shrine and the dungeon-item moment (the hero holding a new element rune overhead). `light`
+ * tints the tablet and glow, `deep` the glyph on it (the Loom's rune colors).
+ */
+export const RUNE_LOOK = {
+  frost: { light: 0x8fe3ff, deep: 0x173f5e },
+  storm: { light: 0xf5e04a, deep: 0x43306e },
+  fire: { light: 0xff9a5c, deep: 0x5e2412 },
+  other: { light: 0xfff0cf, deep: 0x2a1c1f },
+} as const;
+
+export const RUNE_GET = {
+  /** The pose lasts at least this long (s), and holds while the item-get panel is open. */
+  minTime: 1.5,
+  /** Seconds to raise the rune, and to fade after the panel closes. */
+  raise: 0.25,
+  fade: 0.35,
+  /** The tablet hovers this far above the player's center (cells), bobbing by `bob`. */
+  height: 5,
+  bob: 0.15,
+  /** Tablet size over the hero (its art is 2 × 2.6 cells). */
+  size: 1.5,
+  /** Light burst: rays, their spin (rad/s), alpha and glow size (cells). */
+  rays: 12,
+  spin: 0.35,
+  rayAlpha: 0.42,
+  rayLength: 1.35,
+  glow: 7,
+  /** Shrine: tablet height over the altar (cells), light pillar alpha, motes per second. */
+  shrineHeight: 3.4,
+  /** Shrine scale (the altar fills its tile) and its tablet's scale. */
+  shrineScale: 1.2,
+  shrineTablet: 1.2,
+  pillarAlpha: 0.28,
+  motes: 4,
+} as const;

@@ -54,6 +54,9 @@ export class PlayerView {
   castTint: number = FX.strikeEdge;
   /** Animation speed from the sim's actionSpeed: chill slows the idle motion, Freeze stops it. */
   animSpeed = 1;
+  /** Item-get pose, 0–1: the staff goes up beside the hood, its tip lit with `raiseTint`. */
+  raise = 0;
+  raiseTint = 0xffffff;
   /** Staff tip in world cells, for cast flashes (updated every frame). */
   readonly tip = { x: 0, y: 0 };
 
@@ -202,7 +205,14 @@ export class PlayerView {
   }
 
   /** Hurt flash, cast cue, death collapse and re-weave. */
-  private updateCombat(p: PlayerState, tuning: Tuning['player'], x: number, y: number, hop: number, dt: number): void {
+  private updateCombat(
+    p: PlayerState,
+    tuning: Tuning['player'],
+    x: number,
+    y: number,
+    hop: number,
+    dt: number,
+  ): void {
     this.hurtT = Math.max(0, this.hurtT - dt);
     const f = this.hurtT > 0 ? Math.sqrt(this.hurtT / FX.hurtFlashTime) * 0.85 : 0;
     this.flash.alpha = this.flashHood.alpha = f;
@@ -220,6 +230,12 @@ export class PlayerView {
     } else if (cg.visible) {
       cg.alpha = Math.max(0, cg.alpha - dt * 10);
       if (cg.alpha <= 0) cg.visible = false;
+    }
+    if (this.raise > 0) {
+      cg.visible = true;
+      cg.tint = this.raiseTint;
+      cg.alpha = Math.max(cg.alpha, 0.85 * this.raise);
+      cg.scale.set(0.75);
     }
     const st = this.staffFront.visible ? this.staffFront : this.staffBack;
     const ca = Math.cos(st.rotation);
@@ -263,6 +279,12 @@ export class PlayerView {
       ay = p.faceY;
     }
     if (ax === 0 && ay === 0) ay = 1;
+    // Item-get pose: face the viewer.
+    if (this.raise > 0) {
+      ax *= 1 - this.raise;
+      ay = ay * (1 - this.raise) + this.raise;
+      if (Math.hypot(ax, ay) < 1e-3) ay = 1;
+    }
     const len = Math.hypot(ax, ay);
     ax /= len;
     ay /= len;
@@ -285,6 +307,17 @@ export class PlayerView {
     const staff = back ? this.staffBack : this.staffFront;
     staff.position.set(hx, hy);
     staff.rotation = angle;
+    if (this.raise > 0) {
+      // Raised straight up beside the hood, in front of the body.
+      const k = this.raise;
+      const up = -Math.PI / 2;
+      let d = up - angle;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      this.staffBack.visible = false;
+      this.staffFront.visible = true;
+      this.staffFront.position.set(hx + (1.05 - hx) * k, hy + (0.25 - hy) * k);
+      this.staffFront.rotation = angle + d * k;
+    }
   }
 
   private stepSpring(dt: number): void {
