@@ -135,12 +135,9 @@ describe("the Cinder Warden's Storm moment", () => {
     expect(moments[0]!.x).toBeCloseTo(boss.x);
     expect(moments[0]!.y).toBeCloseTo(boss.y);
     // Only Storm is an element: Chain, Sigil and On Crit are plain rewards.
-    expect(ofType(events, 'rewardGranted').map((e) => e.content.kind === 'rune' && e.content.rune.rune)).toEqual([
-      'storm',
-      'chain',
-      'sigil',
-      'on_crit',
-    ]);
+    expect(
+      ofType(events, 'rewardGranted').map((e) => e.content.kind === 'rune' && e.content.rune.rune),
+    ).toEqual(['storm', 'chain', 'sigil', 'on_crit']);
     const order = events.map((e) => e.type);
     expect(order.indexOf('bossDefeated')).toBeLessThan(order.indexOf('elementUnlocked'));
   });

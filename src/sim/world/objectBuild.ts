@@ -12,7 +12,13 @@ import { floorBeneath, forTileCells, setTileGround, tileChar } from './objectGro
 import { loomStoneId, roomFlags } from './worldState';
 
 const DOORS: readonly ObjectKind[] = ['door', 'locked_door', 'big_key_door'];
-const TAKEN: readonly ObjectKind[] = ['key_chest', 'big_key_chest', 'heart_seed', 'loom_shard', 'rune_shrine'];
+const TAKEN: readonly ObjectKind[] = [
+  'key_chest',
+  'big_key_chest',
+  'heart_seed',
+  'loom_shard',
+  'rune_shrine',
+];
 
 /** The door character a puzzle object of `kind` feeds through a @link, or ''. */
 function linkFor(state: GameState, kind: ObjectKind): string {
