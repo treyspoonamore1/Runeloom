@@ -45,10 +45,10 @@ const css = `
 @keyframes ig-rise { 0% { opacity: 0; transform: translateY(calc(var(--u) * 4)) scale(0.96); } 100% { opacity: 1; transform: none; } }
 @keyframes ig-pulse { 50% { box-shadow: 0 0 0 calc(var(--u) * 0.45) var(--ink), 0 0 0 calc(var(--u) * 0.9) var(--el), 0 0 0 calc(var(--u) * 1.35) var(--ink), 0 0 calc(var(--u) * 8) var(--el-glow); } }
 @media (max-width: 760px) {
-  .ig-root { --u: 4.4px; padding-bottom: 16px; }
+  .ig-root { --u: 5px; padding-bottom: 16px; }
   .ig-card { grid-template-columns: 1fr; text-align: center; }
   .ig-card > :not(.ig-medal) { grid-column: 1; }
-  .ig-medal { grid-row: auto; justify-self: center; width: calc(var(--u) * 13); height: calc(var(--u) * 13); margin-bottom: calc(var(--u) * 1); }
+  .ig-medal { grid-row: auto; order: -1; justify-self: center; width: calc(var(--u) * 13); height: calc(var(--u) * 13); margin: calc(var(--u) * 1) 0 calc(var(--u) * 2); }
   .ig-does { text-align: left; }
   .ig-acts { justify-content: center; }
 }
