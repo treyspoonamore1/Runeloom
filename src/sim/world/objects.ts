@@ -26,7 +26,10 @@
  * - key_chest (`k`) / big_key_chest (`g`): open on touch; give a small key or the big key.
  * - heart_seed (`H`) / loom_shard (`L`): taken on touch; +1 hero.heartSeeds / loomShards.
  * - loom_stone (`x`): activates on touch and becomes the respawn point.
- * Blocking kinds (blocks, closed doors, chests, braziers, switches) are solid grid cells
+ * - rune_shrine (`R`, objectTouch.ts): an altar holding the room's dungeon item. Touching it pays
+ *   the room's guaranteed runes (data/progression.ts) instead of the first clear doing it; it
+ *   pays once (RoomFlags.taken and rewardsPaid) and is empty afterwards (`on` = taken).
+ * Blocking kinds (blocks, closed doors, chests, shrines, braziers, switches) are solid grid cells
  * (material `object` or `brazier`); opening a door or moving a block rewrites its cells with
  * setGround, which keeps room.solid in sync and bumps grid.walkVersion for the flow field.
  */
@@ -50,7 +53,8 @@ export type ObjectKind =
   | 'big_key_chest'
   | 'heart_seed'
   | 'loom_shard'
-  | 'loom_stone';
+  | 'loom_stone'
+  | 'rune_shrine';
 
 export interface WorldObject {
   /** Stable within a room file: `${kind}@${tx},${ty}` of its tile in the file. RoomFlags use it. */
@@ -64,7 +68,8 @@ export interface WorldObject {
   ty: number;
   /**
    * Generic on/off: a brazier is lit, a plate is pressed, a switch is powered, a door is open, a
-   * chest is opened, a pickup is taken, a Loom Stone is active, an ice block has melted.
+   * chest is opened, a pickup is taken, a shrine is emptied, a Loom Stone is active, an ice block
+   * has melted.
    */
   on: boolean;
   /**
@@ -101,6 +106,7 @@ export const OBJECT_KIND_BY_CHAR: Readonly<Record<string, ObjectKind>> = {
   H: 'heart_seed',
   L: 'loom_shard',
   x: 'loom_stone',
+  R: 'rune_shrine',
 };
 
 /** The legend character of an object kind (the inverse of OBJECT_KIND_BY_CHAR). */

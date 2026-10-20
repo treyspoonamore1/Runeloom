@@ -70,7 +70,7 @@ describe('adventure HUD events', () => {
       { type: HUD_EVENT.bossDefeated, kind: 'cinder_warden', roomId: 'kiln/k10_wardens_hearth' },
     ];
     expect(toastsFor(ev, names).map((t) => [t.kind, t.title])).toEqual([
-      ['rune', 'FROST'],
+      ['rune', 'New rune: FROST'],
       ['stone', 'Loom Stone woken'],
       ['door', 'A door opened'],
       ['key', 'Key used'],
@@ -81,6 +81,30 @@ describe('adventure HUD events', () => {
     expect(bannersFor(ev, (k) => (k === 'cinder_warden' ? 'The Cinder Warden' : k))).toEqual([
       { title: "The Fen isn't woven yet.", sub: '' },
       { title: 'The Cinder Warden defeated', sub: '' },
+    ]);
+  });
+
+  it('says a guaranteed rune is new; a first element rune gets the item-get panel instead of a toast', () => {
+    const rune = (id: string, uid: number) => ({
+      kind: 'rune',
+      rune: { uid, rune: id, level: 1, xp: 0, quality: 0 },
+    });
+    const k10 = 'kiln/k10_wardens_hearth';
+    const ev: LooseEvent[] = [
+      { type: HUD_EVENT.runeUnlocked, rune: 'storm' },
+      { type: HUD_EVENT.rewardGranted, roomId: k10, content: rune('storm', 1) },
+      { type: HUD_EVENT.elementUnlocked, rune: 'storm', roomId: k10, source: 'boss' },
+      { type: HUD_EVENT.runeUnlocked, rune: 'chain' },
+      { type: HUD_EVENT.rewardGranted, roomId: k10, content: rune('chain', 2) },
+    ];
+    expect(toastsFor(ev, names)).toEqual([
+      {
+        kind: 'rune',
+        title: 'New rune: CHAIN',
+        sub: 'In your pouch · weave it in the Loom (Tab)',
+        rarity: null,
+        amount: 1,
+      },
     ]);
   });
 

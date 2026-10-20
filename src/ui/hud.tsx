@@ -23,6 +23,8 @@ import type { Banner, Screen, Sigs } from './hudBar';
 import type { MenuId } from './menus/frame';
 import { isMenu, menuForKey, menuKey } from './menus/menuHost';
 import { titleView, type TitleView } from './title/titleScreen';
+import { createItemGet, itemGetActions } from './itemGet/itemGetFlow';
+import { itemGetKey } from './itemGet/itemGetPanel';
 
 export interface HudContext {
   session: Session;
@@ -31,8 +33,8 @@ export interface HudContext {
   /** DOM layer above the canvas. */
   uiRoot: HTMLElement;
   audio: AudioSystem;
-  /** Used to give the canvas focus after menus close. */
-  renderer?: Pick<Renderer, 'app'>;
+  /** Used to give the canvas focus after menus close, and for the item-get pose. */
+  renderer?: Pick<Renderer, 'app'> & Partial<Pick<Renderer, 'holdRune'>>;
   /** Skip the start screen. Default: true when the URL has paused=1 or autostart=1. */
   skipStart?: boolean;
   /** Saves and the title screen's actions (adventure mode). */
@@ -76,6 +78,12 @@ export function createHud(ctx: HudContext): Hud {
     else loadoutRev.value++;
   });
   const loom = createLoom(ctx.session);
+  // The dungeon-item moment for a new element rune (src/ui/itemGet).
+  const itemGet = createItemGet(ctx.session);
+  ctx.session.onReset(() => {
+    itemGet.clear();
+    ctx.renderer?.holdRune?.(null);
+  });
   const params = new URLSearchParams(location.search);
   const skipStart = ctx.skipStart ?? (params.get('paused') === '1' || params.get('autostart') === '1');
   const flow = ctx.flow ?? null;
@@ -177,6 +185,15 @@ export function createHud(ctx: HudContext): Hud {
     ctx.uiRoot.classList.remove('rl-looming');
     leaveModal();
   };
+  const { open: openItemGet, close: closeItemGet } = itemGetActions(itemGet, {
+    screen: s.screen,
+    enterModal: () => enterModal('itemGet'),
+    leaveModal,
+    openLoom,
+    loom: loom.st,
+    fanfare: () => ctx.audio.play('elementFanfare'),
+    holdRune: (rune) => ctx.renderer?.holdRune?.(rune),
+  });
   /** Opens a menu (from play, or switching from another), or closes it with null. */
   const menu = (id: MenuId | null): void => {
     const cur = s.screen.value;
@@ -213,6 +230,10 @@ export function createHud(ctx: HudContext): Hud {
     (e) => {
       const screen = s.screen.value;
       if (consoleOpen.value) return;
+      if (screen === 'itemGet') {
+        itemGetKey(e, closeItemGet);
+        return;
+      }
       if (screen === 'loom' && loom.handleKey(e, closeLoom)) return;
       if (isMenu(screen)) {
         menuKey(e, screen, menu);
@@ -281,6 +302,7 @@ export function createHud(ctx: HudContext): Hud {
       },
       loom,
       closeLoom,
+      itemGet: { view: itemGet.view, close: closeItemGet },
       adv,
       flow,
       menu,
@@ -310,6 +332,7 @@ export function createHud(ctx: HudContext): Hud {
         else if (e.type === 'hit' && e.target === 'player') s.hurt.value = s.hurt.peek() + 1;
       }
       adv.handleEvents(events);
+      itemGet.handleEvents(events);
       flow?.handleEvents(events);
     },
     frame(state) {
@@ -320,7 +343,12 @@ export function createHud(ctx: HudContext): Hud {
         viewEdits = edits;
         viewAge = 0;
       }
-      if (s.screen.peek() === 'loom' || isMenu(s.screen.peek())) ctx.input.enabled = false;
+      const scr = s.screen.peek();
+      if (scr === 'loom' || scr === 'itemGet' || isMenu(scr)) ctx.input.enabled = false;
+      if (scr === 'play' && !state.player.dead) {
+        const rune = itemGet.due();
+        if (rune) openItemGet(rune);
+      }
       const next = readSnap(
         state,
         slotSnaps(view, state.player, (i) => slotTimers(state, i)),

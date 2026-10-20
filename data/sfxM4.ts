@@ -278,6 +278,41 @@ const sfxM4World = {
       { at: 0.06, volume: 0.7, frequency: A4 * 2, shape: 'sine', release: 0.18 },
     ],
   },
+  /**
+   * The item-get fanfare for a new element rune (the dungeon-item panel opens): a bright rising
+   * C major arpeggio, C5 E5 G5 to a held C6 with a soft shimmer. No bass; quiet.
+   */
+  elementFanfare: {
+    gain: 0.4,
+    pitchVar: 0,
+    minGapMs: 1500,
+    priority: 5,
+    layers: [
+      { volume: 0.55, frequency: C5, shape: 'triangle', attack: 0.01, sustain: 0.05, release: 0.18 },
+      {
+        at: 0.12,
+        volume: 0.55,
+        frequency: E5,
+        shape: 'triangle',
+        attack: 0.01,
+        sustain: 0.05,
+        release: 0.18,
+      },
+      { at: 0.24, volume: 0.55, frequency: G5, shape: 'triangle', attack: 0.01, sustain: 0.05, release: 0.2 },
+      {
+        at: 0.36,
+        volume: 0.6,
+        frequency: C6,
+        shape: 'sine',
+        attack: 0.01,
+        sustain: 0.35,
+        release: 0.6,
+        tremolo: 0.25,
+      },
+      { at: 0.36, volume: 0.25, frequency: G5, shape: 'sine', attack: 0.02, sustain: 0.3, release: 0.6 },
+      { at: 0.4, volume: 0.12, frequency: 6000, shape: 'noise', noise: 1, release: 0.5, filter: -4000 },
+    ],
+  },
 } satisfies Record<string, SfxDef>;
 
 /** Every M4 preset: objects and loot here, fights and moments in sfxM4Fights.ts. */

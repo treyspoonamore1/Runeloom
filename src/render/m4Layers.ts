@@ -12,8 +12,10 @@ import { objectCue } from './world/objectCues';
 import { ObjectView, ownedTiles } from './world/objectView';
 import { WorldFx } from './world/worldFx';
 import { lootAtlasEntries } from './world/lootShapes';
+import { runeAtlasEntries } from './world/runeShapes';
 import { LootView } from './world/lootView';
 import { MomentsView } from './world/momentsView';
+import { RuneGetView } from './world/runeGetView';
 import type { Shake } from './shake';
 
 /** Atlas entries of everything M4 adds. */
@@ -25,6 +27,7 @@ export function m4AtlasEntries(): AtlasEntry[] {
     ...telegraphAccentEntries(),
     ...objectAtlasEntries(),
     ...lootAtlasEntries(),
+    ...runeAtlasEntries(),
   ];
 }
 
@@ -48,6 +51,8 @@ export class M4Layers {
   readonly objects: ObjectView;
   readonly loot: LootView;
   readonly moments: MomentsView;
+  /** The hero holding a new element rune overhead (the HUD's item-get panel drives it). */
+  readonly runeGet: RuneGetView;
   /** Ground layer under the bodies (rarity rings and glows). */
   readonly ground = new Container();
   /** Screen-space layer under damage numbers (Rare name plates). */
@@ -62,6 +67,7 @@ export class M4Layers {
     this.objects = new ObjectView(atlas, this.fx);
     this.loot = new LootView(atlas, this.fx);
     this.moments = new MomentsView(this.fx, shake);
+    this.runeGet = new RuneGetView(atlas, this.fx);
     this.ground.addChild(this.rarity.glows.container, this.rarity.ground.container);
     this.screen.addChild(this.rarity.plates, this.moments.screen);
   }
@@ -73,6 +79,7 @@ export class M4Layers {
     this.loot.reset();
     this.fx.reset();
     this.moments.reset();
+    this.runeGet.reset();
   }
 
   /** Tiles the object layer draws, so the room bake leaves them out. */

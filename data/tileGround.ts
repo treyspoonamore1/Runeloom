@@ -47,6 +47,7 @@ export const tileGround: Readonly<Record<TileId, TileGround | 'neighbor'>> = {
   key_chest: { ground: 'object' },
   big_key_door: { ground: 'object' },
   big_key_chest: { ground: 'object' },
+  rune_shrine: { ground: 'object' },
   heart_seed: 'neighbor',
   loom_shard: 'neighbor',
   loom_stone: 'neighbor',

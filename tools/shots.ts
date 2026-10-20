@@ -8,6 +8,8 @@
  *       into shots/rooms/<milestone>_<region>_<room>.png (--ticks N steps idle first)
  *   npm run shots -- --set ui [--milestone m4] [--shot inventory,tree] [--viewport 390x844]   M4 menus and HUD with fixture data
  *   npm run shots -- --set gallery [--section beasts,loot] [--perf] [--milestone m4]   M4 art gallery
+ *   npm run shots -- --set item [--milestone m4] [--shot frost_panel]   the K6 rune shrine and the
+ *       new-element panels (Frost at the shrine, Storm after the Cinder Warden)
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
@@ -27,6 +29,7 @@ import { authoredRegionRooms, showRoom, type RoomShort } from './lib/roomShots';
 import { regionRooms } from '../data/progression';
 import { runUiShot, uiShotIds, uiShotUrl, type UiShotId } from './lib/uiShots';
 import { galleryShots } from './lib/galleryShots';
+import { itemShotIds, itemShotUrl, runItemShot, type ItemShotId } from './lib/itemShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -54,12 +57,15 @@ runCli(async () => {
     station: { kind: 'string' },
     set: {
       kind: 'string',
-      help: "'creature': entities on the chemistry grid (lab stations); 'rooms': region rooms (fit and play zoom); 'onload': every room on load as an adventure game; 'ui': M4 menus and HUD; 'gallery': M4 art",
+      help: "'creature': entities on the chemistry grid (lab stations); 'rooms': region rooms (fit and play zoom); 'onload': every room on load as an adventure game; 'ui': M4 menus and HUD; 'gallery': M4 art; 'item': the K6 shrine and new-element panels",
     },
     room: { kind: 'string', help: 'with --set rooms: comma-separated short ids (e1,k7)' },
     region: { kind: 'string', help: "--set onload: only rooms whose id starts with this, e.g. 'kiln'" },
     port: { kind: 'number', default: 0, help: 'dev server port (0: any free port)' },
-    shot: { kind: 'string', help: `with --set ui: some of ${uiShotIds.join(', ')}` },
+    shot: {
+      kind: 'string',
+      help: `with --set ui: some of ${uiShotIds.join(', ')}; with --set item: some of ${itemShotIds.join(', ')}`,
+    },
     section: { kind: 'string', help: 'gallery sections to shoot, comma-separated (default all, plus crowd)' },
     perf: { kind: 'boolean', help: 'gallery: measure render time with 300 M4 and 300 M1 enemies' },
   });
@@ -176,6 +182,26 @@ runCli(async () => {
         await ctx.close();
         if (errors.length) console.warn(`warning: page errors in ui shot ${id}: ${errors.join('; ')}`);
       }
+    } else if (a.set === 'item') {
+      const only = a.shot?.split(',') ?? [...itemShotIds];
+      const bad = only.filter((x) => !(itemShotIds as readonly string[]).includes(x));
+      if (bad.length)
+        throw new ArgError(`Unknown --shot ${bad.join(', ')}. Available: ${itemShotIds.join(', ')}`);
+      for (const id of only as ItemShotId[]) {
+        errors.length = 0;
+        const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+        const p = await ctx.newPage();
+        p.on('pageerror', (e) => errors.push(e.message));
+        await p.goto(itemShotUrl(`http://127.0.0.1:${port}`));
+        await p.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+        await runItemShot(p, id);
+        const file = join(SHOTS_DIR, `${milestone}_item_${id}.png`);
+        await p.screenshot({ path: file, timeout: 120_000 });
+        console.log(`shot ${id}`);
+        written.push(file);
+        await ctx.close();
+        if (errors.length) console.warn(`warning: page errors in item shot ${id}: ${errors.join('; ')}`);
+      }
     } else if (a.set === 'gallery') {
       const url = `http://127.0.0.1:${port}/?scene=gallery`;
       const only = a.section?.split(',');
@@ -184,7 +210,7 @@ runCli(async () => {
       );
       if (errors.length) console.warn(`warning: page errors in the gallery: ${errors.join('; ')}`);
     } else if (a.set !== undefined)
-      throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload, ui, gallery`);
+      throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload, ui, gallery, item`);
     for (const scene of a.set === undefined ? selected : []) {
       errors.length = 0;
       await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);

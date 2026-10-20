@@ -4,6 +4,7 @@ import type { WorldObject } from '../../sim/world/objects';
 import type { Atlas } from '../atlas';
 import { buildFlame } from '../ambientView';
 import type { WorldFx } from './worldFx';
+import { ShrineLook, shrineRune } from './shrineLook';
 import {
   BlockLook,
   BrazierLook,
@@ -103,6 +104,8 @@ export class ObjectView {
         return new PickupLook(this.atlas, o);
       case 'loom_stone':
         return new LoomStoneLook(this.atlas, o);
+      case 'rune_shrine':
+        return new ShrineLook(this.atlas, o, shrineRune(s.room.id));
     }
   }
 }

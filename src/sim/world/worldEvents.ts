@@ -41,6 +41,11 @@ export type WorldEvent =
       x: number;
       y: number;
     }
+  /**
+   * The player touched a full rune shrine (`R`) and took its dungeon item: the room's guaranteed
+   * runes follow ('rewardGranted', and 'elementUnlocked' for a first element). It is empty now.
+   */
+  | { type: 'shrineTaken'; key: string; x: number; y: number }
   /** A Heart Seed or Loom Shard was taken. total: how many the hero has now. */
   | { type: 'pickup'; key: string; kind: 'heart_seed' | 'loom_shard'; total: number; x: number; y: number }
   /** A Loom Stone was touched. first: it was activated now (else it only became the respawn point again). */

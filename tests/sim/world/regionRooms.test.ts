@@ -84,6 +84,8 @@ const FROST_ROOMS: readonly Short[] = ['k6', 'k7', 'k8', 'k9'];
 const HEART_SEEDS: readonly Short[] = ['e4', 'e6', 'k4', 'k7'];
 const LOOM_SHARDS: readonly Short[] = ['e2', 'e7', 'k8'];
 const LOOM_STONES: readonly Short[] = ['e1', 'e8', 'k1', 'k6'];
+/** Rooms whose dungeon item sits on a rune shrine (`R`): K6's Frost (CONTENT §9). */
+const SHRINES: readonly Short[] = ['k6'];
 const LINKS: Partial<Record<Short, string>> = {
   e6: 'cleared',
   e7: 'timer:10:braziers:all',
@@ -197,6 +199,7 @@ describe('region rooms', () => {
       expect(count(s, 'x') > 0, `${s} x`).toBe(LOOM_STONES.includes(s));
       expect(count(s, 'k') + count(s, 'K') > 0, `${s} small key`).toBe(s === 'k3');
       expect(count(s, 'g') + count(s, 'G') > 0, `${s} big key`).toBe(s === 'k9');
+      expect(count(s, 'R'), `${s} rune shrine`).toBe(SHRINES.includes(s) ? 1 : 0);
     }
     expect(count('k3', 'k')).toBe(1);
     expect(count('k9', 'g')).toBe(1);
@@ -240,6 +243,20 @@ describe('region rooms are gated by what they teach (static reachability)', () =
       if (find(room(s), ch).length > 0) expect(reaches(s, ALL, ch), `${s} ${ch}`).toBe(true);
     const ahead = EXIT_CHAR[(Object.keys(GRAPH[s]) as Edge[]).find((d) => d !== 'w')!];
     expect(reaches(s, NO_FROST, ahead)).toBe(false);
+  });
+
+  it('K6: the Frost shrine is reachable from the west exit without Frost, on the altar', () => {
+    expect(reaches('k6', NO_FROST, 'R')).toBe(true);
+    const [shrine] = find(room('k6'), 'R');
+    expect(shrine).toEqual({ x: 16, y: 13 });
+    // The altar: a metal platform with pylons at its corners, the shrine at its heart.
+    for (const [x, y] of [
+      [12, 10],
+      [20, 10],
+      [12, 17],
+      [20, 17],
+    ] as const)
+      expect(room('k6').rows[y]![x]).toBe('M');
   });
 
   it('frost rewards: the K7 Heart Seed, K8 Loom Shard and K9 big key need Frost', () => {

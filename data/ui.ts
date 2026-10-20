@@ -11,6 +11,11 @@ export const uiTuning = {
   maxToasts: 5,
   /** Same-kind pickups within this many seconds merge into one toast ("+3 Thread Scrap"). */
   toastMergeSeconds: 1.2,
+  /**
+   * The item-get panel for a new element rune: sim seconds to wait after a boss drops it (the
+   * Cinder Warden's Storm), so his death plays first. A shrine's rune shows at once.
+   */
+  elementAfterBossSeconds: 2,
   /** Passive tree zoom limits and the step per wheel notch or +/- key. */
   treeZoomMin: 0.35,
   treeZoomMax: 2.6,

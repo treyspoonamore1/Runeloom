@@ -2,7 +2,7 @@
  * Building a room's objects from its tiles, @link headers and RoomFlags (objects.ts). Runs on
  * every room entry, right after the grid is rebuilt from the file (so terrain is fresh), and
  * applies what the room remembers: open doors are floor again, looted chests stay open, taken
- * pickups stay gone, activated Loom Stones stay lit, and the braziers and switches of an opened
+ * pickups stay gone, emptied rune shrines stay empty, activated Loom Stones stay lit, and the braziers and switches of an opened
  * door start lit or powered.
  */
 import type { GameState } from '../state';
@@ -12,7 +12,13 @@ import { floorBeneath, forTileCells, setTileGround, tileChar } from './objectGro
 import { loomStoneId, roomFlags } from './worldState';
 
 const DOORS: readonly ObjectKind[] = ['door', 'locked_door', 'big_key_door'];
-const TAKEN: readonly ObjectKind[] = ['key_chest', 'big_key_chest', 'heart_seed', 'loom_shard'];
+const TAKEN: readonly ObjectKind[] = [
+  'key_chest',
+  'big_key_chest',
+  'heart_seed',
+  'loom_shard',
+  'rune_shrine',
+];
 
 /** The door character a puzzle object of `kind` feeds through a @link, or ''. */
 function linkFor(state: GameState, kind: ObjectKind): string {

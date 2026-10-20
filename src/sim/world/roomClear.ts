@@ -6,7 +6,8 @@
  *   bossKinds) is cleared when its boss dies, whatever else is still alive, and the boss goes
  *   into WorldState.bossesDefeated.
  * - The first clear pays the room's rewards once per save: `onRoomCleared` (hero/rewards.ts),
- *   then RoomFlags.rewardsPaid.
+ *   then RoomFlags.rewardsPaid. A room with a rune shrine (`R`) pays them only when the player
+ *   touches the shrine (objectTouch.ts), so neither its clear nor `@clear exit` pays them.
  * - A cleared room stays empty when re-entered until the player rests at a Loom Stone or dies;
  *   then every room repopulates except boss rooms whose boss is dead.
  */
@@ -16,6 +17,11 @@ import { onRoomCleared } from '../hero/rewards';
 import type { GameState } from '../state';
 import { parseRoom, type RoomHeader } from './room';
 import { roomFlags } from './worldState';
+
+/** The current room pays its guaranteed runes at a rune shrine (`R`), not on clear. */
+export function paysAtShrine(state: GameState): boolean {
+  return state.objects.some((o) => o.kind === 'rune_shrine');
+}
 
 /** Boss enemy kinds a room spawns (its @spawn enemy: entries in bossKinds), in file order. */
 export function roomBossKinds(header: Pick<RoomHeader, 'spawns'>): string[] {
@@ -31,15 +37,18 @@ export function bossRoomDone(state: GameState, header: Pick<RoomHeader, 'spawns'
   return bosses.length > 0 && bosses.every((k) => state.world.bossesDefeated.includes(k));
 }
 
-/** Marks the current room cleared; the first time ever, pays its rewards. */
-export function markRoomCleared(state: GameState): void {
+/**
+ * Marks the current room cleared; the first time ever, pays its rewards (unless a rune shrine
+ * holds them). `boss`: the boss whose death cleared it, where the reward moment happens.
+ */
+export function markRoomCleared(state: GameState, boss?: { x: number; y: number }): void {
   const id = state.room.id;
   const f = roomFlags(state.world, id);
   if (f.cleared) return;
   f.cleared = true;
-  const first = !f.rewardsPaid;
+  const first = !f.rewardsPaid && !paysAtShrine(state);
   if (first) {
-    onRoomCleared(state, id);
+    onRoomCleared(state, id, boss ? { x: boss.x, y: boss.y, source: 'boss' } : undefined);
     f.rewardsPaid = true;
   }
   emit(state, { type: 'roomCleared', id, first });
@@ -53,7 +62,7 @@ export function payRewardsOnExit(state: GameState, edge: string): void {
   if (state.room.header.clearOnExit !== edge) return;
   const id = state.room.id;
   const f = roomFlags(state.world, id);
-  if (f.rewardsPaid) return;
+  if (f.rewardsPaid || paysAtShrine(state)) return;
   onRoomCleared(state, id);
   f.rewardsPaid = true;
 }
@@ -61,15 +70,17 @@ export function payRewardsOnExit(state: GameState, edge: string): void {
 /** Per tick: records boss deaths and clears the room when its enemies (or its boss) are dead. */
 export function stepRoomClear(state: GameState): void {
   const w = state.world;
+  let boss: { x: number; y: number } | undefined;
   for (const e of state.enemies) {
     if (!e.dead || !bossKinds.includes(e.kind) || w.bossesDefeated.includes(e.kind)) continue;
     w.bossesDefeated.push(e.kind);
+    boss = { x: e.x, y: e.y };
     emit(state, { type: 'bossDefeated', kind: e.kind, roomId: state.room.id, x: e.x, y: e.y });
   }
   if (roomFlags(w, state.room.id).cleared) return;
   const header = state.room.header;
   if (roomBossKinds(header).length > 0) {
-    if (bossRoomDone(state, header)) markRoomCleared(state);
+    if (bossRoomDone(state, header)) markRoomCleared(state, boss);
     return;
   }
   for (const e of state.enemies) if (!e.dead) return;

@@ -4,7 +4,8 @@ import { fmtCost, waveText, type HudSnap } from './hudModel';
 import { WeaveIcon } from './loom/glyphs';
 import type { MenuId } from './menus/frame';
 
-export type Screen = 'title' | 'start' | 'play' | 'pause' | 'loom' | MenuId;
+/** 'itemGet': the new-element panel (src/ui/itemGet). */
+export type Screen = 'title' | 'start' | 'play' | 'pause' | 'loom' | 'itemGet' | MenuId;
 export interface Banner {
   id: number;
   title: string;
