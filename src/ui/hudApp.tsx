@@ -9,6 +9,8 @@ import { isMenu, MenuScreens } from './menus/menuHost';
 import { PauseMenu, type PauseActions } from './pauseMenu';
 import { StartScreen } from './startScreen';
 import { TitleScreen } from './title/titleScreen';
+import { ItemGetPanel } from './itemGet/itemGetPanel';
+import type { ItemGetView } from './itemGet/itemGetModel';
 
 export interface HudAppProps {
   s: Sigs;
@@ -17,6 +19,8 @@ export interface HudAppProps {
   pause: PauseActions;
   loom: LoomController;
   closeLoom(): void;
+  /** The new-element panel's view and its close (true: on into the Loom). */
+  itemGet: { view: { value: ItemGetView | null }; close(toLoom: boolean): void };
   adv: AdventureHud;
   flow: AdventureFlow | null;
   menu(id: MenuId | null): void;
@@ -71,6 +75,13 @@ export function HudApp(p: HudAppProps) {
       ) : null}
       {screen === 'pause' ? <PauseMenu {...p.pause} /> : null}
       {screen === 'loom' ? <LoomPanel loom={p.loom} onClose={p.closeLoom} /> : null}
+      {screen === 'itemGet' && p.itemGet.view.value ? (
+        <ItemGetPanel
+          view={p.itemGet.view.value}
+          onLoom={() => p.itemGet.close(true)}
+          onContinue={() => p.itemGet.close(false)}
+        />
+      ) : null}
       {isMenu(screen) ? (
         <MenuScreens
           screen={screen}

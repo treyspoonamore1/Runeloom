@@ -41,6 +41,8 @@ export const HUD_EVENT = {
   runeUnlocked: 'runeUnlocked',
   /** { content }: a first-clear reward went straight into the pouch (guaranteed runes, CONTENT §9.1). */
   rewardGranted: 'rewardGranted',
+  /** { rune, source }: a first element rune: the item-get panel shows it instead of a toast. */
+  elementUnlocked: 'elementUnlocked',
   /** { content }: a drop landed on the floor (the renderer draws it; no toast). */
   lootDropped: 'lootDropped',
   /** { content, onExit }: a floor drop was collected. */
@@ -51,17 +53,7 @@ export const HUD_EVENT = {
 export type LooseEvent = { type: string } & Record<string, unknown>;
 
 export type ToastKind =
-  | 'rune'
-  | 'item'
-  | 'part'
-  | 'scrap'
-  | 'key'
-  | 'bigKey'
-  | 'heart'
-  | 'shard'
-  | 'level'
-  | 'stone'
-  | 'door';
+  'rune' | 'item' | 'part' | 'scrap' | 'key' | 'bigKey' | 'heart' | 'shard' | 'level' | 'stone' | 'door';
 
 export interface ToastSpec {
   kind: ToastKind;
@@ -105,11 +97,14 @@ function contentToast(c: LootContent, names: ToastNames, runeSub: string): Toast
 /** The toasts one batch of events makes, in order. */
 export function toastsFor(events: readonly LooseEvent[], names: ToastNames): ToastSpec[] {
   const out: ToastSpec[] = [];
-  // A first-clear reward that also unlocks its rune makes one toast, not two.
+  // A first-clear reward that also unlocks its rune makes one toast, not two; a first element
+  // rune makes none (the item-get panel, src/ui/itemGet, is its moment).
   const rewarded = new Set<string>();
+  const moments = new Set<string>();
   for (const e of events) {
     const c = e.content as LootContent | undefined;
     if (e.type === HUD_EVENT.rewardGranted && c?.kind === 'rune') rewarded.add(c.rune.rune);
+    else if (e.type === HUD_EVENT.elementUnlocked) moments.add(String(e.rune));
   }
   for (const e of events) {
     switch (e.type) {
@@ -120,11 +115,20 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
       }
       case HUD_EVENT.rewardGranted: {
         const c = e.content as LootContent | undefined;
-        if (c) out.push(contentToast(c, names, 'New rune · into your pouch'));
+        if (c?.kind === 'rune' && moments.has(c.rune.rune)) break;
+        if (c?.kind === 'rune')
+          out.push(
+            toast(
+              'rune',
+              `New rune: ${names.rune(c.rune.rune)}`,
+              'In your pouch · weave it in the Loom (Tab)',
+            ),
+          );
+        else if (c) out.push(contentToast(c, names, ''));
         break;
       }
       case HUD_EVENT.runeUnlocked:
-        if (!rewarded.has(String(e.rune)))
+        if (!rewarded.has(String(e.rune)) && !moments.has(String(e.rune)))
           out.push(toast('rune', names.rune(String(e.rune)), 'New rune unlocked'));
         break;
       case HUD_EVENT.runeLevelUp:
@@ -138,7 +142,8 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
         );
         break;
       case HUD_EVENT.keyUsed:
-        if (!e.big) out.push(toast('key', 'Key used', plural(Number(e.left ?? 0), 'small key', 'small keys')));
+        if (!e.big)
+          out.push(toast('key', 'Key used', plural(Number(e.left ?? 0), 'small key', 'small keys')));
         break;
       case HUD_EVENT.pickup:
         out.push(
