@@ -240,16 +240,6 @@ export const sfxM4Fights = {
       { volume: 0.5, frequency: C4, shape: 'triangle', attack: 0.04, sustain: 0.4, release: 0.8 },
     ],
   },
-  /** A low drone pulse, repeated while a boss lives. */
-  bossDrone: {
-    gain: 0.18,
-    pitchVar: 0,
-    minGapMs: 1500,
-    priority: 0,
-    layers: [
-      { volume: 1, frequency: A2 / 2, shape: 'sine', attack: 0.5, sustain: 1.0, release: 0.8, tremolo: 0.2 },
-    ],
-  },
   bossPhase: {
     gain: 0.55,
     pitchVar: 0,

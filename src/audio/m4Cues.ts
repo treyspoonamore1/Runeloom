@@ -1,7 +1,6 @@
 import type { M4SfxId } from '../../data/sfxM4';
 import type { M4Cue } from '../app/m4Signals';
-import { BOSS_KINDS, type M4AttackKey } from '../app/m4Wiring';
-import type { GameState } from '../sim';
+import type { M4AttackKey } from '../app/m4Wiring';
 
 /** An M4 sound to play (same shape as cues.ts Cue, over data/sfxM4.ts ids). */
 export interface M4SoundCue {
@@ -98,23 +97,5 @@ export function m4Sounds(c: M4Cue): M4SoundCue[] {
       return [{ id: 'respawnLoom' }];
     default:
       return [];
-  }
-}
-
-/** A low drone pulse every `period` seconds while a boss is alive in the room (DESIGN §13 music slot stays free). */
-export class BossDrone {
-  private left = 0;
-  constructor(readonly period = 2.4) {}
-
-  cues(s: GameState, dt: number): M4SoundCue[] {
-    const boss = s.enemies.some((e) => !e.dead && BOSS_KINDS.has(e.kind));
-    if (!boss) {
-      this.left = 0;
-      return [];
-    }
-    this.left -= dt;
-    if (this.left > 0) return [];
-    this.left = this.period;
-    return [{ id: 'bossDrone' }];
   }
 }

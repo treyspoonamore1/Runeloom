@@ -50,6 +50,8 @@ export interface SfxDef {
   minGapMs?: number;
   /** Higher priority sounds may replace lower ones when the voice limit is reached. Default 1. */
   priority?: number;
+  /** 'ambient': played through the Ambient volume (Settings) as well as the master. Default: effects. */
+  bus?: 'ambient';
 }
 
 const NOTE = (semitonesFromA4: number): number => 440 * 2 ** (semitonesFromA4 / 12);
@@ -194,7 +196,7 @@ export const sfx = {
   burnTick: {
     gain: 0.1,
     pitchVar: 0.25,
-    minGapMs: 140,
+    minGapMs: 250,
     priority: 0,
     layers: [
       { volume: 1, frequency: 1700, shape: 'noise', noise: 2, release: 0.03, filter: -1400 },
@@ -641,6 +643,7 @@ export const sfx = {
     pitchVar: 0.3,
     minGapMs: 45,
     priority: 0,
+    bus: 'ambient',
     layers: [
       { volume: 1, frequency: 1200, shape: 'noise', noise: 4, attack: 0.002, release: 0.04, filter: -900 },
       { at: 0.05, volume: 0.6, frequency: 700, shape: 'noise', noise: 3, release: 0.03, filter: -600 },
@@ -651,14 +654,17 @@ export const sfx = {
   igniteWhoosh: {
     gain: 0.3,
     pitchVar: 0.12,
-    minGapMs: 120,
+    minGapMs: 150,
+    // Under combat sounds; TerrainSoundTracker spaces whooshes out further as more burns.
+    priority: 0,
     layers: [{ volume: 1, frequency: 180, shape: 'noise', noise: 1, attack: 0.08, sustain: 0.06, release: 0.2, slide: 2, filter: 700 }],
   },
   /** Fire on water: a soft hiss. */
   steamHiss: {
     gain: 0.22,
     pitchVar: 0.1,
-    minGapMs: 150,
+    minGapMs: 250,
+    priority: 0,
     layers: [{ volume: 1, frequency: 3000, shape: 'noise', noise: 2, attack: 0.03, sustain: 0.15, release: 0.35, filter: -2500 }],
   },
   /** Water froze: a little tinkle. */
@@ -749,7 +755,8 @@ export const sfx = {
   burntCrumble: {
     gain: 0.3,
     pitchVar: 0.1,
-    minGapMs: 200,
+    minGapMs: 250,
+    priority: 0,
     layers: [
       { volume: 1, frequency: 160, shape: 'noise', noise: 2, release: 0.08, repeatTime: 0.06, filter: 500 },
       { at: 0.1, volume: 0.6, frequency: 110, shape: 'noise', noise: 1, release: 0.25, filter: 400 },
@@ -834,18 +841,37 @@ export const terrainAudio = {
   viewHalfH: 46,
   /** Seconds between counts of the burning cells. */
   countEvery: 0.15,
-  /** Crackle retrigger interval at a small fire and at a huge one (seconds). */
-  slowest: 0.35,
-  fastest: 0.07,
-  /** This many burning cells on screen is a huge fire (full rate and loudness). */
-  hugeFire: 600,
-  /** Crackle loudness at one burning cell and at a huge fire. */
-  quietest: 0.25,
-  loudest: 1,
+  /**
+   * The fire bed saturates at this many burning cells on screen (10 tiles of 4 × 4 cells): a
+   * bigger fire sounds the same, so a room burning away is no louder than a burning hedge.
+   * The level follows sqrt(cells / saturateAt). Was 600 (M4 playtest: too loud and busy).
+   */
+  saturateAt: 160,
+  /** Crackle retrigger interval at a small fire and at a saturated one (seconds). Were 0.35 / 0.07. */
+  slowest: 0.4,
+  fastest: 0.16,
+  /** Crackle loudness at one burning cell and at a saturated fire (× preset gain × Ambient). Were 0.25 / 1. */
+  quietest: 0.45,
+  loudest: 0.7,
+  /** Time constants (s) for the bed level rising and falling, so it swells and fades instead of jumping. */
+  riseSeconds: 0.4,
+  fallSeconds: 1.2,
+  /** After the last burning cell goes out, the bed fades to silence over this many seconds. */
+  tailSeconds: 1.5,
   /** Electrified networks of at least this many cells use the big zap. */
   bigNetwork: 150,
-  /** Ignitions of fewer cells than this are only heard through the fire bed. */
+  /** Ignitions of fewer cells than this are only heard through the fire bed... */
   whooshMinCells: 3,
+  /** ...unless fewer than this many cells burn on screen: then any ignition whooshes (one bramble reads). */
+  freshFireCells: 32,
+  /** Seconds between ignition whooshes with no fire on screen and with a saturated fire. */
+  whooshGapMin: 0.15,
+  whooshGapMax: 1.6,
+  /** Seconds between burn-out crumbles with no fire on screen and with a saturated fire. */
+  crumbleGapMin: 0.25,
+  crumbleGapMax: 2.5,
+  /** Whoosh and crumble loudness under a saturated fire bed, relative to a lone fire. */
+  busyGain: 0.35,
 } as const;
 
 /** Global tuning for the audio system (DESIGN §13). */

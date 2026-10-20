@@ -5,6 +5,8 @@
 export interface Settings {
   /** Master volume, 0 to 1. */
   volume: number;
+  /** Ambient loops (the fire bed), 0 to 1, on top of the master volume. */
+  ambient: number;
   /** Floating damage numbers. */
   damageNumbers: boolean;
   /** Camera shake on explosions and shatters. */
@@ -14,7 +16,7 @@ export interface Settings {
 }
 
 const KEY = 'runeloom.settings.v1';
-const DEFAULTS: Settings = { volume: 0.7, damageNumbers: true, screenShake: true, effectDensity: 1 };
+const DEFAULTS: Settings = { volume: 0.7, ambient: 0.6, damageNumbers: true, screenShake: true, effectDensity: 1 };
 
 function load(): Settings {
   try {

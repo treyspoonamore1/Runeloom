@@ -1,11 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sfxM4, type M4SfxId } from '../../data/sfxM4';
 import { mixSfx } from '../../src/audio/synth';
-import { BossDrone, m4Sounds } from '../../src/audio/m4Cues';
+import { m4Sounds } from '../../src/audio/m4Cues';
 import type { M4Cue } from '../../src/app/m4Signals';
-import { createGame, spawnEnemy } from '../../src/sim';
-import type { EnemyKind } from '../../data/enemies';
-import arenaText from '../../data/rooms/test/arena.txt?raw';
 
 describe('M4 presets', () => {
   it('render finite, audible, quiet and rate-limited', async () => {
@@ -20,9 +17,9 @@ describe('M4 presets', () => {
         peak = Math.max(peak, Math.abs(v));
       }
       expect(peak, id).toBeGreaterThan(0.05);
-      // The boss drone and sting ring longer; everything else stays short.
+      // The boss sting and death ring longer; everything else stays short.
       expect(s.length / ZZFX.sampleRate, id).toBeLessThan(
-        id === 'bossDrone' || id === 'bossSting' || id === 'bossDeath' ? 3 : 1.5,
+        id === 'bossSting' || id === 'bossDeath' ? 3 : 1.5,
       );
       expect(def.gain, id).toBeLessThanOrEqual(0.6);
       expect(def.minGapMs ?? 30, id).toBeGreaterThanOrEqual(30);
@@ -76,14 +73,8 @@ describe('m4Sounds', () => {
     expect(ids({ type: 'attackLanded', attack: 'wispBolt', id: 2, ...at })).toEqual([]);
   });
 
-  it('drones while a boss lives, once per period', () => {
-    const s = createGame({ seed: 1, roomText: arenaText, spawnRoomEnemies: false });
-    const drone = new BossDrone(2);
-    expect(drone.cues(s, 0.1)).toEqual([]);
-    const b = spawnEnemy(s, 'dummy', 10, 10);
-    b.kind = 'cinder_warden' as EnemyKind;
-    expect(drone.cues(s, 0.1).map((c) => c.id)).toEqual(['bossDrone']);
-    expect(drone.cues(s, 1)).toEqual([]);
-    expect(drone.cues(s, 1.1).map((c) => c.id)).toEqual(['bossDrone']);
+  it('stings when a boss appears and plays no drone loop while it lives', () => {
+    expect(ids({ type: 'bossAppear', id: 1, kind: 'cinder_warden', ...at })).toEqual(['bossSting']);
+    expect(Object.keys(sfxM4)).not.toContain('bossDrone');
   });
 });
