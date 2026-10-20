@@ -8,6 +8,8 @@
  *       into shots/rooms/<milestone>_<region>_<room>.png (--ticks N steps idle first)
  *   npm run shots -- --set ui [--milestone m4] [--shot inventory,tree] [--viewport 390x844]   M4 menus and HUD with fixture data
  *   npm run shots -- --set gallery [--section beasts,loot] [--perf] [--milestone m4]   M4 art gallery
+ *   npm run shots -- --set fight [--room k5] [--at 4,12,20] [--milestone m4]   a boss fight as the
+ *       encounter sim plays it (campaign bot, reference character), whole room, at each fight second in --at
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
@@ -27,6 +29,7 @@ import { authoredRegionRooms, showRoom, type RoomShort } from './lib/roomShots';
 import { regionRooms } from '../data/progression';
 import { runUiShot, uiShotIds, uiShotUrl, type UiShotId } from './lib/uiShots';
 import { galleryShots } from './lib/galleryShots';
+import { showFight } from './lib/fightShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -62,6 +65,7 @@ runCli(async () => {
     shot: { kind: 'string', help: `with --set ui: some of ${uiShotIds.join(', ')}` },
     section: { kind: 'string', help: 'gallery sections to shoot, comma-separated (default all, plus crowd)' },
     perf: { kind: 'boolean', help: 'gallery: measure render time with 300 M4 and 300 M1 enemies' },
+    at: { kind: 'string', default: '4,12,20', help: '--set fight: fight seconds to shoot, comma-separated' },
   });
   const viewport = parseViewport(a.viewport!);
   const ticks = requireInt('ticks', a.ticks, 0);
@@ -183,8 +187,20 @@ runCli(async () => {
         ...(await galleryShots(page, url, { dir: SHOTS_DIR, milestone, only, perf: a.perf === true })),
       );
       if (errors.length) console.warn(`warning: page errors in the gallery: ${errors.join('; ')}`);
+    } else if (a.set === 'fight') {
+      const room = a.room ?? 'k5';
+      for (const at of a.at!.split(',').map(Number)) {
+        errors.length = 0;
+        await page.goto(`http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`);
+        await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+        console.log(await showFight(page, { room, seed: SEED, at }));
+        const file = join(SHOTS_DIR, `${milestone}_fight_${room}_${String(at).replace('.', '_')}s.png`);
+        await page.screenshot({ path: file, timeout: 120_000 });
+        written.push(file);
+        if (errors.length) console.warn(`warning: page errors in fight shot ${at}: ${errors.join('; ')}`);
+      }
     } else if (a.set !== undefined)
-      throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload, ui, gallery`);
+      throw new ArgError(`Unknown --set "${a.set}". Available: creature, rooms, onload, ui, gallery, fight`);
     for (const scene of a.set === undefined ? selected : []) {
       errors.length = 0;
       await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);
