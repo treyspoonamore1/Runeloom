@@ -125,7 +125,7 @@ export class BeastTelegraphs {
       if (key === 'stormStrike') this.crackle(a.originX, a.originY, u);
       else if (key === 'tarGlob') this.glob(e, u);
       else if (key === 'wispFrostLine') this.frostLine(e, u);
-      else if (key === 'wardenCharge') this.chevrons(e, u);
+      else if (key === 'wardenCharge' || key === 'tarRush') this.chevrons(e, u);
       else if (key === 'fireSlam' || key === 'fireBreath') this.embers(e, u);
       else if (key === 'brazierStorm') this.storm = Math.max(this.storm, u);
     }

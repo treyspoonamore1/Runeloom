@@ -17,6 +17,7 @@ const WINDUP: Partial<Record<M4AttackKey, M4SfxId>> = {
   wispFrostLine: 'frostLineCharge',
   stormStrike: 'stormCharge',
   tarGlob: 'tarGloop',
+  tarRush: 'chargeRoar',
   summon: 'summonGurgle',
   wardenCharge: 'chargeRoar',
   fireSlam: 'fireWhoosh',

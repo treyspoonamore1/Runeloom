@@ -74,6 +74,7 @@ export const M4_ATTACKS = {
   miteNip: 'mite_nip',
   matriarchSlam: 'matriarch_slam',
   tarGlob: 'tar_glob',
+  tarRush: 'tar_rush',
   summon: 'summon_hulks',
   wardenCharge: 'charge',
   fireSlam: 'fire_slam',
