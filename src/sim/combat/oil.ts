@@ -7,7 +7,10 @@
 import { spillOil as spillOilOnGrid } from '../grid/oil';
 import type { GameState } from '../state';
 
-/** Oil on every walkable or water cell whose center is within `r` of (x, y). Returns cells oiled. */
-export function spillOil(state: GameState, x: number, y: number, r: number): number {
-  return spillOilOnGrid(state, x, y, r, { skipOiled: true });
+/**
+ * Oil on every walkable or water cell whose center is within `r` of (x, y); `tar`: the Tar
+ * Matriarch's tar (fire on it is world-owned). Returns cells oiled.
+ */
+export function spillOil(state: GameState, x: number, y: number, r: number, tar = false): number {
+  return spillOilOnGrid(state, x, y, r, { skipOiled: true, tar });
 }

@@ -65,6 +65,7 @@ const int F_OWNER_SHIFT = ${FLAG.ownerShift};
 const int F_AIR_SHIFT = ${FLAG.airShift};
 const int F_EMBER = ${FLAG.ember};
 const int F_OVER_WATER = ${FLAG.overWater};
+const int F_TAR = ${FLAG.tar};
 const float PI = 3.14159265;
 const float TAU = 6.2831853;
 

@@ -5,6 +5,7 @@ import { fx, type CellBatch } from './cells';
 
 export function flushFx(state: GameState): void {
   flush(state, 'cellIgnited', fx.ignited);
+  flush(state, 'tarIgnited', fx.tarIgnited);
   flush(state, 'burntOut', fx.burntOut);
   flush(state, 'iceBreaking', fx.iceBreaking);
   flush(state, 'iceBroke', fx.iceBroke);
@@ -13,7 +14,7 @@ export function flushFx(state: GameState): void {
 /** Emits a batched grid event for `b` if it counted any cell, then empties it. */
 export function flush(
   state: GameState,
-  type: 'cellIgnited' | 'burntOut' | 'iceBreaking' | 'iceBroke' | 'steam' | 'iceFormed',
+  type: 'cellIgnited' | 'tarIgnited' | 'burntOut' | 'iceBreaking' | 'iceBroke' | 'steam' | 'iceFormed',
   b: CellBatch,
 ): void {
   if (b.count === 0) return;

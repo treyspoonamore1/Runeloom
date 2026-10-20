@@ -14,7 +14,7 @@ const COS30 = 0.8660254037844387;
 export const bosses = {
   tar_matriarch: {
     name: 'Tar Matriarch',
-    life: 1800,
+    life: 5000,
     speed: 10,
     radius: 3.6,
     resist: { physical: 0, fire: -0.3, frost: 0, storm: 0 },
@@ -37,6 +37,7 @@ export const bosses = {
     extraAttacks: [
       {
         // Lobbed: the 0.8 s windup is the flight; the landing marker is the hit and the splat.
+        // Her splats are tar: fire on them is world-owned and hurts everyone (CONTENT §5).
         name: 'tar_glob',
         damage: 15,
         damageType: 'physical',
@@ -48,10 +49,26 @@ export const bosses = {
         knockback: 0,
         shape: { kind: 'circle', r: 4, offset: 0 },
         targeted: true,
-        terrain: { kind: 'oil', radius: 4 },
+        terrain: { kind: 'oil', radius: 4, tar: true },
       },
       {
-        // At 50% life: calls 2 Tar Hulks (ai/bosses/matriarch.ts). No damage.
+        // Phase 2: a rush at where the player stood (like the Warden's charge, shorter), 25 on
+        // contact, smearing her tar along the way (ai/bosses/matriarch.ts).
+        name: 'tar_rush',
+        damage: 25,
+        damageType: 'physical',
+        windup: 0.9,
+        active: 1,
+        recover: 0.8,
+        cooldown: 6,
+        range: 40,
+        knockback: 4,
+        // Width covers her body plus the contact reach; length is set to the dash at windup.
+        shape: { kind: 'line', length: 32, width: 8.6, offset: 0 },
+        dash: { speed: 40, maxLength: 32, reach: 0.5, tarTrailRadius: 2.4 },
+      },
+      {
+        // At 50% life: calls her tar crew, 2 Tar Hulks and 4 Tinderlings (ai/bosses/hooks.ts). No damage.
         name: 'summon_hulks',
         damage: 0,
         damageType: 'physical',
@@ -65,6 +82,11 @@ export const bosses = {
       },
     ],
     behavior: { kind: 'boss', boss: 'tar_matriarch' },
+    // The Tar Hulk's blast, but she lives through it (ai/bosses/flare.ts): lit while Oiled, she
+    // flares after the Hulk's 1.5 s fuse in its 6-cell world-owned burst and burns herself.
+    chemistry: {
+      flare: { fuse: 1.5, radius: 6, damage: 35, selfDamage: 250, cooldown: 10 },
+    },
   },
   cinder_warden: {
     name: 'Cinder Warden',

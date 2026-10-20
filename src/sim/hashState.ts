@@ -174,6 +174,7 @@ function hashGrid(h: Hasher, g: Grid): void {
     g.wet,
     g.under,
     g.owner,
+    g.tar,
   ])
     h.bytes(a);
 }

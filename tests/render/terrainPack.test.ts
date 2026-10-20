@@ -69,6 +69,20 @@ describe('TerrainPack codes', () => {
     expect(code('.')[1]! & FLAG.oil).toBe(0);
     expect(code('=')[1]! & FLAG.overWater).toBe(FLAG.overWater);
     expect(code('+')[1]! & FLAG.overWater).toBe(0);
+    expect(code('o')[1]! & FLAG.tar).toBe(0);
+  });
+
+  it("flags the Tar Matriarch's tar (oil marked in grid.tar)", () => {
+    const t = setup();
+    const i = cellOf(t.grid, col('o'));
+    t.grid.tar[i] = 1;
+    tick(t.grid, t.pack);
+    expect(texel(t.pack.codes, i)[1]! & (FLAG.oil | FLAG.tar)).toBe(FLAG.oil | FLAG.tar);
+    // Tar without oil (a stale mark) isn't drawn as tar.
+    const j = cellOf(t.grid, col('.'));
+    t.grid.tar[j] = 1;
+    tick(t.grid, t.pack);
+    expect(texel(t.pack.codes, j)[1]! & FLAG.tar).toBe(0);
   });
 
   it('packs owner and air into the flags', () => {

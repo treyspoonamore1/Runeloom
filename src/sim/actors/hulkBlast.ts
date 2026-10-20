@@ -22,13 +22,23 @@ export function explodeHulk(state: GameState, e: Enemy, die: boolean): void {
   const ex = enemyDef(e.kind).chemistry?.explodes;
   if (ex === undefined) return;
   e.special.fuseLeft = 0;
+  const damage = scaleByLevel(ex.damage, state.tuning.combat.enemyDamageGrowth, e.areaLevel);
+  emit(state, { type: 'hulkExploded', id: e.id, x: e.x, y: e.y, radius: ex.radius, damage });
+  fireBurst(state, e, ex.radius, damage);
+  if (die && !e.dead) killEnemy(state, e, e.ailments.ignite.sourceId, 'hit');
+}
+
+/**
+ * A world-owned fire burst of `radius` cells around enemy `e` (the Tar Hulk's explosion, the Tar
+ * Matriarch's flare): fire on the grid, an 'explosion' event, and `damage` Fire (already scaled)
+ * with knockback to the player and every other live enemy it touches. `e` itself isn't hit.
+ */
+export function fireBurst(state: GameState, e: Enemy, radius: number, damage: number): void {
   const x = e.x;
   const y = e.y;
-  const damage = scaleByLevel(ex.damage, state.tuning.combat.enemyDamageGrowth, e.areaLevel);
-  emit(state, { type: 'hulkExploded', id: e.id, x, y, radius: ex.radius, damage });
   applyElement(state, {
     element: 'fire',
-    shape: { kind: 'circle', x, y, r: ex.radius },
+    shape: { kind: 'circle', x, y, r: radius },
     owner: OWNER.world,
     sourceId: WORLD_SOURCE_ID,
     hitDamage: 0,
@@ -38,20 +48,19 @@ export function explodeHulk(state: GameState, e: Enemy, die: boolean): void {
     type: 'explosion',
     x,
     y,
-    radius: ex.radius,
+    radius,
     damage,
     owner: OWNER.world,
     sourceId: WORLD_SOURCE_ID,
   });
   const p = state.player;
-  if (!p.dead) blastHit(state, x, y, ex.radius, damage, p, state.tuning.player.radius);
+  if (!p.dead) blastHit(state, x, y, radius, damage, p, state.tuning.player.radius);
   // Enemies added by kills' side effects don't count; only those alive as it goes off.
   const n = state.enemies.length;
   for (let k = 0; k < n; k++) {
     const o = state.enemies[k]!;
-    if (o !== e && !o.dead) blastHit(state, x, y, ex.radius, damage, o, o.radius);
+    if (o !== e && !o.dead) blastHit(state, x, y, radius, damage, o, o.radius);
   }
-  if (die && !e.dead) killEnemy(state, e, e.ailments.ignite.sourceId, 'hit');
 }
 
 function blastHit(

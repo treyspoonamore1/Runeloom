@@ -63,6 +63,8 @@ export interface BossState {
   glowing: boolean;
   /** Seconds before it picks its next attack. */
   gap: number;
+  /** Tar Matriarch: seconds before being lit while Oiled can light her flare fuse again. */
+  flareCooldown: number;
 }
 
 export function createBossState(): BossState {
@@ -77,6 +79,7 @@ export function createBossState(): BossState {
     stormLeft: 0,
     glowing: false,
     gap: 0,
+    flareCooldown: 0,
   };
 }
 
@@ -90,4 +93,5 @@ export function hashBossState(h: Hasher, b: BossState | null): void {
   if (b === null) return;
   h.u32(b.phase).u32(b.pendingPhase).bool(b.superheated).num(b.breakLeft).bool(b.wasFrozen);
   h.bool(b.chillNeedsWater).bool(b.inWater).num(b.stormLeft).bool(b.glowing).num(b.gap);
+  h.num(b.flareCooldown);
 }

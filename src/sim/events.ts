@@ -242,6 +242,11 @@ export type SimEvent =
    */
   /** Cells caught fire (rule 1, 2, 6, 14, 26 fire; spread and hits batched separately). */
   | ({ type: 'cellIgnited' } & CellBounds)
+  /**
+   * M4: some of those cells were the Tar Matriarch's tar (grid.tar): world-owned fire that hurts
+   * everyone (CONTENT §5). Sent with the 'cellIgnited' that counts them.
+   */
+  | ({ type: 'tarIgnited' } & CellBounds)
   /** Burning cells ran out of fuel (rule 3 results, oil burnt away, placed fire out). */
   | ({ type: 'burntOut' } & CellBounds)
   /** Fire on water made steam (rule 4); the bounds cover the steamed cells. */

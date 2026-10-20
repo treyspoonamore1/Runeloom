@@ -148,6 +148,20 @@ export const defaultTuning = {
     matriarchSummonCount: 2,
     /** Tar Matriarch: cells from her center the summoned Hulks appear. */
     matriarchSummonDistance: 8,
+    /** Tar Matriarch: Tinderlings she summons with her Hulks (their fire lights her tar). */
+    matriarchSummonTinderlings: 4,
+    /** Tar Matriarch: cells from her center the summoned Tinderlings appear (on her tar, which they light). */
+    matriarchTinderlingDistance: 6,
+    /** Tar Matriarch phase 2: she walks this many times faster. */
+    matriarchPhase2Speed: 1.35,
+    /** Tar Matriarch phase 2: her slam and glob cooldowns are this many times as long. */
+    matriarchPhase2Cooldown: 0.75,
+    /** Tar Matriarch phase 2: rushes only at a player at least this many cells away (centers). */
+    matriarchRushMinDistance: 9,
+    /** Tar Matriarch phase 2: the rush runs this many cells past where the player stood (walls permitting). */
+    matriarchRushOvershoot: 6,
+    /** Tar Matriarch phase 2: shortest rush worth starting, cells. */
+    matriarchRushMinLength: 10,
     /** Cinder Warden: phase 2 starts at this fraction of life. */
     wardenPhase2At: 0.66,
     /** Cinder Warden: phase 3 starts at this fraction of life. */

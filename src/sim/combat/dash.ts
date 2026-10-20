@@ -3,7 +3,8 @@
  * at windup (planDash: how far the body can run before a wall, or for swimmers the water's edge)
  * and the telegraph line covers it. On landing the enemy runs along the line at the dash speed
  * (ai/index.ts sets the velocity while EnemySpecial.dashSpeed > 0), hitting the player once on
- * contact and, for the charge, leaving placed fire behind it (stepDash, from stepEnemyAttack).
+ * contact and, for the Warden's charge, leaving placed fire behind it (the Tar Matriarch's rush:
+ * tar) (stepDash, from stepEnemyAttack).
  */
 import { OWNER } from '../../../data/materials';
 import type { DashDef } from '../../../data/enemyTypes';
@@ -13,6 +14,7 @@ import { isWaterAt, locomotionOf } from '../actors/locomotion';
 import { applyElement } from '../grid/paint';
 import type { GameState } from '../state';
 import { applyHit, directionOr } from './hits';
+import { spillOil } from './oil';
 import type { DamagePacket } from './damage';
 
 /** Distance between samples when planning a dash, cells. */
@@ -67,7 +69,7 @@ export function endDash(e: Enemy): void {
 /**
  * One tick of a running dash: the first touch of the player's body (within dash.reach of it)
  * hits them, knocking them away along the dash's side; the charge leaves placed fire (rule 26)
- * under its body.
+ * under its body, the Tar Matriarch's rush her tar.
  */
 export function stepDash(
   state: GameState,
@@ -87,6 +89,7 @@ export function stepDash(
       hitDamage: 0,
       durationMult: 1,
     });
+  if (dash.tarTrailRadius !== undefined) spillOil(state, e.x, e.y, dash.tarTrailRadius, true);
   const p = state.player;
   if (s.dashHit || p.dead) return;
   const reach = e.radius + state.tuning.player.radius + dash.reach;
