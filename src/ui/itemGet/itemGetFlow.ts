@@ -105,8 +105,10 @@ export function itemGetActions(
       h.openLoom();
       const sg = v.suggestion;
       if (sg.slot >= 0) h.loom.selectSlot(sg.slot);
-      if (sg.stub) h.loom.loadNotation(sg.stub);
-      h.loom.armed.value = v.rune;
+      // A new weave arrives finished (an empty slot gets a working spell at once); a swap only
+      // picks the rune up, so an existing weave is never changed for the player.
+      if (sg.kind === 'new' && sg.notation) h.loom.loadNotation(sg.notation);
+      else h.loom.armed.value = v.rune;
     },
   };
 }

@@ -224,7 +224,7 @@ describe('opening and closing the panel', () => {
     expect(ig.view.peek()?.title).toBe('Frost Rune');
   });
 
-  it('Continue resumes; Open the Loom opens it on the suggested slot, the weave stubbed, Frost picked', () => {
+  it('Continue resumes; Open the Loom opens it on the suggested slot with the suggested weave in place', () => {
     const ig = withNewWeave();
     const a = host();
     const act = itemGetActions(ig, a.h);
@@ -236,7 +236,7 @@ describe('opening and closing the panel', () => {
     const act2 = itemGetActions(ig, b.h);
     act2.open('frost');
     act2.close(true);
-    expect(b.log.slice(3)).toEqual(['hold null', 'resume', 'loom', 'slot 2', 'draft Cast > Lob[]']);
-    expect(b.armed.value).toBe('frost');
+    expect(b.log.slice(3)).toEqual(['hold null', 'resume', 'loom', 'slot 2', 'draft Cast > Lob[Frost]']);
+    expect(b.armed.value).toBeNull();
   });
 });
