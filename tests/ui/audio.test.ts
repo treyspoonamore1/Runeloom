@@ -275,6 +275,8 @@ describe('ailment cues', () => {
       expect(sfx[id].minGapMs, id).toBeGreaterThanOrEqual(100);
       expect(sfx[id].priority, id).toBe(0);
     }
+    // One per burning enemy every 0.5 s: in a room full of burning enemies, at most 4 a second.
+    expect(sfx.burnTick.minGapMs).toBeGreaterThanOrEqual(250);
   });
 });
 
