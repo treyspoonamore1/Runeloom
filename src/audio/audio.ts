@@ -21,8 +21,8 @@ export interface AudioSystem {
   /** Master volume, 0 to 1. */
   setVolume(v: number): void;
   readonly volume: number;
-  /** Plays one preset right now (menus, tests). Does nothing until unlocked. */
-  play(id: SfxId, opts?: { pan?: number; gain?: number }): void;
+  /** Plays one preset right now (menus, tests, the item-get fanfare). Does nothing until unlocked. */
+  play(id: SfxId | M4SfxId, opts?: { pan?: number; gain?: number }): void;
 }
 
 interface Engine {
@@ -173,7 +173,10 @@ export function createAudio(): AudioSystem {
     }
   };
 
-  const playCue = (c: Cue | { id: AnySfxId; x?: number; y?: number; gain?: number }, state: GameState): void => {
+  const playCue = (
+    c: Cue | { id: AnySfxId; x?: number; y?: number; gain?: number },
+    state: GameState,
+  ): void => {
     let pan = 0;
     let g = c.gain ?? 1;
     if (c.x !== undefined && c.y !== undefined) {
