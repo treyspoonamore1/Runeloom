@@ -224,21 +224,26 @@ Pass: Heart Seed taken, east exit reached. Fail case to test: from (49, 9), insi
 `Bolt[Fire]` at (59, 9) lights the barricade and the duct oil beside it, and the fire runs back
 along the duct to the player (Oiled, then Ignited at double terrain-fire damage).
 
-## K6 Frost Shrine: freeze the pool
+## K6 Frost Shrine: take Frost from the shrine, then freeze the pool
 
 Weave: Q `Cast > Lob[Frost]` (cx 2; Frost is the room's reward), or `Cast > Nova[Frost]`
 (cx 3).
 
-The pool is 4 tiles of deep water (x 31–34, cells 124–139) wall to wall, between shallow
-fringes at x 30 and 35.
+The Frost rune sits on the rune shrine (`R`) at (16, 13), the heart of the metal altar between
+the four pylons. It isn't paid on entry: the player has to touch the shrine. The pool is 4 tiles
+of deep water (x 31–34, cells 124–139) wall to wall, between shallow fringes at x 30 and 35.
 
-1. Walk from the west exit past the altar to (29, 13).
-2. Cast `Lob[Frost]` at cell (126, 54), then at cell (136, 54). Two 5-cell bursts make an ice
+1. Walk from the west exit to (15, 13) and step east into the shrine. Frost goes into the pouch
+   and the "new element" panel opens; weave `Cast > Lob[Frost]` into Q (a third Cast rune from
+   a drop, or swap Frost into an existing weave).
+2. Walk to (29, 13).
+3. Cast `Lob[Frost]` at cell (126, 54), then at cell (136, 54). Two 5-cell bursts make an ice
    bridge across cells 121–141 (rule 8; lasts 8 s).
-3. Walk east across to (37, 13), then to the exit (49, 13).
+4. Walk east across to (37, 13), then to the exit (49, 13).
 
 With Nova instead: stand at (30, 13), cast `Nova[Frost]`, step to (32, 13), cast again, walk
-across. Pass: the east exit is reached. Without Frost: unreachable (tested).
+across. Pass: Frost isn't owned before the shrine is touched, and the east exit is reached.
+Without Frost: unreachable (tested).
 
 ## K7 Ice Crossing: the CONTENT §6.3 example, enlarged
 

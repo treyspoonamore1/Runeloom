@@ -269,13 +269,14 @@ Rooms are text files in `data/rooms/<region>/<room>.txt`. Lines starting with `@
 | `k` | Chest with a small key |
 | `G` | Big-key door |
 | `g` | Chest with the big key |
+| `R` | Rune shrine: an altar holding the room's dungeon item. Touching it pays the room's guaranteed runes (§9.1); it pays once and stays empty |
 | `H` | Heart Seed |
 | `L` | Loom Shard |
 | `x` | Loom Stone: waypoint and respawn point |
 | `1`–`9` | Spawn markers |
 | `<` `>` `^` `v` | Exits on the west, east, north and south edges, placed in the edge column or row |
 
-A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `S`, `T`, `x`, `c`, `\|`, `b`, `&`, `P`) sits on the most common ground among its 4 neighbors. Ties go to stone. This is how the Heart Seed in the example below ends up floating on deep water.
+A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `R`, `S`, `T`, `x`, `c`, `\|`, `b`, `&`, `P`) sits on the most common ground among its 4 neighbors. Ties go to stone. This is how the Heart Seed in the example below ends up floating on deep water.
 
 ### 6.2 Headers
 
@@ -395,7 +396,7 @@ Sunken Kiln:
 | K3 Bramble Vault | 7 | Burn a path through bramble to a small-key chest. Locked door to K4 | Tinderlings |
 | K4 Oil Works | 8 | Oil channels. Ignite the oil to burn away a wooden barricade (`\|`). Heart Seed | `tar_crew`, Kiln Mites |
 | K5 Matriarch's Pit | 8 | Mini-boss: `tar_matriarch` | — |
-| K6 Frost Shrine | 8 | Dungeon item: the Frost rune. Short tutorial: freeze a pool to reach the exit | — |
+| K6 Frost Shrine | 8 | Dungeon item: the Frost rune, on a rune shrine (`R`) on the altar. Touching it opens the "new element" panel. Short tutorial: freeze a pool to reach the exit | — |
 | K7 Ice Crossing | 9 | Example room in §6.3. Heart Seed | 2 Frost Wisps, 1 Bog Lurker |
 | K8 Slide Room | 9 | Freeze a pool, then slide ice blocks onto 2 pressure plates. Loom Shard | Frost Wisps |
 | K9 Thaw Lock | 10 | The big-key chest is encased in ice blocks. Melt them with fire, then freeze the meltwater to cross a gap | `caller_guard` (previews Storm) |
@@ -407,7 +408,7 @@ Totals: 4 Heart Seeds (E4, E6, K4, K7) and 3 Loom Shards (E2, E7, K8).
 
 A new save starts with the Twig Spindle and the runes Cast, Bolt, Strike and Fire, with `Cast > Bolt[Fire]` in LMB and `Cast > Strike[]` in RMB.
 
-Each room below guarantees its runes on first clear. After that, random rune drops come only from runes the player has already unlocked, so duplicates are common. That's useful, since each rune item sits in one place at a time.
+Each room below guarantees its runes on first clear. A room with a rune shrine (`R`, K6) pays them when the player touches the shrine instead, not on entry or clear. After that, random rune drops come only from runes the player has already unlocked, so duplicates are common. That's useful, since each rune item sits in one place at a time.
 
 | Room | Guaranteed runes |
 |---|---|
@@ -427,6 +428,8 @@ Each room below guarantees its runes on first clear. After that, random rune dro
 | K8 | Seeker, Orb |
 | K9 | On Hurt, Emit |
 | K10 (Cinder Warden) | Storm, Chain, Sigil, On Crit |
+
+The first unlock of an element rune in a save is a dungeon-item moment (DESIGN §10.2): a centered "item get" panel pauses the game, names the rune, says what it does in the world and suggests a weave, while the hero holds the rune overhead. Frost gets it at the K6 shrine; Storm about 2 s after the Cinder Warden dies, so his death plays first. Other guaranteed runes show a "New rune" toast.
 
 Spindles drop by item level (area level). Ashwood can drop from E4 on, Ironbark from E8, Rimeglass from K4.
 

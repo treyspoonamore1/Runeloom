@@ -43,6 +43,7 @@ export const tiles = [
   { char: 'k', id: 'key_chest', walk: false, blocksShots: true, marker: true },
   { char: 'G', id: 'big_key_door', walk: false, blocksShots: true },
   { char: 'g', id: 'big_key_chest', walk: false, blocksShots: true, marker: true },
+  { char: 'R', id: 'rune_shrine', walk: false, blocksShots: true, marker: true },
   { char: 'H', id: 'heart_seed', walk: true, blocksShots: false, marker: true },
   { char: 'L', id: 'loom_shard', walk: true, blocksShots: false, marker: true },
   { char: 'x', id: 'loom_stone', walk: true, blocksShots: false, marker: true },

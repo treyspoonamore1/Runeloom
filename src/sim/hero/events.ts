@@ -5,6 +5,9 @@
 import type { RuneId } from '../../../data/runes';
 import type { LootContent } from '../items/loot';
 
+/** What paid a reward: a rune shrine (`R`), a boss's death, or a room's first clear. */
+export type RewardSource = 'shrine' | 'boss' | 'room';
+
 export type HeroEvent =
   /** The hero earned XP from a kill at (x, y). `xp` and `level` are the totals after it. */
   | { type: 'xpGained'; amount: number; x: number; y: number; xp: number; level: number }
@@ -19,6 +22,12 @@ export type HeroEvent =
    * room that paid it.
    */
   | { type: 'rewardGranted'; roomId: string; content: LootContent }
+  /**
+   * The dungeon-item moment (DESIGN §10.2): a reward unlocked an element rune for the first time
+   * in this save (Frost at the K6 shrine, Storm when the Cinder Warden dies). Sent once per element
+   * per save, after that reward's 'rewardGranted'. (x, y): the shrine or the boss, else the player.
+   */
+  | { type: 'elementUnlocked'; rune: RuneId; roomId: string; x: number; y: number; source: RewardSource }
   /** A drop landed on the floor at (x, y), thrown from (fromX, fromY) (the body). */
   | {
       type: 'lootDropped';

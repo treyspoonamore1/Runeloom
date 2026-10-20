@@ -1,13 +1,14 @@
 /**
  * What the player (and, for plates, enemies and blocks) touches: pressure plates, key chests,
- * locked and big-key doors, Heart Seeds, Loom Shards and Loom Stones.
+ * locked and big-key doors, rune shrines, Heart Seeds, Loom Shards and Loom Stones.
  *
- * Touching: a solid object (chest, door) is touched when the player's body is within
+ * Touching: a solid object (chest, door, shrine) is touched when the player's body is within
  * tuning.world.touchSlack cells of its tile; a walk-over object (pickup, Loom Stone) when the
  * player's center is within tuning.world.pickupRadius of its tile center, so a Heart Seed out on
  * deep water needs an ice bridge to reach. A plate is pressed while a center is on its tile.
  */
 import { addHeartSeed, addLoomShard } from '../hero/pickups';
+import { onRoomCleared } from '../hero/rewards';
 import { emit } from '../events';
 import type { GameState } from '../state';
 import { TILE_CELLS } from '../core/constants';
@@ -82,6 +83,19 @@ function touchChest(state: GameState, o: WorldObject): void {
   sendNote(state, o);
 }
 
+/**
+ * A full rune shrine (`R`): pays the room's guaranteed runes (the dungeon item, CONTENT §9.1) and
+ * stays empty for good. A room with a shrine pays nothing on entry or clear (roomClear.ts).
+ */
+export function touchShrine(state: GameState, o: WorldObject): void {
+  if (o.on) return;
+  take(state, o);
+  const c = objectCenter(o);
+  emit(state, { type: 'shrineTaken', key: o.key, x: c.x, y: c.y });
+  onRoomCleared(state, state.room.id, { x: c.x, y: c.y, source: 'shrine' });
+  sendNote(state, o);
+}
+
 function touchKeyDoor(state: GameState, o: WorldObject): void {
   const w = state.world;
   const dungeon = dungeonOf(state.room.id);
@@ -111,7 +125,7 @@ function touchPickup(state: GameState, o: WorldObject): void {
   sendNote(state, o);
 }
 
-/** Chests, key doors, pickups and Loom Stones the living player touches this tick. */
+/** Chests, key doors, rune shrines, pickups and Loom Stones the living player touches this tick. */
 export function stepTouches(state: GameState): void {
   const p = state.player;
   if (p.dead) return;
@@ -123,6 +137,9 @@ export function stepTouches(state: GameState): void {
       case 'key_chest':
       case 'big_key_chest':
         if (!o.on && distToTile(p.x, p.y, o.tx, o.ty) <= reach) touchChest(state, o);
+        break;
+      case 'rune_shrine':
+        if (!o.on && distToTile(p.x, p.y, o.tx, o.ty) <= reach) touchShrine(state, o);
         break;
       case 'locked_door':
       case 'big_key_door':

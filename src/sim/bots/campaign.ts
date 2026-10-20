@@ -28,7 +28,7 @@ import type { GameState } from '../state';
 import { step } from '../step';
 import { createAdventure } from '../world/adventure';
 import { openDoor } from '../world/objectGround';
-import { touchLoomStone } from '../world/objectTouch';
+import { touchLoomStone, touchShrine } from '../world/objectTouch';
 import { enterRoom } from '../world/transition';
 import { parseRoom } from '../world/room';
 import { roomFlags, type Edge, type RoomSource } from '../world/worldState';
@@ -141,10 +141,11 @@ function solveDoors(state: GameState): void {
       openDoor(state, o);
 }
 
-/** Takes the room's Heart Seeds and Loom Shards (their puzzles are tested elsewhere). */
+/** Takes the room's Heart Seeds and Loom Shards and its rune shrine's runes (puzzles are tested elsewhere). */
 function takePickups(state: GameState): void {
   const flags = roomFlags(state.world, state.room.id);
   for (const o of state.objects) {
+    if (o.kind === 'rune_shrine') touchShrine(state, o);
     if ((o.kind !== 'heart_seed' && o.kind !== 'loom_shard') || o.on) continue;
     o.on = true;
     if (!flags.taken.includes(o.key)) flags.taken.push(o.key);

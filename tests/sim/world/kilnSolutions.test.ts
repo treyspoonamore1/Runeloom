@@ -8,7 +8,8 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { MAT } from '../../../data/materials';
 import { regionRooms } from '../../../data/progression';
-import { runScript, type GameState, type ScriptCommand } from '../../../src/sim';
+import { runScript, setSlotWeave, type GameState, type ScriptCommand } from '../../../src/sim';
+import { giveRune } from '../hero/helpers';
 import {
   allOn,
   anyOn,
@@ -132,12 +133,22 @@ describe('Sunken Kiln puzzle solutions', () => {
       { do: 'walk', dirX: 1, dirY: 0, s: 3, until: into(regionRooms.k5) },
     ]);
   });
-  it('K6: two Lob[Frost] bursts bridge the pool, on to K7', () => {
-    const { state } = prepare('k6', {
-      arrive: 'w',
-      weaves: [BOLT, STRIKE, FROST_LOB, null],
-      extra: ['frost'],
-    });
+  it('K6: the shrine gives Frost, then two Lob[Frost] bursts bridge the pool, on to K7', () => {
+    const { state } = prepare('k6', { arrive: 'w', weaves: [BOLT, STRIKE, null, null] });
+    const frost = () => state.hero.runes.filter((r) => r.rune === 'frost').length;
+    // Frost is the shrine's dungeon item: not owned on arrival, nor after standing around.
+    expect(frost()).toBe(0);
+    solve('k6 wait', state, [{ do: 'wait', s: 1 }]);
+    expect(frost()).toBe(0);
+    solve('k6 shrine', state, [
+      { do: 'moveTo', x: T(15), y: T(13) },
+      { do: 'walk', dirX: 1, dirY: 0, s: 2, until: (s) => allOn(s, 'rune_shrine') },
+    ]);
+    expect(frost()).toBe(1);
+    expect(state.hero.unlockedRunes).toContain('frost');
+    // A third Cast (a duplicate drop, as prepare() adds for the other solutions) for Q.
+    giveRune(state, 'cast');
+    expect(setSlotWeave(state, 2, FROST_LOB).applied).toBe(true);
     solve('k6', state, [
       { do: 'moveTo', x: T(29), y: T(13) },
       freeze(126, 54),

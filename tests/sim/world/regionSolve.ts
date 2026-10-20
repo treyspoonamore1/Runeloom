@@ -49,7 +49,7 @@ export interface RoomSetup {
   weaves: (string | null)[];
   /** Runes to leave out of the unlocked set (the no-Frost attempts). */
   without?: RuneId[];
-  /** Runes the room itself pays on entry (K6 has no enemies, so its Frost is paid at once). */
+  /** Runes to unlock beyond those of the rooms before this one. */
   extra?: RuneId[];
   /** Freeze enemy AI: the puzzle isn't the fight. */
   noAI?: boolean;

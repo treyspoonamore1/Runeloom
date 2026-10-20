@@ -182,7 +182,7 @@ export { unlockRune } from './hero/unlock';
 export { onEnemyKilled } from './hero/onKill';
 export { onRoomCleared } from './hero/rewards';
 export { addHeartSeed, addLoomShard } from './hero/pickups';
-export type { HeroEvent } from './hero/events';
+export type { HeroEvent, RewardSource } from './hero/events';
 export {
   stepLoot,
   dropLoot,
