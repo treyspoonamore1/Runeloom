@@ -8,7 +8,7 @@ export function StartScreen(p: { onPlay(): void }) {
       <div class="rl-col">
         <Emblem />
         <h1 class="rl-title">Runeloom</h1>
-        <p class="rl-sub">Spells and chemistry prototype (M3)</p>
+        <p class="rl-sub">Sandbox scene</p>
         <div class="rl-rule">
           <i />
         </div>
@@ -22,8 +22,8 @@ export function StartScreen(p: { onPlay(): void }) {
           Click to play
         </button>
         <p class="rl-hint">
-          Best with sound on. Press <kbd>Enter</kbd> to start. <kbd>Esc</kbd> → Place switches to the
-          Chemistry Lab.
+          Best with sound on. Press <kbd>Enter</kbd> to start. <kbd>Esc</kbd> pauses; reload without
+          <kbd>?scene=</kbd> for the title screen.
         </p>
       </div>
     </div>

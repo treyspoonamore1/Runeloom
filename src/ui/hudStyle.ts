@@ -120,7 +120,8 @@ export const hudCss = `
 .rl-rule::after { transform: scaleX(-1); }
 .rl-rule i { width: calc(var(--u) * 1.2); height: calc(var(--u) * 1.2); background: var(--gold); transform: rotate(45deg); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink); }
 .rl-controls { display: grid; grid-template-columns: repeat(3, auto); gap: calc(var(--u) * 1.3) calc(var(--u) * 4.5); text-align: left; margin: 0 0 calc(var(--u) * 3.2); }
-.rl-pause .rl-controls { grid-template-columns: repeat(2, auto); gap: calc(var(--u) * 0.9) calc(var(--u) * 3); margin: 0; }
+.rl-pause .rl-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--u) * 0.9) calc(var(--u) * 3); margin: 0; }
+.rl-pause .rl-ctl { white-space: normal; min-width: 0; line-height: 1.15; }
 .rl-ctl { display: flex; align-items: center; gap: calc(var(--u) * 1.1); font-size: calc(var(--u) * 2.2); color: var(--sand); white-space: nowrap; }
 .rl-keys { display: flex; gap: calc(var(--u) * 0.4); }
 .rl-cap { min-width: calc(var(--u) * 3.2); padding: calc(var(--u) * 0.45) calc(var(--u) * 0.9); border-radius: calc(var(--u) * 0.8); font-size: calc(var(--u) * 1.8); font-weight: 700; color: var(--ink); text-align: center; line-height: 1.1;
