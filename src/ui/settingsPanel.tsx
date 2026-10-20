@@ -1,4 +1,4 @@
-/** The settings rows (volume, damage numbers, screen shake, effect density): pause menu and title. */
+/** The settings rows (volume, ambient, damage numbers, screen shake, effect density): pause menu and title. */
 import { signal } from '@preact/signals';
 import { onSettingsChange, settings, updateSettings, type Settings } from '../app/settings';
 
@@ -28,30 +28,36 @@ function Switch(p: { label: string; on: boolean; onChange(v: boolean): void }) {
   );
 }
 
+function Slider(p: { label: string; value: number; onInput(v: number): void; onChange(): void }) {
+  const pct = Math.round(p.value * 100);
+  return (
+    <div class="rl-row">
+      <span>{p.label}</span>
+      <label class="rl-slider">
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={pct}
+          aria-label={p.label}
+          onInput={(e) => p.onInput(Number((e.currentTarget as HTMLInputElement).value) / 100)}
+          onChange={p.onChange}
+        />
+        <output>{pct}%</output>
+      </label>
+    </div>
+  );
+}
+
 /** `tick`: feedback blip when a setting is committed. */
 export function SettingsRows({ tick }: { tick(): void }) {
   const s = cfg.value;
-  const vol = Math.round(s.volume * 100);
   return (
     <>
-      <div class="rl-row">
-        <span>Volume</span>
-        <label class="rl-slider">
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={vol}
-            aria-label="Volume"
-            onInput={(e) =>
-              updateSettings({ volume: Number((e.currentTarget as HTMLInputElement).value) / 100 })
-            }
-            onChange={tick}
-          />
-          <output>{vol}%</output>
-        </label>
-      </div>
+      <Slider label="Volume" value={s.volume} onInput={(v) => updateSettings({ volume: v })} onChange={tick} />
+      {/* Fire crackle and other ambient loops, separate from effects (M4 playtest). */}
+      <Slider label="Ambient" value={s.ambient} onInput={(v) => updateSettings({ ambient: v })} onChange={tick} />
       <Switch
         label="Damage numbers"
         on={s.damageNumbers}

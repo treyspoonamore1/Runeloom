@@ -28,6 +28,8 @@ export interface AudioSystem {
 interface Engine {
   ctx: AudioContext;
   master: GainNode;
+  /** Ambient loops (the fire bed): Settings' Ambient volume, then the master. */
+  ambient: GainNode;
   buffers: Map<AnySfxId, AudioBuffer>;
   buildSamples(...args: number[]): ArrayLike<number>;
   sampleRate: number;
@@ -46,6 +48,7 @@ const now = (): number => (typeof performance !== 'undefined' ? performance.now(
  */
 export function createAudio(): AudioSystem {
   let volume = clamp01(settings.volume);
+  let ambientVolume = clamp01(settings.ambient);
   let engine: Engine | null = null;
   let loading = false;
   const limiter = new VoiceLimiter(audioTuning.maxVoices);
@@ -61,6 +64,7 @@ export function createAudio(): AudioSystem {
     if (!engine) return;
     try {
       engine.master.gain.setTargetAtTime(volume, engine.ctx.currentTime, 0.02);
+      engine.ambient.gain.setTargetAtTime(ambientVolume, engine.ctx.currentTime, 0.02);
     } catch {
       // Ignore: the context may be closed.
     }
@@ -81,9 +85,13 @@ export function createAudio(): AudioSystem {
       comp.attack.value = 0.003;
       comp.release.value = 0.12;
       master.connect(comp).connect(ctx.destination);
+      const ambient = ctx.createGain();
+      ambient.gain.value = ambientVolume;
+      ambient.connect(master);
       engine = {
         ctx,
         master,
+        ambient,
         buffers: new Map(),
         buildSamples: (...a) => ZZFX.buildSamples(...a),
         sampleRate: ZZFX.sampleRate,
@@ -123,7 +131,9 @@ export function createAudio(): AudioSystem {
     if (!e && loading && pending.length < 4) pending.push([id, opts]);
     if (!e || volume <= 0 || e.ctx.state !== 'running') return;
     try {
-      const def: { pitchVar?: number; minGapMs?: number; priority?: number } = PRESETS[id];
+      const def: SfxDef = PRESETS[id];
+      const ambient = def.bus === 'ambient';
+      if (ambient && ambientVolume <= 0) return;
       const buf = bufferFor(e, id);
       if (!buf) return;
       const rate = 1 + (Math.random() * 2 - 1) * (def.pitchVar ?? 0.05);
@@ -143,12 +153,13 @@ export function createAudio(): AudioSystem {
       const gain = e.ctx.createGain();
       gain.gain.value = opts.gain ?? 1;
       src.connect(gain);
+      const out = ambient ? e.ambient : e.master;
       if (opts.pan) {
         const panner = e.ctx.createStereoPanner();
         panner.pan.value = Math.max(-1, Math.min(1, opts.pan));
-        gain.connect(panner).connect(e.master);
+        gain.connect(panner).connect(out);
       } else {
-        gain.connect(e.master);
+        gain.connect(out);
       }
       const token = grant.voice;
       sources.set(token, src);
@@ -185,6 +196,7 @@ export function createAudio(): AudioSystem {
 
   onSettingsChange((s) => {
     volume = clamp01(s.volume);
+    ambientVolume = clamp01(s.ambient);
     applyVolume();
   });
 
