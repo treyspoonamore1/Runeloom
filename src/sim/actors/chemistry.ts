@@ -16,6 +16,7 @@ import type { GameState } from '../state';
 import { PLAYER_ID, type Enemy } from './enemies';
 import { isWet } from './terrainState';
 import { explodeHulk } from './hulkBlast';
+import { flare } from '../ai/bosses/flare';
 import { deathFireSquare } from './rarity';
 
 export function chemistryOf(e: Enemy): EnemyChemistry | undefined {
@@ -90,7 +91,7 @@ export function igniteFlammableAround(
 
 /**
  * Terrain an enemy's death leaves: the Shatter frost burst (rule 20), or a lit Tar Hulk's
- * explosion, an Incendiary monster's fire and a Tinderling's fire.
+ * explosion (a lit Tar Matriarch's flare), an Incendiary monster's fire and a Tinderling's fire.
  */
 export function deathTerrain(state: GameState, e: Enemy, killerId: number, shattered: boolean): void {
   if (shattered) {
@@ -104,8 +105,13 @@ export function deathTerrain(state: GameState, e: Enemy, killerId: number, shatt
     });
     return;
   }
-  // M4: a Tar Hulk dying with its fuse lit explodes; Incendiary monsters leave a square of fire.
-  if (e.special.fuseLeft > 0) explodeHulk(state, e, false);
+  // M4: a Tar Hulk dying with its fuse lit explodes (the Tar Matriarch flares); Incendiary
+  // monsters leave a square of fire.
+  if (e.special.fuseLeft > 0) {
+    const f = chemistryOf(e)?.flare;
+    if (f !== undefined) flare(state, e, f, false);
+    else explodeHulk(state, e, false);
+  }
   const square = e.mods.length > 0 ? deathFireSquare(e) : 0;
   if (square > 0) incendiary(state, e, square);
   const b = chemistryOf(e)?.alwaysBurning;

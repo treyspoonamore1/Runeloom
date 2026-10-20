@@ -2,7 +2,8 @@
  * What each element does to one cell (DESIGN §6.3), for applyElement (paint.ts) and explosions.
  *
  * Fire, in order: ice melts (rule 5); oil ignites hot (rule 6, also on water); water steams
- * (rule 4); an already burning cell takes the new owner; a flammable cell ignites (rule 1);
+ * (rule 4); an already burning cell takes the new owner (burning tar stays world-owned, CONTENT
+ * §5 Tar Matriarch); a flammable cell ignites (rule 1);
  * other walkable ground gets placed fire (rule 26). Wet cells never ignite.
  * Frost: puts fire out keeping its fuel (rule 9), then freezes water (rules 7, 8) or dries mud
  * (rule 10); re-freezing temporary ice restarts its timer (map ice stays permanent). Steaming
@@ -12,7 +13,18 @@
 import { AIR, MAT, SURFACE, materialByCode, materials } from '../../../data/materials';
 import type { GameState } from '../state';
 import { markActive } from './active';
-import { addToBatch, fx, gridTicks, ignitable, ignite, setAir, setGround, steamTicks, u16 } from './cells';
+import {
+  addToBatch,
+  fireOwner,
+  fx,
+  gridTicks,
+  ignitable,
+  ignite,
+  setAir,
+  setGround,
+  steamTicks,
+  u16,
+} from './cells';
 import type { CellBatch } from './cells';
 import { iceDurationMult } from '../hero/effectsTerrain';
 
@@ -32,8 +44,8 @@ export function fireCell(state: GameState, i: number, c: CellContext): boolean {
     if (g.surface[i] !== SURFACE.oil) return false;
   }
   if (g.fire[i]! > 0) {
-    // Already burning: a new effect takes the new owner.
-    g.owner[i] = c.owner;
+    // Already burning: a new effect takes the new owner (burning tar stays world-owned).
+    g.owner[i] = fireOwner(g, i, c.owner);
     if (g.surface[i] !== SURFACE.oil && def.flammable === null) {
       const t = u16(gridTicks(state.tuning.grid.placedFireSeconds * c.durationMult));
       if (g.fuel[i]! < t) g.fuel[i] = t;

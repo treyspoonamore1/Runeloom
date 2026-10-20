@@ -61,6 +61,16 @@ export const kiterConfig = {
   boltSafeDistance: 20,
   /** Longest bolt shot, cells. */
   boltRange: 55,
+  /** M4 Tar Matriarch: light her from this many cells beyond her flare's reach (bots/kiterTar.ts). */
+  flareStandoffMargin: 3,
+  /** Shoot once within this many cells of the standoff distance. */
+  flareShotSlack: 1.5,
+  /** Oil within this many cells of a burning cell counts as a hazard in her fight. */
+  tarFireReach: 10,
+  /** Her fight: hazards are checked at this many points along each move's lookahead run. */
+  hazardSteps: 6,
+  /** Her fight: hazardPenalty becomes this (burning oil costs the Oiled more than a slam). */
+  tarHazardPenalty: 5000,
   /** Dodge when a hit lands within this many seconds and walking can't clear it. */
   dodgeWithin: 0.12,
 } as const;

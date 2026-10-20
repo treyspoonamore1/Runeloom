@@ -196,6 +196,7 @@ function burnOut(state: GameState, i: number, oilBurning: boolean): void {
   if (oilBurning) {
     // The oil is gone; flammable ground under it catches from it.
     g.surface[i] = SURFACE.none;
+    g.tar[i] = 0;
     if (ignitable(g, i)) ignite(state, i, g.owner[i]!, 1);
     return;
   }

@@ -230,7 +230,7 @@ function attackTerrain(
   const t = def.terrain!;
   const a = e.attack;
   if (t.kind === 'oil') {
-    spillOil(state, a.originX, a.originY, t.radius);
+    spillOil(state, a.originX, a.originY, t.radius, t.tar === true);
     return;
   }
   const firstCharge = state.grid.nextChargeId;

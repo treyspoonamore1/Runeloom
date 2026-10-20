@@ -48,6 +48,12 @@ export interface Grid {
   /** OWNER code of the team whose effect is on the cell (fire, charge, smoke). */
   owner: Uint8Array;
   /**
+   * 1 if the cell's oil is the Tar Matriarch's tar (M4, CONTENT §5): fire on it is world-owned
+   * whoever lit it (cells.ts lightCell, elements.ts fireCell). 0 otherwise; cleared when the oil
+   * burns away or other oil is spilled over it.
+   */
+  tar: Uint8Array;
+  /**
    * Charge event id on charged cells (0 = none). An entity takes rule 11/12 damage once per id;
    * look the event up with `chargeEventInfo` (grid/query.ts).
    */
@@ -172,6 +178,7 @@ export function createGrid(room: Room): Grid {
     wet: new Uint8Array(n),
     under: new Uint8Array(n),
     owner: new Uint8Array(n).fill(OWNER.world),
+    tar: new Uint8Array(n),
     chargeId: new Uint32Array(n),
     chargeFalloff: new Float32Array(n),
     chargeEvents: [],

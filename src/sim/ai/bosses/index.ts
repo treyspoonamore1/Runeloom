@@ -28,7 +28,7 @@ import {
   toPlayer,
 } from '../common';
 import { bossAttack } from './attack';
-import { stepMatriarch } from './matriarch';
+import { matriarchPace, stepMatriarch } from './matriarch';
 import { stepWarden } from './warden';
 
 type Boss = Extract<BehaviorDef, { kind: 'boss' }>;
@@ -85,7 +85,7 @@ export function stepBossAI(state: GameState, e: Enemy, b: Boss): void {
     setMode(e, 'hold');
     return;
   }
-  steerTo(state, e, state.player.x, state.player.y, 1);
+  steerTo(state, e, state.player.x, state.player.y, b.boss === 'tar_matriarch' ? matriarchPace(state, e) : 1);
   setMode(e, 'chase');
   faceVelocity(e);
 }

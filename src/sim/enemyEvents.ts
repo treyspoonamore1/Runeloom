@@ -28,6 +28,27 @@ export type EnemyEvent =
    * world) follows for the shared explosion effects, then the Hulk's 'death'.
    */
   | { type: 'hulkExploded'; id: number; x: number; y: number; radius: number; damage: number }
+  /**
+   * The Tar Matriarch was ignited while Oiled: she flares in `fuse` seconds (a `radius`-cell
+   * world-owned burst; e.special.fuseLeft counts down, like a Hulk's fuse) unless she gets Wet.
+   */
+  | { type: 'matriarchFuse'; id: number; fuse: number; radius: number; x: number; y: number }
+  /** The Tar Matriarch's lit fuse went out (she lost her Ignite). */
+  | { type: 'matriarchFuseOut'; id: number; x: number; y: number }
+  /**
+   * The Tar Matriarch flared: a world-owned fire burst of `radius` cells for `damage` Fire that
+   * hurts everyone else in it; she took `selfDamage` (0 when she flared as she died). An
+   * 'explosion' event (owner world) follows for the shared explosion effects.
+   */
+  | {
+      type: 'matriarchFlare';
+      id: number;
+      x: number;
+      y: number;
+      radius: number;
+      damage: number;
+      selfDamage: number;
+    }
   /** A Brood Kiln spawned Kiln Mites (their 'enemySpawn' events come first). */
   | { type: 'kilnSpawn'; id: number; spawned: number[]; x: number; y: number }
   /** A boss noticed the player: the fight begins (boss intro card, music). name: its display name. */

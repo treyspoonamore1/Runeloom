@@ -8,6 +8,7 @@
  *   cell (combat/oil.ts).
  * - Fuse (Tar Hulk): Ignited while Oiled lights a fuse ('hulkFuse'); Wet puts it out
  *   ('hulkFuseOut'); when it runs out the Hulk explodes and dies (actors/hulkBlast.ts).
+ * - Flare (Tar Matriarch): the Hulk's fuse, but she lives through the burst (bosses/flare.ts).
  * - Bosses: phases, Superheat, the brazier storm (bosses/phases.ts).
  */
 import { enemyDef, type EnemyChemistry } from '../../../data/enemies';
@@ -21,6 +22,7 @@ import { spillOil } from '../combat/oil';
 import { DT } from '../core/constants';
 import { emit } from '../events';
 import type { GameState } from '../state';
+import { stepFlare } from './bosses/flare';
 import { stepBossPassive } from './bosses/phases';
 
 const TIME_EPSILON = 1e-9;
@@ -34,6 +36,7 @@ export function stepEnemyPassive(state: GameState, e: Enemy): void {
     if (chem.alwaysWet) keepWet(state, e);
     if (chem.oilTrailRadius !== undefined) oilTrail(state, e, chem.oilTrailRadius);
     if (chem.explodes !== undefined) stepFuse(state, e, chem.explodes);
+    if (chem.flare !== undefined) stepFlare(state, e, chem.flare);
     if (e.dead) return;
   }
   if (t.swims) checkTrapped(state, e);

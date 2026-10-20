@@ -1,6 +1,7 @@
 import { enemyDef } from '../../../data/enemies';
 import { OWNER } from '../../../data/materials';
 import type { Enemy } from '../actors/enemies';
+import { attackDefFor } from '../combat/enemyAttacks';
 import { circleHitsShape, circleIntersectsSector } from '../combat/shapes';
 import { Button, type InputFrame } from '../core/input';
 import type { GameState } from '../state';
@@ -8,6 +9,7 @@ import type { SpellSpec } from '../weave/program';
 import { hasLineOfSight } from '../world/los';
 import { kiterConfig as C } from './kiterConfig';
 import { bossIn, conducts, frostShot, nearestWater, stormSoon, wantsWater } from './kiterBoss';
+import { flareShot, flareStandoff, fuseBlastRadius, oilAtRisk, tarFight } from './kiterTar';
 import { wallDistanceAt, wallDistanceField } from './wallDistance';
 
 /**
@@ -92,7 +94,7 @@ export function kiterInput(state: GameState): InputFrame {
     if (bolt && (spare || p.mana >= bolt.mana)) aimBolt(state, out, !spare, bolt.spec, strike?.spec ?? null);
   }
 
-  frostShot(state, out, boss);
+  if (!frostShot(state, out, boss)) flareShot(state, out, boss);
 
   const dodgeHeld = (state.prevButtons & Button.Dodge) !== 0;
   if (hitSoon && !dodgeHeld && p.dodgeCharges > 0 && (bestX !== 0 || bestY !== 0))
@@ -124,6 +126,8 @@ function pickGoal(state: GameState, canStrike: boolean): void {
   // fought from the water (bots/kiterBoss.ts).
   if (p.ailments.ignite.timeLeft > 0 && nearestWater(state, C.waterSearch, goal)) return;
   if (wantsWater(boss) && !stormSoon(boss) && nearestWater(state, C.bossWaterSearch, goal)) return;
+  // M4: an Oiled Tar Matriarch with her flare ready: back off and light her (bots/kiterTar.ts).
+  if (flareStandoff(state, boss, goal)) return;
   let best: Enemy | null = null;
   let bestCost = Infinity;
   for (const e of live) {
@@ -194,7 +198,9 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
     const a = e.attack;
     // M4: a running dash (the Warden's charge, a Lurker's lunge) is as dangerous as its telegraph.
     const dashing = a.phase === 'active' && e.special.dashSpeed > 0 && !e.special.dashHit;
-    if (a.phase === 'windup' || dashing) {
+    // In the Tar Matriarch's fight, a telegraph that deals no damage (her summon) is no threat.
+    const harmless = a.phase === 'windup' && tarFight(boss) && attackDefFor(e)?.damage === 0;
+    if ((a.phase === 'windup' && !harmless) || dashing) {
       const tl = a.timeLeft < T ? a.timeLeft : T;
       const hx = p.x + dx * sp * tl;
       const hy = p.y + dy * sp * tl;
@@ -203,10 +209,10 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
         if (a.timeLeft <= C.dodgeWithin) bestHitSoon = true;
       }
     }
-    // M4: a Tar Hulk with a lit fuse is a telegraph of its blast.
-    const blast = e.special.fuseLeft > 0 ? enemyDef(e.kind).chemistry?.explodes : undefined;
-    if (blast !== undefined) {
-      const r = blast.radius + R + C.dangerMargin;
+    // M4: a lit fuse (a Tar Hulk's blast, the Tar Matriarch's flare) is a telegraph of its blast.
+    const blast = fuseBlastRadius(e);
+    if (blast > 0) {
+      const r = blast + R + C.dangerMargin;
       if ((qx - e.x) ** 2 + (qy - e.y) ** 2 <= r * r) {
         score -= C.dangerPenalty;
         if (e.special.fuseLeft <= C.dodgeWithin) bestHitSoon = true;
@@ -233,8 +239,11 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
   const margin = goal.fixed ? C.wallMarginAtSpawner : C.wallMargin;
   if (wd < margin) score -= C.wallWeight * (margin - wd) * (margin - wd);
   if (wd < R) score -= C.dangerPenalty;
-  // M4: burning or charged ground that would hurt (enemy or world owned), at the end and halfway.
-  if (hazardAt(state, qx, qy) || hazardAt(state, p.x + dx * sp * T * 0.5, p.y + dy * sp * T * 0.5))
+  // M4: burning or charged ground that would hurt (enemy or world owned), at the end and halfway
+  // (in the Tar Matriarch's fight, every step of the way: bots/kiterTar.ts).
+  if (tarFight(boss)) {
+    if (hazardOnPath(state, dx, dy, sp * T)) score -= C.tarHazardPenalty;
+  } else if (hazardAt(state, qx, qy) || hazardAt(state, p.x + dx * sp * T * 0.5, p.y + dy * sp * T * 0.5))
     score -= C.hazardPenalty;
 
   if (goal.on) {
@@ -371,6 +380,16 @@ function threatened(state: GameState): boolean {
   return false;
 }
 
+/** True if a hazard lies under any of hazardSteps evenly spaced points of the run (dx, dy) × len. */
+function hazardOnPath(state: GameState, dx: number, dy: number, len: number): boolean {
+  const p = state.player;
+  for (let k = 1; k <= C.hazardSteps; k++) {
+    const f = (len * k) / C.hazardSteps;
+    if (hazardAt(state, p.x + dx * f, p.y + dy * f)) return true;
+  }
+  return false;
+}
+
 /**
  * True if the cell under (x, y) would hurt the player (DESIGN §6.3 ownership): fire of another
  * team or the world while the player isn't Wet, or charge of another team or the world.
@@ -382,6 +401,8 @@ function hazardAt(state: GameState, x: number, y: number): boolean {
   if (cx < 0 || cy < 0 || cx >= g.width || cy >= g.height) return false;
   const i = cy * g.width + cx;
   if (stormSoon(boss) && conducts(state, i)) return true;
+  // M4: in the Tar Matriarch's fight, oil near fire may burn world-owned any moment (bots/kiterTar.ts).
+  if (oilAtRisk(state, i, boss)) return true;
   if (g.owner[i] === OWNER.player) return false;
   return (g.fire[i]! > 0 && state.player.terrain.wetLeft <= 0) || g.charge[i]! > 0;
 }

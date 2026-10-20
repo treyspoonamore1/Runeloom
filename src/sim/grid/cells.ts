@@ -3,7 +3,7 @@
  * (tick.ts) and charge (charge.ts): material changes that keep the room's walk masks in sync,
  * ignition, smoke and steam, plus the batched event counters.
  */
-import { MAT, SURFACE, airSeconds, materialByCode, oil } from '../../../data/materials';
+import { MAT, OWNER, SURFACE, airSeconds, materialByCode, oil } from '../../../data/materials';
 import { GRID_HZ, TILE_CELLS } from '../core/constants';
 import type { GameState } from '../state';
 import { markActive } from './active';
@@ -60,6 +60,8 @@ export function addToBatch(b: CellBatch, g: Grid, i: number): void {
 /** Batched counters filled while rules run; flushed into events by flushFx (fx.ts). */
 export const fx = {
   ignited: newBatch(),
+  /** The Tar Matriarch's tar caught fire (a subset of `ignited`). */
+  tarIgnited: newBatch(),
   burntOut: newBatch(),
   iceBreaking: newBatch(),
   iceBroke: newBatch(),
@@ -102,7 +104,8 @@ export function ignitable(g: Grid, i: number): boolean {
 /**
  * Lights an ignitable cell (rules 1, 2, 6). Oil burns hot for oil.burnSeconds; a material burns
  * for its burnSeconds; fuel kept from a fire Frost put out (rule 9) is used first. An oil barrel
- * lights its whole tile. durationMult: Lingering (1 for spread). Returns false if it can't burn.
+ * lights its whole tile. The Tar Matriarch's tar burns world-owned whoever lit it (fireOwner).
+ * durationMult: Lingering (1 for spread). Returns false if it can't burn.
  */
 export function ignite(state: GameState, i: number, owner: number, durationMult: number): boolean {
   const g = state.grid;
@@ -124,9 +127,18 @@ export function ignite(state: GameState, i: number, owner: number, durationMult:
 function lightCell(g: Grid, i: number, fire: number, seconds: number, mult: number, owner: number) {
   g.fire[i] = fire;
   if (g.fuel[i] === 0) g.fuel[i] = u16(gridTicks(seconds * mult));
-  g.owner[i] = owner;
+  g.owner[i] = fireOwner(g, i, owner);
   markActive(g.active, i);
   addToBatch(fx.ignited, g, i);
+  if (g.tar[i] === 1) addToBatch(fx.tarIgnited, g, i);
+}
+
+/**
+ * The owner fire on cell i takes when `owner` lights it or burns on it (DESIGN §6.3 ownership):
+ * the Tar Matriarch's volatile tar always burns world-owned (CONTENT §5), so it hurts everyone.
+ */
+export function fireOwner(g: Grid, i: number, owner: number): number {
+  return g.tar[i] === 1 && g.surface[i] === SURFACE.oil ? OWNER.world : owner;
 }
 
 /** Every barrel cell of the barrel's tile catches at once and explodes after `ticks` (DESIGN §6.2). */

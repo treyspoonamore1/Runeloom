@@ -7,7 +7,10 @@ const LIFE = bosses.tar_matriarch.life;
 import { hitWith } from '../combat/helpers';
 import { fromFile, idx, ofType, place, run } from './helpers';
 
-/** CONTENT §5 Tar Matriarch (K5): slam with knockback, tar globs that leave oil, 2 Tar Hulks at 50% life. */
+/**
+ * CONTENT §5 Tar Matriarch (K5): slam with knockback, tar globs that leave tar, her tar crew (2 Tar
+ * Hulks and 4 Tinderlings) at 50% life. Flare, rush and phase 2: matriarchPhase2.test.ts.
+ */
 
 function pit(px: number, py: number): GameState {
   const s = fromFile('kiln/k5_matriarch_pit');
@@ -53,7 +56,7 @@ describe('Tar Matriarch', () => {
     expect(Math.hypot(hit.kbX, hit.kbY)).toBeCloseTo(1, 9);
   });
 
-  it('lobs tar globs at the player that leave a 4-cell oil splat', () => {
+  it('lobs tar globs at the player that leave a 4-cell splat of tar', () => {
     const s = pit(20, 30);
     const m = s.enemies.find((e) => e.kind === 'tar_matriarch')!;
     aggro(s, m);
@@ -69,9 +72,11 @@ describe('Tar Matriarch', () => {
     expect(s.grid.surface[idx(s, x, y)]).toBe(SURFACE.oil);
     expect(s.grid.surface[idx(s, x + 3.5, y)]).toBe(SURFACE.oil);
     expect(s.grid.surface[idx(s, x + 4.6, y + 1)]).toBe(SURFACE.none);
+    expect(s.grid.tar[idx(s, x, y)]).toBe(1);
+    expect(s.grid.tar[idx(s, x + 3.5, y)]).toBe(1);
   });
 
-  it('at half life summons 2 Tar Hulks once (phase 2)', () => {
+  it('at half life calls her tar crew once, 2 Tar Hulks and 4 Tinderlings (phase 2)', () => {
     const s = pit(20, 30);
     const m = s.enemies.find((e) => e.kind === 'tar_matriarch')!;
     aggro(s, m);
@@ -79,12 +84,14 @@ describe('Tar Matriarch', () => {
     const ev = run(s, 120);
     expect(ofType(ev, 'telegraph').filter((t) => t.attack === 'summon_hulks')).toHaveLength(1);
     const sum = ofType(ev, 'bossSummon');
-    expect(sum).toHaveLength(1);
-    expect(sum[0]!.spawned).toHaveLength(2);
+    expect(sum.map((x) => [x.kind, x.spawned.length])).toEqual([
+      ['tar_hulk', 2],
+      ['tinderling', 4],
+    ]);
     expect(ofType(ev, 'bossPhase')).toMatchObject([{ id: m.id, phase: 2 }]);
     const hulks = s.enemies.filter((e) => e.kind === 'tar_hulk');
     expect(hulks).toHaveLength(2);
-    for (const h of hulks) {
+    for (const h of [...hulks, ...s.enemies.filter((e) => e.kind === 'tinderling')]) {
       expect(h.special.parentId).toBe(m.id);
       expect(h.areaLevel).toBe(8);
       expect(h.ai.mode).not.toBe('idle');

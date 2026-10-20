@@ -244,7 +244,7 @@ Each row is one rule and gets one unit test named after its number (`rule 07: fr
 | 25 | An ice bridge breaks under an entity | | Entity falls: 10% max life damage, then returns to its last safe cell |
 | 26 | Fire is placed on a walkable non-flammable cell (spell footprint, death burst, explosion, rule 18 trail) | Not water (rule 4), not ice (rule 5) | Placed fire at intensity 128 for 1.0 s (Lingering applies). It spreads into flammable neighbors by rule 2 and damages by rule 16, then goes out leaving the ground unchanged (except mud, rule 23) |
 
-**Hazard ownership.** Every terrain effect records its owner team. Hazards damage the other team and never their owner team. World-owned hazards (ambient fires, a Tar Hulk explosion) hurt everyone. Fire that spreads keeps the owner of the cell it spread from. A new effect on a cell takes the new owner.
+**Hazard ownership.** Every terrain effect records its owner team. Hazards damage the other team and never their owner team. World-owned hazards (ambient fires, a Tar Hulk explosion) hurt everyone. Fire that spreads keeps the owner of the cell it spread from. A new effect on a cell takes the new owner. Exception: fire on the Tar Matriarch's tar (CONTENT §5) is always world-owned, whoever lit it.
 
 ### 6.4 Ailments
 

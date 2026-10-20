@@ -21,8 +21,12 @@ export type AttackShapeDef =
  */
 export type AttackTerrainDef =
   | { kind: 'element'; element: 'fire' | 'frost' | 'storm' }
-  /** Oil on every walkable or water cell within `radius` of the shape's origin. */
-  | { kind: 'oil'; radius: number };
+  /**
+   * Oil on every walkable or water cell within `radius` of the shape's origin. `tar` (the Tar
+   * Matriarch's globs): the oil is volatile tar, and fire on it is world-owned whoever lit it, so
+   * it hurts everyone (CONTENT §5).
+   */
+  | { kind: 'oil'; radius: number; tar?: boolean };
 
 /**
  * A dash attack (M4: Bog Lurker lunge, Cinder Warden charge): on landing, the enemy runs along
@@ -37,6 +41,8 @@ export interface DashDef {
   reach: number;
   /** Leaves placed fire (rule 26) along its path, this radius around its center. */
   fireTrailRadius?: number;
+  /** Leaves the Tar Matriarch's tar (oil whose fire is world-owned) along its path, this radius around its center. */
+  tarTrailRadius?: number;
 }
 
 export interface AttackDef {
@@ -208,6 +214,13 @@ export interface EnemyChemistry {
    * Getting Wet puts the fuse out; dying with a lit fuse explodes at once.
    */
   explodes?: { fuse: number; radius: number; damage: number };
+  /**
+   * Ignited while Oiled, it flares `fuse` s later and lives (Tar Matriarch, CONTENT §5): the same
+   * world-owned fire burst as `explodes` (`radius` cells, `damage` Fire, absolute for bosses)
+   * hurts everyone else in it, and it takes `selfDamage` Fire itself. Then it can't flare again
+   * for `cooldown` s. Getting Wet puts the fuse out; dying with a lit fuse flares at once.
+   */
+  flare?: { fuse: number; radius: number; damage: number; selfDamage: number; cooldown: number };
   /**
    * Its targeted attack aims at the water or metal cell nearest the player within this many
    * cells of them, when there is one, instead of at the player (Stormcaller).

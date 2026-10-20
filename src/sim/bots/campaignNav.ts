@@ -12,7 +12,6 @@
  *   way a player burns through with Swath or Lob (CONTENT §9's puzzle verbs, tested elsewhere).
  * Plans are rebuilt every `replanTicks` or when the goal moves to another tile. Deterministic.
  */
-import { enemyDef } from '../../../data/enemies';
 import { MAT, materialByCode, OWNER } from '../../../data/materials';
 import { PLAYER_ID, type Enemy } from '../actors/enemies';
 import { TILE_CELLS } from '../core/constants';
@@ -22,6 +21,7 @@ import type { GameState } from '../state';
 import { hasLineOfSight, hasWalkLine } from '../world/los';
 import type { Room } from '../world/room';
 import { kiterGoal, kiterInput } from './kiter';
+import { fuseBlastRadius, tarFightIn } from './kiterTar';
 import { tileWalkable } from './scriptPath';
 
 /** Bot heuristics (not game tuning). */
@@ -76,9 +76,13 @@ function shotClear(room: Room, x0: number, y0: number, x1: number, y1: number): 
   );
 }
 
-/** True while an enemy or an enemy projectile is close: the kiter's own movement fights. */
+/**
+ * True while an enemy or an enemy shot is close, or the Tar Matriarch is alive (her pit is
+ * one open arena full of fire): the kiter's own movement fights.
+ */
 function engaged(state: GameState): boolean {
   const p = state.player;
+  if (tarFightIn(state)) return true;
   const re = NAV.engageEnemy * NAV.engageEnemy;
   for (const e of state.enemies) if (!e.dead && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= re) return true;
   const rs = NAV.engageShot * NAV.engageShot;
@@ -87,14 +91,17 @@ function engaged(state: GameState): boolean {
   return false;
 }
 
-/** A Tar Hulk with a lit fuse whose blast would reach the player (DESIGN §6.2, CONTENT §5), or null. */
+/**
+ * A Tar Hulk (or the Tar Matriarch) with a lit fuse whose blast would reach the player (DESIGN
+ * §6.2, CONTENT §5), or null.
+ */
 function litHulkNear(state: GameState): Enemy | null {
   const p = state.player;
   for (const e of state.enemies) {
-    if (e.dead || e.special.fuseLeft <= 0) continue;
-    const blast = enemyDef(e.kind).chemistry?.explodes;
-    if (!blast) continue;
-    const r = blast.radius + NAV.blastMargin;
+    if (e.dead) continue;
+    const blast = fuseBlastRadius(e);
+    if (blast <= 0) continue;
+    const r = blast + NAV.blastMargin;
     if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r * r) return e;
   }
   return null;

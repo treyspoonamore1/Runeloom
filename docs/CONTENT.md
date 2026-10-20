@@ -191,7 +191,7 @@ Objects and bosses. Bosses and the Brood Kiln are placed with `@spawn <digit> en
 | Id | Name | Area level | Life | Resist | Notes |
 |---|---|---|---|---|---|
 | `brood_kiln` | Brood Kiln | Room level | 200 | 50 / 0 / 0 | Stationary object. Spawns 3 Kiln Mites every 5 s. Stops while Frozen. Legend character `&` (§6.1) |
-| `tar_matriarch` | Tar Matriarch (mini-boss) | 8 | 1,800 | −30 / 0 / 0 | Tar Hulk elite. Summons 2 Tar Hulks at 50% life. Teaches oil plus fire, and the explosion risk |
+| `tar_matriarch` | Tar Matriarch (mini-boss) | 8 | 5,000 | −30 / 0 / 0 | Tar Hulk elite. Her globs and her rush leave **tar**: oil whose fire is world-owned whoever lights it, so it hurts everyone (other oil keeps DESIGN §6.3 ownership). Lit while Oiled she **flares** after the Hulk's 1.5 s fuse: a 6-cell world-owned fire burst that hits everyone else and burns her too, then can't flare again for 10 s (getting Wet puts the fuse out). At 50% life she calls her **tar crew**, 2 Tar Hulks beside her and 4 Tinderlings on her tar (which they light), and phase 2 begins: she walks 35% faster, her cooldowns are 25% shorter and she adds the tar rush. Teaches oil plus fire, and the explosion risk |
 | `cinder_warden` | Cinder Warden | 10 | 5,000 | 75 / −25 / 25 | Three phases, DESIGN §10.3. Uses the boss chill rule (DESIGN §6.4) |
 
 Boss attacks:
@@ -199,7 +199,9 @@ Boss attacks:
 | Boss | Attack | Damage | Telegraph | Effect |
 |---|---|---|---|---|
 | Tar Matriarch | Slam | 30 | 1.0 s, 6-cell circle | Knockback 4 cells |
-| Tar Matriarch | Tar glob | 15 | 0.8 s landing marker | Leaves a 4-cell oil splat |
+| Tar Matriarch | Tar glob | 15 | 0.8 s landing marker | Leaves a 4-cell splat of tar |
+| Tar Matriarch | Tar rush (phase 2) | 25 on contact | 0.9 s line | At a player at least 9 cells away: a run 6 cells past where they stood (at most 32 cells, 40 cells/s, stopping at walls), knockback 4 cells. Smears tar 2.4 cells around her path |
+| Tar Matriarch | Flare | 35 Fire to everyone else in it, 250 to herself | 1.5 s fuse, 6-cell circle | When she is lit while Oiled. World-owned: lights the tar and oil in it, and Oiled Tar Hulks it hits start their own fuses. 10 s cooldown. Dying with the fuse lit flares at once |
 | Cinder Warden | Charge | 30 on contact | 1.0 s line | Leaves a trail of placed fire (rule 26) that ignites grass |
 | Cinder Warden | Fire slam | 40 | 0.8 s, 6-cell circle | Placed fire in the circle |
 | Cinder Warden | Fire breath (phases 2–3) | 18 + Ignite | 0.6 s, 12-cell cone | Makes steam on water |
@@ -394,7 +396,7 @@ Sunken Kiln:
 | K2 Brazier Hall | 7 | Braziers behind low walls: Lob over them | Ember Archers |
 | K3 Bramble Vault | 7 | Burn a path through bramble to a small-key chest. Locked door to K4 | Tinderlings |
 | K4 Oil Works | 8 | Oil channels. Ignite the oil to burn away a wooden barricade (`\|`). Heart Seed | `tar_crew`, Kiln Mites |
-| K5 Matriarch's Pit | 8 | Mini-boss: `tar_matriarch` | — |
+| K5 Matriarch's Pit | 8 | Mini-boss: `tar_matriarch`. Arena oil and barrels to light her with; four shallow pools put a burning player out | — |
 | K6 Frost Shrine | 8 | Dungeon item: the Frost rune. Short tutorial: freeze a pool to reach the exit | — |
 | K7 Ice Crossing | 9 | Example room in §6.3. Heart Seed | 2 Frost Wisps, 1 Bog Lurker |
 | K8 Slide Room | 9 | Freeze a pool, then slide ice blocks onto 2 pressure plates. Loom Shard | Frost Wisps |
