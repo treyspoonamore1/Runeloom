@@ -55,6 +55,10 @@ export const TERRAIN = {
   pylon: 0x9aa6b2,
   oil: 0x3a2a4a,
   oilEdge: 0x1e1428,
+  /** The Tar Matriarch's tar: near-black brown with slow amber glints (volatile, world-owned fire). */
+  tar: 0x211710,
+  tarEdge: 0x0d0805,
+  tarGlint: 0xc8742a,
   ink: PAL.ink,
   scorch: 0x3a2018,
 

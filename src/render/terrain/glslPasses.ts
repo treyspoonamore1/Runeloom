@@ -22,10 +22,21 @@ vec3 applyWet(vec3 col, vec2 p, float wet, float aa) {
   return col + gloss * k * 0.07;
 }
 
-vec3 applyOil(vec3 col, vec2 p, float oil, bool onWater, float aa) {
+vec3 applyOil(vec3 col, vec2 p, float oil, bool onWater, bool tar, float aa) {
   float edge = 0.5 + (vnoise(p * 0.8) - 0.5) * 0.3;
   float d = oil - edge;
   if (d < -0.2) return col;
+  if (tar) {
+    // The Matriarch's tar: thick, near black, with slow amber glints welling up (it's volatile).
+    float well = smoothstep(0.62, 0.9, vnoise(p * 0.35 + vec2(uTime * 0.05, -uTime * 0.04)));
+    float pulse = 0.6 + 0.4 * sin(uTime * 2.2 + vnoise(p * 0.2) * 6.0);
+    vec3 tc = mix(${c3(C.tar)}, ${c3(C.tarGlint)}, well * pulse * 0.55);
+    if (onWater) tc = mix(tc, col, 0.12);
+    float spec = smoothstep(0.88, 0.92, vnoise(p * 0.5 + vec2(uTime * 0.015, 0.0)));
+    tc += spec * 0.06;
+    col = mix(col, tc, smoothstep(-aa, aa, d));
+    return mix(col, ${c3(C.tarEdge)}, band(d, ${f1(L.detail * 0.6)}, aa) * 0.9);
+  }
   // Thin-film sheen: broad rainbow bands drifting slowly across the slick.
   float film = vnoise(p * 0.11 + vec2(uTime * 0.02, -uTime * 0.015));
   vec3 rainbow = 0.5 + 0.5 * cos(TAU * (film * 1.6 + p.x * 0.015 + vec3(0.0, 0.33, 0.67)));
@@ -108,7 +119,7 @@ void main() {
       col = mix(col, ${c3(C.ember)} * 1.15, dot * k * tw);
     }
   }
-  if (m.r > 0.05) col = applyOil(col, p, m.r, water, aa);
+  if (m.r > 0.05) col = applyOil(col, p, m.r, water, (flags & F_TAR) != 0, aa);
   // A bed of glowing coals under the flames.
   if (fl.r > 0.01) {
     float n = vnoise(p * 1.8 + vec2(0.0, uTime * 0.7));

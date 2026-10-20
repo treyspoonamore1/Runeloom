@@ -8,7 +8,7 @@ import { TERRAIN_FX } from './terrainColors';
  * Uint32Array view, one texel per cell (row-major, like the grid), written as one 32-bit word per
  * texel (little-endian: byte 0 = R).
  *
- *   codes  (nearest)  R display ground · G flags · B phase · A true ground
+ *   codes  (nearest)  R display ground · G flags (oil, tar, owner, air, ember, over water) · B phase · A true ground
  *   fields (linear)   R fire · G charge strength · B smoke · A steam      (two copies: prev/cur)
  *   masks  (linear)   R oil · G wet · B hazard (fire or charge, any owner) · A hostile hazard
  *   glow   (linear, one texel per tile, blurred)  R fire · G charge · B smoke · A steam
@@ -30,10 +30,11 @@ export const FLAG = {
   ember: 32,
   /** Wood over deep water (a bridge), not over a pit. */
   overWater: 64,
+  /** The oil is the Tar Matriarch's tar (grid.tar): fire on it is world-owned. */
+  tar: 128,
 } as const;
 
 export const GRID_HZ = SIM_HZ / GRID_EVERY;
-
 
 const PROP_CODES = new Set<number>([MAT.crate, MAT.barricade, MAT.oil_barrel, MAT.brazier, MAT.object]);
 /** Raised blocks the baked layer draws; a change in their count re-bakes it. */
@@ -160,6 +161,8 @@ export class TerrainPack {
     const { ground, surface, air, fire, charge, airTimer, timer, wet, under, owner } = grid;
     // Rule 11 falloff (0.25–1; 1 on metal). Grids built before the rules engine may lack it.
     const falloff: Float32Array | undefined = grid.chargeFalloff;
+    // M4 Tar Matriarch tar marks; grids built by older fixtures may lack them.
+    const tar: Uint8Array | undefined = grid.tar;
     const next = 1 - this.cur;
     const codes32 = this.codes32;
     const fields32 = this.fields32[next]!;
@@ -190,6 +193,7 @@ export class TerrainPack {
     const aSteam = AIR.steam;
     const oPlayer = OWNER.player;
     const fOil = FLAG.oil;
+    const fTar = FLAG.tar;
     const fOverWater = FLAG.overWater;
     const fEmber = FLAG.ember;
     const ownerShift = FLAG.ownerShift;
@@ -258,7 +262,7 @@ export class TerrainPack {
           disp = propLut[u] === 1 ? mStone : u;
         }
         let flags = (o << ownerShift) | (a << airShift);
-        if (surface[i] === sOil) flags |= fOil;
+        if (surface[i] === sOil) flags |= tar !== undefined && tar[i] === 1 ? fOil | fTar : fOil;
         if (g === mWood && under[i] === mDeep) flags |= fOverWater;
         let phase = 0;
         const t = timer[i]!;
