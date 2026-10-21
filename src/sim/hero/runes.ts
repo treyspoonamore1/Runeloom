@@ -8,7 +8,7 @@
  * spell in tree order (pre-order, branches in order): the branch rune leading into it (if any),
  * its form, then its items in slot order.
  */
-import { runes as runeDefs, type RuneId } from '../../../data/runes';
+import { runes as runeDefs, weaveLimits, type RuneId } from '../../../data/runes';
 import { maxRuneLevel, runeXpToNext } from '../../../data/progression';
 import { emit } from '../events';
 import type { GameState } from '../state';
@@ -132,9 +132,24 @@ export function runeLevelMap(
   return out;
 }
 
+/** Per-rune quality for CompileContext.runeQualities, or null when no socketed rune has any. */
+export function runeQualityMap(
+  state: GameState,
+  tree: WeaveTree,
+  uids: readonly number[],
+): Record<string, number> | null {
+  const byUid = new Map(state.hero.runes.map((r) => [r.uid, r]));
+  let out: Record<string, number> | null = null;
+  runeOrder(tree).forEach((r, i) => {
+    const q = byUid.get(uids[i]!)?.quality ?? 0;
+    if (q > 0) (out ??= {})[runeKey(r.path)] = q;
+  });
+  return out;
+}
+
 /**
- * Socketed runes gain `amount` XP and level up through runeXpToNext, up to maxRuneLevel (where
- * XP stops). Returns the slots whose rune levels changed (they need recompiling).
+ * Socketed runes gain `amount` XP (more with quality: weaveLimits.qualityXpPerPoint per %) and
+ * level up through runeXpToNext, up to maxRuneLevel (where XP stops). Returns the slots whose rune levels changed (they need recompiling).
  */
 export function grantRuneXp(state: GameState, amount: number): number[] {
   const changed: number[] = [];
@@ -146,7 +161,7 @@ export function grantRuneXp(state: GameState, amount: number): number[] {
     for (const uid of s.runes) {
       const r = byUid.get(uid);
       if (!r || r.level >= maxRuneLevel) continue;
-      r.xp += amount;
+      r.xp += r.quality > 0 ? amount * (1 + r.quality * weaveLimits.qualityXpPerPoint) : amount;
       while (r.level < maxRuneLevel && r.xp >= runeXpToNext(r.level)) {
         r.xp -= runeXpToNext(r.level);
         r.level++;

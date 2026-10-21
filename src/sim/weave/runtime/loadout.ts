@@ -20,7 +20,7 @@ import type { SpellProgram } from '../program';
 import type { WeaveTree } from '../tree';
 import { NO_RULES, sameRules, type CompileRules } from '../rules';
 import { cancelCast } from './castState';
-import { assignRunes, runeLevelMap, usesRuneItems } from '../../hero/runes';
+import { assignRunes, runeLevelMap, runeQualityMap, usesRuneItems } from '../../hero/runes';
 
 /** Number of weave slots (LMB, RMB, Q, E). */
 export const LOADOUT_SLOTS = 4;
@@ -164,7 +164,11 @@ interface WeavePlan {
 /** Compiles a parsed tree for the state, with the levels of the given socketed items. */
 function compileTree(state: GameState, tree: WeaveTree, runes: readonly number[] | null): CompileResult {
   const ctx = stateContext(state);
-  if (runes) ctx.runeLevels = runeLevelMap(state, tree, runes);
+  if (runes) {
+    ctx.runeLevels = runeLevelMap(state, tree, runes);
+    const q = runeQualityMap(state, tree, runes);
+    if (q) ctx.runeQualities = q;
+  }
   return compileWeave(tree, ctx);
 }
 

@@ -17,7 +17,7 @@ import { scaleByLevel } from '../combat/damage';
 import { SIM_HZ } from '../core/constants';
 import { fanRotations, rotationDeg } from './angles';
 import { defOf, formOf } from './checks';
-import { levelAt, type ResolvedContext } from './context';
+import { levelAt, qualityAt, type ResolvedContext } from './context';
 import { branchComplexity, ownComplexity, ownMana } from './costs';
 import type { EffectiveElement } from './elements';
 import type {
@@ -132,7 +132,7 @@ export function resolveSpell(
     elements: elementShares,
     shares: sharesByType(elementShares),
     baseDamage,
-    increased: 0,
+    increased: qualityAt(ctx, [...path, 'form']) * weaveLimits.qualityDamagePerPoint,
     more,
     moreProduct,
     critChance,

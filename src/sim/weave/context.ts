@@ -22,6 +22,11 @@ export interface CompileContext {
    * with the trigger's (DESIGN §7); other runes' levels don't change numbers in M4.
    */
   runeLevels?: Readonly<Record<string, number>>;
+  /**
+   * Per-rune quality in % (rune items, adventure mode), keyed like `runeLevels`. Missing keys are 0.
+   * A form rune's quality is increased damage for its spell (weaveLimits.qualityDamagePerPoint).
+   */
+  runeQualities?: Readonly<Record<string, number>>;
   /** Multiplier on mana costs (1 − reduced mana cost). Default 1. */
   manaCostMult?: number;
   /** Flat Strike base damage (Ironbark implicit). Default 0. */
@@ -48,6 +53,11 @@ export function levelAt(ctx: ResolvedContext, path: readonly string[]): number {
   return ctx.runeLevels[runeKey(path)] ?? ctx.runeLevel;
 }
 
+/** The quality (%) of the rune at `path`, 0 without one. */
+export function qualityAt(ctx: ResolvedContext, path: readonly string[]): number {
+  return ctx.runeQualities[runeKey(path)] ?? 0;
+}
+
 export function resolveContext(ctx: CompileContext): ResolvedContext {
   return {
     capacity: ctx.capacity,
@@ -56,6 +66,7 @@ export function resolveContext(ctx: CompileContext): ResolvedContext {
     maxDepth: ctx.maxDepth ?? weaveLimits.maxDepth,
     runeLevel: ctx.runeLevel ?? 1,
     runeLevels: ctx.runeLevels ?? NO_LEVELS,
+    runeQualities: ctx.runeQualities ?? NO_LEVELS,
     manaCostMult: ctx.manaCostMult ?? 1,
     strikeFlat: ctx.strikeFlat ?? 0,
     critMultiplier: ctx.critMultiplier ?? defaultTuning.combat.critMultiplier,

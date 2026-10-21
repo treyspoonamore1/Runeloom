@@ -26,6 +26,13 @@ export const weaveLimits = {
   maxLivePlayerInstances: 2000,
   /** Rune base damage grows by this per rune level above 1 (DESIGN §7). */
   runeLevelGrowth: 1.11,
+  /**
+   * Rune quality (DESIGN §5.1, 0–20%; Rune Polish, M5). Each point of a form rune's quality is
+   * this much increased damage for its spell; each point of any socketed rune's quality is this
+   * much increased XP for that rune.
+   */
+  qualityDamagePerPoint: 0.01,
+  qualityXpPerPoint: 0.01,
 } as const;
 
 /** Every rune by id. */

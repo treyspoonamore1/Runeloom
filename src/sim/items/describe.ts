@@ -6,7 +6,7 @@ import { affixes, affixNames, isAffixId } from '../../../data/affixes';
 import { enemies, isEnemyKind } from '../../../data/enemies';
 import { fuseParts, isFusePartId, partElementInc, partTierMult } from '../../../data/fuseParts';
 import { maxRuneLevel, runeXpToNext } from '../../../data/progression';
-import { getRune } from '../../../data/runes';
+import { getRune, weaveLimits } from '../../../data/runes';
 import { isSpindleId, spindles } from '../../../data/spindles';
 import { isUniqueId, uniques, type UniqueDef } from '../../../data/uniques';
 import type { FusePart, Item, ItemRarity, RuneItem } from '../hero/types';
@@ -102,7 +102,13 @@ export function describeRune(rune: RuneItem): Description {
   properties.push(
     rune.level >= maxRuneLevel ? 'XP: max level' : `XP: ${Math.floor(rune.xp)} / ${runeXpToNext(rune.level)}`,
   );
-  if (rune.quality > 0) properties.push(`Quality: ${rune.quality}%`);
+  if (rune.quality > 0) {
+    properties.push(`Quality: ${rune.quality}%`);
+    const q = rune.quality;
+    if (def?.kind === 'form')
+      lines.push(`${Math.round(q * weaveLimits.qualityDamagePerPoint * 100)}% increased damage (quality)`);
+    lines.push(`${Math.round(q * weaveLimits.qualityXpPerPoint * 100)}% increased rune XP (quality)`);
+  }
   const kind = def ? def.kind[0]!.toUpperCase() + def.kind.slice(1) : 'Rune';
   return { name: def?.name ?? rune.rune, rarity: 'normal', base: `${kind} rune`, lines, properties };
 }
