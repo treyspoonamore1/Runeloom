@@ -3,7 +3,10 @@
  * kinds that don't exist yet are warnings, so data can name M4 enemies before they land.
  */
 import { affixes, statDefs, type AffixDef } from '../../data/affixes';
-import { gearBases, itemKinds } from '../../data/items';
+import { gearBases, isGearBaseId, itemKinds } from '../../data/items';
+import { currencies } from '../../data/currency';
+import { uniques, type UniqueDef } from '../../data/uniques';
+import { isPassiveId } from '../../data/passives';
 import { fuseParts, type FusePartDef } from '../../data/fuseParts';
 import { dropRates, killXp } from '../../data/loot';
 import { guaranteedRunes, newGame, spindleDropFrom } from '../../data/progression';
@@ -35,6 +38,29 @@ export function checkItemData(): { errors: string[]; warnings: string[] } {
         errors.push(`data/affixes.ts: no ${which} rolls on ${kind}`);
   for (const [key, b] of Object.entries(gearBases))
     if (b.id !== key) errors.push(`data/items.ts ${key}: id is "${b.id}"`);
+  // One group belongs to one side, so "can't roll together" never hides a whole side.
+  const groupSide = new Map<string, string>();
+  for (const a of Object.values(allAffixes)) {
+    const side = groupSide.get(a.group);
+    if (side && side !== a.kind)
+      errors.push(`data/affixes.ts group "${a.group}" mixes prefixes and suffixes`);
+    groupSide.set(a.group, a.kind);
+  }
+
+  for (const [key, c] of Object.entries(currencies))
+    if (c.id !== key) errors.push(`data/currency.ts ${key}: id is "${c.id}"`);
+  const allUniques: Record<string, UniqueDef> = uniques;
+  for (const [key, u] of Object.entries(allUniques)) {
+    const at = `data/uniques.ts ${key}`;
+    if (u.id !== key) errors.push(`${at}: id is "${u.id}"`);
+    if (!isSpindleId(u.base) && !isGearBaseId(u.base))
+      errors.push(`${at}: base "${u.base}" is not an item base`);
+    for (const st of u.stats) if (!(st.stat in statDefs)) errors.push(`${at}: unknown stat "${st.stat}"`);
+    if (u.rules.keystone !== undefined && !isPassiveId(u.rules.keystone))
+      errors.push(`${at}: keystone "${u.rules.keystone}" is not a passive node`);
+    if (u.rules.baseCapacity !== undefined && !isSpindleId(u.base))
+      errors.push(`${at}: baseCapacity needs a spindle base`);
+  }
 
   const parts: Record<string, FusePartDef> = fuseParts;
   for (const [key, p] of Object.entries(parts)) {

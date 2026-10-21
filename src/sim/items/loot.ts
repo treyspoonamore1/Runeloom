@@ -9,6 +9,7 @@
  * `collectRoomLoot` when the player leaves a room (before the room-scoped state is rebuilt) and
  * may call `dropLoot` for chests.
  */
+import type { CurrencyId } from '../../../data/currency';
 import { lootFloor } from '../../../data/loot';
 import { DT } from '../core/constants';
 import type { Hasher } from '../core/hash';
@@ -23,7 +24,8 @@ export type LootContent =
   | { kind: 'rune'; rune: RuneItem }
   | { kind: 'item'; item: Item }
   | { kind: 'part'; part: FusePart }
-  | { kind: 'scrap'; amount: number };
+  | { kind: 'scrap'; amount: number }
+  | { kind: 'currency'; currency: CurrencyId; amount: number };
 
 export interface LootDrop {
   /** Unique within the run (state.nextId space). */
@@ -83,6 +85,9 @@ export function grantContent(state: GameState, content: LootContent): void {
     case 'scrap':
       hero.threadScrap += content.amount;
       break;
+    case 'currency':
+      hero.currency[content.currency] = (hero.currency[content.currency] ?? 0) + content.amount;
+      break;
   }
 }
 
@@ -128,6 +133,7 @@ export function hashLoot(h: Hasher, loot: readonly LootDrop[]): void {
     if (c.kind === 'rune') hashRune(h, c.rune);
     else if (c.kind === 'item') hashItem(h, c.item);
     else if (c.kind === 'part') hashPart(h, c.part);
+    else if (c.kind === 'currency') h.string(c.currency).byte(0).u32(c.amount);
     else h.u32(c.amount);
   }
 }

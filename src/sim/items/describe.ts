@@ -8,6 +8,7 @@ import { fuseParts, isFusePartId, partElementInc, partTierMult } from '../../../
 import { maxRuneLevel, runeXpToNext } from '../../../data/progression';
 import { getRune } from '../../../data/runes';
 import { isSpindleId, spindles } from '../../../data/spindles';
+import { isUniqueId, uniques, type UniqueDef } from '../../../data/uniques';
 import type { FusePart, Item, ItemRarity, RuneItem } from '../hero/types';
 import { baseImplicits } from '../hero/aggregate';
 import { statLine } from '../hero/stats';
@@ -23,6 +24,8 @@ export interface Description {
   lines: string[];
   /** Base properties shown above the stat lines: Capacity, cast speed, item level, sockets, rune XP. */
   properties: string[];
+  /** Items: each rolled affix's line with its side and tier (1 is best), for the crafting bench. */
+  affixes?: { text: string; side: 'prefix' | 'suffix'; tier: number }[];
 }
 
 const ROMAN = ['I', 'II', 'III'] as const;
@@ -31,9 +34,11 @@ function pct(v: number): string {
   return `${Math.round(v * 1000) / 10}%`;
 }
 
-/** A Magic item's name from its affixes; other rarities use the base name. */
+/** A Magic item's name from its affixes, a Rare's rolled name, a unique's name; Normal items use the base name. */
 export function itemName(item: Item): string {
   const base = baseName(item.base);
+  if (item.rarity === 'unique' && item.unique && isUniqueId(item.unique)) return uniques[item.unique].name;
+  if (item.rarity === 'rare' && item.name) return item.name;
   if (item.rarity !== 'magic') return base;
   let pre = '';
   let suf = '';
@@ -49,6 +54,12 @@ export function describeItem(item: Item): Description {
   const lines: string[] = [];
   for (const s of baseImplicits(item.base)) lines.push(statLine(s.stat, s.value));
   for (const a of item.affixes) if (isAffixId(a.id)) lines.push(statLine(affixes[a.id].stat, a.value));
+  const u: UniqueDef | null =
+    item.rarity === 'unique' && item.unique && isUniqueId(item.unique) ? uniques[item.unique] : null;
+  if (u) {
+    for (const st of u.stats) lines.push(statLine(st.stat, st.value));
+    lines.push(...u.text);
+  }
   item.fused.forEach((p, i) => {
     lines.push(p ? `Fused: ${partName(p)}` : `Socket ${i + 1}: empty`);
   });
@@ -56,15 +67,22 @@ export function describeItem(item: Item): Description {
   if (isSpindleId(item.base)) {
     const sp = spindles[item.base];
     properties.push(
-      `Capacity: ${sp.capacity}`,
+      `Capacity: ${u?.rules.baseCapacity ?? sp.capacity}`,
       `Cast speed: ${sp.castSpeed.toFixed(2)}`,
       `Fuse sockets: ${sp.fuseSockets}`,
     );
   }
   properties.push(`Item level: ${item.itemLevel}`);
+  if (u) properties.push(`“${u.flavor}”`);
+  const rolled = item.affixes.flatMap((a) =>
+    isAffixId(a.id)
+      ? [{ text: statLine(affixes[a.id].stat, a.value), side: affixes[a.id].kind, tier: a.tier }]
+      : [],
+  );
   return {
     name: itemName(item),
     rarity: item.rarity,
+    affixes: rolled,
     base: `${baseName(item.base)} (${kindName(item.base)})`,
     lines,
     properties,

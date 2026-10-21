@@ -28,6 +28,7 @@ export type IconKind =
   | 'charm'
   | 'part'
   | 'scrap'
+  | 'currency'
   | 'key'
   | 'bigKey'
   | 'heart'
@@ -74,6 +75,14 @@ const SHAPES: Record<IconKind, () => JSX.Element> = {
     <>
       <path d="M6 22c0-9 6-16 14-17-2 4-1 7 2 9 3 2 5 6 3 11-6-2-13 0-19-3z" fill="#e8d6b0" {...S} />
       <circle cx="17" cy="16" r="2.4" fill="#ff7a2f" {...S} stroke-width={1.4} />
+    </>
+  ),
+  currency: () => (
+    <>
+      <circle cx="16" cy="16" r="10" fill="#3a3040" {...S} />
+      <ellipse cx="16" cy="16" rx="8" ry="3.5" stroke="#9fb4ff" stroke-width={2} fill="none" />
+      <ellipse cx="16" cy="16" rx="3.5" ry="8" stroke="#9fb4ff" stroke-width={2} fill="none" />
+      <circle cx="16" cy="16" r="2.6" fill="#eef2ff" />
     </>
   ),
   scrap: () => (

@@ -1,5 +1,5 @@
 import { Rng } from './core/rng';
-import { hashString } from './core/hash';
+import { craftRngFor, lootRngFor } from './rngStreams';
 import { buildRoom, parseRoom, type Room } from './world/room';
 import { createPlayer, type PlayerState } from './actors/player';
 import { spawnRoomEnemies, type Enemy } from './actors/enemies';
@@ -72,6 +72,8 @@ export interface GameState {
    * mode that rolls loot); saved.
    */
   lootRng: Rng;
+  /** Crafting rolls only (items/craft.ts), seeded like lootRng, so crafting never shifts drops. Hashed in adventure mode; saved. */
+  craftRng: Rng;
   tuning: Tuning;
   room: Room;
   /** The chemistry grid (DESIGN §6): materials, fire, charge, water, smoke per cell. */
@@ -193,7 +195,8 @@ export function createGame(opts: CreateGameOptions): GameState {
     rng,
     combatRng,
     aiRng,
-    lootRng: new Rng((opts.seed ^ hashString('loot')) >>> 0),
+    lootRng: lootRngFor(opts.seed),
+    craftRng: craftRngFor(opts.seed),
     tuning,
     room,
     grid: createGrid(room),

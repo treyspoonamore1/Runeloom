@@ -3,7 +3,10 @@
  * state). Mirrors the rules the hero/items, passive and world agents implement in applyHeroEdit,
  * so the screens behave the same once the real edits land.
  */
+import { isCurrencyId } from '../../../data/currency';
 import { isSpindleId, spindles } from '../../../data/spindles';
+import { Rng } from '../../sim/core/rng';
+import { craftItem, polishRune } from '../../sim/items/craft';
 import { UNFUSE_KEEP_COST } from '../../app/hero';
 import type { HeroEdit } from '../../sim/hero/edits';
 import { EQUIP_SLOTS, type EquipSlot, type HeroState, type Item } from '../../sim/hero/types';
@@ -86,8 +89,7 @@ export function fixtureApply(edit: HeroEdit): string | null {
       const sp = h.items.find((i) => i.uid === edit.spindleUid);
       const p = sp?.fused[edit.socket];
       if (!sp || !p) return 'Nothing fused there';
-      if (edit.keep && h.threadScrap < UNFUSE_KEEP_COST)
-        return `Needs ${UNFUSE_KEEP_COST} Thread Scrap`;
+      if (edit.keep && h.threadScrap < UNFUSE_KEEP_COST) return `Needs ${UNFUSE_KEEP_COST} Thread Scrap`;
       sp.fused[edit.socket] = null;
       if (edit.keep) {
         h.threadScrap -= UNFUSE_KEEP_COST;
@@ -111,11 +113,23 @@ export function fixtureApply(edit: HeroEdit): string | null {
       h.threadScrap -= cost;
       return null;
     }
+    case 'craft': {
+      if (!isCurrencyId(edit.currency)) return 'Unknown currency';
+      if ((h.currency[edit.currency] ?? 0) <= 0) return 'None left';
+      const rune = h.runes.find((r) => r.uid === edit.uid);
+      const it = h.items.find((i) => i.uid === edit.uid);
+      const why = rune ? polishRune(rune) : it ? craftItem(craftRng, it, edit.currency) : 'No such item';
+      if (why === null) h.currency[edit.currency] = (h.currency[edit.currency] ?? 1) - 1;
+      return why;
+    }
     case 'travel':
     case 'rest':
       return null;
   }
 }
+
+/** Crafting rolls for the fixture hero (UI tests and the gallery). */
+const craftRng = new Rng(7);
 
 /** Fixture Fuse sockets of a spindle base. */
 export const fixtureSockets = (it: Item): number =>

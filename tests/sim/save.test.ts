@@ -1,3 +1,4 @@
+import { makeUnique } from '../../src/sim/items/uniqueItems';
 import { describe, expect, it } from 'vitest';
 import {
   applyHeroEdit,
@@ -47,8 +48,12 @@ function randomGame(seed: number): GameState {
     });
     killEnemy(state, e, PLAYER_ID, 'hit');
   }
-  for (let i = 0; i < 4; i++) state.hero.items.push(rollGear(state, 1 + r.int(10)));
-  state.hero.items.push(rollSpindle(state, 8, 1));
+  const anyRarity = { normal: 1, magic: 1, rare: 1 };
+  for (let i = 0; i < 4; i++) state.hero.items.push(rollGear(state, 1 + r.int(10), anyRarity));
+  state.hero.items.push(rollSpindle(state, 8, { normal: 0, magic: 1, rare: 1 }));
+  state.hero.items.push(makeUnique(state.hero, 'pyre_hood', 5));
+  state.hero.currency = { loom_shuttle: 1 + r.int(3), rune_polish: 2, chaos_skein: r.int(2) };
+  applyHeroEdit(state, { kind: 'craft', currency: 'rune_polish', uid: state.hero.runes[0]!.uid });
   const ids = Object.keys(fuseParts);
   for (let i = 0; i < 3; i++)
     state.hero.parts.push(makePart(state.hero, ids[r.int(ids.length)]!, (1 + r.int(3)) as 1 | 2 | 3));

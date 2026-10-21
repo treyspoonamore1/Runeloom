@@ -4,7 +4,7 @@ import type { Pen } from '../pen';
 
 /**
  * Baked loot drops (DESIGN §8): rune stones with a glyph per rune kind, an item satchel, a Fuse
- * part, a Thread Scrap spool and the light beam of rare and unique drops. Anchor at the drop's
+ * part, a Thread Scrap spool, a currency knot and the light beam of rare and unique drops. Anchor at the drop's
  * resting point; white parts are tinted per drop.
  */
 const W = 0xffffff;
@@ -93,6 +93,15 @@ function scrap(p: Pen): void {
   p.moveTo(0.5, 0.1).bez(0.9, 0.3, 0.6, 0.7, 0.95, 0.75).stroke(0.08, 0xc9b9a6);
 }
 
+/** Crafting currency: a wound knot of thread with a bright core (white parts tinted per currency). */
+function currency(p: Pen): void {
+  p.circle(0, 0, 0.62).fill(0x3a3040).stroke(0.14, INK);
+  p.ellipse(0, 0, 0.5, 0.22).stroke(0.1, W);
+  p.ellipse(0, 0, 0.22, 0.5).stroke(0.1, W);
+  p.circle(0, 0, 0.16).fill(W);
+  p.ellipse(-0.22, -0.26, 0.14, 0.08).fill({ color: W, alpha: 0.4 });
+}
+
 /** Light beam of rare and unique drops: a soft column, white (tinted), base at (0, 0). */
 function beam(p: Pen): void {
   for (let i = 0; i < 6; i++) {
@@ -126,6 +135,7 @@ export function lootAtlasEntries(): AtlasEntry[] {
     { name: 'loot_gem', x0: -0.45, y0: -0.45, x1: 0.45, y1: 0.45, draw: gem },
     { name: 'loot_part', x0: -0.95, y0: -0.95, x1: 0.95, y1: 0.95, draw: part },
     { name: 'loot_scrap', x0: -0.75, y0: -0.65, x1: 1.1, y1: 0.95, draw: scrap },
+    { name: 'loot_currency', x0: -0.8, y0: -0.8, x1: 0.8, y1: 0.8, draw: currency },
     { name: 'loot_beam', x0: -0.6, y0: -1.1, x1: 0.6, y1: 0.1, draw: beam },
   ];
 }

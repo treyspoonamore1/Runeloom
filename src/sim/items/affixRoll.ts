@@ -43,7 +43,7 @@ function pickWeighted(rng: Rng, list: readonly AffixDef[]): AffixDef {
 }
 
 /** One affix roll: a weighted affix, a uniform tier among those the item level allows, a whole value in its range. */
-function rollOne(rng: Rng, list: readonly AffixDef[], itemLevel: number): AffixRoll {
+export function rollAffixFrom(rng: Rng, list: readonly AffixDef[], itemLevel: number): AffixRoll {
   const def = pickWeighted(rng, list);
   const tiers = tiersAt(def, itemLevel);
   const tier = tiers[rng.int(tiers.length)]!;
@@ -70,7 +70,7 @@ export function rollAffixSet(
     for (let i = 0; i < n; i++) {
       const list = eligibleAffixes(itemKind, which, itemLevel, used, pool);
       if (list.length === 0) return;
-      const r = rollOne(rng, list, itemLevel);
+      const r = rollAffixFrom(rng, list, itemLevel);
       used.add(byId.get(r.id)!.group);
       out.push(r);
     }

@@ -198,8 +198,20 @@ export {
   rollGear,
   partTierFor,
   spindleBasesAt,
+  rollRarity,
+  rollCurrency,
 } from './items/drops';
 export { rollAffixSet, rollMagicAffixes, eligibleAffixes, tiersAt } from './items/affixRoll';
+export {
+  openSides,
+  rollExtraAffix,
+  rollRareAffixes,
+  rollRareCount,
+  rollRareName,
+  sortAffixes,
+} from './items/rare';
+export { craftItem, polishRune, applyCraft, addCurrency, currencyCount } from './items/craft';
+export { makeUnique, uniquesAt, rollUnique } from './items/uniqueItems';
 export { kindOfBase, slotsForKind, baseName, equippedSpindle, findItem, equippedSlotOf } from './items/items';
 export {
   makeSave,

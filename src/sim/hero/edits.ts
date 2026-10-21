@@ -12,6 +12,7 @@ import type { GameState } from '../state';
 import { applyPassiveEdit } from './passives';
 import { equip, fuse, salvage, unequip, unfuse } from './equip';
 import { refreshHero } from './hero';
+import { applyCraft } from '../items/craft';
 import { restAtLoomStone, travelToLoomStone } from '../world/adventure';
 
 export type HeroEdit =
@@ -22,6 +23,8 @@ export type HeroEdit =
   | { kind: 'fuse'; partUid: number; spindleUid: number; socket: number }
   /** Removes a fused part: it is destroyed unless `keep` and the hero pays 5 Thread Scrap (DESIGN §8.4). */
   | { kind: 'unfuse'; spindleUid: number; socket: number; keep: boolean }
+  /** Uses one crafting currency (data/currency.ts) on the item or rune with `uid` (items/craft.ts). */
+  | { kind: 'craft'; currency: string; uid: number }
   /** Spends a passive point on a node connected to the allocated tree. */
   | { kind: 'allocate'; node: string }
   /** Refunds a node whose removal keeps the tree connected (free until level 10, then 1 Thread Scrap; DESIGN §9). */
@@ -72,5 +75,7 @@ function applyEquipmentEdit(state: GameState, edit: EquipmentEdit): string | nul
       return fuse(state, edit.partUid, edit.spindleUid, edit.socket);
     case 'unfuse':
       return unfuse(state, edit.spindleUid, edit.socket, edit.keep);
+    case 'craft':
+      return applyCraft(state, edit.currency, edit.uid);
   }
 }

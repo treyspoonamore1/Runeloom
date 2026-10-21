@@ -4,11 +4,14 @@
  * and broken references throw an Error that names the field.
  */
 import { isAffixId } from '../../data/affixes';
+import { isCurrencyId } from '../../data/currency';
+import { isUniqueId } from '../../data/uniques';
 import { isFusePartId } from '../../data/fuseParts';
 import { isRuneId, type RuneId } from '../../data/runes';
 import { isSpindleId } from '../../data/spindles';
 import { maxRuneLevel } from '../../data/progression';
 import type { RngState } from './core/rng';
+import { craftRngFor } from './rngStreams';
 import { createHero } from './hero/hero';
 import {
   EQUIP_SLOTS,
@@ -124,7 +127,7 @@ function item(v: unknown, path: string): Item {
   const fused: (FusePart | null)[] = [];
   for (let i = 0; i < sockets; i++)
     fused.push(given[i] === null || given[i] === undefined ? null : part(given[i], `${path}.fused[${i}]`));
-  return {
+  const out: Item = {
     uid: int(o.uid, `${path}.uid`, 1),
     base,
     rarity,
@@ -132,6 +135,24 @@ function item(v: unknown, path: string): Item {
     affixes,
     fused,
   };
+  if (o.name !== undefined) out.name = str(o.name, `${path}.name`);
+  if (o.unique !== undefined) {
+    const u = str(o.unique, `${path}.unique`);
+    if (!isUniqueId(u)) fail(`${path}.unique`, `is not a unique ("${u}")`);
+    out.unique = u;
+  }
+  return out;
+}
+
+function currencyStacks(v: unknown, path: string): HeroState['currency'] {
+  const o = obj(v, path);
+  const out: HeroState['currency'] = {};
+  for (const k of Object.keys(o)) {
+    if (!isCurrencyId(k)) fail(`${path}.${k}`, 'is not a currency');
+    const n = int(o[k], `${path}.${k}`);
+    out[k] = n;
+  }
+  return out;
 }
 
 export function parseHero(v: unknown): HeroState {
@@ -156,6 +177,7 @@ export function parseHero(v: unknown): HeroState {
     heartSeeds: opt(o, 'heartSeeds', int, d.heartSeeds, P),
     loomShards: opt(o, 'loomShards', int, d.loomShards, P),
     threadScrap: opt(o, 'threadScrap', int, d.threadScrap, P),
+    currency: opt(o, 'currency', currencyStacks, d.currency, P),
     patternSeeds: opt(o, 'patternSeeds', int, d.patternSeeds, P),
     nextUid: opt(o, 'nextUid', (x, p) => int(x, p, 1), d.nextUid, P),
   };
@@ -259,6 +281,9 @@ function rngState(v: unknown, path: string): RngState {
   }) as RngState;
 }
 
+/** RNG streams newer than the first saves, with the state a new game gives them. */
+const LATE_RNGS = { craftRng: (seed: number) => craftRngFor(seed).getState() };
+
 /** Migrations from version n to n + 1, by n. None yet: version 1 is the first. */
 const migrations: Record<number, (o: Obj) => Obj> = {};
 
@@ -279,7 +304,12 @@ export function parseSaveData(data: unknown): SaveData {
   const hero = parseHero(o.hero);
   const r = obj(o.rngs, 'rngs');
   const rngs = {} as Record<SavedRng, RngState>;
-  for (const k of SAVED_RNGS) rngs[k] = rngState(r[k], `rngs.${k}`);
+  for (const k of SAVED_RNGS) {
+    // Streams added after version 1 saves were made (craftRng, M5) start from the seed.
+    if (r[k] === undefined && k in LATE_RNGS)
+      rngs[k] = LATE_RNGS[k as keyof typeof LATE_RNGS](int(o.seed, 'seed') >>> 0);
+    else rngs[k] = rngState(r[k], `rngs.${k}`);
+  }
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,

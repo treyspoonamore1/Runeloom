@@ -10,6 +10,7 @@ import { EQUIP_SLOTS, type FusePart, type HeroState, type Item, type RuneItem } 
 import { emptyHeroMods, type HeroMods } from './mods';
 import { addPassiveAndPartMods } from './effectMods';
 import { syncHeroEffects } from './effects';
+import { currencyIds } from '../../../data/currency';
 import type { Hasher } from '../core/hash';
 import type { GameState } from '../state';
 import { addHeroItemMods } from './aggregate';
@@ -30,6 +31,7 @@ export function createHero(): HeroState {
     heartSeeds: 0,
     loomShards: 0,
     threadScrap: 0,
+    currency: {},
     patternSeeds: 0,
     nextUid: 1,
   };
@@ -87,6 +89,10 @@ export function hashItem(h: Hasher, it: Item): void {
     if (f) hashPart(h, f);
     else h.u32(0);
   }
+  h.string(it.name ?? '')
+    .byte(0)
+    .string(it.unique ?? '')
+    .byte(0);
 }
 
 export function hashHero(h: Hasher, hero: HeroState): void {
@@ -103,4 +109,5 @@ export function hashHero(h: Hasher, hero: HeroState): void {
   h.u32(hero.passives.length);
   for (const n of hero.passives) h.string(n).byte(0);
   h.u32(hero.heartSeeds).u32(hero.loomShards).u32(hero.threadScrap).u32(hero.patternSeeds);
+  for (const c of currencyIds) h.u32(hero.currency[c] ?? 0);
 }

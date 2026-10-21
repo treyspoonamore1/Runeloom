@@ -54,6 +54,10 @@ export function lootLook(c: LootContent): LootLook {
       return { tex: 'loot_part', tint: L.part, glyph: null, glyphTint: 0, color: L.part, beam: false };
     case 'scrap':
       return { tex: 'loot_scrap', tint: 0xffffff, glyph: null, glyphTint: 0, color: L.scrap, beam: false };
+    case 'currency': {
+      const color = L.currency[c.currency];
+      return { tex: 'loot_currency', tint: color, glyph: null, glyphTint: 0, color, beam: false };
+    }
   }
 }
 

@@ -71,6 +71,16 @@ export const LOOT = {
   runeKind: { trigger: 0xf2c35b, form: 0xfff0cf, element: 0xff8f52, modifier: 0xbfaeff, branch: 0x72dcc8 },
   part: 0x9ad06a,
   scrap: 0xc9b9a6,
+  /** Crafting currencies (data/currency.ts) by id. */
+  currency: {
+    weavers_knot: 0x9fb4ff,
+    spool_of_change: 0x7fd6ff,
+    loom_shuttle: 0xffd84a,
+    chaos_skein: 0xd77bff,
+    golden_needle: 0xffb020,
+    unpick: 0xff7a6a,
+    rune_polish: 0x8ff0c8,
+  },
   /** Drop arc: seconds and peak height; idle bob and glint. */
   dropTime: 0.45,
   dropHeight: 3,

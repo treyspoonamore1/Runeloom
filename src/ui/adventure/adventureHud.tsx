@@ -43,6 +43,7 @@ const TOAST_ICON: Record<ToastKind, IconKind> = {
   item: 'charm',
   part: 'part',
   scrap: 'scrap',
+  currency: 'currency',
   key: 'key',
   bigKey: 'bigKey',
   heart: 'heart',

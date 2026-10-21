@@ -5,6 +5,7 @@
  * HUD_EVENT names the events the HUD listens for: the world's (src/sim/world/worldEvents.ts)
  * and the hero's (src/sim/hero/events.ts). The fields each one reads are listed with it.
  */
+import { currencies } from '../../../data/currency';
 import type { LootContent } from '../../sim/items/loot';
 import type { ItemRarity } from '../../sim/hero/types';
 
@@ -53,7 +54,18 @@ export const HUD_EVENT = {
 export type LooseEvent = { type: string } & Record<string, unknown>;
 
 export type ToastKind =
-  'rune' | 'item' | 'part' | 'scrap' | 'key' | 'bigKey' | 'heart' | 'shard' | 'level' | 'stone' | 'door';
+  | 'rune'
+  | 'item'
+  | 'part'
+  | 'scrap'
+  | 'currency'
+  | 'key'
+  | 'bigKey'
+  | 'heart'
+  | 'shard'
+  | 'level'
+  | 'stone'
+  | 'door';
 
 export interface ToastSpec {
   kind: ToastKind;
@@ -91,6 +103,12 @@ function contentToast(c: LootContent, names: ToastNames, runeSub: string): Toast
     return toast('item', d.name, `${cap(d.rarity)} item`, d.rarity);
   }
   if (c.kind === 'part') return toast('part', names.part(c.part), 'Fuse part');
+  if (c.kind === 'currency')
+    return toast(
+      'currency',
+      `${c.amount > 1 ? `${c.amount}× ` : ''}${currencies[c.currency].name}`,
+      'Currency',
+    );
   return toast('scrap', `+${c.amount} Thread Scrap`, '', null, c.amount);
 }
 

@@ -26,7 +26,15 @@ export const SAVE_FORMAT = 'runeloom-save';
 export const SAVE_VERSION = 1;
 
 /** The RNG streams a save restores. */
-export const SAVED_RNGS = ['rng', 'combatRng', 'aiRng', 'spellRng', 'gridRng', 'lootRng'] as const;
+export const SAVED_RNGS = [
+  'rng',
+  'combatRng',
+  'aiRng',
+  'spellRng',
+  'gridRng',
+  'lootRng',
+  'craftRng',
+] as const;
 export type SavedRng = (typeof SAVED_RNGS)[number];
 
 export interface SavedWeaves {

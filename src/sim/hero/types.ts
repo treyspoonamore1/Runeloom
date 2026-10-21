@@ -11,6 +11,7 @@
  *   that passives, keystones, notables and Fuse parts feed, plus every system hook that reads them.
  * - UI agent: reads these through src/app/hero.ts; never writes them directly.
  */
+import type { CurrencyId } from '../../../data/currency';
 import type { RuneId } from '../../../data/runes';
 
 /** Equipment slots (DESIGN §8.1). Runes live in the pouch and weave slots, not here. */
@@ -29,7 +30,7 @@ export interface RuneItem {
   level: number;
   /** XP toward the next rune level. */
   xp: number;
-  /** 0–20 (%), from Rune Polish in M5. 0 in M4. */
+  /** 0–20 (%), from Rune Polish (M5). */
   quality: number;
 }
 
@@ -58,6 +59,10 @@ export interface Item {
   affixes: AffixRoll[];
   /** Spindles only: one entry per Fuse socket, the fused part or null. Empty for other slots. */
   fused: (FusePart | null)[];
+  /** Rare items: the rolled name ("Cinder Shroud"), kept through rerolls. */
+  name?: string;
+  /** Unique items: the key into data/uniques.ts. Its fixed stats replace affixes. */
+  unique?: string;
 }
 
 export interface HeroState {
@@ -80,6 +85,8 @@ export interface HeroState {
   heartSeeds: number;
   loomShards: number;
   threadScrap: number;
+  /** Crafting currency stacks (DESIGN §8.5, data/currency.ts), by id; missing means 0. */
+  currency: Partial<Record<CurrencyId, number>>;
   /** Extra passive points from bosses and side puzzles (DESIGN §9). */
   patternSeeds: number;
   /** Next uid for runes, items and parts (one id space). */

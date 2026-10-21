@@ -4,7 +4,10 @@
  * or AI rolls.
  */
 
-/** Per kill. Each roll checks every category once, in this order: rune, gear, spindle, part, scrap. */
+/**
+ * Per kill. Each roll checks every category once, in this order: rune, gear, spindle, part, scrap,
+ * currency, unique.
+ */
 export const dropRates = {
   /** Drop rolls per kill by monster rarity ("quantity"); bosses use `bossRolls`. */
   rolls: { normal: 1, magic: 2, rare: 4 },
@@ -17,19 +20,36 @@ export const dropRates = {
      * became 11–19.
      */
     rune: 0.1,
-    /** A Magic cloak, hood, boots or charm. */
-    gear: 0.03,
+    /**
+     * A cloak, hood, boots or charm, its rarity from `itemRarity`. M5: 3% → 4.5% with Normal and
+     * Rare drops added (the M4 playtest found gear rare and weak; Normal bases feed Loom Shuttles).
+     */
+    gear: 0.045,
     /** A spindle base the area level allows (data/progression.ts spindleDropFrom). */
     spindle: 0.02,
     /** The enemy kind's Fuse part (data/fuseParts.ts), if it has one. */
     part: 0.05,
     /** Thread Scrap. */
     scrap: 0.12,
+    /** A crafting currency (data/currency.ts), picked by its dropWeight (M5). */
+    currency: 0.07,
+    /** A unique (data/uniques.ts) the area level allows, picked by its dropWeight (M5). */
+    unique: 0.004,
   },
+  /** Bosses roll this chance once, on top of their rolls, for one more unique. */
+  bossUniqueChance: 0.35,
   /** Thread Scrap per scrap drop, inclusive. */
   scrapAmount: { min: 1, max: 2 },
-  /** Chance a dropped spindle is Magic rather than Normal, by monster rarity ("quality"). */
-  magicSpindleChance: { normal: 0.35, magic: 0.55, rare: 0.8, boss: 1 },
+  /**
+   * Rarity weights of dropped gear and spindles by monster rarity ("quality"), normal / magic /
+   * rare. M4 dropped Magic gear only and spindles Normal or Magic (35% / 55% / 80% / 100% Magic).
+   */
+  itemRarity: {
+    normal: { normal: 35, magic: 52, rare: 13 },
+    magic: { normal: 25, magic: 52, rare: 23 },
+    rare: { normal: 12, magic: 50, rare: 38 },
+    boss: { normal: 0, magic: 40, rare: 60 },
+  },
   /** Drop chances × this per enemy kind (Brood Kilns spawn Kiln Mites without end). */
   kindMult: { kiln_mite: 0.25, brood_kiln: 1, dummy: 0 } as Readonly<Record<string, number>>,
   /** Bosses always drop their Fuse part. */
