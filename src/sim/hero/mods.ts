@@ -20,6 +20,7 @@
  * in the right group with a doc comment, and give emptyHeroMods a neutral value.
  */
 import { damageTypes, type DamageType } from '../../../data/combatTypes';
+import { weaveLimits } from '../../../data/runes';
 
 export type ByType = Record<DamageType, number>;
 
@@ -49,6 +50,12 @@ export interface HeroMods {
   capacityAdd: number;
   /** Added levels for runes of an element (Pyre Hood), and `all` for every rune (Loomsteel). */
   runeLevelAdd: { all: number; fire: number; frost: number; storm: number };
+  /** Deepest branch spell allowed (default 3; The Unraveling 4, The First Thread caps it at 2). */
+  maxDepth: number;
+  /** Spell instances one cast may create (default 64; The Unraveling 96). */
+  spawnCapPerCast: number;
+  /** Product of "more" mana cost multipliers (The Unraveling: 1.4). */
+  manaMore: number;
 
   // ---- Defense and movement ----
   /** Resistances added by gear, before the player cap (combat.resistCap). */
@@ -128,6 +135,9 @@ export function emptyHeroMods(): HeroMods {
     manaCostReduced: 0,
     capacityAdd: 0,
     runeLevelAdd: { all: 0, fire: 0, frost: 0, storm: 0 },
+    maxDepth: weaveLimits.maxDepth,
+    spawnCapPerCast: weaveLimits.spawnCapPerCast,
+    manaMore: 1,
     resistAdd: byType(0),
     moveSpeedInc: 0,
     dodgeRechargeInc: 0,

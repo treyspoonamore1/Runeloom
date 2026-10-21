@@ -1,3 +1,4 @@
+import { playerFireTakenMult } from '../hero/uniques';
 import { enemyDef } from '../../../data/enemies';
 import { addKnockback } from '../actors/knockback';
 import { PLAYER_ID, type Enemy } from '../actors/enemies';
@@ -197,6 +198,14 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
   const less = info.projectile ? state.heroMods.projectileDamageTakenLess : 0;
   if (less !== 0) side.takenMult = (side.takenMult ?? 1) * (1 - less);
   const res = resolveHit(packet, side, state.combatRng);
+  // Pyre Hood: more Fire damage taken. Ailments divide it out (fireTakenMult), like Shock.
+  const fireMult = playerFireTakenMult(state, p);
+  if (fireMult !== 1 && res.byType.fire > 0) {
+    const extra = res.byType.fire * (fireMult - 1);
+    res.byType.fire += extra;
+    res.total += extra;
+    res.fireTakenMult = fireMult;
+  }
   if (!state.cheats.god) p.life -= res.total;
   const kb = info.knockback;
   if (kb > 0) addKnockback(p, info.dirX, info.dirY, kb, state.tuning.feel);

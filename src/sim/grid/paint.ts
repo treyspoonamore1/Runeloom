@@ -121,7 +121,7 @@ export function paintElement(state: GameState, app: ElementApplication): void {
   }
 }
 
-/** Ice or an ice bridge (Stormglass conducts through both). */
+/** Ice, an ice bridge or rime (Stormglass conducts through all three). */
 export function isIce(code: number): boolean {
-  return code === MAT.ice || code === MAT.ice_bridge;
+  return code === MAT.ice || code === MAT.ice_bridge || code === MAT.rime;
 }

@@ -36,6 +36,7 @@ import { fall, isSafeCell } from './falling';
 import { isInvulnerable } from './player';
 import { chargeSeen, rememberCharge } from './terrainState';
 import { alwaysWet, immuneToTerrainFire, terrainFireDpsMult } from '../hero/effectsTerrain';
+import { burningGroundHeal } from '../hero/uniques';
 import { ignoresGround, locomotionOf } from './locomotion';
 
 /** Timers within this of zero count as expired. */
@@ -121,6 +122,7 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
     applyIgnite(state, t, dps, state.tuning.ailments.igniteDuration, hazardSource(owner), owner, true);
   }
   if ('kind' in t && t.shield !== null && (fireHurts || isIgnited(t))) burnShield(state, t);
+  burningGroundHeal(state, t, g.fire[i]! > 0); // Kiln-Heart Cloak (hero/uniques.ts).
 
   // Rules 11, 12: charged water and metal.
   if (g.charge[i]! > 0 && !iframes) chargeHit(state, t, team, g.chargeId[i]!, g.chargeFalloff[i]!);

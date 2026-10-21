@@ -14,8 +14,10 @@ export interface UniqueRules {
   baseCapacity?: number;
   /** Branch runes cost 0 complexity (The First Thread). */
   branchRunesFree?: boolean;
-  /** Deepest branch spell allowed, replacing the default 3 (First Thread 2, The Unraveling 4). */
+  /** Raises the deepest branch spell allowed from the default 3 (The Unraveling: 4). */
   maxDepth?: number;
+  /** Caps the deepest branch spell allowed (The First Thread: 2). A cap beats a raise. */
+  depthCap?: number;
   /** Spell instances one cast may create, replacing the default 64 (The Unraveling: 96). */
   spawnCapPerCast?: number;
   /** Mana costs × (1 + this) (The Unraveling: 0.4). */
@@ -58,7 +60,7 @@ export const uniques = {
     itemLevel: 3,
     dropWeight: 100,
     stats: [],
-    rules: { baseCapacity: 6, branchRunesFree: true, maxDepth: 2 },
+    rules: { baseCapacity: 6, branchRunesFree: true, depthCap: 2 },
     text: ['Capacity 6', 'Branch runes cost 0 complexity', 'Branches can nest at most 2 deep'],
     flavor: 'Every weave began as one strand.',
   },

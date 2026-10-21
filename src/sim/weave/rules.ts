@@ -9,8 +9,10 @@
  * - unmodifiedMore (Single Thread): a weave with no modifier runes anywhere gets this "more" on
  *   every spell in it (1 = off).
  * - echoFullDamage (Echoing Thread): Echo's repeat deals full damage.
+ * - branchRunesFree (The First Thread, M5): branch runes cost 0 complexity, depth surcharge included.
  */
-import { elements } from '../../../data/runes';
+import { elements, type BranchDef } from '../../../data/runes';
+import { branchComplexity } from './costs';
 import { defOf } from './checks';
 import type { SpellSpec } from './program';
 import { listSpells, type WeaveTree } from './tree';
@@ -20,6 +22,7 @@ export interface CompileRules {
   projectileSpeedMult: number;
   unmodifiedMore: number;
   echoFullDamage: boolean;
+  branchRunesFree: boolean;
 }
 
 export const NO_RULES: Readonly<CompileRules> = Object.freeze({
@@ -27,6 +30,7 @@ export const NO_RULES: Readonly<CompileRules> = Object.freeze({
   projectileSpeedMult: 1,
   unmodifiedMore: 1,
   echoFullDamage: false,
+  branchRunesFree: false,
 });
 
 export function sameRules(a: Readonly<CompileRules>, b: Readonly<CompileRules>): boolean {
@@ -34,15 +38,27 @@ export function sameRules(a: Readonly<CompileRules>, b: Readonly<CompileRules>):
     a.firstFireFree === b.firstFireFree &&
     a.projectileSpeedMult === b.projectileSpeedMult &&
     a.unmodifiedMore === b.unmodifiedMore &&
-    a.echoFullDamage === b.echoFullDamage
+    a.echoFullDamage === b.echoFullDamage &&
+    a.branchRunesFree === b.branchRunesFree
   );
 }
 
-/** Tinder Tooth: complexity to subtract (the Fire rune's cost when the weave has one). */
+/**
+ * Complexity to subtract: Tinder Tooth, the Fire rune's cost when the weave has one; The First
+ * Thread, every branch rune's cost at its depth.
+ */
 export function ruleComplexityDiscount(tree: WeaveTree, rules: Readonly<CompileRules>): number {
-  if (!rules.firstFireFree) return 0;
-  for (const v of listSpells(tree)) if (v.spell.items.includes('fire')) return elements.fire.cx;
-  return 0;
+  let off = 0;
+  if (rules.firstFireFree)
+    for (const v of listSpells(tree))
+      if (v.spell.items.includes('fire')) {
+        off += elements.fire.cx;
+        break;
+      }
+  if (rules.branchRunesFree)
+    for (const v of listSpells(tree))
+      if (v.via) off += branchComplexity(defOf(v.via.branch) as BranchDef, v.depth);
+  return off;
 }
 
 function hasModifier(tree: WeaveTree): boolean {

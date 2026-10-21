@@ -14,6 +14,7 @@ import { currencyIds } from '../../../data/currency';
 import type { Hasher } from '../core/hash';
 import type { GameState } from '../state';
 import { addHeroItemMods } from './aggregate';
+import { addUniqueMods } from './uniques';
 import { syncPlayerToHero } from '../actors/playerVitals';
 import { recompileWeaves } from '../weave/runtime/loadout';
 
@@ -55,12 +56,13 @@ export function refreshHero(state: GameState): void {
 /**
  * What a hero's build adds up to, pure (refreshHero stores it in state.heroMods; the UI compares
  * hypothetical heroes with it): items, Heart Seeds, Loom Shards (hero/aggregate.ts), then the
- * passive tree and fused Fuse parts (effects agent: hero/effectMods.ts).
+ * passive tree and fused Fuse parts (hero/effectMods.ts), then uniques (hero/uniques.ts).
  */
 export function heroModsOf(hero: Readonly<HeroState>): HeroMods {
   const mods = emptyHeroMods();
   addHeroItemMods(mods, hero as HeroState);
   addPassiveAndPartMods(hero as HeroState, mods);
+  addUniqueMods(hero as HeroState, mods);
   return mods;
 }
 

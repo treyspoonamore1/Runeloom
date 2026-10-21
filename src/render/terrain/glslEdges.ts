@@ -9,6 +9,7 @@ const EDGES: Partial<Record<MaterialId, [number, number, number]>> = {
   shallow_water: [C.ink, L.shore, 8],
   ice_bridge: [C.iceEdge, L.ground, 7],
   ice: [C.iceEdge, L.ground, 7],
+  rime: [C.iceEdge, L.detail, 6],
   wood: [C.woodGap, L.ground, 6],
   bramble: [C.brambleDark, L.ground, 5],
   grass: [C.grassEdge, L.ground, 4],

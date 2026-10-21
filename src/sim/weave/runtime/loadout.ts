@@ -7,7 +7,7 @@
  * at the same tick (applyLoadoutEdit). An invalid weave never replaces a working one; a spindle
  * switch keeps weaves that no longer fit, which then don't fire until they fit (DECISIONS).
  */
-import { shipsThrough, type TriggerEvent } from '../../../../data/runes';
+import { shipsThrough, weaveLimits, type TriggerEvent } from '../../../../data/runes';
 import { spells, type SpellId } from '../../../../data/spells';
 import { isSpindleId, spindles, type SpindleId } from '../../../../data/spindles';
 import type { Tuning } from '../../../../data/tuning';
@@ -148,7 +148,10 @@ export function stateContext(state: GameState): CompileContext {
   }
   ctx.capacity += mods.capacityAdd;
   ctx.castSpeed = (ctx.castSpeed ?? 1) * (1 + mods.castSpeedInc);
-  ctx.manaCostMult = 1 - mods.manaCostReduced;
+  ctx.manaCostMult = (1 - mods.manaCostReduced) * mods.manaMore;
+  // Uniques (hero/uniques.ts): neutral mods give the defaults, so these stay unset as before M5.
+  if (mods.maxDepth !== weaveLimits.maxDepth) ctx.maxDepth = mods.maxDepth;
+  if (mods.spawnCapPerCast !== weaveLimits.spawnCapPerCast) ctx.spawnCap = mods.spawnCapPerCast;
   return ctx;
 }
 

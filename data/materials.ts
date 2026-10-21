@@ -29,6 +29,8 @@ export const MAT = {
   brazier: 18,
   /** Puzzle objects and doors until M4 gives them their own behavior: solid and inert. */
   object: 19,
+  /** Frost on dry ground (Rimewalkers' dodge trail, M5): slippery, reverts to `under`. */
+  rime: 20,
 } as const;
 
 export type MaterialId = keyof typeof MAT;
@@ -73,7 +75,7 @@ export interface MaterialDef {
   /** Ice bridge: seconds of visible cracking before it breaks (rule 25). */
   crackSeconds?: number;
   /**
-   * Temporary copies (Hydromancer's water, grid/tempWater.ts) turn back into the cell's `under`
+   * Temporary copies (Hydromancer's water, grid/tempWater.ts; Rimewalkers' rime) turn back into the cell's `under`
    * when their material timer runs out. Map-placed cells have timer 0 and stay.
    */
   revertsToUnder?: boolean;
@@ -186,6 +188,7 @@ export const materials: Readonly<Record<MaterialId, MaterialDef>> = {
   pit: { ...base, id: 'pit', code: MAT.pit, walk: false },
   brazier: { ...base, id: 'brazier', code: MAT.brazier, walk: false, blocksShots: true, conducts: 'full' },
   object: { ...base, id: 'object', code: MAT.object, walk: false, blocksShots: true },
+  rime: { ...base, id: 'rime', code: MAT.rime, slippery: true, revertsToUnder: true },
 };
 
 /** Material definitions indexed by code, for per-cell lookups. */

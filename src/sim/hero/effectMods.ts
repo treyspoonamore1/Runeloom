@@ -70,7 +70,11 @@ export function addStat(mods: HeroMods, line: StatLine, k = 1): void {
   }
 }
 
-function addEffects(mods: HeroMods, effects: Readonly<Partial<Record<EffectKey, number>>>, k = 1): void {
+export function addEffects(
+  mods: HeroMods,
+  effects: Readonly<Partial<Record<EffectKey, number>>>,
+  k = 1,
+): void {
   for (const [key, v] of Object.entries(effects)) mods.effects[key] = (mods.effects[key] ?? 0) + (v ?? 0) * k;
 }
 

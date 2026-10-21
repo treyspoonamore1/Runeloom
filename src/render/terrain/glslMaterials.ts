@@ -378,6 +378,7 @@ vec3 shadeMaterial(int g, vec2 p, Cls cl, vec4 code, float aa) {
     float phase = byteOf(code.a) == g ? code.b : 0.0;
     return shadeIce(p, g == M_ICE_BRIDGE, phase, aa);
   }
+  if (g == M_RIME) return shadeIce(p, false, 0.0, aa);
   if (g == M_MUD) return shadeMud(p, aa);
   if (g == M_METAL_FLOOR) return shadeMetal(p, aa);
   if (g == M_ASH) return shadeAsh(p, aa);

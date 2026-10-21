@@ -3,7 +3,7 @@
  * computes its costs (costs.ts) and resolves it into a SpellProgram (program.ts, resolve.ts).
  * Pure; never throws on a malformed tree.
  */
-import { weaveLimits, type TriggerDef } from '../../../data/runes';
+import type { TriggerDef } from '../../../data/runes';
 import {
   checkAllowed,
   checkDuplicates,
@@ -55,7 +55,7 @@ export function compileWeave(tree: WeaveTree, context: CompileContext): CompileR
     mana: costs.mana,
     castTime: costs.castTime,
     runeLevel: ctx.runeLevel,
-    spawnCap: weaveLimits.spawnCapPerCast,
+    spawnCap: ctx.spawnCap,
   };
   return { ok: true, program, costs };
 }

@@ -20,6 +20,7 @@ import { actionSpeed, createAilments, isFrozen, type Ailments } from '../combat/
 import { createTerrainState, type TerrainState } from './terrainState';
 import { readGround } from './ground';
 import { dodgeTrail } from '../hero/effectsTerrain';
+import { rimeTrail } from '../hero/uniques';
 
 /** All player state lives here as plain data, so it hashes, saves and replays. */
 export interface PlayerState {
@@ -203,6 +204,7 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
     p.vy = p.dodgeDirY * speed;
     moveCircle(state.room, p, t.radius, p.vx * dt, p.vy * dt);
     dodgeTrail(state); // Hydromancer: shallow water along the dodge (hero/effectsTerrain.ts).
+    rimeTrail(state); // Rimewalkers: ice along the dodge (hero/uniques.ts).
     p.dodgeLeft -= dt;
     walkTime -= dt;
     if (p.dodgeLeft <= TIME_EPSILON) {

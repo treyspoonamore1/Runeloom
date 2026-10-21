@@ -22,6 +22,7 @@ import type { SpellProgram } from '../weave/program';
 import { NO_RULES, type CompileRules } from '../weave/rules';
 import { compileContextFor, setCompileRules, type WeaveSlot } from '../weave/runtime/loadout';
 import type { HeroMods } from './mods';
+import { UNIQUE_EFFECTS } from './uniques';
 
 export interface HeroFxState {
   /** Extra weaves from HeroMods.extraWeaves, in that order. Notation and timers hashed. */
@@ -48,12 +49,14 @@ export function compileRulesOf(mods: HeroMods): Readonly<CompileRules> {
     projectileSpeedMult: 1 + (fx.projectile_speed_inc ?? 0),
     unmodifiedMore: 1 + (fx.single_thread ?? 0),
     echoFullDamage: (fx.echoing_thread ?? 0) > 0,
+    branchRunesFree: (fx[UNIQUE_EFFECTS.branchRunesFree] ?? 0) > 0,
   };
   const neutral =
     !rules.firstFireFree &&
     rules.projectileSpeedMult === 1 &&
     rules.unmodifiedMore === 1 &&
-    !rules.echoFullDamage;
+    !rules.echoFullDamage &&
+    !rules.branchRunesFree;
   return neutral ? NO_RULES : rules;
 }
 

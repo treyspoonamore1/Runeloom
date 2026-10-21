@@ -146,6 +146,7 @@ export const DEBUG_MATERIAL: Record<MaterialId, number> = {
   pit: 0x000000,
   brazier: 0xff5030,
   object: 0xff40c0,
+  rime: 0xe4f8ff,
 };
 
 /** Debug colors indexed by material code. */

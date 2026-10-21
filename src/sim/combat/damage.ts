@@ -59,6 +59,8 @@ export interface HitResult {
   shock: number;
   /** The target's other damage-taken multiplier on this hit (1 = none); ailments divide it out like Shock. */
   takenMult: number;
+  /** Extra multiplier on the Fire part the player took (Pyre Hood); ailments divide it out. Missing means 1. */
+  fireTakenMult?: number;
 }
 
 export function zeroAmounts(): DamageAmounts {

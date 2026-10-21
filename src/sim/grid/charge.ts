@@ -61,7 +61,7 @@ export function conducts(g: Grid, i: number, medium: Medium): boolean {
 function conductsAs(g: Grid, i: number, medium: Medium, ice: boolean): boolean {
   if (ice && medium === 'water') {
     const code = g.ground[i]!;
-    if (code === MAT.ice || code === MAT.ice_bridge) return true;
+    if (code === MAT.ice || code === MAT.ice_bridge || code === MAT.rime) return true;
   }
   return conducts(g, i, medium);
 }

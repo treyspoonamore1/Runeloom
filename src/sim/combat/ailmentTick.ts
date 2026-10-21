@@ -1,3 +1,4 @@
+import { playerFireTakenMult } from '../hero/uniques';
 import { killPlayer } from '../actors/playerVitals';
 import { DT } from '../core/constants';
 import { emit } from '../events';
@@ -70,7 +71,8 @@ function tickIgnite(state: GameState, t: AilmentTarget): boolean {
   if (!godPlayer) {
     // Rule 18: Ignite deals oiledIgniteMult × damage while Oiled.
     const oiled = isOiled(t) ? state.tuning.terrain.oiledIgniteMult : 1;
-    const dmg = ig.dps * dt * (1 + a.shock.effect) * oiled;
+    // Pyre Hood: the player takes more Fire damage (hero/uniques.ts; 1 otherwise).
+    const dmg = ig.dps * dt * (1 + a.shock.effect) * oiled * playerFireTakenMult(state, t);
     t.life -= dmg;
     a.dotPending += dmg;
   }

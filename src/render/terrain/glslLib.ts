@@ -119,7 +119,7 @@ vec4 masksAt(vec2 p) { return texture(uMasks, p / uSize); }
 vec4 glowAt(vec2 p) { return texture(uGlow, p / (uGlowSize * 4.0)); }
 
 bool isWater(int g) { return g == M_SHALLOW_WATER || g == M_DEEP_WATER; }
-bool isIce(int g) { return g == M_ICE || g == M_ICE_BRIDGE; }
+bool isIce(int g) { return g == M_ICE || g == M_ICE_BRIDGE || g == M_RIME; }
 
 /** Coverage of a band |d| < hw, antialiased over aa. */
 float band(float d, float hw, float aa) { return 1.0 - smoothstep(hw - aa, hw + aa, abs(d)); }

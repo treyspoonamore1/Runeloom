@@ -30,6 +30,8 @@ export interface CompileContext {
   critMultiplier?: number;
   /** Passive and Fuse rules that change compiled numbers (weave/rules.ts). Default NO_RULES. */
   rules?: Readonly<CompileRules>;
+  /** Spell instances one cast may create. Default 64 (weaveLimits.spawnCapPerCast; The Unraveling 96). */
+  spawnCap?: number;
 }
 
 export type ResolvedContext = Required<CompileContext>;
@@ -58,6 +60,7 @@ export function resolveContext(ctx: CompileContext): ResolvedContext {
     strikeFlat: ctx.strikeFlat ?? 0,
     critMultiplier: ctx.critMultiplier ?? defaultTuning.combat.critMultiplier,
     rules: ctx.rules ?? NO_RULES,
+    spawnCap: ctx.spawnCap ?? weaveLimits.spawnCapPerCast,
   };
 }
 

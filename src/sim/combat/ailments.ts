@@ -1,3 +1,4 @@
+import { igniteImmune } from '../hero/uniques';
 import type { AilmentKind } from '../../../data/combatTypes';
 import { enemyDef } from '../../../data/enemies';
 import type { Tuning } from '../../../data/tuning';
@@ -203,7 +204,7 @@ export function applyHitAilments(
   const A = state.tuning.ailments;
   const durMul = packet.ailmentDuration ?? 1;
   const unshock = (1 + res.shock) * res.takenMult;
-  const fire = res.byType.fire / unshock;
+  const fire = res.byType.fire / unshock / (res.fireTakenMult ?? 1);
   const frost = res.byType.frost / unshock;
   const storm = res.byType.storm / unshock;
   const k = ailmentScale(state, sourceId);
@@ -249,6 +250,7 @@ export function applyIgnite(
   refresh = false,
 ): boolean {
   if (dps <= 0 || duration <= 0 || isImmune(t, 'ignite') || igniteBlocked(t)) return false;
+  if (igniteImmune(state, t)) return false; // Kiln-Heart Cloak (hero/uniques.ts).
   const a = t.ailments;
   const ig = a.ignite;
   if (ig.timeLeft > 0 && dps <= ig.dps) {
