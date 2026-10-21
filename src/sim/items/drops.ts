@@ -7,7 +7,8 @@
 import { dropRates, partTierFrom } from '../../../data/loot';
 import { gearBases, type GearBaseDef } from '../../../data/items';
 import { partDroppedBy } from '../../../data/fuseParts';
-import { bossKinds, spindleDropFrom } from '../../../data/progression';
+import { bossKinds, runeDiscovery, spindleDropFrom } from '../../../data/progression';
+import type { RuneId } from '../../../data/runes';
 import { spindles, type SpindleId } from '../../../data/spindles';
 import type { Enemy, EnemyRarity } from '../actors/enemies';
 import type { GameState } from '../state';
@@ -131,11 +132,37 @@ export function rollKillLoot(state: GameState, e: Enemy): LootContent[] {
       if (u) out.push({ kind: 'item', item: u });
     }
   }
+  // M5 rune discovery (data/progression.ts runeDiscovery): Rares sometimes, bosses always.
+  const discover =
+    key === 'boss' ? runeDiscovery.bossCount : key === 'rare' && rng.chance(runeDiscovery.rareChance) ? 1 : 0;
+  for (let i = 0; i < discover; i++) {
+    const r = rollDiscovery(state, level, out);
+    if (r) out.push({ kind: 'rune', rune: makeRune(state.hero, r) });
+  }
   if (key === 'boss' && rng.chance(dropRates.bossUniqueChance)) {
     const u = rollUnique(state, level);
     if (u) out.push({ kind: 'item', item: u });
   }
   return out;
+}
+
+/**
+ * A locked M5 rune the area level allows (not unlocked and not already in `pending` drops),
+ * picked evenly with the loot RNG, or null when none is left.
+ */
+export function rollDiscovery(
+  state: GameState,
+  areaLevel: number,
+  pending: readonly LootContent[],
+): RuneId | null {
+  const have = new Set<string>(state.hero.unlockedRunes);
+  for (const c of pending) if (c.kind === 'rune') have.add(c.rune.rune);
+  for (const d of state.loot) if (d.content.kind === 'rune') have.add(d.content.rune.rune);
+  const list = (Object.entries(runeDiscovery.from) as [RuneId, number][])
+    .filter(([id, from]) => from <= areaLevel && !have.has(id))
+    .map(([id]) => id);
+  if (list.length === 0) return null;
+  return list[state.lootRng.int(list.length)]!;
 }
 
 /** Rolls an enemy's drops and puts them on the floor around its body. */

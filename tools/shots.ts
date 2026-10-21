@@ -12,6 +12,8 @@
  *       new-element panels (Frost at the shrine, Storm after the Cinder Warden)
  *   npm run shots -- --set fight [--room k5] [--at 4,12,20] [--milestone m4]   a boss fight as the
  *       encounter sim plays it (campaign bot, reference character), whole room, at each fight second in --at
+ *   npm run shots -- --scenario weave_m5 --ticks 300 [--milestone m5]   a sim scenario (src/sim/scenarios.ts)
+ *       set up and played in the browser for --ticks, then shot
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
  */
 import { mkdirSync } from 'node:fs';
@@ -72,6 +74,7 @@ runCli(async () => {
     section: { kind: 'string', help: 'gallery sections to shoot, comma-separated (default all, plus crowd)' },
     perf: { kind: 'boolean', help: 'gallery: measure render time with 300 M4 and 300 M1 enemies' },
     at: { kind: 'string', default: '4,12,20', help: '--set fight: fight seconds to shoot, comma-separated' },
+    scenario: { kind: 'string', help: 'a scenario id (src/sim/scenarios.ts): set up, play --ticks, shoot' },
   });
   const viewport = parseViewport(a.viewport!);
   const ticks = requireInt('ticks', a.ticks, 0);
@@ -225,11 +228,40 @@ runCli(async () => {
         written.push(file);
         if (errors.length) console.warn(`warning: page errors in fight shot ${at}: ${errors.join('; ')}`);
       }
+    } else if (a.scenario !== undefined) {
+      const sc = scenarios.find((s) => s.id === a.scenario);
+      if (!sc)
+        throw new ArgError(
+          `Unknown --scenario "${a.scenario}". Available: ${scenarios.map((s) => s.id).join(', ')}`,
+        );
+      const scene = scenes.find(
+        (s) => s.roomId === sc.roomId && (s.mode ?? 'sandbox') === (sc.mode ?? 'sandbox'),
+      );
+      if (!scene) throw new ArgError(`No scene opens room ${sc.roomId} in ${sc.mode ?? 'sandbox'} mode`);
+      await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);
+      await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+      await page.evaluate(
+        async ({ id, n }) => {
+          const mod = await import('/src/sim/scenarios.ts' as string);
+          const s = mod.scenarios.find((x: { id: string }) => x.id === id);
+          const session = window.__runeloom!.session;
+          s.setup?.(session.state);
+          for (let i = 0; i < n; i++) session.step(s.input(session.state.tick, session.state));
+        },
+        { id: sc.id, n: ticks },
+      );
+      await page.evaluate(
+        () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
+      );
+      const file = join(SHOTS_DIR, `${milestone}_scenario_${sc.id}_${ticks}.png`);
+      await page.screenshot({ path: file });
+      written.push(file);
+      if (errors.length) console.warn(`warning: page errors in scenario ${sc.id}: ${errors.join('; ')}`);
     } else if (a.set !== undefined)
       throw new ArgError(
         `Unknown --set "${a.set}". Available: creature, rooms, onload, ui, gallery, item, fight`,
       );
-    for (const scene of a.set === undefined ? selected : []) {
+    for (const scene of a.set === undefined && a.scenario === undefined ? selected : []) {
       errors.length = 0;
       await page.goto(`http://127.0.0.1:${port}/?scene=${scene.id}&seed=${SEED}&paused=1`);
       await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });

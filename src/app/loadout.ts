@@ -26,16 +26,17 @@ import type { Session } from './session';
 /** Button label per slot, in slot order. */
 export const SLOT_LABELS = ['LMB', 'RMB', 'Q', 'E'] as const;
 
-/** Spindles the M2 sandbox lets the player pick (DECISIONS: M2 sandbox loadout). */
+/** Spindles the sandbox lets the player pick (DECISIONS: M2 sandbox loadout; Loomsteel from M5). */
 export const SANDBOX_SPINDLES: readonly SpindleId[] = [
   'twig',
   'ashwood',
   'rimeglass',
   'ironbark',
   'heartwood',
+  'loomsteel',
 ];
 
-/** Runes the M2 build offers (CONTENT §1 "Ships"); the sim compiles with the same set. */
+/** Runes the build offers (CONTENT §1 "Ships": M2 and M5); the sim compiles with the same set. */
 export const ALLOWED_SHIPS = RUNTIME_SHIPS;
 
 export interface SlotView {

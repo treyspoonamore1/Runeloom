@@ -113,20 +113,7 @@ export function spawnSpell(state: GameState, cast: CastRecord, spec: SpellSpec, 
   const { count, rotations } = spec.instances;
   const packet = buildPacket(state, spec, at.damageMult);
   for (let i = 0; i < count; i++) {
-    if (cast.spawned >= cast.program.spawnCap) {
-      cast.dropped++;
-      state.stats.dropped++;
-      emit(state, {
-        type: 'spawnDropped',
-        castId: cast.id,
-        slot: cast.slot,
-        form: spec.form,
-        depth: spec.depth,
-      });
-      continue;
-    }
-    cast.spawned++;
-    makeRoom(state);
+    if (!claimSpawn(state, cast, spec)) continue;
     const r = rotations[i]!;
     rotateInto(at.dirX, at.dirY, r, rot);
     const dirX = rot.x;
@@ -134,37 +121,7 @@ export function spawnSpell(state: GameState, cast: CastRecord, spec: SpellSpec, 
     rotateInto(at.aimX - at.x, at.aimY - at.y, r, rot);
     const inst = createInstance(state, cast, spec, at, packet, dirX, dirY);
     initForm(state, inst, at, at.x + rot.x, at.y + rot.y);
-    emit(state, {
-      type: 'spellSpawn',
-      id: inst.id,
-      castId: cast.id,
-      slot: cast.slot,
-      form: spec.form,
-      elements: elementsOf(spec),
-      depth: spec.depth,
-      echo: inst.echo,
-      x: inst.x,
-      y: inst.y,
-      dirX: inst.dirX,
-      dirY: inst.dirY,
-      toX: inst.toX,
-      toY: inst.toY,
-      followsPlayer: inst.followsPlayer,
-      params: spec.params,
-    });
-    if (spec.form === 'bolt')
-      emit(state, {
-        type: 'projectileSpawn',
-        id: inst.id,
-        kind: boltKind(spec),
-        team: 'player',
-        ownerId: PLAYER_ID,
-        x: inst.x,
-        y: inst.y,
-        vx: inst.vx,
-        vy: inst.vy,
-        radius: inst.radius,
-      });
+    announce(state, cast, inst);
     resolveInstant(state, inst);
   }
   if (spec.echo && !at.echo) {
@@ -178,6 +135,101 @@ export function spawnSpell(state: GameState, cast: CastRecord, spec: SpellSpec, 
       at: { ...at, echo: true, damageMult: at.damageMult * spec.echo.damageMult },
     });
   }
+}
+
+/** True (and counted) if the cast may spawn one more instance; else counts the drop and sends 'spawnDropped'. */
+function claimSpawn(state: GameState, cast: CastRecord, spec: SpellSpec): boolean {
+  if (cast.spawned >= cast.program.spawnCap) {
+    cast.dropped++;
+    state.stats.dropped++;
+    emit(state, {
+      type: 'spawnDropped',
+      castId: cast.id,
+      slot: cast.slot,
+      form: spec.form,
+      depth: spec.depth,
+    });
+    return false;
+  }
+  cast.spawned++;
+  makeRoom(state);
+  return true;
+}
+
+/**
+ * Fork (M5, CONTENT §1.4): on a bolt's first hit, its fork bolts start at (x, y) along its
+ * direction turned by each fork rotation (±40°), with the fork's short life. They are instances
+ * of the same spell (same packet, procs and branches) that never fork again and can't hit the
+ * enemy that was just hit; each counts against the cast's spawn cap.
+ */
+export function spawnForks(
+  state: GameState,
+  parent: SpellInstance,
+  hitId: number,
+  x: number,
+  y: number,
+): void {
+  const fork = parent.spec.fork;
+  if (fork === null || parent.form !== 'bolt') return;
+  const cast = parent.cast;
+  for (const r of fork.rotations) {
+    if (!claimSpawn(state, cast, parent.spec)) continue;
+    rotateInto(parent.dirX, parent.dirY, r, rot);
+    const at: SpawnAt = {
+      x,
+      y,
+      dirX: rot.x,
+      dirY: rot.y,
+      aimX: x + rot.x,
+      aimY: y + rot.y,
+      sourceId: parent.sourceId,
+      echo: parent.echo,
+      damageMult: 1,
+      fromPlayer: false,
+    };
+    const inst = createInstance(state, cast, parent.spec, at, parent.packet, rot.x, rot.y);
+    initForm(state, inst, at, at.aimX, at.aimY);
+    inst.forked = true;
+    inst.lifeLeft = fork.life;
+    inst.hitIds.push(hitId);
+    announce(state, cast, inst);
+  }
+}
+
+/** 'spellSpawn' (and 'projectileSpawn' for bolts) for a new instance. */
+function announce(state: GameState, cast: CastRecord, inst: SpellInstance): void {
+  const spec = inst.spec;
+  emit(state, {
+    type: 'spellSpawn',
+    id: inst.id,
+    castId: cast.id,
+    slot: cast.slot,
+    form: spec.form,
+    elements: elementsOf(spec),
+    depth: spec.depth,
+    echo: inst.echo,
+    x: inst.x,
+    y: inst.y,
+    dirX: inst.dirX,
+    dirY: inst.dirY,
+    toX: inst.toX,
+    toY: inst.toY,
+    followsPlayer: inst.followsPlayer,
+    params: spec.params,
+  });
+  if (spec.form === 'bolt')
+    emit(state, {
+      type: 'projectileSpawn',
+      id: inst.id,
+      kind: boltKind(spec),
+      team: 'player',
+      ownerId: PLAYER_ID,
+      x: inst.x,
+      y: inst.y,
+      vx: inst.vx,
+      vy: inst.vy,
+      radius: inst.radius,
+    });
 }
 
 /** M1 projectile kind for a player bolt, for render and audio: '<first element>_bolt'. */
@@ -243,6 +295,8 @@ function createInstance(
     refunded: 0,
     terrainR: 0,
     terrainLeft: 0,
+    forked: false,
+    returning: false,
     ended: false,
     endReason: null,
   };

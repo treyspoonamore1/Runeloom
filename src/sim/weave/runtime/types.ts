@@ -111,6 +111,10 @@ export interface SpellInstance {
   terrainR: number;
   /** Orb: seconds until it paints its trail footprint again (0 at spawn: paints on its first tick). */
   terrainLeft: number;
+  /** Fork (M5): it has forked already, or is one of a fork's bolts (they never fork). */
+  forked: boolean;
+  /** Return (M5): its life ran out and it is flying back to the player. */
+  returning: boolean;
   /** Ended this tick; removed at the end of the step. */
   ended: boolean;
   endReason: SpellEndReason | null;

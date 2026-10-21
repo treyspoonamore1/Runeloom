@@ -136,7 +136,8 @@ describe('console: weave, weaves, spindle', () => {
       "  Q doesn't fire until fixed: Needs 11 Capacity; this spindle has 8",
     ]);
     expect(run('spindle').lines.some((l) => l.startsWith('* twig'))).toBe(true);
-    expect(run('spindle loomsteel').ok).toBe(false);
+    expect(run('spindle loomsteel').ok).toBe(true); // M5: Loomsteel joins the sandbox
+    expect(run('spindle test_spindle').ok).toBe(false);
   });
 
   it('resolves spindle names', () => {

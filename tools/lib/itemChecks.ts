@@ -9,7 +9,7 @@ import { uniques, type UniqueDef } from '../../data/uniques';
 import { isPassiveId } from '../../data/passives';
 import { fuseParts, type FusePartDef } from '../../data/fuseParts';
 import { dropRates, killXp } from '../../data/loot';
-import { guaranteedRunes, newGame, spindleDropFrom } from '../../data/progression';
+import { guaranteedRunes, newGame, runeDiscovery, spindleDropFrom } from '../../data/progression';
 import { isRuneId, runes } from '../../data/runes';
 import { isSpindleId } from '../../data/spindles';
 import { isEnemyKind } from '../../data/enemies';
@@ -88,6 +88,10 @@ export function checkItemData(): { errors: string[]; warnings: string[] } {
       if (!isRuneId(r)) errors.push(`data/progression.ts guaranteedRunes ${room}: "${r}" is not a rune`);
       else if (runes[r].ships !== 'M2')
         errors.push(`data/progression.ts guaranteedRunes ${room}: ${r} ships in ${runes[r].ships}`);
+  for (const id of Object.keys(runeDiscovery.from))
+    if (!isRuneId(id)) errors.push(`data/progression.ts runeDiscovery: "${id}" is not a rune`);
+    else if (runes[id].ships !== 'M5')
+      errors.push(`data/progression.ts runeDiscovery: ${id} ships in ${runes[id].ships}`);
   try {
     newGameHero();
   } catch (e) {

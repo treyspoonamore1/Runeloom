@@ -58,7 +58,12 @@ export class FormLayer {
     this.sparks = new FxLayer(dot, 1500);
     this.sparksAdd = new FxLayer(dot, 300, 'add');
     this.ground.addChild(this.pools.ground.container);
-    this.air.addChild(this.pools.air.container, this.sparks.container, this.pools.airAdd.container, this.sparksAdd.container);
+    this.air.addChild(
+      this.pools.air.container,
+      this.sparks.container,
+      this.pools.airAdd.container,
+      this.sparksAdd.container,
+    );
     this.shots = new OneShots(atlas);
     this.live = new LiveForms(atlas, this.sparks);
     this.t = {
@@ -110,7 +115,15 @@ export class FormLayer {
           const p = ev.params;
           const reach = p.form === 'strike' ? p.reach : 5;
           const tint = ev.elements.length === 0 ? 0xffffff : mixRgb(0xffffff, L.rim, 0.6);
-          this.fx.strike(ev.x, ev.y, ev.dirX, ev.dirY, reach / 5, ev.echo ? ECHO_TINT : tint, ev.echo ? ECHO_ALPHA : 1);
+          this.fx.strike(
+            ev.x,
+            ev.y,
+            ev.dirX,
+            ev.dirY,
+            reach / 5,
+            ev.echo ? ECHO_TINT : tint,
+            ev.echo ? ECHO_ALPHA : 1,
+          );
         } else if (ev.form === 'swath' && ev.params.form === 'swath') {
           const sh = this.shots.add('swath', SWATH_LIFE, ev.x, ev.y);
           sh.x2 = ev.dirX;
@@ -120,7 +133,17 @@ export class FormLayer {
           this.paint(sh, L, ev.echo);
           for (let i = 0; i < 6; i++) {
             const d = rand(0.1, 1) * sh.len;
-            const p = this.sparks.spawn(this.t.spark, ev.x + ev.dirX * d + rand(-1, 1), ev.y + ev.dirY * d + rand(-1, 1), ev.dirX * rand(6, 14), ev.dirY * rand(6, 14), rand(0.15, 0.3), L.sparks[i % L.sparks.length]!, 0.8, 0.3);
+            const p = this.sparks.spawn(
+              this.t.spark,
+              ev.x + ev.dirX * d + rand(-1, 1),
+              ev.y + ev.dirY * d + rand(-1, 1),
+              ev.dirX * rand(6, 14),
+              ev.dirY * rand(6, 14),
+              rand(0.15, 0.3),
+              L.sparks[i % L.sparks.length]!,
+              0.8,
+              0.3,
+            );
             if (p) {
               p.align = true;
               p.stretch = 0.03;
@@ -139,7 +162,17 @@ export class FormLayer {
         this.spawned.delete(ev.id);
         if (ev.form === 'nova') {
           // Afterglow: the ring keeps going a little and fades.
-          const r = this.sparks.spawn(this.t.ring, ev.x, ev.y, 0, 0, 0.22, info.look.rim, info.radius, info.radius * 1.12);
+          const r = this.sparks.spawn(
+            this.t.ring,
+            ev.x,
+            ev.y,
+            0,
+            0,
+            0.22,
+            info.look.rim,
+            info.radius,
+            info.radius * 1.12,
+          );
           if (r) r.a0 = info.echo ? 0.4 : 0.7;
         }
         break;
@@ -181,7 +214,9 @@ export class FormLayer {
         break;
       }
       case 'triggerFired':
-        if (ev.trigger !== 'cast') this.shots.glyph(ev.trigger, ev.x, ev.y - 2.6, GLYPH_TINT);
+        // Button triggers (Cast, Channel) show no glyph: Channel would leave five a second.
+        if (ev.trigger !== 'cast' && ev.trigger !== 'channel')
+          this.shots.glyph(ev.trigger, ev.x, ev.y - 2.6, GLYPH_TINT);
         break;
       case 'hit': {
         // Orb hits flash at the orb.
@@ -189,7 +224,17 @@ export class FormLayer {
         const orb = this.live.orbs.get(ev.spellId);
         if (!orb) break;
         const L = spellLook(orb.spec.elements);
-        const g = this.sparksAdd.spawn(this.t.glow, orb.x, orb.y, 0, 0, 0.12, L.core, orb.radius * 1.6, orb.radius * 2.4);
+        const g = this.sparksAdd.spawn(
+          this.t.glow,
+          orb.x,
+          orb.y,
+          0,
+          0,
+          0.12,
+          L.core,
+          orb.radius * 1.6,
+          orb.radius * 2.4,
+        );
         if (g) g.a0 = 0.8;
         break;
       }
@@ -197,7 +242,11 @@ export class FormLayer {
     }
   }
 
-  private paint(sh: { rim: number; core: number; glow: number; alpha: number }, L: ElementLook, echo: boolean): void {
+  private paint(
+    sh: { rim: number; core: number; glow: number; alpha: number },
+    L: ElementLook,
+    echo: boolean,
+  ): void {
     const pale = (c: number): number => (echo ? mixRgb(c, ECHO_TINT, 0.55) : c);
     sh.rim = pale(L.rim);
     sh.core = pale(L.core);
@@ -219,7 +268,17 @@ export class FormLayer {
     for (let i = 0; i < 3; i++) {
       const a = rand(0, Math.PI * 2);
       const v = rand(10, 20);
-      const p = this.sparks.spawn(this.t.spark, x, y, Math.cos(a) * v, Math.sin(a) * v, rand(0.08, 0.16), L.sparks[i % L.sparks.length]!, 0.8, 0.3);
+      const p = this.sparks.spawn(
+        this.t.spark,
+        x,
+        y,
+        Math.cos(a) * v,
+        Math.sin(a) * v,
+        rand(0.08, 0.16),
+        L.sparks[i % L.sparks.length]!,
+        0.8,
+        0.3,
+      );
       if (p) {
         p.align = true;
         p.stretch = 0.03;
@@ -229,12 +288,29 @@ export class FormLayer {
   }
 
   /** Glints (frost) or embers (fire) left along a beam. */
-  private alongLine(x0: number, y0: number, x1: number, y1: number, L: ElementLook, kind: 'star' | 'dot'): void {
+  private alongLine(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    L: ElementLook,
+    kind: 'star' | 'dot',
+  ): void {
     const len = Math.hypot(x1 - x0, y1 - y0);
     const n = Math.min(10, Math.ceil(len / 4));
     for (let i = 0; i < n; i++) {
       const u = rand(0, 1);
-      const p = this.sparks.spawn(this.t[kind], x0 + (x1 - x0) * u + rand(-0.5, 0.5), y0 + (y1 - y0) * u + rand(-0.5, 0.5), 0, kind === 'dot' ? -3 : 0, rand(0.25, 0.5), L.sparks[i % L.sparks.length]!, kind === 'star' ? 0.7 : 0.22, 0.05);
+      const p = this.sparks.spawn(
+        this.t[kind],
+        x0 + (x1 - x0) * u + rand(-0.5, 0.5),
+        y0 + (y1 - y0) * u + rand(-0.5, 0.5),
+        0,
+        kind === 'dot' ? -3 : 0,
+        rand(0.25, 0.5),
+        L.sparks[i % L.sparks.length]!,
+        kind === 'star' ? 0.7 : 0.22,
+        0.05,
+      );
       if (p) {
         p.rotation = rand(0, 1);
         p.drag = 2;
@@ -252,7 +328,17 @@ export class FormLayer {
     for (let i = 0; i < 10; i++) {
       const a = rand(0, Math.PI * 2);
       const v = rand(radius * 1.5, radius * 3.5);
-      const p = this.sparks.spawn(tex, x, y, Math.cos(a) * v, Math.sin(a) * v, rand(0.2, 0.4), L.sparks[i % L.sparks.length]!, tex === this.t.dot ? 0.3 : 0.7, 0.1);
+      const p = this.sparks.spawn(
+        tex,
+        x,
+        y,
+        Math.cos(a) * v,
+        Math.sin(a) * v,
+        rand(0.2, 0.4),
+        L.sparks[i % L.sparks.length]!,
+        tex === this.t.dot ? 0.3 : 0.7,
+        0.1,
+      );
       if (!p) break;
       p.drag = 4;
       if (tex === this.t.spark) {

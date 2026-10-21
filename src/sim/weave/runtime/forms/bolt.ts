@@ -1,7 +1,8 @@
 /**
  * Bolt (CONTENT §1.2): a projectile that stops on its first hit (Pierce passes through more),
  * Chains after its first hit, turns toward the nearest enemy with Seeker, and ends on walls,
- * shields and at the end of its life. Movement and collision follow combat/projectiles.ts:
+ * shields and at the end of its life. M5: Fork splits it on its first hit; Return flies it back
+ * to the player when its life runs out. Movement and collision follow combat/projectiles.ts:
  * substeps under one cell, bodies before walls, nearest candidate first.
  */
 import type { Enemy } from '../../../actors/enemies';
@@ -13,7 +14,7 @@ import type { GameState } from '../../../state';
 import type { Rotation } from '../../angles';
 import { nearestEnemy } from '../geom';
 import { canTarget, chainFrom, spellHit, TIME_EPSILON } from '../procs';
-import { endSpell } from '../spawn';
+import { endSpell, spawnForks } from '../spawn';
 import type { SpellInstance } from '../types';
 
 /** Longest move between collision checks, in cells (as combat/projectiles.ts). */
@@ -113,6 +114,11 @@ function hitBodies(state: GameState, b: SpellInstance, x: number, y: number, can
     const first = b.hitCount === 0;
     spellHit(state, b, e, b.dirX, b.dirY, b.dirX, b.dirY);
     if (first) chainFrom(state, b, e);
+    // Fork (M5): the first hit splits it into the fork's bolts.
+    if (first && b.spec.fork !== null && !b.forked) {
+      b.forked = true;
+      spawnForks(state, b, e.id, x, y);
+    }
     if (b.ended) return true;
     if (b.pierceLeft > 0) {
       b.pierceLeft--;
@@ -126,10 +132,44 @@ function hitBodies(state: GameState, b: SpellInstance, x: number, y: number, can
   return false;
 }
 
+/**
+ * Return (M5): when its life runs out, the bolt turns back toward the player at its speed and
+ * may hit everything again (targets, pierce). It ends on reaching the player, a wall, a stopping
+ * hit, or after its outbound life again. Returns true if it started returning.
+ */
+function startReturn(b: SpellInstance): boolean {
+  const p = b.spec.params;
+  if (!b.spec.returns || b.returning || p.form !== 'bolt') return false;
+  b.returning = true;
+  b.hitIds.length = 0;
+  b.pierceLeft = b.spec.pierce;
+  b.lifeLeft = p.life;
+  return true;
+}
+
+/** Points a returning bolt at the player; true when it has reached them. */
+function homeOnPlayer(state: GameState, b: SpellInstance, speed: number): boolean {
+  const pl = state.player;
+  const dx = pl.x - b.x;
+  const dy = pl.y - b.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  if (d <= state.tuning.player.radius + b.radius) return true;
+  b.dirX = dx / d;
+  b.dirY = dy / d;
+  b.vx = b.dirX * speed;
+  b.vy = b.dirY * speed;
+  return false;
+}
+
 export function stepBolt(state: GameState, b: SpellInstance): void {
   const p = b.spec.params;
   if (p.form !== 'bolt') return;
-  if (b.spec.seeker) steer(state, b, b.spec.seeker.tickRotation, p.speed);
+  if (b.returning) {
+    if (homeOnPlayer(state, b, p.speed)) {
+      endSpell(state, b, 'expired');
+      return;
+    }
+  } else if (b.spec.seeker) steer(state, b, b.spec.seeker.tickRotation, p.speed);
   const dx = b.vx * DT;
   const dy = b.vy * DT;
   const r = b.radius;
@@ -171,5 +211,5 @@ export function stepBolt(state: GameState, b: SpellInstance): void {
     b.y = ny;
   }
   b.lifeLeft -= DT;
-  if (b.lifeLeft <= TIME_EPSILON) endSpell(state, b, 'expired');
+  if (b.lifeLeft <= TIME_EPSILON && !startReturn(b)) endSpell(state, b, 'expired');
 }

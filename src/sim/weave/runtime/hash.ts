@@ -89,7 +89,7 @@ export function hashWeaveState(h: Hasher, state: GameState): void {
     h.u32(s.hitCount);
     for (const n of s.procs) h.u32(n);
     for (const e of s.emitLeft) h.num(e);
-    h.num(s.refunded).num(s.terrainR).num(s.terrainLeft).bool(s.ended);
+    h.num(s.refunded).num(s.terrainR).num(s.terrainLeft).bool(s.forked).bool(s.returning).bool(s.ended);
     str(h, s.endReason);
   }
 }

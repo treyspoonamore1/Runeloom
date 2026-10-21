@@ -11,7 +11,6 @@ import { shipsThrough, weaveLimits, type TriggerEvent } from '../../../../data/r
 import { spells, type SpellId } from '../../../../data/spells';
 import { isSpindleId, spindles, type SpindleId } from '../../../../data/spindles';
 import type { Tuning } from '../../../../data/tuning';
-import { Button } from '../../core/input';
 import type { GameState } from '../../state';
 import { compileWeave, type CompileResult } from '../compile';
 import { spindleContext, type CompileContext } from '../context';
@@ -26,10 +25,10 @@ import { assignRunes, runeLevelMap, runeQualityMap, usesRuneItems } from '../../
 export const LOADOUT_SLOTS = 4;
 
 /** Button for each slot, in slot order. */
-export const SLOT_BUTTONS: readonly number[] = [Button.Cast1, Button.Cast2, Button.Cast3, Button.Cast4];
+export { SLOT_BUTTONS } from './channel';
 
-/** Runes the sim accepts (CONTENT §1 "Ships"): M2. */
-export const RUNTIME_SHIPS = shipsThrough('M2');
+/** Runes the sim accepts (CONTENT §1 "Ships"): M2 and M5 (no M3 or M4 runes exist). */
+export const RUNTIME_SHIPS = shipsThrough('M5');
 
 /** The starting loadout: Fire Bolt on LMB, Strike on RMB, Twig Spindle (CONTENT §9.1). */
 export const DEFAULT_LOADOUT: LoadoutSpec = {

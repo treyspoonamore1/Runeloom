@@ -107,6 +107,7 @@ export function stepWeaves(state: GameState, input: InputFrame): void {
     if (blocked) cancelCast(state);
     else stepCast(state, input);
   }
+  stepChannel(state, input, blocked);
   stepPulse(state, blocked);
   stepQueue(state, input, blocked);
 }
@@ -177,6 +178,35 @@ function advanceCast(state: GameState, input: InputFrame): void {
     }
   }
   if (p.castLeft <= TIME_EPSILON) endCast(state);
+}
+
+/**
+ * Channel (M5, CONTENT §1.1): while its slot's button is held (not dodging, not frozen), fires
+ * every `period` seconds from the player along the aim, paying the weave's mana each time (the
+ * trigger's 0.3 mana multiplier is already in it) and ignoring cast time. The first fire comes
+ * on the press; releasing the button resets the timer. Short on mana, it skips that beat.
+ * Moving while a Channel button is held is slower (runtime/channel.ts, actors/player.ts).
+ */
+function stepChannel(state: GameState, input: InputFrame, blocked: boolean): void {
+  const p = state.player;
+  state.weaves.slots.forEach((s, slot) => {
+    const prog = s.program;
+    if (prog === null || prog.trigger.event !== 'held') return;
+    if (!isHeld(input.buttons, SLOT_BUTTONS[slot]!)) {
+      s.periodLeft = 0;
+      return;
+    }
+    const due = s.periodLeft <= TIME_EPSILON;
+    if (due) s.periodLeft += prog.trigger.period ?? 0;
+    s.periodLeft -= DT;
+    if (!due || blocked || isDodging(p)) return;
+    if (!payMana(state, prog.mana)) {
+      if (wasPressed(state.prevButtons, input.buttons, SLOT_BUTTONS[slot]!))
+        emit(state, { type: 'castFailed', slot, spell: prog.root.form, reason: 'mana' });
+      return;
+    }
+    fireProgram(state, slot, prog, p.x, p.y, p.aimDirX, p.aimDirY, input.aimX, input.aimY, -1, true);
+  });
 }
 
 /**

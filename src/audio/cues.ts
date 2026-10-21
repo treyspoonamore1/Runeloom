@@ -44,7 +44,8 @@ export function cuesForEvent(e: SimEvent, state: GameState): Cue[] {
     case 'manaRefund':
       return [{ id: 'manaChime' }];
     case 'triggerFired':
-      return e.trigger === 'cast' ? [] : [{ id: 'triggerTick', x: e.x, y: e.y }];
+      // Button triggers (Cast, and Channel's 5 fires a second) get no tick; the spell's own sound plays.
+      return e.trigger === 'cast' || e.trigger === 'channel' ? [] : [{ id: 'triggerTick', x: e.x, y: e.y }];
     case 'castFailed':
       return [{ id: 'castFailed' }];
     case 'projectileEnd': {
@@ -121,7 +122,8 @@ export class SpellCueTracker {
         else if (e.form === 'sigil') this.sigils.set(e.id, { x: e.toX, y: e.toY });
         if (e.depth > 0 && this.sigils.size > 0)
           for (const sg of this.sigils.values())
-            if (Math.abs(sg.x - e.x) < 1e-6 && Math.abs(sg.y - e.y) < 1e-6) return [{ id: 'sigilPulse', x: e.x, y: e.y }];
+            if (Math.abs(sg.x - e.x) < 1e-6 && Math.abs(sg.y - e.y) < 1e-6)
+              return [{ id: 'sigilPulse', x: e.x, y: e.y }];
         return [];
       case 'spellEnd':
         this.orbs.delete(e.id);

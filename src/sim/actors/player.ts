@@ -1,3 +1,4 @@
+import { channelMoveMult } from '../weave/runtime/channel';
 import { Button, wasPressed, type InputFrame } from '../core/input';
 import type { GameState } from '../state';
 import type { Tuning } from '../../../data/tuning';
@@ -218,7 +219,7 @@ export function stepPlayer(state: GameState, input: InputFrame): void {
   }
 
   if (!isDodging(p) && walkTime > TIME_EPSILON) {
-    walk(state, p, t, mx, my, walkTime);
+    walk(state, p, t, mx, my, walkTime, channelMoveMult(state, input.buttons));
   }
   stepKnockback(state.room, p, t.radius, state.tuning.feel);
 }
@@ -269,11 +270,19 @@ function startDodge(p: PlayerState, t: PlayerTuning, mx: number, my: number, mle
 
 /**
  * Accelerates the velocity vector toward the input's target velocity (moveSpeed slowed by
- * Chill and the ground's moveMult, at moveSpeed/accelTime), or toward rest with no input (at
+ * Chill, the ground's moveMult and a held Channel (`slow`), at moveSpeed/accelTime), or toward rest with no input (at
  * moveSpeed/decelTime), then moves with collision for `dt` seconds. On ice both times are the
  * much longer tuning.terrain.iceAccelTime / iceDecelTime, so the player slides.
  */
-function walk(state: GameState, p: PlayerState, t: PlayerTuning, mx: number, my: number, dt: number): void {
+function walk(
+  state: GameState,
+  p: PlayerState,
+  t: PlayerTuning,
+  mx: number,
+  my: number,
+  dt: number,
+  slow = 1,
+): void {
   const hasInput = mx !== 0 || my !== 0;
   if (hasInput) {
     const l = Math.sqrt(mx * mx + my * my);
@@ -282,7 +291,8 @@ function walk(state: GameState, p: PlayerState, t: PlayerTuning, mx: number, my:
   }
   const ground = readGround(state, p.x, p.y, p.terrain);
   const moveSpeed = playerMoveSpeed(state);
-  const speed = moveSpeed * actionSpeed(state, p) * ground.moveMult;
+  // Channel (weave/runtime/triggers.ts): walking while a Channel button is held is slower.
+  const speed = moveSpeed * actionSpeed(state, p) * ground.moveMult * slow;
   target.x = mx * speed;
   target.y = my * speed;
   clipToContacts(state.room, p.x, p.y, t.radius, target);

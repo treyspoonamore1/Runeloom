@@ -95,6 +95,22 @@ export const scenarios: Scenario[] = [
     input: (tick, state) => strafeInput(tick, state, [Button.Cast1, Button.Cast2, Button.Cast2]),
   },
   {
+    id: 'weave_m5',
+    description:
+      'Arena waves, god mode, unlimited mana, Heartwood: the M5 runes. Swift Fork bolts, a Channel of Returning Storm bolts, a Focused Frost Nova, and Infused Fire riding an On Hit Frost Nova.',
+    roomId: 'test/arena',
+    mode: 'arena',
+    setup: (state) =>
+      mixSetup(state, [
+        'Cast > Bolt[Fire, Fork, Swift]',
+        'Channel > Bolt[Storm, Return]',
+        'Cast > Nova[Frost, Focus]',
+        'Cast > Bolt[Fire, Infuse] > OnHit > Nova[Frost]',
+      ]),
+    input: (tick, state) =>
+      strafeInput(tick, state, [Button.Cast1, Button.Cast2, Button.Cast4, Button.Cast2, Button.Cast3]),
+  },
+  {
     id: 'wilds_terrain',
     description:
       'Wilds arena waves (grass, water, oil, barrels, metal), god mode, unlimited mana, Heartwood: Wildfire Seed, Conductor, Steam Veil, Glacier Step (reference weaves 3, 7, 9, 5).',

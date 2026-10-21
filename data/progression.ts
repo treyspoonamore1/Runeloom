@@ -92,8 +92,30 @@ export const guaranteedRunes: Partial<Record<RegionRoomId, RuneId[]>> = {
   [regionRooms.k10]: ['storm', 'chain', 'sigil', 'on_crit'],
 };
 
-/** Spindle bases by the area level they start dropping at: E4, E8 and K4 (CONTENT §9.1). */
-export const spindleDropFrom = { ashwood: 4, ironbark: 6, rimeglass: 8 } as const;
+/**
+ * Spindle bases by the area level they start dropping at: E4, E8 and K4 (CONTENT §9.1); Heartwood
+ * and Loomsteel at their item levels 18 and 30 (CONTENT §3), so from rifts (M6) on.
+ */
+export const spindleDropFrom = {
+  ashwood: 4,
+  ironbark: 6,
+  rimeglass: 8,
+  heartwood: 18,
+  loomsteel: 30,
+} as const;
+
+/**
+ * M5 rune discovery (CONTENT §9.1 lists no room for the M5 runes): a Rare monster's death drops
+ * one rune the hero hasn't unlocked yet with `rareChance`, and each boss drops one, from the M5
+ * runes whose `from` area level the room reaches. Picking it up unlocks it, like any rune.
+ */
+export const runeDiscovery = {
+  rareChance: 0.15,
+  bossCount: 1,
+  from: { swift: 3, fork: 5, return: 5, focus: 6, infuse: 7, channel: 8 } as Readonly<
+    Partial<Record<RuneId, number>>
+  >,
+};
 
 /** Enemy kinds that are bosses: their death clears their room and is remembered in WorldState.bossesDefeated. */
 export const bossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden'];
