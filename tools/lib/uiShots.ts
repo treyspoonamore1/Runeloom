@@ -19,6 +19,7 @@ export const uiShotIds = [
   'filter',
   'filter_floor',
   'pause',
+  'volatile',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -30,7 +31,7 @@ export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
   if (id === 'pause') return `${base}/?${ADV}&ui=pause`;
   // The bench crafts with the real sim, so it runs on a real hero (fixture bases aren't real items).
-  if (id === 'craft' || id === 'filter' || id === 'filter_floor')
+  if (id === 'craft' || id === 'filter' || id === 'filter_floor' || id === 'volatile')
     return `${base}/?scene=adventure&paused=1&seed=1&ui=play`;
   return `${base}/?${ADV}&ui=${id === 'fuse' ? 'inventory' : id}`;
 }
@@ -178,6 +179,23 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
       );
     });
     await page.waitForTimeout(600);
+  } else if (id === 'volatile') {
+    // A Volatile Rare dies beside the player; 0.6 s into its 1 s fuse the blast telegraph fills.
+    await page.evaluate(async () => {
+      const { spawnEnemy } = await import('/src/sim/actors/enemies.ts' as string);
+      const { killEnemy } = await import('/src/sim/combat/hits.ts' as string);
+      const session = window.__runeloom!.session;
+      const s = session.state;
+      s.cheats.noAI = true;
+      const e = spawnEnemy(s, 'shieldbearer', s.player.x + 8, s.player.y + 1, {
+        rarity: 'rare',
+        mods: ['volatile'],
+      });
+      killEnemy(s, e, 0, 'hit');
+      for (let i = 0; i < 36; i++)
+        session.step({ moveX: 0, moveY: 0, aimX: s.player.x + 1, aimY: s.player.y, buttons: 0 });
+    });
+    await page.waitForTimeout(300);
   } else if (id === 'loom') {
     // Strike's only copy sits in RMB: arming it shows why it can't go anywhere.
     await page.click('.lm-pouch .lm-chip.r-strike');
