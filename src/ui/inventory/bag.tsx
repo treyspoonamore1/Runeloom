@@ -31,7 +31,7 @@ function SalvageBtn({ label, onClick }: { label: string; onClick(): void }) {
   );
 }
 
-function Items({ session, hero }: { session: Session; hero: Readonly<HeroState> }) {
+function Items({ session, hero }: { session: Session; hero: Readonly<HeroState>; rev: number }) {
   const worn = new Set(EQUIP_SLOTS.map((s) => hero.equipped[s]));
   const list = hero.items.filter((i) => !worn.has(i.uid));
   if (list.length === 0) return <p class="mn-muted">Your bag is empty. Enemies and chests drop gear.</p>;
@@ -72,7 +72,7 @@ function Items({ session, hero }: { session: Session; hero: Readonly<HeroState> 
   );
 }
 
-function Parts({ session, hero }: { session: Session; hero: Readonly<HeroState> }) {
+function Parts({ session, hero }: { session: Session; hero: Readonly<HeroState>; rev: number }) {
   if (hero.parts.length === 0) return <p class="mn-muted">No Fuse parts. Monsters drop them.</p>;
   return (
     <div class="inv-grid">
@@ -106,7 +106,7 @@ function Parts({ session, hero }: { session: Session; hero: Readonly<HeroState> 
   );
 }
 
-function Runes({ session, hero }: { session: Session; hero: Readonly<HeroState> }) {
+function Runes({ session, hero }: { session: Session; hero: Readonly<HeroState>; rev: number }) {
   const used = new Map<string, number>();
   for (const s of session.state.weaves.slots) {
     const p = s.notation ? parseWeave(s.notation) : null;
@@ -152,7 +152,7 @@ function Runes({ session, hero }: { session: Session; hero: Readonly<HeroState> 
   );
 }
 
-export function Bag({ session, hero }: { session: Session; hero: Readonly<HeroState> }) {
+export function Bag({ session, hero, rev }: { session: Session; hero: Readonly<HeroState>; rev: number }) {
   const tab = bagTab.value;
   const worn = new Set(EQUIP_SLOTS.map((s) => hero.equipped[s]));
   const counts: Record<BagTab, number> = {
@@ -186,9 +186,9 @@ export function Bag({ session, hero }: { session: Session; hero: Readonly<HeroSt
         ))}
       </div>
       <div class="mn-scroll">
-        {tab === 'items' ? <Items session={session} hero={hero} /> : null}
-        {tab === 'parts' ? <Parts session={session} hero={hero} /> : null}
-        {tab === 'runes' ? <Runes session={session} hero={hero} /> : null}
+        {tab === 'items' ? <Items session={session} hero={hero} rev={rev} /> : null}
+        {tab === 'parts' ? <Parts session={session} hero={hero} rev={rev} /> : null}
+        {tab === 'runes' ? <Runes session={session} hero={hero} rev={rev} /> : null}
       </div>
       <p class="mn-help">
         {tab === 'items'

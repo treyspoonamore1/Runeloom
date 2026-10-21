@@ -15,6 +15,7 @@ export const uiShotIds = [
   'hud',
   'death',
   'loom',
+  'craft',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -24,6 +25,8 @@ export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'title' || id === 'title_load') return `${base}/?fixture=1&seed=1`;
   if (id === 'hud') return `${base}/?${ADV}&ui=play&boss=cinder_warden`;
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
+  // The bench crafts with the real sim, so it runs on a real hero (fixture bases aren't real items).
+  if (id === 'craft') return `${base}/?scene=adventure&paused=1&seed=1&ui=play`;
   return `${base}/?${ADV}&ui=${id === 'fuse' ? 'inventory' : id}`;
 }
 
@@ -89,6 +92,48 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
       p.respawnLeft = 2;
     });
     await page.waitForTimeout(700);
+  } else if (id === 'craft') {
+    // A few real items and currencies, then a Loom Shuttle on a Normal hood: the new Rare's
+    // affixes show with their tiers, marked as new.
+    await page.evaluate(() => {
+      const s = window.__runeloom!.session.state;
+      const h = s.hero;
+      const add = (it: Record<string, unknown>) =>
+        h.items.push({ uid: h.nextUid++, fused: [], ...it } as never);
+      add({ base: 'wool_hood', rarity: 'normal', itemLevel: 9, affixes: [] });
+      add({
+        base: 'travelers_cloak',
+        rarity: 'rare',
+        name: 'Cinder Shroud',
+        itemLevel: 8,
+        affixes: [
+          { id: 'life_flat', tier: 1, value: 27 },
+          { id: 'fire_resist', tier: 2, value: 14 },
+          { id: 'mana_regen', tier: 3, value: 1 },
+        ],
+      });
+      add({
+        base: 'bone_charm',
+        rarity: 'magic',
+        itemLevel: 6,
+        affixes: [{ id: 'elemental_damage', tier: 2, value: 9 }],
+      });
+      add({ base: 'wool_hood', rarity: 'unique', unique: 'pyre_hood', itemLevel: 6, affixes: [] });
+      h.currency = {
+        weavers_knot: 4,
+        spool_of_change: 7,
+        loom_shuttle: 2,
+        chaos_skein: 1,
+        unpick: 1,
+        rune_polish: 3,
+      };
+      window.__runeloom!.ui!.open('craft');
+    });
+    await settle(page);
+    await page.click('.cr-cur >> text=Loom Shuttle');
+    await page.click('.cr-targets .inv-card >> text=Wool Hood');
+    await page.click('.cr-use .mn-btn');
+    await page.waitForTimeout(300);
   } else if (id === 'loom') {
     // Strike's only copy sits in RMB: arming it shows why it can't go anywhere.
     await page.click('.lm-pouch .lm-chip.r-strike');

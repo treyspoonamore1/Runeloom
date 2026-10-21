@@ -67,6 +67,8 @@ function SlotButton({
 }: {
   session: Session;
   hero: Readonly<HeroState>;
+  /** heroRev: changes after every edit, so a mutated `hero` still re-renders (heroAdapter.ts). */
+  rev: number;
   slot: EquipSlot;
 }) {
   const it = equippedItem(hero, slot);
@@ -103,18 +105,26 @@ function SlotButton({
   );
 }
 
-export function Equipment({ session, hero }: { session: Session; hero: Readonly<HeroState> }) {
+export function Equipment({
+  session,
+  hero,
+  rev,
+}: {
+  session: Session;
+  hero: Readonly<HeroState>;
+  rev: number;
+}) {
   return (
     <div class="inv-doll" aria-label="Equipment">
       {EQUIP_SLOTS.map((s) => (
-        <SlotButton key={s} session={session} hero={hero} slot={s} />
+        <SlotButton key={s} session={session} hero={hero} rev={rev} slot={s} />
       ))}
     </div>
   );
 }
 
 /** The equipped spindle's sockets: drop a part to fuse it; a fused part offers Unfuse. */
-export function FusePanel({ session, hero }: { session: Session; hero: Readonly<HeroState> }) {
+export function FusePanel({ session, hero }: { session: Session; hero: Readonly<HeroState>; rev: number }) {
   const sp = equippedItem(hero, 'spindle');
   const n = sp ? socketsOf(sp) : 0;
   const drag = dragging.value;

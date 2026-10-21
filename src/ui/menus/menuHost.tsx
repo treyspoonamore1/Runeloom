@@ -1,8 +1,9 @@
 /**
- * Opening and closing the adventure menus (I inventory, P passive tree, M region map): like the
- * Loom, the sim pauses and player input is off while one is open.
+ * Opening and closing the adventure menus (I inventory, P passive tree, M region map, C crafting
+ * bench): like the Loom, the sim pauses and player input is off while one is open.
  */
 import type { Session } from '../../app/session';
+import { CraftScreen } from '../craft/craftScreen';
 import { InventoryScreen } from '../inventory/inventory';
 import { invDialog } from '../inventory/slots';
 import { MapScreen } from '../map/mapScreen';
@@ -24,6 +25,7 @@ export function MenuScreens(p: {
     return <InventoryScreen session={p.session} onTab={p.onTab} onClose={p.onClose} />;
   if (p.screen === 'tree') return <TreeScreen session={p.session} onTab={p.onTab} onClose={p.onClose} />;
   if (p.screen === 'map') return <MapScreen session={p.session} onTab={p.onTab} onClose={p.onClose} />;
+  if (p.screen === 'craft') return <CraftScreen session={p.session} onTab={p.onTab} onClose={p.onClose} />;
   return null;
 }
 

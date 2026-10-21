@@ -17,7 +17,7 @@ import { statRows, type StatGroup } from './stats';
 
 const GROUPS: StatGroup[] = ['Vitals', 'Offense', 'Weaving', 'Defense', 'Ailments & terrain'];
 
-function Sheet({ session }: { session: Session }) {
+function Sheet({ session }: { session: Session; rev: number }) {
   const hero = heroOf(session);
   const rows = statRows(hero, modsOf(session), session.state.tuning);
   const pts = pointsOf(hero);
@@ -125,19 +125,21 @@ function Dialogs({ session }: { session: Session }) {
 
 export function InventoryScreen(p: { session: Session; onTab(id: MenuId): void; onClose(): void }) {
   injectInvStyle();
-  void heroRev.value; // re-render after every edit
+  // Passed down as `rev`: the hero is mutated in place, and @preact/signals skips children whose
+  // props are shallowly equal, so without it the panels would keep showing the old hero.
+  const rev = heroRev.value;
   const hero = heroOf(p.session);
   return (
     <MenuFrame id="inventory" title="Character" onTab={p.onTab} onClose={p.onClose} bodyClass="inv-body">
       <section class="mn-panel inv-left" aria-label="Equipment">
         <h3>Equipped</h3>
         <div class="mn-scroll">
-          <Equipment session={p.session} hero={hero} />
-          <FusePanel session={p.session} hero={hero} />
+          <Equipment session={p.session} hero={hero} rev={rev} />
+          <FusePanel session={p.session} hero={hero} rev={rev} />
         </div>
       </section>
-      <Bag session={p.session} hero={hero} />
-      <Sheet session={p.session} />
+      <Bag session={p.session} hero={hero} rev={rev} />
+      <Sheet session={p.session} rev={rev} />
       <Dialogs session={p.session} />
     </MenuFrame>
   );
