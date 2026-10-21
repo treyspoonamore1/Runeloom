@@ -12,7 +12,7 @@ import { partName } from './adapter';
 import { Bag } from './bag';
 import { Equipment, FusePanel } from './equipment';
 import { injectInvStyle } from './invStyle';
-import { invDialog, keepProblem, salvage, unfuse } from './slots';
+import { invDialog, keepProblem, salvage, salvageHidden, unfuse } from './slots';
 import { statRows, type StatGroup } from './stats';
 
 const GROUPS: StatGroup[] = ['Vitals', 'Offense', 'Weaving', 'Defense', 'Ailments & terrain'];
@@ -76,6 +76,25 @@ function Dialogs({ session }: { session: Session }) {
   const d = invDialog.value;
   if (!d) return null;
   const cancel = () => (invDialog.value = null);
+  if (d.kind === 'salvageHidden')
+    return (
+      <Dialog
+        title={`Salvage ${d.uids.length} hidden item${d.uids.length === 1 ? '' : 's'}?`}
+        onCancel={cancel}
+      >
+        <p>
+          Every unequipped item your loot filter (L) hides is destroyed for <b>{d.value} Thread Scrap</b>.
+        </p>
+        <div class="mn-acts">
+          <button type="button" class="mn-btn" onClick={cancel}>
+            Keep them
+          </button>
+          <button type="button" class="mn-btn danger" onClick={() => salvageHidden(session, d.uids)}>
+            Salvage all
+          </button>
+        </div>
+      </Dialog>
+    );
   if (d.kind === 'salvage')
     return (
       <Dialog title={`Salvage ${d.name}?`} onCancel={cancel}>

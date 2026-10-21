@@ -3,6 +3,8 @@
  * level-up toasts, the boss bar with phase marks, room banners and the death screen. Driven by
  * sim events (hudEvents.ts HUD_EVENT) and a per-frame snapshot (hudAdapter.ts).
  */
+import { filterAction } from '../../app/lootFilterStore';
+import type { LootContent } from '../../sim/items/loot';
 import { signal } from '@preact/signals';
 import { uiTuning } from '../../../data/ui';
 import { getRune } from '../../../data/runes';
@@ -87,6 +89,7 @@ export function createAdventureHud(opts: {
   const { session } = opts;
   const snap = signal(readAdventure(session));
   const names = {
+    hidden: (c: LootContent) => filterAction(c) === 'hide',
     rune: (id: string) => getRune(id)?.name ?? id,
     item: (it: Parameters<typeof itemDescription>[0]) => {
       const d = itemDescription(it);

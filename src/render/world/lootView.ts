@@ -2,6 +2,8 @@ import { Container, Sprite } from 'pixi.js';
 import type { GameState } from '../../sim';
 import type { LootContent, LootDrop } from '../../sim/items/loot';
 import type { M4Cue } from '../../app/m4Signals';
+import { filterAction } from '../../app/lootFilterStore';
+import type { LootAction } from '../../sim/items/lootFilter';
 import { getRune } from '../../../data/runes';
 import type { Atlas } from '../atlas';
 import { rand } from '../ailmentBursts';
@@ -71,6 +73,8 @@ interface DropView {
   look: LootLook;
   seed: number;
   seen: number;
+  /** The loot filter's answer when it was made (a filter change remakes it). */
+  action: LootAction;
 }
 
 /**
@@ -95,7 +99,7 @@ export class LootView {
   }
 
   handle(c: M4Cue, s: GameState): void {
-    if (c.type !== 'lootPicked' || !c.content) return;
+    if (c.type !== 'lootPicked' || !c.content || filterAction(c.content) === 'hide') return;
     const look = lootLook(c.content);
     const fx = this.fx;
     // The drop flies to the player and sparkles in its color.
@@ -132,9 +136,17 @@ export class LootView {
     this.time += dt;
     const f = ++this.frame;
     for (const d of s.loot) {
+      // The loot filter (app/lootFilterStore.ts): hidden drops aren't drawn; highlighted ones get a beam.
+      const act = filterAction(d.content);
       let v = this.views.get(d.id);
+      if (v && v.action !== act) {
+        this.views.delete(d.id);
+        this.release(v);
+        v = undefined;
+      }
+      if (act === 'hide') continue;
       if (!v) {
-        v = this.make(d);
+        v = this.make(d, act);
         this.views.set(d.id, v);
       }
       v.seen = f;
@@ -147,8 +159,9 @@ export class LootView {
     }
   }
 
-  private make(d: LootDrop): DropView {
+  private make(d: LootDrop, action: LootAction): DropView {
     const look = lootLook(d.content);
+    if (action === 'highlight') look.beam = true;
     let v = this.pool.pop();
     if (!v) {
       const root = new Container();
@@ -162,9 +175,10 @@ export class LootView {
       const glow = sprite('glow');
       const item = sprite('rune_stone');
       const glyph = sprite('glyph_form');
-      v = { root, item, glyph, ring, glow, beam, look, seed: 0, seen: 0 };
+      v = { root, item, glyph, ring, glow, beam, look, seed: 0, seen: 0, action };
     }
     v.look = look;
+    v.action = action;
     v.seed = Math.random() * 10;
     v.item.texture = this.atlas.get(look.tex);
     v.item.tint = look.tint;

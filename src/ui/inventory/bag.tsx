@@ -1,5 +1,6 @@
 /** The bag: unequipped items, Fuse parts and the rune pouch, as tabs. */
 import { signal } from '@preact/signals';
+import { lootFilter } from '../../app/lootFilterStore';
 import type { Session } from '../../app/session';
 import { EQUIP_SLOTS, type HeroState, type RuneItem } from '../../sim/hero/types';
 import { getRune } from '../../../data/runes';
@@ -11,7 +12,7 @@ import { usedBy } from '../loom/pouchCounts';
 import { tipFor } from '../menus/frame';
 import { itemDescription, partName } from './adapter';
 import { dropTarget, startDrag } from './equipment';
-import { askSalvage, dragging, equip, fuse, iconOf, unequip } from './slots';
+import { askSalvage, askSalvageHidden, dragging, equip, fuse, hiddenInBag, iconOf, unequip } from './slots';
 import { ItemTip, PartTip, RuneTip } from './tips';
 
 export type BagTab = 'items' | 'parts' | 'runes';
@@ -152,6 +153,23 @@ function Runes({ session, hero }: { session: Session; hero: Readonly<HeroState>;
   );
 }
 
+/** "Salvage hidden": every unequipped item the loot filter hides, at once (M5). */
+function HiddenBar({ hero }: { hero: Readonly<HeroState>; rev: number }) {
+  void lootFilter.value; // re-render when the filter changes
+  const n = hiddenInBag(hero).length;
+  if (n === 0) return null;
+  return (
+    <div class="inv-hidden">
+      <span>
+        Your loot filter hides {n} item{n === 1 ? '' : 's'} here.
+      </span>
+      <button type="button" class="mn-btn" onClick={() => askSalvageHidden(hero)}>
+        Salvage hidden
+      </button>
+    </div>
+  );
+}
+
 export function Bag({ session, hero, rev }: { session: Session; hero: Readonly<HeroState>; rev: number }) {
   const tab = bagTab.value;
   const worn = new Set(EQUIP_SLOTS.map((s) => hero.equipped[s]));
@@ -190,6 +208,7 @@ export function Bag({ session, hero, rev }: { session: Session; hero: Readonly<H
         {tab === 'parts' ? <Parts session={session} hero={hero} rev={rev} /> : null}
         {tab === 'runes' ? <Runes session={session} hero={hero} rev={rev} /> : null}
       </div>
+      {tab === 'items' ? <HiddenBar hero={hero} rev={rev} /> : null}
       <p class="mn-help">
         {tab === 'items'
           ? 'Click an item to equip it, or drag it onto a slot. Drag gear here to unequip. × salvages.'

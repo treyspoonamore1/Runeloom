@@ -16,6 +16,9 @@ export const uiShotIds = [
   'death',
   'loom',
   'craft',
+  'filter',
+  'filter_floor',
+  'pause',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -25,8 +28,10 @@ export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'title' || id === 'title_load') return `${base}/?fixture=1&seed=1`;
   if (id === 'hud') return `${base}/?${ADV}&ui=play&boss=cinder_warden`;
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
+  if (id === 'pause') return `${base}/?${ADV}&ui=pause`;
   // The bench crafts with the real sim, so it runs on a real hero (fixture bases aren't real items).
-  if (id === 'craft') return `${base}/?scene=adventure&paused=1&seed=1&ui=play`;
+  if (id === 'craft' || id === 'filter' || id === 'filter_floor')
+    return `${base}/?scene=adventure&paused=1&seed=1&ui=play`;
   return `${base}/?${ADV}&ui=${id === 'fuse' ? 'inventory' : id}`;
 }
 
@@ -134,6 +139,45 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
     await page.click('.cr-targets .inv-card >> text=Wool Hood');
     await page.click('.cr-use .mn-btn');
     await page.waitForTimeout(300);
+  } else if (id === 'filter') {
+    await page.evaluate(() => window.__runeloom!.ui!.open('filter'));
+    await settle(page);
+    await page.click('.lf-presets .mn-btn >> text=Hide plain gear');
+    await page.waitForTimeout(2500); // the preset's note fades
+  } else if (id === 'filter_floor') {
+    // Six drops around the player under "Hide plain gear": the Normal hood is gone, the Rare
+    // cloak, the unique and the Golden Needle stand in beams, the rest show plainly.
+    await page.evaluate(async () => {
+      const store = await import('/src/app/lootFilterStore.ts' as string);
+      const { lootFilterPresets } = await import('/src/sim/items/lootFilter.ts' as string);
+      store.setLootFilter(
+        lootFilterPresets.find((p: { name: string }) => p.name === 'Hide plain gear').filter,
+      );
+      const s = window.__runeloom!.session.state;
+      const p = s.player;
+      const it = (base: string, rarity: string, extra = {}) => ({
+        kind: 'item',
+        item: { uid: 0, base, rarity, itemLevel: 5, affixes: [], fused: [], ...extra },
+      });
+      const drops = [
+        it('wool_hood', 'normal'),
+        it('travelers_cloak', 'rare', { name: 'Cinder Shroud' }),
+        it('bone_charm', 'magic'),
+        it('wool_hood', 'unique', { unique: 'pyre_hood' }),
+        { kind: 'currency', currency: 'golden_needle', amount: 1 },
+        { kind: 'currency', currency: 'weavers_knot', amount: 1 },
+      ];
+      drops.forEach((content, i) =>
+        s.loot.push({
+          id: 9000 + i,
+          x: p.x - 10 + (i % 3) * 10,
+          y: p.y - 7 + Math.floor(i / 3) * 12,
+          content,
+          age: 5,
+        } as never),
+      );
+    });
+    await page.waitForTimeout(600);
   } else if (id === 'loom') {
     // Strike's only copy sits in RMB: arming it shows why it can't go anywhere.
     await page.click('.lm-pouch .lm-chip.r-strike');

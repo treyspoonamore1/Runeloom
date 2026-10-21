@@ -77,6 +77,8 @@ export interface ToastSpec {
 }
 
 export interface ToastNames {
+  /** The loot filter hides this drop (no pickup toast). Missing: nothing is hidden. */
+  hidden?(c: LootContent): boolean;
   rune(id: string): string;
   item(content: Extract<LootContent, { kind: 'item' }>['item']): { name: string; rarity: ItemRarity };
   part(content: Extract<LootContent, { kind: 'part' }>['part']): string;
@@ -128,7 +130,7 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
     switch (e.type) {
       case HUD_EVENT.lootPicked: {
         const c = e.content as LootContent | undefined;
-        if (c) out.push(contentToast(c, names, 'Rune · into your pouch'));
+        if (c && !names.hidden?.(c)) out.push(contentToast(c, names, 'Rune · into your pouch'));
         break;
       }
       case HUD_EVENT.rewardGranted: {

@@ -1,5 +1,5 @@
 /**
- * Shared parts of the adventure menus: the full-screen frame with the I / P / M / C tabs, a floating
+ * Shared parts of the adventure menus: the full-screen frame with the I / P / M / C / L tabs, a floating
  * tooltip kept inside the viewport, a modal dialog, and a short note for refused actions.
  */
 import { signal } from '@preact/signals';
@@ -7,13 +7,14 @@ import type { ComponentChildren, JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { injectMenuStyle, menuCss } from './menuStyle';
 
-export type MenuId = 'inventory' | 'tree' | 'map' | 'craft';
+export type MenuId = 'inventory' | 'tree' | 'map' | 'craft' | 'filter';
 
 export const MENUS: ReadonlyArray<{ id: MenuId; label: string; key: string; code: string }> = [
   { id: 'inventory', label: 'Character', key: 'I', code: 'KeyI' },
   { id: 'tree', label: 'Pattern', key: 'P', code: 'KeyP' },
   { id: 'map', label: 'Map', key: 'M', code: 'KeyM' },
   { id: 'craft', label: 'Craft', key: 'C', code: 'KeyC' },
+  { id: 'filter', label: 'Filter', key: 'L', code: 'KeyL' },
 ];
 
 export interface Anchor {

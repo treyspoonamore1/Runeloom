@@ -1,5 +1,6 @@
 import type { M4SfxId } from '../../data/sfxM4';
 import type { M4Cue } from '../app/m4Signals';
+import { filterAction } from '../app/lootFilterStore';
 import type { M4AttackKey } from '../app/m4Wiring';
 
 /** An M4 sound to play (same shape as cues.ts Cue, over data/sfxM4.ts ids). */
@@ -63,10 +64,15 @@ export function m4Sounds(c: M4Cue): M4SoundCue[] {
     case 'brazierLit':
       return [at(c.lit ? 'brazierLit' : 'brazierOut', c)];
     case 'lootDropped': {
+      // The loot filter (app/lootFilterStore.ts): hidden drops are silent, highlighted ones chime like a Rare.
+      const act = c.content ? filterAction(c.content) : 'show';
+      if (act === 'hide') return [];
       const r = c.content?.kind === 'item' ? c.content.item.rarity : 'normal';
-      return [at(r === 'unique' ? 'lootDropUnique' : r === 'rare' ? 'lootDropRare' : 'lootDrop', c)];
+      if (r === 'unique') return [at('lootDropUnique', c)];
+      return [at(r === 'rare' || act === 'highlight' ? 'lootDropRare' : 'lootDrop', c)];
     }
     case 'lootPicked':
+      if (c.content && filterAction(c.content) === 'hide') return [];
       return [{ id: c.content?.kind === 'rune' ? 'runePickup' : 'lootPickup' }];
     case 'levelUp':
       return [{ id: 'levelUp' }];

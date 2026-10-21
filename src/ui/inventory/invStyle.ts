@@ -50,6 +50,7 @@ const invCss = `
 .inv-group h4 { margin: 0 0 calc(var(--u) * 0.4); font-size: calc(var(--u) * 1.4); letter-spacing: 0.18em; text-transform: uppercase; color: #72dcc8; }
 .inv-kv { display: flex; justify-content: space-between; gap: calc(var(--u) * 1); padding: calc(var(--u) * 0.25) 0; color: var(--sand); }
 .inv-kv b { color: var(--cream); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.inv-hidden { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 1); margin-top: calc(var(--u) * 0.8); padding: calc(var(--u) * 0.6) calc(var(--u) * 1); border-radius: calc(var(--u) * 1); background: rgba(255, 122, 106, 0.1); color: var(--sand); font-size: calc(var(--u) * 1.6); }
 @media (max-width: 760px) { .inv-grid { grid-template-columns: 1fr; } }
 `;
 
