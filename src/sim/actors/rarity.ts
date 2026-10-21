@@ -6,6 +6,9 @@
  * Mod effects: Hasted scales walking (ai/common.ts moveAlong) and attack speed (recover, active
  * and cooldowns; windups only down to minTelegraph: combat/enemyAttacks.ts, ai/index.ts);
  * Incendiary leaves fire on death (actors/chemistry.ts); Thick-skinned multiplies life at spawn.
+ * M5: Waterlogged is always Wet (actors/terrain.ts); Frostbound and Grounded add immunities
+ * (combat/ailments.ts isImmune) and Grounded blocks arcs (combat/arcs.ts); Volatile arms a blast
+ * on death (actors/volatile.ts); Swarming adds minions at spawn (actors/roomSpawns.ts).
  */
 import { minTelegraph, monsterMods, rarities, type MonsterModDef } from '../../../data/monsterMods';
 import type { GameState } from '../state';
@@ -14,8 +17,10 @@ type Rarity = 'normal' | 'magic' | 'rare';
 
 const table = monsterMods as Record<string, MonsterModDef>;
 
-/** Mods that can roll now (shipped in M4). */
-export const shippedMods: readonly string[] = Object.keys(table).filter((id) => table[id]!.ships === 'M4');
+/** Mods that can roll now (shipped in M4 and M5: all of CONTENT §5). */
+export const shippedMods: readonly string[] = Object.keys(table).filter(
+  (id) => table[id]!.ships === 'M4' || table[id]!.ships === 'M5',
+);
 
 /** Life multiplier of a rarity with its mods: the rarity's × each mod's (Thick-skinned 1.4). */
 export function rarityLifeMult(rarity: Rarity, mods: readonly string[]): number {
@@ -24,11 +29,14 @@ export function rarityLifeMult(rarity: Rarity, mods: readonly string[]): number 
   return m;
 }
 
-/** Rolls a rarity's mods from state.aiRng: count in [modsMin, modsMax] (capped at the shipped mods), distinct. */
-export function rollMods(state: GameState, rarity: Rarity): string[] {
+/**
+ * Rolls a rarity's mods from state.aiRng: count in [modsMin, modsMax] (capped at what can roll),
+ * distinct, never one that excludes any of `kinds` (a Magic pack shares its mods across kinds).
+ */
+export function rollMods(state: GameState, rarity: Rarity, kinds: readonly string[] = []): string[] {
   if (rarity === 'normal') return [];
   const r = rarities[rarity];
-  const pool = [...shippedMods];
+  const pool = shippedMods.filter((id) => !(table[id]!.excludeKinds ?? []).some((k) => kinds.includes(k)));
   let n = r.modsMin + state.aiRng.int(r.modsMax - r.modsMin + 1);
   if (n > pool.length) n = pool.length;
   const out: string[] = [];
@@ -77,5 +85,40 @@ export function deathFireSquare(e: Modded): number {
     const s = table[id]?.deathFireSquare ?? 0;
     if (s > n) n = s;
   }
+  return n;
+}
+
+/** True if a mod makes it immune to the ailment (Frostbound: chill and freeze; Grounded: shock). */
+export function modImmune(e: Modded, kind: string): boolean {
+  for (const id of e.mods)
+    if ((table[id]?.immune as readonly string[] | undefined)?.includes(kind)) return true;
+  return false;
+}
+
+/** Grounded: rule 19 arcs never reach it. */
+export function modNoArcs(e: Modded): boolean {
+  for (const id of e.mods) if (table[id]?.noArcs) return true;
+  return false;
+}
+
+/** Waterlogged: always Wet. */
+export function modAlwaysWet(e: Modded): boolean {
+  for (const id of e.mods) if (table[id]?.alwaysWet) return true;
+  return false;
+}
+
+/** Volatile's blast, or undefined. */
+export function modVolatile(e: Modded): MonsterModDef['volatile'] {
+  for (const id of e.mods) {
+    const v = table[id]?.volatile;
+    if (v) return v;
+  }
+  return undefined;
+}
+
+/** Extra minions a monster with these mods brings (Swarming 2). */
+export function modSwarm(mods: readonly string[]): number {
+  let n = 0;
+  for (const id of mods) n += table[id]?.swarm ?? 0;
   return n;
 }

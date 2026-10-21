@@ -7,16 +7,16 @@ import { hitWith } from '../combat/helpers';
 import { arena, idx, ofType, run } from './helpers';
 import { OWNER } from '../../../data/materials';
 
-/** CONTENT §5 monster mods (M4: Hasted, Incendiary, Thick-skinned) and DESIGN §7 level scaling. */
+/** CONTENT §5 monster mods (M4: Hasted, Incendiary, Thick-skinned; M5 in modsM5.test.ts) and DESIGN §7 level scaling. */
 
 describe('monster mods', () => {
-  it('rolls Magic 1–2 and Rare 2–3 distinct mods from the AI stream', () => {
+  it('rolls Magic 1–2 and Rare 2–4 distinct mods from the AI stream', () => {
     const s = arena();
     for (let k = 0; k < 50; k++) {
       const m = rollMods(s, 'magic');
       expect(m.length >= 1 && m.length <= 2).toBe(true);
       const r = rollMods(s, 'rare');
-      expect(r.length >= 2 && r.length <= 3).toBe(true);
+      expect(r.length >= 2 && r.length <= 4).toBe(true);
       expect(new Set(r).size).toBe(r.length);
     }
     expect(rollMods(s, 'normal')).toEqual([]);

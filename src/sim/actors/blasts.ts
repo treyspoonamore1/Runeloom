@@ -14,17 +14,19 @@ import type { GameState } from '../state';
 
 export function applyBlasts(state: GameState): void {
   const blasts = state.grid.blasts;
-  for (let k = 0; k < blasts.length; k++) {
-    const b = blasts[k]!;
-    const p = state.player;
-    if (!p.dead && hazardHurts(b.owner, OWNER.player)) blastHit(state, b, p, state.tuning.player.radius);
-    if (!hazardHurts(b.owner, OWNER.enemy)) continue;
-    // Enemies may be added by kills' side effects; only those alive when the blast lands count.
-    const n = state.enemies.length;
-    for (let i = 0; i < n; i++) {
-      const e = state.enemies[i]!;
-      if (!e.dead) blastHit(state, b, e, e.radius);
-    }
+  for (let k = 0; k < blasts.length; k++) applyBlast(state, blasts[k]!);
+}
+
+/** One blast on every live entity it touches whose team its owner can hurt (Volatile uses it too). */
+export function applyBlast(state: GameState, b: Blast): void {
+  const p = state.player;
+  if (!p.dead && hazardHurts(b.owner, OWNER.player)) blastHit(state, b, p, state.tuning.player.radius);
+  if (!hazardHurts(b.owner, OWNER.enemy)) return;
+  // Enemies may be added by kills' side effects; only those alive when the blast lands count.
+  const n = state.enemies.length;
+  for (let i = 0; i < n; i++) {
+    const e = state.enemies[i]!;
+    if (!e.dead) blastHit(state, b, e, e.radius);
   }
 }
 

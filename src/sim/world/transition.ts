@@ -65,6 +65,7 @@ export function enterRoom(state: GameState, roomId: string, arrival: Arrival): v
   state.enemyHash = new SpatialHash(room.width, room.height, SPATIAL_BUCKET_CELLS);
   state.enemies = [];
   state.projectiles = [];
+  state.volatiles = [];
   state.spells = [];
   state.casts = [];
   state.pendingSpells = [];

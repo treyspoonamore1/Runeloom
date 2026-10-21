@@ -1,7 +1,7 @@
 /**
  * Monster rarity and mods (CONTENT §5). Magic packs (blue) have 1–2 mods and ×1.7 life; Rares
- * (yellow) have 2–4 mods, ×4 life and 2 minions. Mods ship in M5; M4 ships only Hasted,
- * Incendiary and Thick-skinned, so a Rare rolls 2–3 of them. Bosses never get a rarity or mods.
+ * (yellow) have 2–4 mods, ×4 life and 2 minions. M4 shipped Hasted, Incendiary and Thick-skinned;
+ * M5 adds the other five. Bosses never get a rarity or mods.
  *
  * Rolls use state.aiRng (src/sim/actors/rarity.ts).
  */
@@ -19,6 +19,18 @@ export interface MonsterModDef {
   life?: number;
   /** On death, enemy-owned fire in a square of this many cells per side, centered on its cell (Incendiary 5). */
   deathFireSquare?: number;
+  /** Ailments it never suffers (Frostbound: chill and freeze; Grounded: shock). */
+  immune?: readonly ('chill' | 'freeze' | 'shock' | 'ignite')[];
+  /** Rule 19 arcs never reach it (Grounded). */
+  noArcs?: boolean;
+  /** Always Wet, as if standing in water (Waterlogged): Ignite can't take, Shock arcs to it. */
+  alwaysWet?: boolean;
+  /** `delay` s after death, an enemy-owned Fire blast of `radius` cells for `lifeFraction` × its max life (Volatile). */
+  volatile?: { delay: number; radius: number; lifeFraction: number };
+  /** Extra minions of a weaker kind (swarmMinion) its group brings (Swarming 2). */
+  swarm?: number;
+  /** Kinds it never rolls on, where it would mean nothing or break the kind (always-burning, always-wet). */
+  excludeKinds?: readonly string[];
 }
 
 export const monsterMods = {
@@ -41,15 +53,38 @@ export const monsterMods = {
     ships: 'M4',
     life: 1.4,
   },
-  waterlogged: { name: 'Waterlogged', description: 'Always Wet: immune to Ignite, conductive', ships: 'M5' },
-  frostbound: { name: 'Frostbound', description: "Can't be chilled or frozen", ships: 'M5' },
-  grounded: { name: 'Grounded', description: 'Immune to Shock and arcs', ships: 'M5' },
+  waterlogged: {
+    name: 'Waterlogged',
+    description: 'Always Wet: immune to Ignite, conductive',
+    ships: 'M5',
+    alwaysWet: true,
+    excludeKinds: ['tinderling', 'bog_lurker'],
+  },
+  frostbound: {
+    name: 'Frostbound',
+    description: "Can't be chilled or frozen",
+    ships: 'M5',
+    immune: ['chill', 'freeze'],
+  },
+  grounded: {
+    name: 'Grounded',
+    description: 'Immune to Shock and arcs',
+    ships: 'M5',
+    immune: ['shock'],
+    noArcs: true,
+  },
   volatile: {
     name: 'Volatile',
     description: 'Explodes 1 s after death in a 4-cell radius for 20% of its life as Fire damage',
     ships: 'M5',
+    volatile: { delay: 1, radius: 4, lifeFraction: 0.2 },
   },
-  swarming: { name: 'Swarming', description: 'Brings 2 extra minions of a weaker type', ships: 'M5' },
+  swarming: {
+    name: 'Swarming',
+    description: 'Brings 2 extra minions of a weaker type',
+    ships: 'M5',
+    swarm: 2,
+  },
 } satisfies Record<string, MonsterModDef>;
 
 export type MonsterModId = keyof typeof monsterMods;
@@ -57,6 +92,21 @@ export type MonsterModId = keyof typeof monsterMods;
 export function isMonsterMod(id: string): id is MonsterModId {
   return Object.prototype.hasOwnProperty.call(monsterMods, id);
 }
+
+/**
+ * Swarming's "weaker type" per enemy kind (CONTENT §5): the kind its extra minions are. Kinds with
+ * nothing weaker that fits bring their own kind (Tinderlings, Kiln Mites, Bog Lurkers in water).
+ */
+export const swarmMinion: Readonly<Record<string, string>> = {
+  tinderling: 'tinderling',
+  shieldbearer: 'tinderling',
+  ember_archer: 'tinderling',
+  bog_lurker: 'bog_lurker',
+  tar_hulk: 'tinderling',
+  frost_wisp: 'kiln_mite',
+  stormcaller: 'kiln_mite',
+  kiln_mite: 'kiln_mite',
+};
 
 /** Rarity numbers (CONTENT §5). */
 export const rarities = {

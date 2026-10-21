@@ -326,6 +326,8 @@ export type SimEvent =
       owner: number;
       sourceId: number;
     }
+  /** A Volatile monster died: its blast goes off at (x, y) in `delay` seconds (actors/volatile.ts). */
+  | { type: 'volatileArmed'; x: number; y: number; radius: number; delay: number }
   /** Character, XP and loot events (M4): hero/events.ts. */
   | HeroEvent
   /** World and puzzle events (M4): rooms, doors, keys, pickups, puzzle objects (world/worldEvents.ts). */

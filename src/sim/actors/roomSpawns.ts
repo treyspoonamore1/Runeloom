@@ -11,6 +11,7 @@
  * - Rarity: `magic` makes every member Magic with the same 1–2 mods (an `enemy:` line counts as
  *   one pack); `rare` makes the pack's leader (an `enemy:` line: each of its enemies) Rare with
  *   2–4 mods plus 2 normal minions (the pack's `minion` kind; an `enemy:` line: its own kind).
+ * - Swarming (M5) adds 2 normal minions of the weaker kind once per Magic group or per Rare.
  */
 import { enemyDef, isEnemyKind, type EnemyKind } from '../../../data/enemies';
 import { isPackId, packs, type PackDef } from '../../../data/packs';
@@ -19,7 +20,8 @@ import type { GameState } from '../state';
 import { circleOverlapsSolid } from './collision';
 import { spawnEnemy, type EnemyRarity } from './enemies';
 import { isWaterAt } from './locomotion';
-import { rarityMinions, rollMods } from './rarity';
+import { modSwarm, rarityMinions, rollMods } from './rarity';
+import { swarmMinion } from '../../../data/monsterMods';
 import { isShotSolidCell } from '../world/room';
 
 const KILN_CHAR = '&'.charCodeAt(0);
@@ -68,16 +70,18 @@ function spawnEnemyLine(
   const rarities: EnemyRarity[] = kinds.map(() => rarity);
   const mods: string[][] = kinds.map(() => []);
   if (rarity === 'magic') {
-    const shared = rollMods(state, 'magic');
+    const shared = rollMods(state, 'magic', [id]);
     for (let i = 0; i < count; i++) mods[i] = shared;
+    addSwarm(kinds, rarities, mods, id, modSwarm(shared));
   } else if (rarity === 'rare') {
     for (let i = 0; i < count; i++) {
-      mods[i] = rollMods(state, 'rare');
+      mods[i] = rollMods(state, 'rare', [id]);
       for (let k = 0; k < rarityMinions('rare'); k++) {
         kinds.push(id);
         rarities.push('normal');
         mods.push([]);
       }
+      addSwarm(kinds, rarities, mods, id, modSwarm(mods[i]!));
     }
   }
   spawnGroup(state, kinds, rarities, mods, x, y, spacing, swims);
@@ -96,23 +100,46 @@ function spawnPack(state: GameState, id: string, x: number, y: number, rarity: E
   const rarities: EnemyRarity[] = kinds.map(() => 'normal');
   const mods: string[][] = kinds.map(() => []);
   if (rarity === 'magic') {
-    const shared = rollMods(state, 'magic');
-    for (let i = 0; i < kinds.length; i++) {
+    const shared = rollMods(state, 'magic', [...new Set(kinds)]);
+    const n = kinds.length;
+    for (let i = 0; i < n; i++) {
       rarities[i] = 'magic';
       mods[i] = shared;
     }
+    addSwarm(kinds, rarities, mods, pack.leader, modSwarm(shared));
   } else if (rarity === 'rare') {
     const lead = kinds.indexOf(pack.leader);
     const i = lead >= 0 ? lead : 0;
     rarities[i] = 'rare';
-    mods[i] = rollMods(state, 'rare');
+    mods[i] = rollMods(state, 'rare', [kinds[i]!]);
     for (let k = 0; k < rarityMinions('rare'); k++) {
       kinds.push(pack.minion);
       rarities.push('normal');
       mods.push([]);
     }
+    addSwarm(kinds, rarities, mods, kinds[i]!, modSwarm(mods[i]!));
   }
   spawnGroup(state, kinds, rarities, mods, x, y, state.tuning.enemies.spawnSpacing, pack.waterOnly === true);
+}
+
+/**
+ * Swarming (CONTENT §5): `n` normal minions of the weaker kind of `kind` (data/monsterMods.ts
+ * swarmMinion), once per group: a Magic pack's shared mods bring them once, not per member.
+ */
+function addSwarm(
+  kinds: EnemyKind[],
+  rarities: EnemyRarity[],
+  mods: string[][],
+  kind: EnemyKind,
+  n: number,
+): void {
+  const minion = swarmMinion[kind];
+  if (n <= 0 || minion === undefined || !isEnemyKind(minion)) return;
+  for (let k = 0; k < n; k++) {
+    kinds.push(minion);
+    rarities.push('normal');
+    mods.push([]);
+  }
 }
 
 function spawnGroup(

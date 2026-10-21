@@ -1,3 +1,4 @@
+import { armVolatile } from '../actors/volatile';
 import { playerFireTakenMult } from '../hero/uniques';
 import { enemyDef } from '../../../data/enemies';
 import { addKnockback } from '../actors/knockback';
@@ -148,6 +149,7 @@ export function killEnemy(state: GameState, e: Enemy, killerId: number, cause: D
   if (shattered && cause === 'hit') addHitstop(state, state.tuning.feel.hitstopShatter);
   if (cause !== 'console') {
     deathTerrain(state, e, killerId, shattered);
+    armVolatile(state, e); // Volatile (actors/volatile.ts).
     onEnemyKilled(state, e, killerId, cause);
   }
   return true;

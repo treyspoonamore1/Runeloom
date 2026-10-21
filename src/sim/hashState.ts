@@ -1,3 +1,4 @@
+import { hashVolatiles } from './actors/volatile';
 import { damageTypes, type DamageAmounts } from '../../data/combatTypes';
 import { Hasher } from './core/hash';
 import type { AttackShape } from './combat/shapes';
@@ -47,6 +48,7 @@ export function hashState(state: GameState): number {
   hashWorld(h, state.world);
   hashObjects(h, state.objects);
   hashLoot(h, state.loot);
+  if (state.volatiles.length > 0) hashVolatiles(h, state.volatiles);
   if (state.mode === 'adventure') {
     for (const x of state.lootRng.getState()) h.u32(x);
     for (const x of state.craftRng.getState()) h.u32(x);

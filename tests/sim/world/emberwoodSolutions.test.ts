@@ -7,7 +7,8 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { MAT } from '../../../data/materials';
 import { regionRooms } from '../../../data/progression';
-import { kiterInput, step, type GameState } from '../../../src/sim';
+import { step, type GameState } from '../../../src/sim';
+import { CampaignNav } from '../../../src/sim/bots/campaignNav';
 import {
   allOn,
   anyOn,
@@ -138,12 +139,13 @@ describe('Emberwood puzzle solutions', () => {
     expect(state.room.id).toBe(regionRooms.e6);
   });
 
-  it('E6 (kiter bot fights in god mode): the garden door opens when the room is cleared, Heart Seed taken', () => {
+  it('E6 (campaign bot fights in god mode): the garden door opens when the room is cleared, Heart Seed taken', () => {
     const { state } = prepare('e6', { arrive: 'w', weaves: [BOLT, STRIKE, null, null], god: true });
     expect(anyOn(state, 'door')).toBe(false);
     let t = 0;
+    const nav = new CampaignNav();
     for (; t < 240 * 60 && state.enemies.some((e) => !e.dead); t++) {
-      step(state, kiterInput(state));
+      step(state, nav.input(state));
       if (state.enemies.some((e) => !e.dead)) expect(anyOn(state, 'door')).toBe(false);
     }
     ticksLog['e6 fight'] = t;

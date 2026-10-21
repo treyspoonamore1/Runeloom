@@ -89,8 +89,10 @@ describe('monster rarity in packs', () => {
       expect(mods.length).toBeGreaterThanOrEqual(1);
       expect(mods.length).toBeLessThanOrEqual(2);
       expect(new Set(mods).size).toBe(mods.length);
-      for (const e of s.enemies) {
-        expect(e.rarity).toBe('magic');
+      // Swarming (M5) adds 2 normal minions to the pack; every other member shares the mods.
+      const members = s.enemies.filter((e) => e.rarity === 'magic');
+      expect(s.enemies.length - members.length).toBe(mods.includes('swarming') ? 2 : 0);
+      for (const e of members) {
         expect(e.mods).toEqual(mods);
         const base = enemies[e.kind].life * 1.12 ** 3;
         const thick = mods.includes('thick_skinned') ? 1.4 : 1;
@@ -99,7 +101,7 @@ describe('monster rarity in packs', () => {
     }
   });
 
-  it('a Rare pack: its leader Rare with 2–3 distinct shipped mods and ×4 life, plus 2 normal minions', () => {
+  it('a Rare pack: its leader Rare with 2–4 distinct shipped mods and ×4 life, plus 2 normal minions', () => {
     const seen = new Set<string>();
     for (let seed = 1; seed <= 12; seed++) {
       const s = roomWith(['@spawn 1 pack:archer_line rare'], seed);
@@ -116,11 +118,13 @@ describe('monster rarity in packs', () => {
       }
       const thick = r.mods.includes('thick_skinned') ? 1.4 : 1;
       expect(r.maxLife).toBeCloseTo(90 * 1.12 ** 3 * 4 * thick, 6);
-      // 3 archers + 1 Shieldbearer + 2 minion archers.
+      // 3 archers + 1 Shieldbearer + 2 minion archers, + 2 Tinderlings if Swarming (M5).
+      const swarm = r.mods.includes('swarming') ? 2 : 0;
       expect(s.enemies.filter((e) => e.kind === 'ember_archer')).toHaveLength(5);
-      expect(s.enemies.filter((e) => e.rarity === 'normal')).toHaveLength(5);
+      expect(s.enemies.filter((e) => e.kind === 'tinderling')).toHaveLength(swarm);
+      expect(s.enemies.filter((e) => e.rarity === 'normal')).toHaveLength(5 + swarm);
     }
-    expect([...seen].sort()).toEqual(['hasted', 'incendiary', 'thick_skinned']);
+    expect(seen.size).toBeGreaterThanOrEqual(5);
   });
 
   it('an enemy line can be Rare too: each gets 2 minions of its kind', () => {

@@ -17,6 +17,7 @@ import { stepLoot } from './items/loot';
 import { processTransition } from './world/transition';
 import { stepEntityTerrain } from './actors/terrain';
 import { applyBlasts } from './actors/blasts';
+import { stepVolatiles } from './actors/volatile';
 
 /** Hitstop timers within this many seconds of zero count as expired (absorbs 1/60 rounding). */
 const TIME_EPSILON = 1e-9;
@@ -56,6 +57,7 @@ export function step(state: GameState, input: InputFrame): void {
   stepLab(state);
   stepObjects(state, input);
   stepLoot(state);
+  stepVolatiles(state);
   compactEnemies(state);
   compactProjectiles(state);
   compactSpells(state);

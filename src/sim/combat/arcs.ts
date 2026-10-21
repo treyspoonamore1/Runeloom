@@ -11,6 +11,7 @@ import { emit } from '../events';
 import type { GameState } from '../state';
 import type { Enemy } from '../actors/enemies';
 import { isWet } from '../actors/terrainState';
+import { modNoArcs } from '../actors/rarity';
 import { hazardHurts } from '../grid/query';
 import { applyShock, shockFor, targetRef, teamOf, type AilmentTarget } from './ailments';
 import { makePacket, type DamagePacket, type HitResult } from './damage';
@@ -43,6 +44,7 @@ export function arcShock(
   for (let k = 0; k < n; k++) {
     const e: Enemy = state.enemies[found[k]!]!;
     if (e === t || e.dead || !isWet(e) || !hazardHurts(owner, teamOf(e))) continue;
+    if (e.mods.length > 0 && modNoArcs(e)) continue; // Grounded (M5).
     consider(e, t, range, maxTargets);
   }
   if (picks.length === 0) return;

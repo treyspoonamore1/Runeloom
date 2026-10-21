@@ -37,6 +37,7 @@ import { isInvulnerable } from './player';
 import { chargeSeen, rememberCharge } from './terrainState';
 import { alwaysWet, immuneToTerrainFire, terrainFireDpsMult } from '../hero/effectsTerrain';
 import { burningGroundHeal } from '../hero/uniques';
+import { modAlwaysWet } from './rarity';
 import { ignoresGround, locomotionOf } from './locomotion';
 
 /** Timers within this of zero count as expired. */
@@ -87,7 +88,7 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
   const def = materialByCode[g.ground[i]!]!;
 
   // Rule 15: Wet (Hydromancer: always).
-  if (def.water !== null || alwaysWet(state, t)) {
+  if (def.water !== null || alwaysWet(state, t) || ('kind' in t && t.mods.length > 0 && modAlwaysWet(t))) {
     if (ts.wetLeft <= 0) becomeWet(state, t);
     ts.wetLeft = T.wetSeconds;
   } else if (ts.wetLeft > 0) {

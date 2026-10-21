@@ -78,7 +78,8 @@ function drawShape(p: Pen, s: AttackShape): Pen {
 /**
  * Enemy attack telegraphs (DESIGN §14): while an enemy's attack is winding up, its hit shape
  * is drawn on the ground at the attack origin with a pulsing red-magenta edge and a fill that
- * grows with windup progress; 'attack' events flash the shape. Never dimmed by effect density.
+ * grows with windup progress; 'attack' events flash the shape. Volatile monsters' armed death
+ * blasts (state.volatiles) draw the same way. Never dimmed by effect density.
  * Textures are baked per shape (cached by attack name) and reused.
  */
 export class TelegraphView {
@@ -132,6 +133,18 @@ export class TelegraphView {
       slot.grow.tint = T.fill;
       if (a.shape.kind === 'line') slot.grow.scale.set(progress, 1);
       else slot.grow.scale.set(progress);
+      slot.edge.alpha = progress > 0.8 ? 1 : pulse;
+    }
+    // Volatile monsters' armed death blasts (M5): the same telegraph, filling as the fuse runs out.
+    for (const b of state.volatiles) {
+      const shape: AttackShape = { kind: 'circle', r: b.radius };
+      const progress = b.delay > 0 ? Math.max(0, Math.min(1, 1 - b.left / b.delay)) : 1;
+      const slot = this.slot(n++);
+      this.place(slot, this.textures('volatile', shape), shape, b.x, b.y);
+      slot.base.alpha = T.baseAlpha;
+      slot.grow.visible = true;
+      slot.grow.alpha = T.growAlpha + 0.2 * progress;
+      slot.grow.scale.set(progress);
       slot.edge.alpha = progress > 0.8 ? 1 : pulse;
     }
     for (let i = this.flashes.length - 1; i >= 0; i--) {

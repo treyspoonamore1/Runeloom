@@ -34,6 +34,7 @@ import { createHeroFx, type HeroFxState } from './hero/effects';
 import { createWorldState, type RoomSource, type WorldState } from './world/worldState';
 import { buildObjects, type WorldObject } from './world/objects';
 import type { LootDrop } from './items/loot';
+import type { VolatileBlast } from './actors/volatile';
 
 /**
  * How the room plays. 'sandbox': only the room's @spawn enemies, every rune unlimited. 'arena':
@@ -92,6 +93,8 @@ export interface GameState {
   objects: WorldObject[];
   /** Drops lying in the current room (items/loot.ts). Hashed. */
   loot: LootDrop[];
+  /** Volatile monsters' armed death blasts in the current room (actors/volatile.ts). Hashed. */
+  volatiles: VolatileBlast[];
   /** Room file texts by id; the only way the sim loads a room. Not hashed. */
   rooms: RoomSource;
   player: PlayerState;
@@ -207,6 +210,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     world: opts.world ?? createWorldState(room.id),
     objects: [],
     loot: [],
+    volatiles: [],
     rooms,
     player: createPlayer(room.spawnX, room.spawnY, tuning),
     spellRng,

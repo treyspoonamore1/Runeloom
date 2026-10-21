@@ -295,6 +295,10 @@ export class M4Signals {
         case 'playerRespawn':
           out.push({ type: ev.type, x: ev.x, y: ev.y });
           break;
+        case 'volatileArmed':
+          // A Volatile monster's blast is a fuse like the Tar Hulk's: same sizzle and sparks.
+          out.push({ type: 'hulkFuse', id: -1, x: ev.x, y: ev.y });
+          break;
         case 'enemySpawn': {
           if (ev.kind !== 'kiln_mite' || M4_EVENTS.kilnSpawn !== null) break;
           // The kiln that spawned it: the nearest Brood Kiln within 8 cells.
@@ -376,7 +380,9 @@ export class M4Signals {
       case 'flood': {
         // enemyEvents.ts: the flooded cells' bounds; the cue sits at their center.
         const b = ['minX', 'minY', 'maxX', 'maxY'].every((k) => typeof ev[k] === 'number');
-        const pos = b ? { x: (num('minX', 0) + num('maxX', 0)) / 2, y: (num('minY', 0) + num('maxY', 0)) / 2 } : at;
+        const pos = b
+          ? { x: (num('minX', 0) + num('maxX', 0)) / 2, y: (num('minY', 0) + num('maxY', 0)) / 2 }
+          : at;
         out.push({ type, ...pos });
         break;
       }
