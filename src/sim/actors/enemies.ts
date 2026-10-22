@@ -9,6 +9,7 @@ import { rarityLifeMult } from './rarity';
 import { createBossState, createEnemySpecial, type BossState, type EnemySpecial } from './enemyState';
 import type { GameState } from '../state';
 import { riftRules } from '../world/rift/rules';
+import { riftBossKinds } from '../../../data/progression';
 
 /** Id of the player in events, `targetId`, `ownerId` and `hitIds`. Entity ids start at 1. */
 export const PLAYER_ID = 0;
@@ -170,7 +171,8 @@ export interface SpawnOptions {
 /**
  * Spawns an enemy at (x, y) cells and returns it. Throws on an unknown kind.
  * Life is base × enemyLifeGrowth^(area level − 1) (DESIGN §7), × the rarity's and mods' life
- * multipliers (Magic ×1.7, Rare ×4, Thick-skinned ×1.4). Bosses have absolute life and no rarity.
+ * multipliers (Magic ×1.7, Rare ×4, Thick-skinned ×1.4). Bosses have absolute life and no rarity
+ * (rift bosses: scaled to the rift's level, riftBossScale).
  */
 export function spawnEnemy(
   state: GameState,
@@ -182,10 +184,14 @@ export function spawnEnemy(
   if (!isEnemyKind(kind)) throw new Error(`Unknown enemy kind "${kind}"`);
   const def = enemyDef(kind);
   const boss = def.isBoss === true;
-  const areaLevel = opts.areaLevel ?? (boss ? (def.level ?? state.room.level) : state.room.level);
+  // Region bosses fight at their own level; rift bosses at the rift's (riftBossScale).
+  const ownLevel = boss && !riftBossKinds.includes(kind);
+  const areaLevel = opts.areaLevel ?? (ownLevel ? (def.level ?? state.room.level) : state.room.level);
   const rarity: EnemyRarity = boss ? 'normal' : (opts.rarity ?? 'normal');
   const mods = boss ? [] : [...(opts.mods ?? [])];
-  let life = boss ? def.life : scaleByLevel(def.life, state.tuning.combat.enemyLifeGrowth, areaLevel);
+  let life = boss
+    ? def.life * riftBossScale(kind, areaLevel, state.tuning.combat.enemyLifeGrowth)
+    : scaleByLevel(def.life, state.tuning.combat.enemyLifeGrowth, areaLevel);
   if (rarity !== 'normal' || mods.length > 0) life *= rarityLifeMult(rarity, mods);
   // Rift prefixes (M6): Hardened, Resolute, Hasty.
   const rift = riftRules(state);
@@ -246,6 +252,21 @@ export function spawnEnemy(
   state.enemies.push(e);
   emit(state, { type: 'enemySpawn', id: e.id, kind, x, y });
   return e;
+}
+
+/**
+ * A rift boss's numbers (M6) are its M4 ones at its own EnemyDef.level, × growth^(area level −
+ * that level): life with enemyLifeGrowth, damage with enemyDamageGrowth. 1 for any other kind.
+ */
+export function riftBossScale(kind: string, areaLevel: number, growth: number): number {
+  if (!riftBossKinds.includes(kind) || !isEnemyKind(kind)) return 1;
+  const own = enemyDef(kind).level ?? areaLevel;
+  return Math.pow(growth, areaLevel - own);
+}
+
+/** riftBossScale for an enemy's damage. */
+export function bossDamageScale(state: GameState, e: Enemy): number {
+  return riftBossScale(e.kind, e.areaLevel, state.tuning.combat.enemyDamageGrowth);
 }
 
 /**

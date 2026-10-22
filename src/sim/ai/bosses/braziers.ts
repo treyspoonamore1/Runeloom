@@ -8,7 +8,7 @@
  * Runs with the Warden's AI, frozen or not.
  */
 import { OWNER } from '../../../../data/materials';
-import type { Enemy } from '../../actors/enemies';
+import { bossDamageScale, type Enemy } from '../../actors/enemies';
 import { DT, TILE_CELLS } from '../../core/constants';
 import { emit } from '../../events';
 import { applyElement } from '../../grid/paint';
@@ -52,14 +52,19 @@ export function stepBrazierStorm(state: GameState, e: Enemy): void {
   }
   b.glowing = false;
   b.stormLeft += T.brazierStormPeriod - T.brazierGlowSeconds;
-  emit(state, { type: 'brazierStorm', id: e.id, damage: T.brazierStormDamage, braziers });
+  emit(state, {
+    type: 'brazierStorm',
+    id: e.id,
+    damage: T.brazierStormDamage * bossDamageScale(state, e),
+    braziers,
+  });
   for (const c of braziers)
     applyElement(state, {
       element: 'storm',
       shape: { kind: 'circle', x: c.x, y: c.y, r: TILE_REACH },
       owner: OWNER.enemy,
       sourceId: e.id,
-      hitDamage: T.brazierStormDamage,
+      hitDamage: T.brazierStormDamage * bossDamageScale(state, e),
       durationMult: 1,
     });
 }

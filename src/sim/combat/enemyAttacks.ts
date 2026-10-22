@@ -1,6 +1,6 @@
 import { attackByName, enemyDef, type AttackDef } from '../../../data/enemies';
 import { OWNER } from '../../../data/materials';
-import type { Enemy } from '../actors/enemies';
+import { bossDamageScale, type Enemy } from '../actors/enemies';
 import { attackSpeedMult, hastedWindup } from '../actors/rarity';
 import { rememberCharge } from '../actors/terrainState';
 import { landBossAttack } from '../ai/bosses/hooks';
@@ -32,11 +32,11 @@ export function attackDefFor(e: Enemy): AttackDef | null {
 
 /**
  * The attack's damage at the enemy's area level: base × enemyDamageGrowth^(level − 1); bosses'
- * numbers are absolute (CONTENT §5). Never crits.
+ * numbers are absolute (CONTENT §5; rift bosses scale, actors/enemies.ts riftBossScale). Never crits.
  */
 export function enemyAttackPacket(state: GameState, e: Enemy, def: AttackDef): DamagePacket {
   const dmg = enemyDef(e.kind).isBoss
-    ? def.damage
+    ? def.damage * bossDamageScale(state, e)
     : scaleByLevel(def.damage, state.tuning.combat.enemyDamageGrowth, e.areaLevel);
   return makePacket(dmg, { [def.damageType]: 1 }, 0, state.tuning.combat.critMultiplier);
 }

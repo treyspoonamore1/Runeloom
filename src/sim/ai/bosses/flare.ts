@@ -14,7 +14,7 @@
  */
 import type { EnemyChemistry } from '../../../../data/enemies';
 import { OWNER } from '../../../../data/materials';
-import type { Enemy } from '../../actors/enemies';
+import { bossDamageScale, riftBossScale, type Enemy } from '../../actors/enemies';
 import { fireBurst } from '../../actors/hulkBlast';
 import { isOiled } from '../../actors/terrainState';
 import { isIgnited } from '../../combat/ailments';
@@ -51,6 +51,11 @@ export function stepFlare(state: GameState, e: Enemy, f: FlareDef): void {
   }
 }
 
+/** Her self damage keeps its share of her life when a rift scales it. */
+function lifeScale(state: GameState, e: Enemy): number {
+  return riftBossScale(e.kind, e.areaLevel, state.tuning.combat.enemyLifeGrowth);
+}
+
 /** She flares now: the burst, then (`self`) her own damage; the flare cools down. */
 export function flare(state: GameState, e: Enemy, f: FlareDef, self: boolean): void {
   e.special.fuseLeft = 0;
@@ -61,12 +66,17 @@ export function flare(state: GameState, e: Enemy, f: FlareDef, self: boolean): v
     x: e.x,
     y: e.y,
     radius: f.radius,
-    damage: f.damage,
-    selfDamage: self ? f.selfDamage : 0,
+    damage: f.damage * bossDamageScale(state, e),
+    selfDamage: self ? f.selfDamage * lifeScale(state, e) : 0,
   });
-  fireBurst(state, e, f.radius, f.damage);
+  fireBurst(state, e, f.radius, f.damage * bossDamageScale(state, e));
   if (!self || e.dead) return;
-  const packet = makePacket(f.selfDamage, { physical: 1 }, 0, state.tuning.combat.critMultiplier);
+  const packet = makePacket(
+    f.selfDamage * lifeScale(state, e),
+    { physical: 1 },
+    0,
+    state.tuning.combat.critMultiplier,
+  );
   applyHit(state, e, packet, {
     sourceId: WORLD_SOURCE_ID,
     dirX: 0,

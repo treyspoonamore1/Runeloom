@@ -155,3 +155,56 @@ describe('saves and rifts', () => {
     expect(migrated.hero.sigils.map((g) => [g.tier, g.mods])).toEqual([[1, []]]);
   });
 });
+
+describe('rift bosses and rewards', () => {
+  /** The test rift's boss arena, entered with the boss alive. */
+  function inArena(tier: number): GameState {
+    const { s, uid } = atStone(tier);
+    s.hero.riftTier = tier - 1;
+    open(s, uid);
+    s.world.pending = { roomId: 'rift/0/boss', arrival: { kind: 'edge', from: 'n' }, reason: 'exit' };
+    run(s, 1);
+    s.cheats.noAI = true;
+    return s;
+  }
+  const bossOf = (s: GameState) => s.enemies.find((e) => e.kind.startsWith('rift_'))!;
+
+  it("fight at the rift's area level: life and damage grow with the tier", () => {
+    const low = bossOf(inArena(1));
+    const high = bossOf(inArena(16));
+    expect(low.areaLevel).toBe(11);
+    expect(high.areaLevel).toBe(30);
+    expect(high.maxLife).toBeGreaterThan(low.maxLife * 5);
+  });
+
+  it('completing a rift raises the ladder and drops a next-tier sigil and currency', () => {
+    const s = inArena(4);
+    killEnemy(s, bossOf(s), PLAYER_ID, 'hit');
+    const seen = runUntil(s, () => false, 2);
+    expect(seen).toContainEqual({ type: 'riftCompleted', tier: 4, newBest: true });
+    expect(s.hero.riftTier).toBe(4);
+    const sigils = s.loot.filter((d) => d.content.kind === 'sigil');
+    expect(sigils.map((d) => (d.content.kind === 'sigil' ? d.content.sigil.tier : 0))).toContain(5);
+    expect(s.loot.filter((d) => d.content.kind === 'currency').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('a lower tier completed later leaves the ladder where it is', () => {
+    const s = inArena(2);
+    s.hero.riftTier = 6;
+    killEnemy(s, bossOf(s), PLAYER_ID, 'hit');
+    run(s, 2);
+    expect(s.hero.riftTier).toBe(6);
+  });
+
+  it("the Cinder Warden's first death drops the first Rift Sigil", () => {
+    const s = createAdventure({ seed: 1, rooms: ROOMS, startRoomId: 'kiln/k10_wardens_hearth' });
+    s.cheats.noAI = true;
+    const warden = s.enemies.find((e) => e.kind === 'cinder_warden')!;
+    expect(warden.maxLife).toBe(5000);
+    killEnemy(s, warden, PLAYER_ID, 'hit');
+    run(s, 2);
+    const sigils = s.loot.filter((d) => d.content.kind === 'sigil');
+    expect(sigils.length).toBe(1);
+    expect(sigils[0]!.content).toMatchObject({ kind: 'sigil', sigil: { tier: 1, mods: [] } });
+  });
+});

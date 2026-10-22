@@ -24,6 +24,8 @@ export type WorldEvent =
   | { type: 'roomCleared'; id: string; first: boolean }
   /** A Live Wires pylon pulsed (M6): Storm within `radius` cells of (x, y). */
   | { type: 'pylonPulse'; x: number; y: number; radius: number }
+  /** A rift's boss died (M6): the rift is complete. newBest: the tier ladder rose to `tier`. */
+  | { type: 'riftCompleted'; tier: number; newBest: boolean }
   /** A rift opened (M6) and the player is in its entry; `index` is its room ids' number. */
   | { type: 'riftOpened'; tier: number; mods: readonly string[]; index: number }
   /** The rift ended: its boss died and the player went home, the player left early, or died in it. */

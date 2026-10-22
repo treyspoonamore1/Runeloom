@@ -79,6 +79,8 @@ export const killXp = {
   baseOverride: {
     tar_matriarch: 1000,
     cinder_warden: 1200,
+    rift_matriarch: 1000,
+    rift_warden: 1200,
     brood_kiln: 60,
     kiln_mite: 5,
     dummy: 0,

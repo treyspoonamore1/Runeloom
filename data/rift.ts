@@ -257,3 +257,13 @@ export const pylonPulse = {
   /** Storm damage at area level 1, × tuning.combat.enemyDamageGrowth^(level − 1); world-owned, so it hurts monsters too. */
   damage: 6,
 };
+
+/**
+ * Completing a rift (its boss dies, M6): the tier ladder moves up to its tier, and its boss
+ * drops, besides its usual boss loot, a sigil one tier higher (tier 16: another 16) and
+ * `currencyBase + floor(tier / currencyPerTiers)` crafting currencies.
+ */
+export const riftRewards = {
+  currencyBase: 1,
+  currencyPerTiers: 3,
+};

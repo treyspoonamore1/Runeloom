@@ -14,6 +14,7 @@
 import { bossKinds, riftBossKinds } from '../../../data/progression';
 import { emit } from '../events';
 import { onRoomCleared } from '../hero/rewards';
+import { onBossDefeated } from './rift/rewards';
 import type { GameState } from '../state';
 import { parseRoom, type RoomHeader } from './room';
 import { roomFlags, type WorldState } from './worldState';
@@ -85,6 +86,7 @@ export function stepRoomClear(state: GameState): void {
     } else w.bossesDefeated.push(e.kind);
     boss = { x: e.x, y: e.y };
     emit(state, { type: 'bossDefeated', kind: e.kind, roomId: state.room.id, x: e.x, y: e.y });
+    onBossDefeated(state, e.kind, e.x, e.y);
   }
   if (roomFlags(w, state.room.id).cleared) return;
   const header = state.room.header;
