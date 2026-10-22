@@ -9,6 +9,7 @@
  *   only while he stands in water (combat/ailments.ts addChill reads inWater).
  * stepBossPassive runs every tick for every live boss, frozen or not (ai/passive.ts).
  */
+import { bossFightOf } from '../../../../data/enemies';
 import type { Enemy } from '../../actors/enemies';
 import { isWaterAt } from '../../actors/locomotion';
 import { isFrozen } from '../../combat/ailments';
@@ -20,8 +21,9 @@ import { stepBrazierStorm } from './braziers';
 /** Life fractions at which phases 2, 3, … begin, per boss. */
 export function phaseThresholds(state: GameState, e: Enemy): readonly number[] {
   const T = state.tuning.bosses;
-  if (e.kind === 'tar_matriarch') return [T.matriarchSummonAt];
-  if (e.kind === 'cinder_warden') return [T.wardenPhase2At, T.wardenPhase3At];
+  const fight = bossFightOf(e.kind);
+  if (fight === 'tar_matriarch') return [T.matriarchSummonAt];
+  if (fight === 'cinder_warden') return [T.wardenPhase2At, T.wardenPhase3At];
   return [];
 }
 

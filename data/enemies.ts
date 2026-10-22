@@ -159,3 +159,13 @@ for (const [kind, def] of Object.entries(enemies) as [string, EnemyDef][]) {
 export function attackByName(kind: EnemyKind, name: string): AttackDef | null {
   return attackIndex.get(kind)?.get(name) ?? null;
 }
+
+/**
+ * The boss fight an enemy kind runs ('tar_matriarch' or 'cinder_warden'), or null: the rift
+ * bosses (M6) run the same fights as their region originals.
+ */
+export function bossFightOf(kind: string): 'tar_matriarch' | 'cinder_warden' | null {
+  if (!isEnemyKind(kind)) return null;
+  const b = enemyDef(kind).behavior;
+  return b.kind === 'boss' ? b.boss : null;
+}

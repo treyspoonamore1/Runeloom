@@ -11,6 +11,7 @@
  *   the Fire Bolt in slot 1 (LMB) from dry ground, then come back to Strike once she has flared.
  * A pure function of the state, like the rest of the bot.
  */
+import { bossFightOf } from '../../../data/enemies';
 import { enemyDef } from '../../../data/enemies';
 import { SURFACE } from '../../../data/materials';
 import type { Enemy } from '../actors/enemies';
@@ -30,7 +31,7 @@ export function fuseBlastRadius(e: Enemy): number {
 
 /** The Tar Matriarch, Oiled, with her flare ready and unlit: worth lighting from a distance. */
 export function flareReady(boss: Enemy | null): boolean {
-  if (boss === null || boss.kind !== 'tar_matriarch' || boss.boss === null) return false;
+  if (boss === null || bossFightOf(boss.kind) !== 'tar_matriarch' || boss.boss === null) return false;
   return boss.special.fuseLeft <= 0 && boss.boss.flareCooldown <= 0 && isOiled(boss) && !isFrozen(boss);
 }
 
@@ -104,12 +105,12 @@ function onOil(state: GameState, x: number, y: number): boolean {
 
 /** The Tar Matriarch is the boss being fought: hazards weigh as much as her telegraphs. */
 export function tarFight(boss: Enemy | null): boolean {
-  return boss !== null && boss.kind === 'tar_matriarch';
+  return boss !== null && bossFightOf(boss.kind) === 'tar_matriarch';
 }
 
 /** A live Tar Matriarch is in the room. */
 export function tarFightIn(state: GameState): boolean {
-  for (const e of state.enemies) if (!e.dead && e.kind === 'tar_matriarch') return true;
+  for (const e of state.enemies) if (!e.dead && bossFightOf(e.kind) === 'tar_matriarch') return true;
   return false;
 }
 

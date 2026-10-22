@@ -1,0 +1,22 @@
+@id rift/chunks/foundry
+@name Storm Foundry
+###############^^###############
+#..............................#
+#..............................#
+#...BmmmmmmmmmmmmmmmmmmmmmmB...#
+#...mmmmmmmmmmmm3mmmmmmmmmmm...#
+#...mmmmmmmm~~~mmmmmmmmmmmmm...#
+#...mmmmMmmm~~~mmmmmmmmMmmmm...#
+#...mmmmmmmmmmmmmmmmmmmmmmmm...#
+#...mmmmmmmm1mmmmmmmmmmmmmmm...#
+<...mmmmmmmmmmmmmmmmmmmmmmmm...>
+<...mmmmmmmmmmmmmmmmmmmmmmmm...>
+#...mmmmmmmmmmmmmmmm2mmmmmmm...#
+#...mmmmmmmmmmmmmmmmmmmmmmmm...#
+#...mmmmMmmmmmmmmm~~~mmMmmmm...#
+#...mmmmmmmmmmmmmm~~~mmmmmmm...#
+#...mmmmmmmmmmmmmmmmmmmmmmmm...#
+#...BmmmmmmmmmmmmmmmmmmmmmmB...#
+#..............................#
+#..............................#
+###############vv###############

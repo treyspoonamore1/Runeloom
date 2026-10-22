@@ -11,7 +11,7 @@ import type { EnemyDef } from './enemyTypes';
 /** cos 30°: the fire breath is a 60° cone. */
 const COS30 = 0.8660254037844387;
 
-export const bosses = {
+const m4Bosses = {
   tar_matriarch: {
     name: 'Tar Matriarch',
     life: 5000,
@@ -170,4 +170,16 @@ export const bosses = {
     ],
     behavior: { kind: 'boss', boss: 'cinder_warden' },
   },
+} satisfies Record<string, EnemyDef>;
+
+/**
+ * Rift bosses (M6, "variants are fine"): the Matriarch and the Warden in rift arenas, with the
+ * same fights. Their numbers are the M4 ones at their own `level`; a rift scales them to its area
+ * level (actors/enemies.ts spawnEnemy, world/rift/rules.ts). Separate kinds so a rift kill never
+ * counts as the region's boss kill.
+ */
+export const bosses = {
+  ...m4Bosses,
+  rift_matriarch: { ...m4Bosses.tar_matriarch, name: 'Rift Matriarch' },
+  rift_warden: { ...m4Bosses.cinder_warden, name: 'Rift Warden' },
 } satisfies Record<string, EnemyDef>;

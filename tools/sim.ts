@@ -13,6 +13,8 @@
  *   npm run sim -- --encounters [--room k10] [--seed 1] [--seeds 5] [--level 12] [--rune-level 10]
  *       Each room's encounter with the reference character at its expected level
  *       (src/sim/bots/campaignEncounter.ts); exit code 1 if the bot dies.
+ *   npm run sim -- --rifts [--count 1000] [--tier 5] [--seed 1] [--json]
+ *       M6: generates `count` rifts per tier with random modifiers and solves each (tools/lib/riftCli.ts).
  *   npm run sim -- --list
  */
 import {
@@ -31,6 +33,7 @@ import { parseArgs, requireInt, runCli } from './lib/args';
 import { checkReplay, readReplay } from './lib/replay';
 import { loadAllRooms, loadRoomText } from './lib/rooms';
 import { runCampaignCli, runEncountersCli } from './lib/campaign';
+import { runRiftCli } from './lib/riftCli';
 
 runCli(() => {
   const a = parseArgs(process.argv.slice(2), {
@@ -58,7 +61,20 @@ runCli(() => {
     encounters: { kind: 'boolean' },
     level: { kind: 'number' },
     'rune-level': { kind: 'number' },
+    rifts: { kind: 'boolean' },
+    count: { kind: 'number', default: 1000 },
+    tier: { kind: 'number' },
   });
+
+  if (a.rifts) {
+    runRiftCli({
+      count: requireInt('count', a.count, 1),
+      tier: a.tier === undefined ? undefined : requireInt('tier', a.tier, 1),
+      seed: requireInt('seed', a.seed, 0),
+      json: a.json,
+    });
+    return;
+  }
 
   if (a.encounters) {
     runEncountersCli({

@@ -3,7 +3,8 @@
  * Checks: rooms parse and @id matches path; scenario and scene rooms exist; tuning defaults are finite
  * numbers > 0; room cross-references (tools/lib/roomChecks.ts: exits both ways, @link doors and
  * conditions, spawn markers, enemy and pack ids, @note characters, keys per dungeon); rune and
- * spindle data is consistent and every CONTENT §2 reference weave compiles or fails as stated.
+ * spindle data is consistent and every CONTENT §2 reference weave compiles or fails as stated;
+ * rift templates and sample generated rifts (tools/lib/riftChecks.ts).
  */
 import {
   capacityMessage,
@@ -29,10 +30,12 @@ import { regionRooms } from '../data/progression';
 import { checkPositiveNumbers, missingRefs } from './lib/checks';
 import { fuseEffectErrors, passiveTreeErrors } from './lib/passiveChecks';
 import { checkRooms } from './lib/roomChecks';
+import { checkRifts } from './lib/riftChecks';
 import { listRoomIds, loadRoomText } from './lib/rooms';
 import { checkItemData } from './lib/itemChecks';
 
 const errors: string[] = [];
+const isRiftRoomTemplate = (id: string) => id.startsWith('rift/');
 const warnings: string[] = [];
 
 const roomIds = listRoomIds();
@@ -68,7 +71,8 @@ errors.push(...items.errors);
 warnings.push(...items.warnings);
 
 // Rooms (tools/lib/roomChecks.ts): exits, links, notes, keys, spawn markers, enemy and pack ids.
-const roomCheck = checkRooms(parsed, {
+// Rift templates (data/rooms/rift/) are checked as templates, and through generated rifts, below.
+const roomCheck = checkRooms(new Map([...parsed].filter(([id]) => !isRiftRoomTemplate(id))), {
   isEnemy: isEnemyKind,
   isPack: isPackId,
   // Region rooms not authored yet: exits to them only warn.
@@ -80,6 +84,9 @@ for (const [id, data] of parsed)
   for (const sp of data.header.spawns)
     if (sp.rarity && sp.kind === 'enemy' && isEnemyKind(sp.id) && enemyDef(sp.id).isBoss)
       errors.push(`rooms/${id}.txt: @spawn ${sp.marker} enemy:${sp.id} is a boss and can't be ${sp.rarity}`);
+
+// Rifts (M6): templates, spawns, bosses, and a sample of generated rifts.
+errors.push(...checkRifts(Object.fromEntries(roomIds.map((id) => [id, loadRoomText(id)]))));
 
 // Enemies, packs and monster mods (M4): cross-references and numbers.
 for (const [kind, def] of Object.entries(enemies)) {
