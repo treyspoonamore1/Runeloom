@@ -7,6 +7,7 @@ import { Session } from './session';
 import { DEFAULT_SCENE, findScene } from './scenes';
 import { roomText } from './rooms';
 import { installDebugHandle } from './debugHandle';
+import { reportCrash } from './crash';
 import { createAudio } from '../audio/audio';
 import { createHud } from '../ui/hud';
 import { createAdventureFlow } from './adventure';
@@ -53,6 +54,7 @@ async function boot(): Promise<void> {
       hud.frame(session.state);
       debug.frame(stats);
     },
+    onCrash: (e) => void reportCrash(session, e, uiRoot),
   });
   const audio = createAudio();
   const flow = createAdventureFlow(session);

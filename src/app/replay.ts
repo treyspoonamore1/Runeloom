@@ -26,15 +26,7 @@ export function makeReplay(session: Session): ReplayFile {
   };
 }
 
-/** Saves the replay as a .json download. Returns the file name. */
-export function downloadReplay(replay: ReplayFile): string {
-  const name = `runeloom-replay-${replay.roomId.replace(/\//g, '_')}-seed${replay.seed}-t${replay.ticks}.json`;
-  const blob = new Blob([JSON.stringify(replay)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return name;
+/** The replay's file name (app/handoff.ts saves it and sends it to Claude). */
+export function replayFileName(replay: ReplayFile): string {
+  return `runeloom-replay-${replay.roomId.replace(/\//g, '_')}-seed${replay.seed}-t${replay.ticks}.json`;
 }

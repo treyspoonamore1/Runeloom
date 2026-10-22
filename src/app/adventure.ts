@@ -9,7 +9,14 @@ import type { SimEvent } from '../sim';
 import type { Session } from './session';
 import { adventureFromSave, makeSave, newAdventure, parseSave, type SaveData } from './saveFormat';
 import { openSaveStore, SaveStore, type ManualSlot, type SaveRecord, type SaveSlot } from './saveStore';
-import { downloadText, saveFileName } from './saveFiles';
+import { saveFileName } from './saveFiles';
+import { saveFile, sendToClaude } from './handoff';
+
+/** An exported save: offered as a file and, in a claude.ai Artifact, sent to Claude too. */
+function exportText(name: string, text: string, where: string): void {
+  void sendToClaude('save', name, text, { where });
+  void saveFile(name, text);
+}
 import { HUD_EVENT } from '../ui/adventure/hudEvents';
 import { roomName } from '../ui/adventure/hudAdapter';
 import { heroRev } from '../ui/heroAdapter';
@@ -116,12 +123,16 @@ export function createAdventureFlow(
     exportCurrent() {
       if (!inAdventure()) return;
       const save = makeSave(session.state);
-      downloadText(saveFileName(save.hero.level, Date.now()), JSON.stringify(save, null, 1));
+      exportText(
+        saveFileName(save.hero.level, Date.now()),
+        JSON.stringify(save, null, 1),
+        session.state.room.id,
+      );
     },
     async exportSlot(slot) {
       const r = await (await store).read(slot);
       if (!r.ok) return r.error;
-      downloadText(saveFileName(r.rec.level, r.rec.savedAt), r.rec.data);
+      exportText(saveFileName(r.rec.level, r.rec.savedAt), r.rec.data, slot);
       return null;
     },
     inAdventure,

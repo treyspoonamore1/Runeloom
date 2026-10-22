@@ -16,6 +16,8 @@ export interface LoopHooks {
   /** alpha in [0, 1): how far between the last two ticks to interpolate. */
   render(alpha: number, frameDt: number): void;
   onFrame?(stats: FrameStats): void;
+  /** A frame threw: the loop has stopped (the game is frozen); report it. */
+  onCrash?(error: unknown): void;
 }
 
 const MAX_FRAME_DT = 0.25;
@@ -54,6 +56,17 @@ export class GameLoop {
 
   private readonly frame = (now: number): void => {
     if (!this.running) return;
+    try {
+      this.runFrame(now);
+    } catch (e) {
+      this.running = false;
+      this.hooks.onCrash?.(e);
+      return;
+    }
+    requestAnimationFrame(this.frame);
+  };
+
+  private runFrame(now: number): void {
     const realDt = Math.min((now - this.last) / 1000, MAX_FRAME_DT);
     this.last = now;
     let ticks = 0;
@@ -84,6 +97,5 @@ export class GameLoop {
     this.stats.frameMs = realDt * 1000;
     this.stats.ticks = ticks;
     this.hooks.onFrame?.(this.stats);
-    requestAnimationFrame(this.frame);
-  };
+  }
 }

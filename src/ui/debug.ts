@@ -5,7 +5,8 @@ import type { GameLoop, FrameStats } from '../app/loop';
 import type { InputSampler } from '../app/input';
 import type { Renderer } from '../render/renderer';
 import { roomTexts } from '../app/rooms';
-import { downloadReplay, makeReplay } from '../app/replay';
+import { makeReplay, replayFileName } from '../app/replay';
+import { saveFile, sendToClaude } from '../app/handoff';
 import { CommandRegistry } from './console/commands';
 import { registerBuiltins, type ConsoleEnv } from './console/builtins';
 import { Console, consoleLines, consoleOpen } from './console/Console';
@@ -55,8 +56,14 @@ export function createDebugUI(ctx: DebugContext): DebugUI {
 
   const saveReplay = (): void => {
     const replay = makeReplay(ctx.session);
-    const name = downloadReplay(replay);
-    toast(`Replay saved: ${name}${replay.tuningEdited ? ' (tuning was edited during recording)' : ''}`);
+    const name = replayFileName(replay);
+    const text = JSON.stringify(replay);
+    const edited = replay.tuningEdited ? ' (tuning was edited during recording)' : '';
+    // In a claude.ai Artifact the replay also goes to Claude (app/handoff.ts).
+    void sendToClaude('replay', name, text, { roomId: replay.roomId, ticks: replay.ticks }).then((id) => {
+      if (id) toast(`Replay sent to Claude (${id})${edited}`);
+    });
+    void saveFile(name, text).then((m) => toast(`${m}${edited}`));
   };
 
   const env: ConsoleEnv = {

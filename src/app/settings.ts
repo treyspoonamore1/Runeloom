@@ -16,7 +16,13 @@ export interface Settings {
 }
 
 const KEY = 'runeloom.settings.v1';
-const DEFAULTS: Settings = { volume: 0.7, ambient: 0.6, damageNumbers: true, screenShake: true, effectDensity: 1 };
+const DEFAULTS: Settings = {
+  volume: 0.7,
+  ambient: 0.6,
+  damageNumbers: true,
+  screenShake: true,
+  effectDensity: 1,
+};
 
 function load(): Settings {
   try {
