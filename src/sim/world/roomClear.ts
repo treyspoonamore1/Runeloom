@@ -8,6 +8,8 @@
  * - The first clear pays the room's rewards once per save: `onRoomCleared` (hero/rewards.ts),
  *   then RoomFlags.rewardsPaid. A room with a rune shrine (`R`) pays them only when the player
  *   touches the shrine (objectTouch.ts), so neither its clear nor `@clear exit` pays them.
+ * - A Loom Stone in a boss room (K10) can't be touched while its boss lives and wakes by itself
+ *   when the boss dies.
  * - A cleared room stays empty when re-entered until the player rests at a Loom Stone or dies;
  *   then every room repopulates except boss rooms whose boss is dead.
  */
@@ -15,6 +17,7 @@ import { bossKinds, riftBossKinds } from '../../../data/progression';
 import { emit } from '../events';
 import { onRoomCleared } from '../hero/rewards';
 import { onBossDefeated, onRiftRoomCleared } from './rift/rewards';
+import { touchLoomStone } from './objectTouch';
 import { isRiftRoomId } from './rift/types';
 import type { GameState } from '../state';
 import { parseRoom, type RoomHeader } from './room';
@@ -90,6 +93,9 @@ export function stepRoomClear(state: GameState): void {
     emit(state, { type: 'bossDefeated', kind: e.kind, roomId: state.room.id, x: e.x, y: e.y });
     onBossDefeated(state, e.kind, e.x, e.y);
   }
+  // The boss room's Loom Stone wakes with its boss's death (K10), so the way on starts there.
+  if (boss && bossRoomDone(state, state.room.header))
+    for (const o of state.objects) if (o.kind === 'loom_stone' && !o.on) touchLoomStone(state, o);
   if (roomFlags(w, state.room.id).cleared) return;
   const header = state.room.header;
   if (roomBossKinds(header).length > 0) {

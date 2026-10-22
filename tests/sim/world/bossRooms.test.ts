@@ -45,3 +45,25 @@ describe('boss rooms', () => {
     expect(after.room.id).toBe(regionRooms.k10);
   });
 });
+
+describe("K10's Loom Stone", () => {
+  it('sleeps while the Warden lives, then wakes as the respawn point when he dies', () => {
+    const s = createAdventure({ seed: 4, rooms: ROOMS, startRoomId: regionRooms.k10 });
+    s.cheats.god = true;
+    s.cheats.noAI = true;
+    const stone = s.objects.find((o) => o.kind === 'loom_stone')!;
+    expect(stone).toBeDefined();
+    // Standing on it during the fight does nothing.
+    s.player.x = s.player.prevX = (stone.tx + 0.5) * 4;
+    s.player.y = s.player.prevY = (stone.ty + 0.5) * 4;
+    run(s, 5);
+    expect(stone.on).toBe(false);
+    expect(s.world.respawn?.roomId).not.toBe(regionRooms.k10);
+    const warden = s.enemies.find((e) => e.kind === 'cinder_warden')!;
+    dealDirectDamage(s, warden, warden.life + 1e6, PLAYER_ID);
+    run(s, 2);
+    expect(stone.on).toBe(true);
+    expect(s.world.respawn).toEqual({ roomId: regionRooms.k10, key: stone.key });
+    expect(s.world.loomStones).toContain(`${regionRooms.k10}#${stone.key}`);
+  });
+});

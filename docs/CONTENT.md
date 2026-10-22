@@ -402,7 +402,7 @@ Sunken Kiln:
 | K7 Ice Crossing | 9 | Example room in §6.3. Heart Seed | 2 Frost Wisps, 1 Bog Lurker |
 | K8 Slide Room | 9 | Freeze a pool, then slide ice blocks onto 2 pressure plates. Loom Shard | Frost Wisps |
 | K9 Thaw Lock | 10 | The big-key chest is encased in ice blocks. Melt them with fire, then freeze the meltwater to cross a gap | `caller_guard` (previews Storm) |
-| K10 Warden's Hearth | 10 | Boss: `cinder_warden` | — |
+| K10 Warden's Hearth | 10 | Boss: `cinder_warden`. A Loom Stone by the entrance sleeps until he dies, then wakes (respawn point; open rifts there) | — |
 
 Totals: 4 Heart Seeds (E4, E6, K4, K7) and 3 Loom Shards (E2, E7, K8).
 

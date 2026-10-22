@@ -118,7 +118,8 @@ function contentToast(c: LootContent, names: ToastNames, runeSub: string): Toast
       `${c.amount > 1 ? `${c.amount}× ` : ''}${currencies[c.currency].name}`,
       'Currency',
     );
-  if (c.kind === 'sigil') return toast('sigil', sigilName(c.sigil), sigilModLine(c.sigil.mods));
+  if (c.kind === 'sigil')
+    return toast('sigil', sigilName(c.sigil), `${sigilModLine(c.sigil.mods)} · open it at a Loom Stone (M)`);
   return toast('scrap', `+${c.amount} Thread Scrap`, '', null, c.amount);
 }
 

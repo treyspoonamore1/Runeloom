@@ -83,7 +83,7 @@ const FROST_ROOMS: readonly Short[] = ['k6', 'k7', 'k8', 'k9'];
 
 const HEART_SEEDS: readonly Short[] = ['e4', 'e6', 'k4', 'k7'];
 const LOOM_SHARDS: readonly Short[] = ['e2', 'e7', 'k8'];
-const LOOM_STONES: readonly Short[] = ['e1', 'e8', 'k1', 'k6'];
+const LOOM_STONES: readonly Short[] = ['e1', 'e8', 'k1', 'k6', 'k10'];
 /** Rooms whose dungeon item sits on a rune shrine (`R`): K6's Frost (CONTENT §9). */
 const SHRINES: readonly Short[] = ['k6'];
 const LINKS: Partial<Record<Short, string>> = {

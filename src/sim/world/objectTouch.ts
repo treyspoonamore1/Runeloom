@@ -16,6 +16,7 @@ import { objectCenter, type WorldObject } from './objects';
 import { distToTile, isBlock } from './objectBlocks';
 import { openDoor, sendNote } from './objectGround';
 import { dungeonOf, loomStoneId, roomFlags } from './worldState';
+import { bossRoomDone, roomBossKinds } from './roomClear';
 
 function inTile(x: number, y: number, o: WorldObject): boolean {
   const x0 = o.tx * TILE_CELLS;
@@ -154,8 +155,12 @@ export function stepTouches(state: GameState): void {
         const dx = p.x - c.x;
         const dy = p.y - c.y;
         if (dx * dx + dy * dy > r2) break;
-        if (o.kind === 'loom_stone') touchLoomStone(state, o);
-        else if (!o.on) touchPickup(state, o);
+        if (o.kind === 'loom_stone') {
+          // A boss room's Loom Stone sleeps until its boss dies (roomClear.ts wakes it).
+          if (!o.on && roomBossKinds(state.room.header).length > 0 && !bossRoomDone(state, state.room.header))
+            break;
+          touchLoomStone(state, o);
+        } else if (!o.on) touchPickup(state, o);
         break;
       }
       default:
