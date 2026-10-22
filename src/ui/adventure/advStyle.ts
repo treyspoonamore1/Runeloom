@@ -13,6 +13,10 @@ const advCss = `
 .ad-counts { display: flex; gap: calc(var(--u) * 1.4); }
 .ad-count { display: inline-flex; align-items: center; gap: calc(var(--u) * 0.4); font-size: calc(var(--u) * 1.9); font-weight: 700; color: var(--cream); font-variant-numeric: tabular-nums; }
 .ad-count .ad-ico { width: calc(var(--u) * 2.8); height: calc(var(--u) * 2.8); }
+.ad-rift { display: flex; flex-direction: column; gap: calc(var(--u) * 0.2); margin-top: calc(var(--u) * 0.6); padding: calc(var(--u) * 0.6) calc(var(--u) * 1); border-radius: calc(var(--u) * 0.8); background: rgba(42, 34, 54, 0.82); box-shadow: 0 0 0 calc(var(--u) * 0.25) #b48cff; color: var(--cream); font-size: calc(var(--u) * 1.7); max-width: calc(var(--u) * 36); }
+.ad-rift b { display: inline-flex; align-items: center; gap: calc(var(--u) * 0.5); color: #e6d8ff; letter-spacing: 0.04em; }
+.ad-rift .ad-ico { width: calc(var(--u) * 2.4); height: calc(var(--u) * 2.4); }
+.ad-rift small { color: #cdb8ff; font-size: 0.9em; }
 
 .ad-boss { position: absolute; top: calc(var(--u) * 2); left: 50%; transform: translateX(-50%); z-index: 105; width: min(calc(var(--u) * 80), 70vw); text-align: center; }
 .ad-boss-name { font-size: calc(var(--u) * 2.8); font-weight: 700; letter-spacing: 0.08em; color: #ffd9c8; margin-bottom: calc(var(--u) * 0.6); }

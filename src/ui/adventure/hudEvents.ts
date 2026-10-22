@@ -11,6 +11,11 @@ import { sigilModLine, sigilName } from '../../sim/items/sigils';
 import type { ItemRarity } from '../../sim/hero/types';
 
 export const HUD_EVENT = {
+  // ---- Rifts (M6, WorldEvent) ----
+  /** { tier, newBest }: the rift's boss died. */
+  riftCompleted: 'riftCompleted',
+  /** { tier, completed, reason: 'completed' | 'left' | 'died' }: the player is out of the rift. */
+  riftClosed: 'riftClosed',
   // ---- World (WorldEvent) ----
   /** { id, name, level, firstVisit }: after a transition, state.room is the new room. */
   roomEnter: 'roomEnter',
@@ -208,6 +213,18 @@ export function bannersFor(
     if (e.type === HUD_EVENT.note) out.push({ title: String(e.text ?? ''), sub: '' });
     else if (e.type === HUD_EVENT.bossDefeated)
       out.push({ title: `${bossName(String(e.kind))} defeated`, sub: '' });
+    else if (e.type === HUD_EVENT.riftCompleted)
+      out.push({
+        title: 'Rift complete',
+        sub: e.newBest
+          ? `Tier ${Number(e.tier)}: your best yet. Tier ${Number(e.tier) + 1} is open to you`
+          : `Tier ${Number(e.tier)}`,
+      });
+    else if (e.type === HUD_EVENT.riftClosed && e.reason !== 'completed')
+      out.push({
+        title: 'The rift collapses',
+        sub: e.reason === 'died' ? 'Its sigil is spent' : 'You left it; its sigil is spent',
+      });
   }
   return out;
 }

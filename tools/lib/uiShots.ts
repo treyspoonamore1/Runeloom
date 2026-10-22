@@ -20,6 +20,10 @@ export const uiShotIds = [
   'filter_floor',
   'pause',
   'volatile',
+  'rifts',
+  'rift_hud',
+  'rift_map',
+  'rift_wires',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -31,7 +35,13 @@ export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
   if (id === 'pause') return `${base}/?${ADV}&ui=pause`;
   // The bench crafts with the real sim, so it runs on a real hero (fixture bases aren't real items).
-  if (id === 'craft' || id === 'filter' || id === 'filter_floor' || id === 'volatile')
+  if (
+    id === 'craft' ||
+    id === 'filter' ||
+    id === 'filter_floor' ||
+    id === 'volatile' ||
+    id.startsWith('rift')
+  )
     return `${base}/?scene=adventure&paused=1&seed=1&ui=play`;
   return `${base}/?${ADV}&ui=${id === 'fuse' ? 'inventory' : id}`;
 }
@@ -196,6 +206,55 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
         session.step({ moveX: 0, moveY: 0, aimX: s.player.x + 1, aimY: s.player.y, buttons: 0 });
     });
     await page.waitForTimeout(300);
+  } else if (id.startsWith('rift')) {
+    // A real game at E1's Loom Stone with three sigils; then the map's sigil list, or a rift
+    // opened from it (its HUD plate, its map with a few rooms visited, a Live Wires pulse).
+    await page.evaluate(async (shot) => {
+      const { makeSigil } = await import('/src/sim/items/sigils.ts' as string);
+      const { sendHeroEdit } = await import('/src/app/hero.ts' as string);
+      const w = window.__runeloom!;
+      const session = w.session;
+      const s = session.state;
+      const still = { moveX: 0, moveY: 0, aimX: s.player.x + 1, aimY: s.player.y, buttons: 0 };
+      session.step(still);
+      const h = s.hero;
+      h.riftTier = 3;
+      h.level = 14;
+      const add = (tier: number, mods: string[]) => {
+        const g = makeSigil(h, tier, mods);
+        h.sigils.push(g);
+        return g.uid;
+      };
+      const wires = add(4, ['hardened', 'live_wires', 'floodplain']);
+      add(2, []);
+      add(6, ['brutal', 'teeming', 'drought', 'choking_smoke']);
+      if (shot === 'rifts') {
+        w.ui!.open('map');
+        return;
+      }
+      sendHeroEdit(session, { kind: 'openRift', uid: wires });
+      if (shot === 'rift_map') {
+        for (const id of Object.keys(s.rooms)
+          .filter((r) => r.startsWith('rift/0/'))
+          .slice(0, 5))
+          s.world.flags[id] = { visited: true, cleared: true, rewardsPaid: false, opened: [], taken: [] };
+        w.ui!.open('map');
+        return;
+      }
+      s.cheats.noAI = true;
+      if (shot === 'rift_wires') {
+        // The first room past the entry with a pylon, the player beside one, 4 s of play.
+        s.world.pending = { roomId: 'rift/0/r1', arrival: { kind: 'default' }, reason: 'exit' };
+        session.step(still);
+        s.cheats.god = true;
+        for (let i = 0; i < 300; i++) {
+          session.step(still);
+          if (s.events.some((e) => e.type === 'pylonPulse')) break;
+        }
+      }
+      w.ui!.open('play');
+    }, id);
+    await page.waitForTimeout(id === 'rift_wires' ? 120 : 400);
   } else if (id === 'loom') {
     // Strike's only copy sits in RMB: arming it shows why it can't go anywhere.
     await page.click('.lm-pouch .lm-chip.r-strike');

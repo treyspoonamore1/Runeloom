@@ -8,11 +8,13 @@
  * room it was reached from in the exit's direction (w: x − 1, e: x + 1, n: y − 1, s: y + 1); if
  * that spot is taken it moves further the same way until a spot is free. The same rooms always
  * give the same layout, whichever room the player is in. Coordinates are integers (0, 0 is the
- * start room) and may be negative; `bounds` gives the extent.
+ * start room) and may be negative; `bounds` gives the extent. In a rift (M6) the map is the rift's
+ * rooms only, from its entry.
  */
 import { startRoom } from '../../../data/progression';
 import type { GameState } from '../state';
 import { parseRoom, type RoomData } from './room';
+import { isRiftRoomId, riftRoomPrefix } from './rift/types';
 import { dungeonOf, loomStoneId, type Edge, type RoomSource } from './worldState';
 
 export interface MapLoomStone {
@@ -85,7 +87,8 @@ function component(rooms: RoomSource, from: string): string[] {
     const d = parseCached(text);
     if (!d) continue;
     for (const e of d.header.exits) {
-      if (rooms[e.room] === undefined) continue;
+      // A rift (M6) is its own map: its way home doesn't join it to the region.
+      if (rooms[e.room] === undefined || isRiftRoomId(id) !== isRiftRoomId(e.room)) continue;
       link(id, e.room);
       link(e.room, id);
     }
@@ -150,7 +153,12 @@ export function buildRegionMap(state: GameState): RegionMap {
   const rooms = state.rooms;
   const here = state.room.id;
   const ids = rooms[here] !== undefined ? component(rooms, here) : [];
-  const root = ids.includes(startRoom) ? startRoom : (ids[0] ?? here);
+  const riftEntry = state.world.rift ? `${riftRoomPrefix(state.world.rift.spec.index)}entry` : null;
+  const root = ids.includes(startRoom)
+    ? startRoom
+    : riftEntry && ids.includes(riftEntry)
+      ? riftEntry
+      : (ids[0] ?? here);
   const pos = layoutRooms(rooms, ids, root);
   const nodes: MapNode[] = [];
   const bounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };

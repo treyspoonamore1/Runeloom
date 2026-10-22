@@ -15,6 +15,7 @@ import { fixturesOn } from '../fixtures/mode';
 import { fixtureProgress } from '../fixtures/regionMap';
 import { quantize } from '../hudModel';
 import { regionLayout } from '../map/adapter';
+import { riftSummary } from '../map/riftModel';
 
 /** Regions that are dungeons with small keys. */
 export const DUNGEONS: readonly string[] = ['kiln'];
@@ -53,6 +54,35 @@ export interface AdventureSnap {
   heartSeeds: number;
   loomShards: number;
   boss: BossSnap | null;
+  rift: RiftSnap | null;
+}
+
+/** The open rift on the HUD (M6). */
+export interface RiftSnap {
+  tier: number;
+  /** Modifier names, "Brutal · of Drought", or '' with none. */
+  mods: string;
+  rooms: number;
+  cleared: number;
+  bossDead: boolean;
+}
+
+// Room ids only change when a rift opens or closes (state.rooms is replaced then).
+let roomIds: { rooms: object; ids: string[] } | null = null;
+
+function riftOf(session: Session): RiftSnap | null {
+  const s = session.state;
+  if (!s.world.rift) return null;
+  if (roomIds?.rooms !== s.rooms) roomIds = { rooms: s.rooms, ids: Object.keys(s.rooms) };
+  const r = riftSummary(s.world, roomIds.ids);
+  if (!r) return null;
+  return {
+    tier: r.tier,
+    mods: r.mods.map((m) => m.name).join(' · '),
+    rooms: r.rooms,
+    cleared: r.cleared,
+    bossDead: r.bossDead,
+  };
 }
 
 /** Screenshots set a fixture boss (`?boss=cinder_warden`). */
@@ -83,6 +113,7 @@ export function readAdventure(session: Session): AdventureSnap {
     heartSeeds: hero.heartSeeds,
     loomShards: hero.loomShards,
     boss: fixtureBoss ?? bossOf(session),
+    rift: riftOf(session),
   };
 }
 

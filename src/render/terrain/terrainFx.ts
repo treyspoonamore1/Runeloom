@@ -60,7 +60,13 @@ export class TerrainFx {
   }
 
   get particleCount(): number {
-    return this.gNorm.count + this.gAdd.count + this.tNorm.count + this.tAdd.count + this.stack.reduce((n, l) => n + l.count, 0);
+    return (
+      this.gNorm.count +
+      this.gAdd.count +
+      this.tNorm.count +
+      this.tAdd.count +
+      this.stack.reduce((n, l) => n + l.count, 0)
+    );
   }
 
   reset(): void {
@@ -106,6 +112,9 @@ export class TerrainFx {
           break;
         case 'explosion':
           this.explosion(e.x, e.y, e.radius);
+          break;
+        case 'pylonPulse':
+          this.pylonPulse(e.x, e.y, e.radius);
           break;
         default:
           break;
@@ -171,7 +180,19 @@ export class TerrainFx {
       const a = rand(0, TAU);
       const sp = rand(speed[0], speed[1]);
       const vy = Math.sin(a) * sp - (o.up ?? 0);
-      this.spawn(layer, tex, x, y, Math.cos(a) * sp, vy, rand(life[0], life[1]), colors[i % colors.length]!, size[0], size[1], o);
+      this.spawn(
+        layer,
+        tex,
+        x,
+        y,
+        Math.cos(a) * sp,
+        vy,
+        rand(life[0], life[1]),
+        colors[i % colors.length]!,
+        size[0],
+        size[1],
+        o,
+      );
     }
   }
 
@@ -184,14 +205,34 @@ export class TerrainFx {
       const at = this.pick(s, b, (i) => g.fire[i]! > 0);
       if (!at) continue;
       // A quick hot flare and a couple of sparks jumping up.
-      this.spawn(this.stack[1]!, 'dot', at.x, at.y - 0.3, 0, 0, O.flareLife, C.fireOuter, 0.5, 1.1, { a0: 0.9, hold: 0.3 });
-      this.spawn(this.stack[3]!, 'dot', at.x, at.y - 0.3, 0, 0, O.flareLife * 0.8, C.fireCore, 0.3, 0.6, { a0: 1, hold: 0.3 });
-      this.spawn(this.gAdd, 'glow', at.x, at.y - 0.3, 0, 0, O.flareLife, C.fireGlow, 1.4, 2.4, { a0: 0.6, hold: 0 });
-      this.burst(this.gAdd, 'spark', at.x, at.y, 3, [3, 7], [0.25, 0.45], [C.fireInner, C.fireOuter], [0.7, 0.2], {
-        up: 5,
-        grav: -3,
-        align: 0.03,
+      this.spawn(this.stack[1]!, 'dot', at.x, at.y - 0.3, 0, 0, O.flareLife, C.fireOuter, 0.5, 1.1, {
+        a0: 0.9,
+        hold: 0.3,
       });
+      this.spawn(this.stack[3]!, 'dot', at.x, at.y - 0.3, 0, 0, O.flareLife * 0.8, C.fireCore, 0.3, 0.6, {
+        a0: 1,
+        hold: 0.3,
+      });
+      this.spawn(this.gAdd, 'glow', at.x, at.y - 0.3, 0, 0, O.flareLife, C.fireGlow, 1.4, 2.4, {
+        a0: 0.6,
+        hold: 0,
+      });
+      this.burst(
+        this.gAdd,
+        'spark',
+        at.x,
+        at.y,
+        3,
+        [3, 7],
+        [0.25, 0.45],
+        [C.fireInner, C.fireOuter],
+        [0.7, 0.2],
+        {
+          up: 5,
+          grav: -3,
+          align: 0.03,
+        },
+      );
     }
   }
 
@@ -201,8 +242,14 @@ export class TerrainFx {
     for (let k = 0; k < n; k++) {
       const at = this.pick(s, b, (i) => g.fire[i] === 0);
       if (!at) continue;
-      this.burst(this.gNorm, 'puff', at.x, at.y, 1, [0.5, 1.5], [0.6, 1.0], [C.ashDark], [0.5, 1.0], { a0: 0.45, grav: -3 });
-      this.burst(this.gAdd, 'dot', at.x, at.y, 2, [1, 3], [0.4, 0.8], [C.ember], [0.14, 0.04], { up: 2, grav: -2 });
+      this.burst(this.gNorm, 'puff', at.x, at.y, 1, [0.5, 1.5], [0.6, 1.0], [C.ashDark], [0.5, 1.0], {
+        a0: 0.45,
+        grav: -3,
+      });
+      this.burst(this.gAdd, 'dot', at.x, at.y, 2, [1, 3], [0.4, 0.8], [C.ember], [0.14, 0.04], {
+        up: 2,
+        grav: -2,
+      });
     }
   }
 
@@ -210,13 +257,28 @@ export class TerrainFx {
     const g = s.grid;
     const n = Math.min(O.steamMax, Math.ceil(b.count / 3));
     for (let k = 0; k < n; k++) {
-      const at = this.pick(s, b, (i) => g.air[i] === AIR.steam) ?? { x: (b.minX + b.maxX + 1) / 2, y: (b.minY + b.maxY + 1) / 2 };
-      this.spawn(this.tNorm, 'puff', at.x + rand(-0.5, 0.5), at.y, rand(-1, 1), -rand(2, 4), rand(0.6, 1.0), C.steam, 0.8, 2.0, {
-        a0: 0.7,
-        drag: 2,
-        grav: -1,
-        spin: 1,
-      });
+      const at = this.pick(s, b, (i) => g.air[i] === AIR.steam) ?? {
+        x: (b.minX + b.maxX + 1) / 2,
+        y: (b.minY + b.maxY + 1) / 2,
+      };
+      this.spawn(
+        this.tNorm,
+        'puff',
+        at.x + rand(-0.5, 0.5),
+        at.y,
+        rand(-1, 1),
+        -rand(2, 4),
+        rand(0.6, 1.0),
+        C.steam,
+        0.8,
+        2.0,
+        {
+          a0: 0.7,
+          drag: 2,
+          grav: -1,
+          spin: 1,
+        },
+      );
     }
   }
 
@@ -226,15 +288,29 @@ export class TerrainFx {
     const cy = (b.minY + b.maxY + 1) / 2;
     const r = Math.max(1.5, Math.hypot(b.maxX - b.minX + 1, b.maxY - b.minY + 1) / 2);
     // A frost ring blooming out over the new ice, and glints on it.
-    this.spawn(this.gNorm, 'ring', cx, cy, 0, 0, O.bloomLife, C.iceEdge, r * 0.3, r * 1.05, { a0: 0.9, hold: 0 });
-    this.spawn(this.gNorm, 'ring', cx, cy, 0, 0, O.bloomLife, 0xffffff, r * 0.25, r * 0.95, { a0: 0.9, hold: 0 });
+    this.spawn(this.gNorm, 'ring', cx, cy, 0, 0, O.bloomLife, C.iceEdge, r * 0.3, r * 1.05, {
+      a0: 0.9,
+      hold: 0,
+    });
+    this.spawn(this.gNorm, 'ring', cx, cy, 0, 0, O.bloomLife, 0xffffff, r * 0.25, r * 0.95, {
+      a0: 0.9,
+      hold: 0,
+    });
     this.spawn(this.gNorm, 'glow', cx, cy, 0, 0, O.bloomLife, C.ice, r * 0.6, r * 1.1, { a0: 0.45, hold: 0 });
     const n = Math.min(O.glintMax, Math.ceil(b.count / 6));
     for (let k = 0; k < n; k++) {
       const at = this.pick(s, b, (i) => g.ground[i] === MAT.ice || g.ground[i] === MAT.ice_bridge);
       if (!at) continue;
-      this.spawn(this.gNorm, 'star', at.x, at.y, 0, 0, rand(0.35, 0.6), C.iceEdge, 0.9, 0.15, { a0: 1, hold: 0.2, spin: 2 });
-      this.spawn(this.gAdd, 'star', at.x, at.y, 0, 0, rand(0.35, 0.6), 0xffffff, 0.7, 0.1, { a0: 1, hold: 0.2, spin: 2 });
+      this.spawn(this.gNorm, 'star', at.x, at.y, 0, 0, rand(0.35, 0.6), C.iceEdge, 0.9, 0.15, {
+        a0: 1,
+        hold: 0.2,
+        spin: 2,
+      });
+      this.spawn(this.gAdd, 'star', at.x, at.y, 0, 0, rand(0.35, 0.6), 0xffffff, 0.7, 0.1, {
+        a0: 1,
+        hold: 0.2,
+        spin: 2,
+      });
     }
   }
 
@@ -244,11 +320,22 @@ export class TerrainFx {
     for (let k = 0; k < n; k++) {
       const at = this.pick(s, b, (i) => g.ground[i] === MAT.ice_bridge);
       if (!at) continue;
-      this.burst(this.gNorm, 'shard', at.x, at.y, 2, [2, 4], [0.3, 0.5], [C.iceSheen, C.iceEdge], [0.35, 0.25], {
-        up: 3,
-        grav: 14,
-        spin: 10,
-      });
+      this.burst(
+        this.gNorm,
+        'shard',
+        at.x,
+        at.y,
+        2,
+        [2, 4],
+        [0.3, 0.5],
+        [C.iceSheen, C.iceEdge],
+        [0.35, 0.25],
+        {
+          up: 3,
+          grav: 14,
+          spin: 10,
+        },
+      );
     }
   }
 
@@ -259,12 +346,23 @@ export class TerrainFx {
       const at = this.pick(s, b, (i) => g.ground[i] === MAT.deep_water || g.ground[i] === MAT.shallow_water);
       if (!at) continue;
       // Shards pop up and drop back into the water, leaving a splash ring.
-      this.burst(this.gNorm, 'shard', at.x, at.y, 2, [1, 3], [0.45, 0.7], [C.iceBridge, 0xffffff, C.iceEdge], [0.6, 0.3], {
-        up: 6,
-        grav: 22,
-        spin: 12,
-        drag: 1,
-      });
+      this.burst(
+        this.gNorm,
+        'shard',
+        at.x,
+        at.y,
+        2,
+        [1, 3],
+        [0.45, 0.7],
+        [C.iceBridge, 0xffffff, C.iceEdge],
+        [0.6, 0.3],
+        {
+          up: 6,
+          grav: 22,
+          spin: 12,
+          drag: 1,
+        },
+      );
       this.spawn(this.gNorm, 'ring', at.x, at.y + 0.3, 0, 0, 0.5, C.foam, 0.2, 1.1, { a0: 0.8, hold: 0 });
     }
     this.shake.kick(O.shatterShake);
@@ -275,39 +373,118 @@ export class TerrainFx {
     this.pulses.push({ x, y, t0: this.time, strength });
     if (this.pulses.length > 4) this.pulses.shift();
     const big = 1 + strength;
-    this.spawn(this.tNorm, 'dot', x, y, 0, 0, 0.18, C.stormGlow, 0.5 * big, 1.1 * big, { a0: 0.8, hold: 0.3 });
+    this.spawn(this.tNorm, 'dot', x, y, 0, 0, 0.18, C.stormGlow, 0.5 * big, 1.1 * big, {
+      a0: 0.8,
+      hold: 0.3,
+    });
     this.spawn(this.tAdd, 'glow', x, y, 0, 0, 0.3, C.stormGlow, 1.5 * big, 3 * big, { a0: 0.8, hold: 0 });
     this.spawn(this.tNorm, 'star', x, y, 0, 0, 0.22, C.ink, 1.9 * big, 0.5, { a0: 0.8, hold: 0.2 });
     this.spawn(this.tNorm, 'star', x, y, 0, 0, 0.22, C.stormCore, 1.4 * big, 0.4, { a0: 1, hold: 0.2 });
-    this.spawn(this.tNorm, 'ring', x, y, 0, 0, 0.3, metal ? 0xffffff : C.stormCore, 0.4, 2.2 * big, { a0: 0.9, hold: 0 });
-    this.spawn(this.tNorm, 'ring', x, y, 0, 0, 0.3, C.stormGlow, 0.5, 2.4 * big, { a0: 0.7, hold: 0 });
-    this.burst(this.tAdd, 'spark', x, y, 6, [10, 22], [0.12, 0.25], [C.stormCore, 0xffffff, C.stormGlow], [0.9, 0.3], {
-      drag: 6,
-      align: 0.025,
+    this.spawn(this.tNorm, 'ring', x, y, 0, 0, 0.3, metal ? 0xffffff : C.stormCore, 0.4, 2.2 * big, {
+      a0: 0.9,
+      hold: 0,
     });
+    this.spawn(this.tNorm, 'ring', x, y, 0, 0, 0.3, C.stormGlow, 0.5, 2.4 * big, { a0: 0.7, hold: 0 });
+    this.burst(
+      this.tAdd,
+      'spark',
+      x,
+      y,
+      6,
+      [10, 22],
+      [0.12, 0.25],
+      [C.stormCore, 0xffffff, C.stormGlow],
+      [0.9, 0.3],
+      {
+        drag: 6,
+        align: 0.025,
+      },
+    );
+  }
+
+  /** Live Wires (M6): a Storm ring out to the pulse's reach, so its size reads. */
+  private pylonPulse(x: number, y: number, radius: number): void {
+    this.spawn(this.tAdd, 'glow', x, y, 0, 0, 0.35, C.stormGlow, 2, radius * 1.2, { a0: 0.6, hold: 0 });
+    this.spawn(this.tNorm, 'ring', x, y, 0, 0, 0.4, C.ink, 1, radius + 0.4, { a0: 0.5, hold: 0 });
+    this.spawn(this.tNorm, 'ring', x, y, 0, 0, 0.4, C.stormCore, 1, radius, { a0: 0.95, hold: 0 });
+    this.burst(
+      this.tAdd,
+      'spark',
+      x,
+      y,
+      12,
+      [radius * 2.5, radius * 4],
+      [0.15, 0.3],
+      [C.stormCore, 0xffffff, C.stormGlow],
+      [0.9, 0.3],
+      {
+        drag: 5,
+        align: 0.025,
+      },
+    );
   }
 
   private explosion(x: number, y: number, radius: number): void {
     const r = Math.max(2, radius);
     // Flash, fireball, shockwave (dark-backed so it reads on light floors), debris and soot.
     // Toon fireball: stacked discs (outer red-orange, yellow, white core) that swell and fade.
-    this.spawn(this.stack[0]!, 'dot', x, y, 0, 0, O.fireballLife, C.fireDeep, r * 0.55, r * 1.05, { a0: 0.95, hold: 0.45 });
-    this.spawn(this.stack[1]!, 'dot', x, y, 0, 0, O.fireballLife * 0.85, C.fireOuter, r * 0.45, r * 0.9, { a0: 1, hold: 0.45 });
-    this.spawn(this.stack[2]!, 'dot', x, y, 0, 0, O.fireballLife * 0.7, C.fireInner, r * 0.3, r * 0.6, { a0: 1, hold: 0.45 });
-    this.spawn(this.stack[3]!, 'dot', x, y, 0, 0, O.flashLife, C.fireCore, r * 0.2, r * 0.4, { a0: 1, hold: 0.4 });
-    this.spawn(this.tAdd, 'glow', x, y, 0, 0, O.flashLife, C.fireCore, r * 1.2, r * 2.6, { a0: 0.8, hold: 0 });
+    this.spawn(this.stack[0]!, 'dot', x, y, 0, 0, O.fireballLife, C.fireDeep, r * 0.55, r * 1.05, {
+      a0: 0.95,
+      hold: 0.45,
+    });
+    this.spawn(this.stack[1]!, 'dot', x, y, 0, 0, O.fireballLife * 0.85, C.fireOuter, r * 0.45, r * 0.9, {
+      a0: 1,
+      hold: 0.45,
+    });
+    this.spawn(this.stack[2]!, 'dot', x, y, 0, 0, O.fireballLife * 0.7, C.fireInner, r * 0.3, r * 0.6, {
+      a0: 1,
+      hold: 0.45,
+    });
+    this.spawn(this.stack[3]!, 'dot', x, y, 0, 0, O.flashLife, C.fireCore, r * 0.2, r * 0.4, {
+      a0: 1,
+      hold: 0.4,
+    });
+    this.spawn(this.tAdd, 'glow', x, y, 0, 0, O.flashLife, C.fireCore, r * 1.2, r * 2.6, {
+      a0: 0.8,
+      hold: 0,
+    });
     this.spawn(this.tNorm, 'ring', x, y, 0, 0, O.ringLife, C.ink, r * 0.35, r * 1.9, { a0: 0.55, hold: 0 });
-    this.spawn(this.tNorm, 'ring', x, y, 0, 0, O.ringLife, C.fireInner, r * 0.3, r * 1.8, { a0: 0.95, hold: 0 });
-    this.burst(this.tNorm, 'chip', x, y, 10, [10, 22], [0.5, 0.9], [C.woodDark, C.oil, C.ashDark], [0.55, 0.35], {
-      up: 6,
-      grav: 24,
-      spin: 14,
-      drag: 1.5,
+    this.spawn(this.tNorm, 'ring', x, y, 0, 0, O.ringLife, C.fireInner, r * 0.3, r * 1.8, {
+      a0: 0.95,
+      hold: 0,
     });
-    this.burst(this.tAdd, 'spark', x, y, 14, [14, 30], [0.2, 0.45], [C.fireInner, C.fireCore, C.fireOuter], [1.1, 0.3], {
-      drag: 4,
-      align: 0.03,
-    });
+    this.burst(
+      this.tNorm,
+      'chip',
+      x,
+      y,
+      10,
+      [10, 22],
+      [0.5, 0.9],
+      [C.woodDark, C.oil, C.ashDark],
+      [0.55, 0.35],
+      {
+        up: 6,
+        grav: 24,
+        spin: 14,
+        drag: 1.5,
+      },
+    );
+    this.burst(
+      this.tAdd,
+      'spark',
+      x,
+      y,
+      14,
+      [14, 30],
+      [0.2, 0.45],
+      [C.fireInner, C.fireCore, C.fireOuter],
+      [1.1, 0.3],
+      {
+        drag: 4,
+        align: 0.03,
+      },
+    );
     this.burst(this.tNorm, 'puff', x, y, 6, [2, 5], [0.9, 1.5], [C.oilSmoke, C.smoke], [0.9, 2.2], {
       a0: 0.6,
       grav: -3,

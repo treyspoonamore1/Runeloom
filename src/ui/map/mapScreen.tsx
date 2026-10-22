@@ -1,7 +1,7 @@
 /**
  * Region map (M, and when touching a Loom Stone): rooms as boxes in the world agent's layout,
  * visited / current / unexplored, Loom Stones, and travel between activated Loom Stones plus
- * Rest while standing at one.
+ * Rest while standing at one. M6: Rift Sigils to open at a Loom Stone; in a rift, its own map.
  */
 import type { Session } from '../../app/session';
 import { uiTuning } from '../../../data/ui';
@@ -10,6 +10,7 @@ import { MenuFrame, note, type MenuId } from '../menus/frame';
 import { mapProgress, regionLayout } from './adapter';
 import { placeMap, travelTargets, type PlacedRoom } from './mapModel';
 import { injectMapStyle } from './mapStyle';
+import { RiftPanel } from './riftPanel';
 
 /** The SVG's virtual size; it scales to the panel with preserveAspectRatio. */
 const VW = 1000;
@@ -100,7 +101,13 @@ export function MapScreen(p: { session: Session; onTab(id: MenuId): void; onClos
     note(why ?? 'Rested. Life and mana are full; enemies have returned.', why === null);
   };
   return (
-    <MenuFrame id="map" title="Region map" onTab={p.onTab} onClose={p.onClose} bodyClass="mp-body">
+    <MenuFrame
+      id="map"
+      title={p.session.state.world.rift ? 'Rift map' : 'Region map'}
+      onTab={p.onTab}
+      onClose={p.onClose}
+      bodyClass="mp-body"
+    >
       <section class="mn-panel mp-main" aria-label="Map">
         <svg
           class="mp-svg"
@@ -166,9 +173,10 @@ export function MapScreen(p: { session: Session; onTab(id: MenuId): void; onClos
               ))}
             </div>
           </>
-        ) : (
+        ) : p.session.state.world.rift ? null : (
           <p class="mn-muted">Stand at a Loom Stone to rest or travel between the ones you have touched.</p>
         )}
+        <RiftPanel session={p.session} standing={!!prog.standing} onOpened={p.onClose} />
         <div class="mp-legend" aria-hidden="true">
           <span class="current">
             <i /> You are here

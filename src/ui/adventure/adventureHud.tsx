@@ -73,6 +73,7 @@ const sameSnap = (a: AdventureSnap, b: AdventureSnap): boolean =>
   a.bigKey === b.bigKey &&
   a.heartSeeds === b.heartSeeds &&
   a.loomShards === b.loomShards &&
+  JSON.stringify(a.rift) === JSON.stringify(b.rift) &&
   (a.boss === b.boss ||
     (!!a.boss &&
       !!b.boss &&
@@ -175,6 +176,19 @@ export function AdventureHudView({ snap }: { snap: { value: AdventureSnap } }) {
             <Counter kind="heart" n={s.heartSeeds} label="Heart Seeds" />
             <Counter kind="shard" n={s.loomShards} label="Loom Shards" />
           </div>
+          {s.rift ? (
+            <div class="ad-rift" aria-label="Rift">
+              <b>
+                <Icon kind="sigil" /> Tier {s.rift.tier} Rift
+              </b>
+              <span>
+                {s.rift.bossDead
+                  ? 'Complete: the way home is open'
+                  : `${s.rift.cleared} / ${s.rift.rooms} rooms cleared`}
+              </span>
+              {s.rift.mods ? <small>{s.rift.mods}</small> : null}
+            </div>
+          ) : null}
         </div>
       </div>
       {s.boss ? (
@@ -226,7 +240,11 @@ export function AdventureDeath({ session, seconds }: { session: Session; seconds
         <p>
           Rewoven {where ? `at the Loom Stone in ${where}` : 'at the last Loom Stone'} in {seconds}…
         </p>
-        <small>Your gear, runes and progress are safe. Rooms you cleared fill with enemies again.</small>
+        <small>
+          {session.state.world.rift
+            ? 'The rift collapses around you and its sigil is spent. Your gear, runes and progress are safe.'
+            : 'Your gear, runes and progress are safe. Rooms you cleared fill with enemies again.'}
+        </small>
       </div>
     </div>
   );

@@ -26,6 +26,7 @@ const REGION_NAMES: Record<string, string> = {
   emberwood: 'Emberwood',
   kiln: 'The Sunken Kiln',
   test: 'Test grounds',
+  rift: 'Rift',
 };
 
 /**
