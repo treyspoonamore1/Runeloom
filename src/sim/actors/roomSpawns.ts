@@ -12,6 +12,7 @@
  *   one pack); `rare` makes the pack's leader (an `enemy:` line: each of its enemies) Rare with
  *   2–4 mods plus 2 normal minions (the pack's `minion` kind; an `enemy:` line: its own kind).
  * - Swarming (M5) adds 2 normal minions of the weaker kind once per Magic group or per Rare.
+ * - Rift Teeming (M6): every pack member count and enemy-line count × 1.4, rounded (not bosses).
  */
 import { enemyDef, isEnemyKind, type EnemyKind } from '../../../data/enemies';
 import { isPackId, packs, type PackDef } from '../../../data/packs';
@@ -23,16 +24,21 @@ import { isWaterAt } from './locomotion';
 import { modSwarm, rarityMinions, rollMods } from './rarity';
 import { swarmMinion } from '../../../data/monsterMods';
 import { isShotSolidCell } from '../world/room';
+import { riftRules } from '../world/rift/rules';
 
 const KILN_CHAR = '&'.charCodeAt(0);
 
 export function spawnRoomEnemies(state: GameState): void {
   const spacing = state.tuning.enemies.spawnSpacing;
+  const more = riftRules(state).packSizeMore;
   for (const s of state.room.spawns) {
     for (const m of state.room.spawnMarkers) {
       if (m.marker !== s.marker) continue;
-      if (s.kind === 'pack') spawnPack(state, s.id, m.x, m.y, s.rarity ?? 'normal');
-      else spawnEnemyLine(state, s.id, s.count, m.x, m.y, spacing, s.rarity ?? 'normal');
+      if (s.kind === 'pack') spawnPack(state, s.id, m.x, m.y, s.rarity ?? 'normal', more);
+      else {
+        const count = isEnemyKind(s.id) && enemyDef(s.id).isBoss ? s.count : grow(s.count, more);
+        spawnEnemyLine(state, s.id, count, m.x, m.y, spacing, s.rarity ?? 'normal');
+      }
     }
   }
   const room = state.room;
@@ -87,14 +93,19 @@ function spawnEnemyLine(
   spawnGroup(state, kinds, rarities, mods, x, y, spacing, swims);
 }
 
-/** One pack on one marker. */
-function spawnPack(state: GameState, id: string, x: number, y: number, rarity: EnemyRarity): void {
+/** `n` members × (1 + more), rounded (rift Teeming, M6: +40% pack size). */
+function grow(n: number, more: number): number {
+  return more === 0 ? n : Math.round(n * (1 + more));
+}
+
+/** One pack on one marker; `more`: rift Teeming's extra share of members. */
+function spawnPack(state: GameState, id: string, x: number, y: number, rarity: EnemyRarity, more = 0): void {
   if (!isPackId(id)) throw new Error(`Unknown pack "${id}"`);
   const pack: PackDef = packs[id];
   if (pack.waterOnly && !isWaterAt(state, x, y)) return;
   const kinds: EnemyKind[] = [];
   for (const m of pack.members) {
-    const n = m.min + state.aiRng.int(m.max - m.min + 1);
+    const n = grow(m.min + state.aiRng.int(m.max - m.min + 1), more);
     for (let k = 0; k < n; k++) kinds.push(m.kind);
   }
   const rarities: EnemyRarity[] = kinds.map(() => 'normal');

@@ -249,3 +249,11 @@ export const riftDrops = {
   /** The first sigil: the Cinder Warden drops a tier-1 sigil the first time he dies. */
   wardenSigilTier: 1,
 };
+
+/** Live Wires pylon pulses (CONTENT §10): every pylon zaps what stands near it and electrifies its metal. */
+export const pylonPulse = {
+  /** Reach from the pylon's center, cells (a pylon is one 4-cell tile). */
+  radius: 7,
+  /** Storm damage at area level 1, × tuning.combat.enemyDamageGrowth^(level − 1); world-owned, so it hurts monsters too. */
+  damage: 6,
+};

@@ -27,6 +27,7 @@ import {
 } from './cells';
 import type { CellBatch } from './cells';
 import { iceDurationMult } from '../hero/effectsTerrain';
+import { riftRules } from '../world/rift/rules';
 
 export interface CellContext {
   owner: number;
@@ -100,7 +101,8 @@ export function frostCell(state: GameState, i: number, c: CellContext, formed: C
   // DESIGN §5.3: frost does nothing to steam, so [Fire, Frost] on water leaves steaming water.
   if (def.water !== null && g.air[i] === AIR.steam) return;
   // Long Winter: ice you create lasts longer (hero/effectsTerrain.ts; 1 without).
-  const iceMult = c.durationMult * iceDurationMult(state, c.owner);
+  // Rift Permafrost (M6): ice from any source lasts longer.
+  const iceMult = c.durationMult * iceDurationMult(state, c.owner) * riftRules(state).iceDurationMult;
   if (def.frostTo !== undefined) {
     const to = materials[def.frostTo];
     setGround(state, i, to.code);

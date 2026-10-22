@@ -86,7 +86,7 @@ export function hashState(state: GameState): number {
     amounts(h, e.resist);
     ailments(h, e.ailments);
     hashTerrainState(h, e.terrain);
-    h.u32(e.areaLevel).string(e.rarity).bool(e.dead);
+    h.u32(e.areaLevel).num(e.speedMult).string(e.rarity).bool(e.dead);
     const ai = e.ai;
     h.string(ai.mode).byte(0).num(ai.timer).num(ai.targetId).num(ai.cooldown);
     h.bool(ai.los).bool(ai.walkLine).num(ai.offsetX).num(ai.offsetY).num(ai.strafe).num(ai.strafeLeft);

@@ -18,6 +18,7 @@ import { processTransition } from './world/transition';
 import { stepEntityTerrain } from './actors/terrain';
 import { applyBlasts } from './actors/blasts';
 import { stepVolatiles } from './actors/volatile';
+import { stepPylonPulse } from './world/rift/pulse';
 
 /** Hitstop timers within this many seconds of zero count as expired (absorbs 1/60 rounding). */
 const TIME_EPSILON = 1e-9;
@@ -34,7 +35,7 @@ const TIME_EPSILON = 1e-9;
  * decay, timers) → arena (count kills, spawn, waves) → Chemistry Lab scripts → puzzle objects and
  * pickups (world/objects.ts) → loot pickup (items/loot.ts) → remove dead enemies, ended projectiles
  * and spells → chemistry grid (every 3rd non-hitstop tick, 20 Hz; grid/tick.ts), then that grid
- * tick's explosions hit entities (actors/blasts.ts) → a pending room transition
+ * tick's explosions hit entities (actors/blasts.ts) and Live Wires pylons pulse (world/rift/pulse.ts) → a pending room transition
  * (world/transition.ts).
  */
 export function step(state: GameState, input: InputFrame): void {
@@ -66,6 +67,7 @@ export function step(state: GameState, input: InputFrame): void {
     state.grid.clock = 0;
     stepGrid(state);
     applyBlasts(state);
+    stepPylonPulse(state);
   }
   processTransition(state);
   state.prevButtons = input.buttons;

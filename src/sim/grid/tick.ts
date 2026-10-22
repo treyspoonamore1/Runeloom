@@ -37,6 +37,7 @@ import { paintElement } from './paint';
 import { spillOil } from './oil';
 import { areaLevel } from './query';
 import { fireSpreadMult } from '../hero/effectsTerrain';
+import { riftRules } from '../world/rift/rules';
 
 /** A growable list of ints (pending cross-cell writes). */
 interface IntList {
@@ -102,11 +103,13 @@ function visitCells(state: GameState): void {
   const width = g.width;
   const last = g.ground.length - width;
   const rng = state.gridRng;
-  const spreadK = state.tuning.grid.windFactor * state.tuning.grid.spreadMult;
+  const rift = riftRules(state);
+  // Rift Drought (M6): every fire spreads faster.
+  const spreadK = state.tuning.grid.windFactor * state.tuning.grid.spreadMult * rift.fireSpreadMult;
   // Fire you create spreads faster with passives (Kindler, Wildheart; hero/effectsTerrain.ts).
   const playerSpreadK = spreadK * fireSpreadMult(state);
   const oilChance = oil.spreadChance;
-  const smokeT = smokeTicks();
+  const smokeT = smokeTicks(rift.smokeDurationMult);
   const oilSmoke = smokeCode(oil.smoke);
   let w = 0;
   for (let r = 0; r < len; r++) {
@@ -231,7 +234,7 @@ function applyPending(state: GameState): void {
   const g = state.grid;
   for (let k = 0; k < explosions.len; k++) explode(state, explosions.a[k]!);
   for (let k = 0; k < ignitions.len; k += 2) ignite(state, ignitions.a[k]!, ignitions.a[k + 1]!, 1);
-  const ticks = smokeTicks();
+  const ticks = smokeTicks(riftRules(state).smokeDurationMult);
   const r = state.tuning.grid.denseSmokeRadius;
   const w = g.width;
   for (let k = 0; k < denseSmoke.len; k++) {

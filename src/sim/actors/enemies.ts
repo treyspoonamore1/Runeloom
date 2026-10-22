@@ -8,6 +8,7 @@ import { createTerrainState, type TerrainState } from './terrainState';
 import { rarityLifeMult } from './rarity';
 import { createBossState, createEnemySpecial, type BossState, type EnemySpecial } from './enemyState';
 import type { GameState } from '../state';
+import { riftRules } from '../world/rift/rules';
 
 /** Id of the player in events, `targetId`, `ownerId` and `hitIds`. Entity ids start at 1. */
 export const PLAYER_ID = 0;
@@ -136,6 +137,8 @@ export interface Enemy {
   terrain: TerrainState;
   /** Area level its life and damage are scaled for. */
   areaLevel: number;
+  /** Movement speed × this (rift Hasty, M6); 1 otherwise. */
+  speedMult: number;
   rarity: EnemyRarity;
   /** Monster mods (data/monsterMods.ts ids), M4: Magic and Rare monsters. Empty for normal ones. */
   mods: string[];
@@ -184,6 +187,12 @@ export function spawnEnemy(
   const mods = boss ? [] : [...(opts.mods ?? [])];
   let life = boss ? def.life : scaleByLevel(def.life, state.tuning.combat.enemyLifeGrowth, areaLevel);
   if (rarity !== 'normal' || mods.length > 0) life *= rarityLifeMult(rarity, mods);
+  // Rift prefixes (M6): Hardened, Resolute, Hasty.
+  const rift = riftRules(state);
+  life *= 1 + rift.monsterLifeMore;
+  const resist = { ...def.resist };
+  if (rift.monsterResistAdd !== 0)
+    for (const k of ['fire', 'frost', 'storm'] as const) resist[k] += rift.monsterResistAdd;
   let fx = opts.facingX ?? state.player.x - x;
   let fy = opts.facingY ?? state.player.y - y;
   const fl = Math.sqrt(fx * fx + fy * fy);
@@ -213,10 +222,11 @@ export function spawnEnemy(
     facingY: fy,
     life,
     maxLife: life,
-    resist: { ...def.resist },
+    resist,
     ailments: createAilments(),
     terrain: createTerrainState(x, y),
     areaLevel,
+    speedMult: 1 + rift.monsterSpeedMore,
     rarity,
     mods,
     dead: false,

@@ -1,5 +1,5 @@
 /**
- * Kill drops (M4 task 7, M5): random runes from unlocked runes only, spindle bases by item level
+ * Kill drops (M4 task 7, M5, M6 rift sigils and bonuses): random runes from unlocked runes only, spindle bases by item level
  * and cloaks, hoods, boots and charms (Normal, Magic or Rare), crafting currencies, uniques, Fuse parts by enemy kind with a tier
  * by area level, and Thread Scrap. Rates are in data/loot.ts; monster rarity adds rolls
  * (quantity) and raises the Magic spindle chance (quality). Every roll uses `state.lootRng`.
@@ -21,6 +21,10 @@ import { rollRareAffixes, rollRareName, sortAffixes } from './rare';
 import { rollUnique } from './uniqueItems';
 import { makeItem, makePart, makeRune } from './items';
 import { dropLoot, type LootContent } from './loot';
+import { rollSigil } from './sigils';
+import { riftDrops } from '../../../data/rift';
+import { riftRules } from '../world/rift/rules';
+import { isRiftRoomId } from '../world/rift/types';
 
 /** Fuse part tier for an area level (DESIGN §8.4). */
 export function partTierFor(areaLevel: number): 1 | 2 | 3 {
@@ -94,6 +98,11 @@ export function rollCurrency(rng: Rng): CurrencyId {
   return currencyIds[currencyIds.length - 1]!;
 }
 
+/** Rarity weights with Magic and Rare × `mult` (rift item rarity); the same object when 1. */
+function rarer(w: RarityWeights, mult: number): RarityWeights {
+  return mult === 1 ? w : { normal: w.normal, magic: w.magic * mult, rare: w.rare * mult };
+}
+
 function rarityKey(e: Enemy): EnemyRarity | 'boss' {
   return bossKinds.includes(e.kind) ? 'boss' : e.rarity;
 }
@@ -111,25 +120,35 @@ export function rollKillLoot(state: GameState, e: Enemy): LootContent[] {
   if (key === 'boss' && part && rng.chance(dropRates.bossPartChance))
     out.push({ kind: 'part', part: makePart(state.hero, part, partTierFor(level)) });
   const rolls = key === 'boss' ? dropRates.bossRolls : dropRates.rolls[key];
+  // Rift modifiers (M6): item quantity scales every category's chance, item rarity the Magic and
+  // Rare weights and the unique chance; a rift also drops Rift Sigils.
+  const rift = state.world.rift;
+  const rules = riftRules(state);
+  const qty = mult * (1 + rules.quantity);
+  const rar = 1 + rules.rarity;
   for (let i = 0; i < rolls; i++) {
     if (rng.chance(c.rune * mult)) {
       const unlocked = state.hero.unlockedRunes;
       if (unlocked.length > 0)
         out.push({ kind: 'rune', rune: makeRune(state.hero, unlocked[rng.int(unlocked.length)]!) });
     }
-    const weights = dropRates.itemRarity[key];
-    if (rng.chance(c.gear * mult)) out.push({ kind: 'item', item: rollGear(state, level, weights) });
-    if (rng.chance(c.spindle * mult)) out.push({ kind: 'item', item: rollSpindle(state, level, weights) });
-    if (part && rng.chance(c.part * mult))
+    const weights = rarer(dropRates.itemRarity[key], rar);
+    if (rng.chance(c.gear * qty)) out.push({ kind: 'item', item: rollGear(state, level, weights) });
+    if (rng.chance(c.spindle * qty)) out.push({ kind: 'item', item: rollSpindle(state, level, weights) });
+    if (part && rng.chance(c.part * qty))
       out.push({ kind: 'part', part: makePart(state.hero, part, partTierFor(level)) });
-    if (rng.chance(c.scrap * mult)) {
+    if (rng.chance(c.scrap * qty)) {
       const { min, max } = dropRates.scrapAmount;
       out.push({ kind: 'scrap', amount: min + rng.int(max - min + 1) });
     }
-    if (rng.chance(c.currency * mult)) out.push({ kind: 'currency', currency: rollCurrency(rng), amount: 1 });
-    if (rng.chance(c.unique * mult)) {
+    if (rng.chance(c.currency * qty)) out.push({ kind: 'currency', currency: rollCurrency(rng), amount: 1 });
+    if (rng.chance(c.unique * qty * rar)) {
       const u = rollUnique(state, level);
       if (u) out.push({ kind: 'item', item: u });
+    }
+    if (rift && isRiftRoomId(state.room.id) && rng.chance(riftDrops.sigilChance * qty)) {
+      const up = rng.chance(riftDrops.tierUpChance) ? 1 : 0;
+      out.push({ kind: 'sigil', sigil: rollSigil(state.hero, rng, rift.spec.tier + up) });
     }
   }
   // M5 rune discovery (data/progression.ts runeDiscovery): Rares sometimes, bosses always.

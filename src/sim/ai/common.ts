@@ -119,9 +119,9 @@ export function stop(e: Enemy): void {
   e.vy = 0;
 }
 
-/** Sets the velocity along the unit direction at `fraction` of the kind's top speed (× Hasted). */
+/** Sets the velocity along the unit direction at `fraction` of the kind's top speed (× Hasted, × rift Hasty). */
 export function moveAlong(e: Enemy, dirX: number, dirY: number, fraction: number): void {
-  const haste = e.mods.length > 0 ? moveSpeedMult(e) : 1;
+  const haste = (e.mods.length > 0 ? moveSpeedMult(e) : 1) * e.speedMult;
   const speed = enemyDef(e.kind).speed * fraction * haste;
   e.vx = dirX * speed;
   e.vy = dirY * speed;

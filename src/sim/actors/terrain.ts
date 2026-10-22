@@ -39,6 +39,7 @@ import { alwaysWet, immuneToTerrainFire, terrainFireDpsMult } from '../hero/effe
 import { burningGroundHeal } from '../hero/uniques';
 import { modAlwaysWet } from './rarity';
 import { ignoresGround, locomotionOf } from './locomotion';
+import { riftRules } from '../world/rift/rules';
 
 /** Timers within this of zero count as expired. */
 const TIME_EPSILON = 1e-9;
@@ -97,8 +98,8 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
   }
   if (ts.wetLeft > 0 && isIgnited(t)) extinguish(state, t);
 
-  // Rule 17: Oiled.
-  if (g.surface[i] === SURFACE.oil) {
+  // Rule 17: Oiled (rift Tinderbox, M6: monsters always are).
+  if (g.surface[i] === SURFACE.oil || ('kind' in t && riftRules(state).monstersOiled)) {
     if (ts.oiledLeft <= 0)
       emit(state, { type: 'oiledChanged', target: targetRef(t), oiled: true, x: t.x, y: t.y });
     ts.oiledLeft = T.oiledSeconds;
@@ -190,7 +191,9 @@ function stepEnemyExtras(state: GameState, e: Enemy, playerHidden: boolean): voi
   const ts = e.terrain;
   if (ts.stunLeft > 0) ts.stunLeft = ts.stunLeft > DT + TIME_EPSILON ? ts.stunLeft - DT : 0;
   const i = ts.cell;
-  const inAir = i >= 0 && state.grid.air[i] !== AIR.none;
+  // Rift Choking Smoke (M6): smoke doesn't Blind monsters; steam still does.
+  const air = i >= 0 ? state.grid.air[i]! : AIR.none;
+  const inAir = air !== AIR.none && !(air === AIR.smoke && riftRules(state).monstersSeeInSmoke);
   const blind = inAir || (playerHidden && e.ai.targetId === 0);
   if (blind !== ts.blind) {
     ts.blind = blind;

@@ -175,8 +175,9 @@ export function setAir(g: Grid, i: number, kind: number, ticks: number): void {
   markActive(g.active, i);
 }
 
-export function smokeTicks(): number {
-  return gridTicks(airSeconds.smoke);
+/** Smoke's air timer, × `mult` (rift Choking Smoke, M6), at most what the u8 timer holds. */
+export function smokeTicks(mult = 1): number {
+  return Math.min(255, gridTicks(airSeconds.smoke * mult));
 }
 
 export function steamTicks(mult: number): number {
