@@ -89,6 +89,8 @@ export interface RoomLog {
   equipped: string[];
   fused: string[];
   allocated: string[];
+  /** Currency spent before this room (bots/campaignCraft.ts). */
+  crafted: string[];
   /** Drops collected here. */
   drops: { runes: string[]; items: number; parts: string[]; scrap: number };
   /** Boss rooms: seconds from the boss's first damage to its death. */
@@ -110,6 +112,8 @@ export interface CampaignOptions {
   onStall?: 'finish' | 'leave';
   /** Stop after this room (default the last). */
   until?: RoomKey;
+  /** Spend crafting currency between rooms (default true; --no-craft turns it off). */
+  craft?: boolean;
   /** Called with the state just before each room's fight (snapshots for encounter sims). */
   onRoomStart?: (key: RoomKey, state: GameState) => void;
   /** Called after every fight tick (debugging). */
@@ -209,7 +213,10 @@ export function playRoom(
   const boss = BOSS_ROOMS.includes(key);
   const rested = p.life < p.maxLife * (boss ? REST_BELOW_BOSS : REST_BELOW);
   if (rested) resetPlayerVitals(p, state.tuning, state.heroMods);
-  const build = applyReferenceBuild(state, { frostLmb: FIRE_RESISTANT_BOSS_ROOMS.includes(key) });
+  const build = applyReferenceBuild(state, {
+    frostLmb: FIRE_RESISTANT_BOSS_ROOMS.includes(key),
+    craft: opts.craft ?? true,
+  });
   const log: RoomLog = {
     key,
     roomId,
@@ -236,6 +243,7 @@ export function playRoom(
     gear: gearLabels(state),
     equipped: build.equipped,
     fused: build.fused,
+    crafted: build.crafted,
     allocated: build.allocated,
     drops: { runes: [], items: 0, parts: [], scrap: 0 },
     maxLife: state.player.maxLife,

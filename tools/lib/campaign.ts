@@ -105,6 +105,7 @@ export function printCampaign(r: CampaignResult, verbose: boolean): void {
       const changes = [
         l.equipped.length ? `equip ${l.equipped.join('; ')}` : '',
         l.fused.length ? `fuse ${l.fused.join(', ')}` : '',
+        l.crafted.length ? `craft ${l.crafted.join('; ')}` : '',
         l.allocated.length ? `passives ${l.allocated.join(', ')}` : '',
       ].filter(Boolean);
       if (changes.length) console.log(`       before: ${changes.join(' / ')}`);
@@ -128,13 +129,20 @@ export interface CampaignArgs {
   until?: string;
   json: boolean;
   verbose: boolean;
+  /** Spend crafting currency (default true). */
+  craft?: boolean;
 }
 
 export function runCampaignCli(a: CampaignArgs): void {
   const rooms = loadAllRooms();
   const results: CampaignResult[] = [];
   for (let i = 0; i < a.seeds; i++) {
-    const r = runCampaign({ seed: a.seed + i, rooms, until: a.until as RoomKey | undefined });
+    const r = runCampaign({
+      seed: a.seed + i,
+      rooms,
+      until: a.until as RoomKey | undefined,
+      craft: a.craft ?? true,
+    });
     results.push(r);
     if (!a.json) printCampaign(r, a.verbose);
   }

@@ -7,7 +7,7 @@
  *   npm run sim -- --adventure [--room test/world_a] [--ticks 3600] [--seed 1] [--god] [--every N] [--json]
  *       An adventure game (all rooms from data/rooms) driven by the tour bot (bots/tour.ts): walks
  *       out through exits and fires at enemies. Prints each room entered and the final hash.
- *   npm run sim -- --campaign [--seed 1] [--seeds 3] [--until k5] [--verbose] [--json]
+ *   npm run sim -- --campaign [--seed 1] [--seeds 3] [--until k5] [--verbose] [--json] [--no-craft]
  *       The M4 balance campaign: a new game played E1…K10 by the kiter bot with the reference
  *       build (src/sim/bots/campaign.ts). A table per seed, then a summary across seeds.
  *   npm run sim -- --encounters [--room k10] [--seed 1] [--seeds 5] [--level 12] [--rune-level 10]
@@ -51,6 +51,7 @@ runCli(() => {
     room: { kind: 'string' },
     god: { kind: 'boolean' },
     campaign: { kind: 'boolean' },
+    'no-craft': { kind: 'boolean', help: '--campaign: the bot never spends crafting currency' },
     seeds: { kind: 'number', default: 1 },
     until: { kind: 'string' },
     verbose: { kind: 'boolean' },
@@ -79,6 +80,7 @@ runCli(() => {
       until: a.until,
       json: a.json,
       verbose: a.verbose,
+      craft: !a['no-craft'],
     });
     return;
   }

@@ -16,6 +16,7 @@
  */
 import { affixes, type StatId } from '../../../data/affixes';
 import { gearBases } from '../../../data/items';
+import { isUniqueId, uniques } from '../../../data/uniques';
 import { spindles, isSpindleId } from '../../../data/spindles';
 import type { RuneId } from '../../../data/runes';
 import { applyHeroEdit } from '../hero/edits';
@@ -24,6 +25,7 @@ import type { EquipSlot, FusePart, Item } from '../hero/types';
 import { equippedSpindle, findItem, kindOfBase } from '../items/items';
 import type { GameState } from '../state';
 import { setSlotWeave } from '../weave/runtime/loadout';
+import { craftEquipped, craftNewItems, polishMainRune } from './campaignCraft';
 
 /** Strike weaves for RMB, best first. Physical: most early enemies resist Fire. */
 export const strikeWeaves: readonly string[] = [
@@ -138,6 +140,8 @@ export function itemScore(item: Item): number {
     const def = (affixes as Record<string, { stat: StatId }>)[a.id];
     if (def) s += statScore(def.stat, a.value);
   }
+  const u = item.unique !== undefined && isUniqueId(item.unique) ? uniques[item.unique] : null;
+  if (u) for (const st of u.stats) s += statScore(st.stat, st.value);
   if (isSpindleId(item.base)) {
     const b = spindles[item.base];
     s += b.capacity * CAPACITY_SCORE + (b.castSpeed - 1) * 100 * CAST_SPEED_SCORE;
@@ -246,6 +250,8 @@ function setFirst(state: GameState, slot: number, candidates: readonly string[])
 export interface WeavePlanOptions {
   /** The room's boss resists Fire: LMB prefers a Frost Bolt. */
   frostLmb?: boolean;
+  /** Spend crafting currency (bots/campaignCraft.ts). Default true. */
+  craft?: boolean;
 }
 
 /** Rebuilds all four weaves from the runes owned (empties them first, then RMB, LMB, Q, E). */
@@ -267,10 +273,23 @@ export function planWeaves(state: GameState, opts: WeavePlanOptions = {}): (stri
 export function applyReferenceBuild(
   state: GameState,
   opts: WeavePlanOptions = {},
-): { equipped: string[]; fused: string[]; allocated: string[]; weaves: (string | null)[] } {
+): {
+  equipped: string[];
+  fused: string[];
+  allocated: string[];
+  weaves: (string | null)[];
+  crafted: string[];
+} {
+  const craft = opts.craft ?? true;
+  const crafted = craft ? craftNewItems(state) : [];
   const equipped = equipBest(state);
+  if (craft) {
+    crafted.push(...craftEquipped(state));
+    equipped.push(...equipBest(state));
+  }
   const fused = fuseBest(state);
   const allocated = allocatePassives(state);
   const weaves = planWeaves(state, opts);
-  return { equipped, fused, allocated, weaves };
+  if (craft) crafted.push(...polishMainRune(state));
+  return { equipped, fused, allocated, weaves, crafted };
 }
