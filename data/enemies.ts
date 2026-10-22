@@ -164,6 +164,13 @@ export function attackByName(kind: EnemyKind, name: string): AttackDef | null {
  * The boss fight an enemy kind runs ('tar_matriarch' or 'cinder_warden'), or null: the rift
  * bosses (M6) run the same fights as their region originals.
  */
+/** The kind whose art, sounds and effects `kind` uses (EnemyDef.lookAs), else itself. */
+export function lookKind(kind: string): string {
+  if (!isEnemyKind(kind)) return kind;
+  const d: EnemyDef = enemyDef(kind);
+  return d.lookAs ?? kind;
+}
+
 export function bossFightOf(kind: string): 'tar_matriarch' | 'cinder_warden' | null {
   if (!isEnemyKind(kind)) return null;
   const b = enemyDef(kind).behavior;

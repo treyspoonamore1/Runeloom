@@ -24,6 +24,7 @@ export const uiShotIds = [
   'rift_hud',
   'rift_map',
   'rift_wires',
+  'rift_boss',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -239,6 +240,15 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
           .slice(0, 5))
           s.world.flags[id] = { visited: true, cleared: true, rewardsPaid: false, opened: [], taken: [] };
         w.ui!.open('map');
+        return;
+      }
+      if (shot === 'rift_boss') {
+        // The boss arena, 3 s into the fight (god mode): the Rift Matriarch or Warden drawn.
+        s.world.pending = { roomId: 'rift/0/boss', arrival: { kind: 'edge', from: 'n' }, reason: 'exit' };
+        session.step(still);
+        s.cheats.god = true;
+        for (let i = 0; i < 180; i++) session.step(still);
+        w.ui!.open('play');
         return;
       }
       s.cheats.noAI = true;

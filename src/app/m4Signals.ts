@@ -6,6 +6,7 @@
  *
  * Which cues come from events and which from state diffs is set in m4Wiring.ts (M4_EVENTS).
  */
+import { lookKind } from '../../data/enemies';
 import { TILE_CELLS, type Enemy, type GameState, type SimEvent } from '../sim';
 import type { ObjectKind, WorldObject } from '../sim/world/objects';
 import type { LootContent } from '../sim/items/loot';
@@ -212,30 +213,27 @@ export class M4Signals {
       if (e.dead) continue;
       let m = this.memo.get(e.id);
       const boss = BOSS_KINDS.has(e.kind);
+      const look = lookKind(e.kind);
       if (!m) {
         m = { fuse: -1, superheat: false, phase: M4_STATE.bossPhase(e), sinceSpawn: -1, frozenAt: -99 };
         this.memo.set(e.id, m);
         if (boss && !this.seen.has(e.id)) {
           this.seen.add(e.id);
-          this.out.push({ type: 'bossAppear', id: e.id, kind: e.kind, x: e.x, y: e.y });
+          this.out.push({ type: 'bossAppear', id: e.id, kind: look, x: e.x, y: e.y });
         }
       }
       if (m.sinceSpawn >= 0) m.sinceSpawn += dt;
-      if (e.kind === ('tar_hulk' as string) || e.kind === ('tar_matriarch' as string)) this.fuse(e, m, dt);
+      if (look === 'tar_hulk' || look === 'tar_matriarch') this.fuse(e, m, dt);
       if (!boss) continue;
       const phase = M4_STATE.bossPhase(e);
       if (phase > m.phase && M4_EVENTS.bossPhase === null)
-        this.out.push({ type: 'bossPhase', id: e.id, kind: e.kind, phase, x: e.x, y: e.y });
+        this.out.push({ type: 'bossPhase', id: e.id, kind: look, phase, x: e.x, y: e.y });
       m.phase = phase;
       const frozen = M4_STATE.frozen(e);
       if (frozen) m.frozenAt = t;
       const given = M4_STATE.superheated(e);
       const heat =
-        given ??
-        (e.kind === ('cinder_warden' as string) &&
-          phase >= 2 &&
-          !frozen &&
-          t - m.frozenAt >= SUPERHEAT_BREAK);
+        given ?? (look === 'cinder_warden' && phase >= 2 && !frozen && t - m.frozenAt >= SUPERHEAT_BREAK);
       if (heat !== m.superheat && M4_EVENTS.superheatChanged === null)
         this.out.push({ type: 'superheatChanged', id: e.id, on: heat, x: e.x, y: e.y });
       m.superheat = heat;
@@ -289,7 +287,7 @@ export class M4Signals {
         }
         case 'death':
           if (BOSS_KINDS.has(ev.kind))
-            out.push({ type: 'bossDeath', id: ev.id, kind: ev.kind, x: ev.x, y: ev.y });
+            out.push({ type: 'bossDeath', id: ev.id, kind: lookKind(ev.kind), x: ev.x, y: ev.y });
           break;
         case 'playerDeath':
         case 'playerRespawn':
@@ -367,7 +365,13 @@ export class M4Signals {
         out.push({ type, kind, key, sliding: kind === 'ice_block', stopped: ev.stopped === true, ...at });
         break;
       case 'bossPhase':
-        out.push({ type, id: num('id', -1), kind: String(ev.kind ?? ''), phase: num('phase', 1), ...at });
+        out.push({
+          type,
+          id: num('id', -1),
+          kind: lookKind(String(ev.kind ?? '')),
+          phase: num('phase', 1),
+          ...at,
+        });
         break;
       case 'superheatChanged': {
         // enemyEvents.ts: `superheated`; the memo follows so the derived check doesn't repeat it.

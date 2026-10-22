@@ -1,3 +1,4 @@
+import { lookKind } from '../../data/enemies';
 import { Container, Sprite, type Texture } from 'pixi.js';
 import { bodyBoxOf, kindSpeed } from './kindInfo';
 import type { Ailments, GameState } from '../sim';
@@ -16,7 +17,6 @@ import { FxLayer, ImmediatePool, type FxParticle } from './particles';
 import type { PlayerView } from './playerView';
 
 const TAU = Math.PI * 2;
-
 
 /** Status icon bits for the grid states (StatusIcons.row). */
 function terrainFlags(T: TerrainState): number {
@@ -65,7 +65,14 @@ export class AilmentFx {
   private rot = 0;
   private time = 0;
   /** Reused per-body input for AilmentParts.update (no per-frame allocation). */
-  private readonly frame: PartsFrame = { dt: 0, burnRatio: 0, lean: 0, wet: false, oiled: false, doused: false };
+  private readonly frame: PartsFrame = {
+    dt: 0,
+    burnRatio: 0,
+    lean: 0,
+    wet: false,
+    oiled: false,
+    doused: false,
+  };
   /** Grid chemistry on bodies (Wet, Oiled, falls, charge, arcs, doused Tinderlings, shields, haze). */
   readonly creature: CreatureFx;
   /** Reused per-body input for CreatureFx.body. */
@@ -102,7 +109,19 @@ export class AilmentFx {
       star: atlas.get('star'),
       puff: atlas.get('puff'),
     };
-    this.cb = { key: 0, kind: '', a: null!, terrain: null!, parts: null!, box: BODY.player, x: 0, y: 0, vx: 0, vy: 0, player: false };
+    this.cb = {
+      key: 0,
+      kind: '',
+      a: null!,
+      terrain: null!,
+      parts: null!,
+      box: BODY.player,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      player: false,
+    };
   }
 
   get particleCount(): number {
@@ -158,14 +177,19 @@ export class AilmentFx {
       this.creature.enemyState(v, dt);
       v.glowMul = a.freeze.timeLeft > 0 ? 0.25 : e.kind === 'tinderling' && T.wetLeft > 0 ? 0 : 1;
       let parts = v.ailParts;
-      if (!anyAilment(a) && !CreatureFx.active(T) && !this.creature.hasCrackle(e.id) && !(parts && parts.active))
+      if (
+        !anyAilment(a) &&
+        !CreatureFx.active(T) &&
+        !this.creature.hasCrackle(e.id) &&
+        !(parts && parts.active)
+      )
         continue;
-      const box = bodyBoxOf(e.kind);
+      const box = bodyBoxOf(lookKind(e.kind));
       if (!parts) {
         parts = v.ailParts = new AilmentParts(this.atlas, box, v.root);
         v.lift.addChild(parts.root);
       }
-      const speed = kindSpeed(e.kind);
+      const speed = kindSpeed(lookKind(e.kind));
       const vx = (e.x - e.prevX) * 60;
       const vy = (e.y - e.prevY) * 60;
       const run = speed > 0 ? Math.min(1, Math.hypot(vx, vy) / speed) : 0;
@@ -185,8 +209,8 @@ export class AilmentFx {
       if (rx < vx0 || rx > vx1 || ry < vy0 || ry > vy1) continue;
       parts.draw(this.over, this.partTex, v.root.x, v.root.y + v.lift.y - v.lift.pivot.y);
       this.body(parts, a, box, v.root.x, v.root.y, vx, run, dt, this.norm);
-      this.creatureBody(e.id, e.kind, a, T, parts, box, rx, ry, vx, vy, false, dt);
-      const top = v.root.y + box.top - this.icons.lift - (ICON_EXTRA[e.kind] ?? 0);
+      this.creatureBody(e.id, lookKind(e.kind), a, T, parts, box, rx, ry, vx, vy, false, dt);
+      const top = v.root.y + box.top - this.icons.lift - (ICON_EXTRA[lookKind(e.kind)] ?? 0);
       this.icons.row(a, v.root.x, top, terrainFlags(T));
       this.debug.label(a, v.root.x + box.w + 0.4, v.root.y + box.top * 0.5, xf);
     }
@@ -212,7 +236,12 @@ export class AilmentFx {
       return;
     }
     const T = p.terrain;
-    if (!anyAilment(a) && !CreatureFx.active(T) && !this.creature.hasCrackle(PLAYER_KEY) && !(parts && parts.active))
+    if (
+      !anyAilment(a) &&
+      !CreatureFx.active(T) &&
+      !this.creature.hasCrackle(PLAYER_KEY) &&
+      !(parts && parts.active)
+    )
       return;
     const box = BODY.player;
     if (!parts) {
@@ -270,7 +299,18 @@ export class AilmentFx {
         if (this.budget < 1) break;
         this.budget--;
         const c = Math.random();
-        const p = this.spawn(layer, this.t.dot, x + rand(-0.7, 0.7) * box.w, y + box.top + rand(0.1, 0.55) * h, -vx * 0.3 + rand(-1.5, 1.5), -rand(3, 7), rand(0.35, 0.7), c < 0.4 ? AIL.fire : c < 0.8 ? AIL.fireInner : AIL.fireCore, rand(0.16, 0.26), 0.04);
+        const p = this.spawn(
+          layer,
+          this.t.dot,
+          x + rand(-0.7, 0.7) * box.w,
+          y + box.top + rand(0.1, 0.55) * h,
+          -vx * 0.3 + rand(-1.5, 1.5),
+          -rand(3, 7),
+          rand(0.35, 0.7),
+          c < 0.4 ? AIL.fire : c < 0.8 ? AIL.fireInner : AIL.fireCore,
+          rand(0.16, 0.26),
+          0.04,
+        );
         if (p) {
           p.grav = -5;
           p.drag = 1.5;
@@ -285,7 +325,18 @@ export class AilmentFx {
         parts.flakeAcc -= 1;
         if (this.budget < 1) break;
         this.budget--;
-        const p = this.spawn(layer, this.t.crystal, x + rand(-0.8, 0.8) * box.w, y + box.top + rand(0.1, 0.7) * h, rand(-0.8, 0.8), rand(0.8, 2), rand(0.6, 1), 0xffffff, 0.3, 0.12);
+        const p = this.spawn(
+          layer,
+          this.t.crystal,
+          x + rand(-0.8, 0.8) * box.w,
+          y + box.top + rand(0.1, 0.7) * h,
+          rand(-0.8, 0.8),
+          rand(0.8, 2),
+          rand(0.6, 1),
+          0xffffff,
+          0.3,
+          0.12,
+        );
         if (p) p.spin = rand(-3, 3);
       }
     }
@@ -299,7 +350,18 @@ export class AilmentFx {
         this.budget--;
         const ang = rand(0, TAU);
         const sp = rand(8, 16);
-        const p = this.spawn(layer, this.t.spark, x + rand(-0.6, 0.6) * box.w, y + box.top + rand(0.2, 0.8) * h, Math.cos(ang) * sp, Math.sin(ang) * sp, rand(0.08, 0.16), Math.random() < 0.5 ? AIL.storm : AIL.stormGlow, 0.8, 0.3);
+        const p = this.spawn(
+          layer,
+          this.t.spark,
+          x + rand(-0.6, 0.6) * box.w,
+          y + box.top + rand(0.2, 0.8) * h,
+          Math.cos(ang) * sp,
+          Math.sin(ang) * sp,
+          rand(0.08, 0.16),
+          Math.random() < 0.5 ? AIL.storm : AIL.stormGlow,
+          0.8,
+          0.3,
+        );
         if (p) {
           p.align = true;
           p.stretch = 0.03;
@@ -311,7 +373,20 @@ export class AilmentFx {
     if (parts.justThawed) thawBurst(layer, this.t, x, cy, box);
   }
 
-  private creatureBody(key: number, kind: string, a: Ailments, T: TerrainState, parts: AilmentParts, box: BodyBox, x: number, y: number, vx: number, vy: number, player: boolean, dt: number): void {
+  private creatureBody(
+    key: number,
+    kind: string,
+    a: Ailments,
+    T: TerrainState,
+    parts: AilmentParts,
+    box: BodyBox,
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    player: boolean,
+    dt: number,
+  ): void {
     const b = this.cb;
     b.key = key;
     b.kind = kind;
@@ -327,7 +402,18 @@ export class AilmentFx {
     this.creature.body(b, dt);
   }
 
-  private spawn(layer: FxLayer, tex: Texture, x: number, y: number, vx: number, vy: number, life: number, tint: number, s0: number, s1: number): FxParticle | null {
+  private spawn(
+    layer: FxLayer,
+    tex: Texture,
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    life: number,
+    tint: number,
+    s0: number,
+    s1: number,
+  ): FxParticle | null {
     return spawnHeld(layer, tex, x, y, vx, vy, life, tint, s0, s1);
   }
 

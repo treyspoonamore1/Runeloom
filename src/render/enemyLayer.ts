@@ -1,3 +1,4 @@
+import { lookKind } from '../../data/enemies';
 import { Container } from 'pixi.js';
 import type { Enemy, GameState } from '../sim';
 import type { M4Signals } from '../app/m4Signals';
@@ -101,11 +102,12 @@ export class EnemyLayer {
   }
 
   private create(e: Enemy): EnemyView {
-    const pool = this.pools.get(e.kind);
-    const v = pool?.pop() ?? new EnemyView(e.kind, this.atlas);
+    const look = lookKind(e.kind);
+    const pool = this.pools.get(look);
+    const v = pool?.pop() ?? new EnemyView(look, this.atlas);
     v.bind(e);
     v.shadow = this.shadows.alloc(this.atlas.get('shadow'));
-    const glow = GLOWS[e.kind];
+    const glow = GLOWS[look];
     if (glow) {
       v.glow = this.glows.alloc(this.atlas.get('glow'));
       if (v.glow) v.glow.paint(glow[0], glow[1]);

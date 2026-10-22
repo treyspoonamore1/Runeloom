@@ -173,6 +173,8 @@ export interface EnemyDef {
   shield?: { halfAngleCos: number; burnTime: number };
   /** Training dummies: at 0 life they reset to full instead of dying (DESIGN §5.5). */
   immortal?: boolean;
+  /** Drawn and heard as this kind (the rift bosses wear their region originals' art and sounds). */
+  lookAs?: string;
   /** Ailments this kind never suffers (CONTENT §5), e.g. Tinderlings can't be ignited. */
   immune?: readonly AilmentKind[];
   /**

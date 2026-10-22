@@ -1,3 +1,4 @@
+import { lookKind } from '../../data/enemies';
 import type { GameState, SimEvent } from '../sim';
 import {
   ailmentSfx,
@@ -64,7 +65,7 @@ export function cuesForEvent(e: SimEvent, state: GameState): Cue[] {
       return [{ id: 'evaded' }];
     case 'death':
       if (e.shattered) return [{ id: 'shatter', x: e.x, y: e.y }];
-      return [{ id: deathSfx[e.kind] ?? 'deathDefault', x: e.x, y: e.y }];
+      return [{ id: deathSfx[lookKind(e.kind)] ?? 'deathDefault', x: e.x, y: e.y }];
     case 'ailmentApplied': {
       // Chill comes with every frost hit: its tinkle grows with the chill total.
       const gain = e.ailment === 'chill' ? 0.4 + 0.6 * Math.min(1, e.magnitude / 100) : 1;

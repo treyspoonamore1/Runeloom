@@ -1,3 +1,4 @@
+import { lookKind } from '../../../data/enemies';
 import { BitmapText, Container, Graphics } from 'pixi.js';
 import type { Enemy, GameState } from '../../sim';
 import { M4_STATE } from '../../app/m4Wiring';
@@ -102,8 +103,8 @@ export class RarityView {
       if (e.dead || e.rarity === 'normal') continue;
       const v = enemies.view(e.id);
       if (!v || v.dying >= 0) continue;
-      const L = layoutOf(e.kind);
-      const k = artScale(e.kind, e.radius);
+      const L = layoutOf(lookKind(e.kind));
+      const k = artScale(lookKind(e.kind), e.radius);
       const color = e.rarity === 'rare' ? R.rare : R.magic;
       const x = v.root.x;
       const y = v.root.y + L.shadowY * k;
@@ -146,8 +147,8 @@ export class RarityView {
       const e = this.near[i]!;
       const v = enemies.view(e.id)!;
       const plate = this.plate(i, e);
-      const k = artScale(e.kind, e.radius);
-      const top = v.root.y + bodyBoxOf(e.kind).top * k - R.plateGap;
+      const k = artScale(lookKind(e.kind), e.radius);
+      const top = v.root.y + bodyBoxOf(lookKind(e.kind)).top * k - R.plateGap;
       plate.root.position.set(Math.round(v.root.x * xf.scale + xf.ox), Math.round(top * xf.scale + xf.oy));
       plate.root.scale.set(xf.screenScale);
       plate.root.visible = true;

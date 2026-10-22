@@ -180,6 +180,6 @@ const m4Bosses = {
  */
 export const bosses = {
   ...m4Bosses,
-  rift_matriarch: { ...m4Bosses.tar_matriarch, name: 'Rift Matriarch' },
-  rift_warden: { ...m4Bosses.cinder_warden, name: 'Rift Warden' },
+  rift_matriarch: { ...m4Bosses.tar_matriarch, name: 'Rift Matriarch', lookAs: 'tar_matriarch' },
+  rift_warden: { ...m4Bosses.cinder_warden, name: 'Rift Warden', lookAs: 'cinder_warden' },
 } satisfies Record<string, EnemyDef>;

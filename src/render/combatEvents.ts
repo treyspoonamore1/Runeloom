@@ -1,5 +1,5 @@
 import { PLAYER_ID, type GameState, type SimEvent } from '../sim';
-import { enemies as enemyDefs } from '../../data/enemies';
+import { enemies as enemyDefs, lookKind } from '../../data/enemies';
 import type { AilmentFx } from './ailmentFx';
 import { FX, SHAKE } from './combatPalette';
 import type { DamageNumbers } from './damageNumbers';
@@ -59,7 +59,13 @@ export class CombatEvents {
           // ranged forms flash at the staff tip in the weave's element.
           if (ev.spell !== 'strike' && ev.spell !== 'swath') {
             const root = s.weaves.slots[ev.slot]?.program?.root;
-            fx.castFlash(player.tip.x, player.tip.y, ev.dirX, ev.dirY, elementType(root?.elements[0]?.element));
+            fx.castFlash(
+              player.tip.x,
+              player.tip.y,
+              ev.dirX,
+              ev.dirY,
+              elementType(root?.elements[0]?.element),
+            );
           }
           break;
         }
@@ -106,11 +112,11 @@ export class CombatEvents {
         case 'death':
           if (ev.shattered) {
             // Frozen: burst into ice, no corpse (DESIGN §4 shakes on Shatter).
-            ailments.shatter(ev.x, ev.y, ev.kind);
+            ailments.shatter(ev.x, ev.y, lookKind(ev.kind));
             enemies.view(ev.id)?.die(true);
             shake.kick(SHAKE.shatter);
           } else {
-            fx.death(ev.x, ev.y, ev.kind);
+            fx.death(ev.x, ev.y, lookKind(ev.kind));
             enemies.view(ev.id)?.die();
           }
           if (strikeHit && ev.cause === 'hit') shake.kick(SHAKE.strikeKill);
@@ -122,7 +128,13 @@ export class CombatEvents {
         case 'hitstop':
           break;
         case 'projectileEnd':
-          fx.projectileEnd(ev.x, ev.y, ENEMY_SHOTS.has(ev.kind), ev.reason, projectiles.elementOf(ev.id) ?? 'fire');
+          fx.projectileEnd(
+            ev.x,
+            ev.y,
+            ENEMY_SHOTS.has(ev.kind),
+            ev.reason,
+            projectiles.elementOf(ev.id) ?? 'fire',
+          );
           break;
         case 'shieldBlock': {
           const v = enemies.view(ev.id);
