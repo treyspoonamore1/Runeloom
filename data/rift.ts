@@ -50,15 +50,24 @@ export const riftBosses = [
   { arena: 'ember_hearth', boss: 'rift_warden' },
 ] as const satisfies readonly { arena: string; boss: EnemyKind }[];
 
-/** What a spawn marker in a rift chunk holds, picked by weight among those the tier allows. */
+/**
+ * What a spawn marker in a rift chunk holds, picked by weight among those the tier and chunk
+ * allow. `notIn`: chunks it never spawns in.
+ */
 export type RiftSpawn =
-  | { pack: PackId; weight: number; fromTier?: number }
-  | { enemy: EnemyKind; count: number; weight: number; fromTier?: number };
+  | { pack: PackId; weight: number; fromTier?: number; notIn?: readonly RiftChunkId[] }
+  | { enemy: EnemyKind; count: number; weight: number; fromTier?: number; notIn?: readonly RiftChunkId[] };
+
+/**
+ * Burning Tinderlings set oil lines and bramble ablaze before the player can act (the M5 Thicket
+ * playtest note), so their packs stay out of the oil and bramble chunks.
+ */
+const FIRE_PRONE: readonly RiftChunkId[] = ['oilworks', 'thicket'];
 
 export const riftSpawns: readonly RiftSpawn[] = [
-  { pack: 'tinderling_swarm', weight: 100 },
+  { pack: 'tinderling_swarm', weight: 100, notIn: FIRE_PRONE },
   { pack: 'archer_line', weight: 80 },
-  { pack: 'tar_crew', weight: 70 },
+  { pack: 'tar_crew', weight: 70, notIn: FIRE_PRONE },
   { pack: 'wisp_flight', weight: 60 },
   { pack: 'caller_guard', weight: 60, fromTier: 2 },
   { enemy: 'shieldbearer', count: 3, weight: 50 },

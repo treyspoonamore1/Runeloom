@@ -208,3 +208,21 @@ describe('rift bosses and rewards', () => {
     expect(sigils[0]!.content).toMatchObject({ kind: 'sigil', sigil: { tier: 1, mods: [] } });
   });
 });
+
+describe('rift room mend', () => {
+  it('clearing a rift room restores tuning.rift.roomClearHeal of life and mana', () => {
+    const { s, uid } = atStone();
+    open(s, uid);
+    s.world.pending = { roomId: 'rift/0/r1', arrival: { kind: 'edge', from: 'n' }, reason: 'exit' };
+    run(s, 1);
+    s.cheats.noAI = true;
+    s.player.life = 10;
+    s.player.mana = 0;
+    // Dead without a kill (no XP, so no level-up heal).
+    for (const e of s.enemies) e.dead = true;
+    run(s, 1);
+    expect(s.world.flags['rift/0/r1']!.cleared).toBe(true);
+    expect(s.player.life).toBeCloseTo(Math.min(s.player.maxLife, 10 + s.player.maxLife * 0.3), 0);
+    expect(s.player.mana).toBeGreaterThanOrEqual(s.player.maxMana * 0.3);
+  });
+});

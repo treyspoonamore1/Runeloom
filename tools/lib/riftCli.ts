@@ -7,6 +7,14 @@ import { RIFT_TIERS, riftMods, type RiftModId } from '../../data/rift';
 import { generateRift, solveRift } from '../../src/sim';
 import { Rng } from '../../src/sim/core/rng';
 import { loadAllRooms } from './rooms';
+import {
+  riftCharacter,
+  runRiftBot,
+  summarizeRiftRuns,
+  type RiftBuild,
+  type RiftRunLog,
+} from '../../src/sim/bots/riftBot';
+import { rollSigilMods } from '../../src/sim/items/sigils';
 
 export interface RiftCliOptions {
   count: number;
@@ -66,4 +74,66 @@ export function runRiftCli(o: RiftCliOptions): void {
     console.log(`${failed ? 'FAILED' : 'all solved'} in ${(ms / 1000).toFixed(1)} s`);
   }
   if (failed) process.exitCode = 1;
+}
+
+export interface RiftBotCliOptions {
+  count: number;
+  tiers: number[];
+  builds: RiftBuild[];
+  seed: number;
+  json?: boolean;
+}
+
+/**
+ * `npm run sim -- --rift-bot [--count 5] [--tier 4] [--builds fire,frost] [--seed 1] [--json]`
+ * (M6 acceptance: a clear-rate report per tier for each reference build): the rift bot
+ * (src/sim/bots/riftBot.ts) runs `count` rifts per tier and build, each with modifiers rolled
+ * like a dropped sigil's.
+ */
+export function runRiftBotCli(o: RiftBotCliOptions): void {
+  const rooms = loadAllRooms();
+  const t0 = performance.now();
+  const rows: {
+    build: RiftBuild;
+    tier: number;
+    summary: ReturnType<typeof summarizeRiftRuns>;
+    logs: RiftRunLog[];
+  }[] = [];
+  for (const build of o.builds)
+    for (const tier of o.tiers) {
+      const rng = new Rng((o.seed * 7919 + tier) >>> 0);
+      const hero = riftCharacter(tier);
+      const logs: RiftRunLog[] = [];
+      for (let k = 0; k < o.count; k++)
+        logs.push(
+          runRiftBot({ rooms, seed: o.seed * 1000 + k, tier, mods: rollSigilMods(rng, tier), build, hero }),
+        );
+      rows.push({ build, tier, summary: summarizeRiftRuns(logs), logs });
+      if (!o.json) {
+        const s = summarizeRiftRuns(logs);
+        const pct = Math.round((100 * s.completed) / s.runs);
+        const why = logs
+          .filter((l) => !l.completed)
+          .map(
+            (l) =>
+              `${l.died ? 'died' : 'timeout'} ${l.endedIn?.replace(/^rift\/\d+\//, '')}[${l.mods.join(' ')}]${l.deathCause ? `: ${l.deathCause}` : ''}`,
+          )
+          .slice(0, 3)
+          .join('; ');
+        console.log(
+          `${build.padEnd(5)} T${String(tier).padStart(2)} L${String(logs[0]?.level ?? 0).padStart(2)}  ` +
+            `${String(s.completed).padStart(2)}/${s.runs} (${String(pct).padStart(3)}%)  deaths ${s.deaths}  timeouts ${s.timeouts}  ` +
+            `clear ${s.avgSeconds.toFixed(0)} s  boss ${s.avgBossSeconds?.toFixed(0) ?? '-'} s  stuck ${s.stuck}` +
+            (why ? `\n      ${why}` : ''),
+        );
+      }
+    }
+  if (o.json)
+    console.log(
+      JSON.stringify({
+        rows: rows.map(({ build, tier, summary }) => ({ build, tier, ...summary })),
+        ms: performance.now() - t0,
+      }),
+    );
+  else console.log(`${rows.length} tier rows in ${((performance.now() - t0) / 1000).toFixed(0)} s`);
 }

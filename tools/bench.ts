@@ -35,6 +35,7 @@ import { MAT, OWNER } from '../data/materials';
 import { parseArgs, requireInt, runCli } from './lib/args';
 import { loadRoomText } from './lib/rooms';
 import { adventureBench } from './lib/adventureBench';
+import { riftBench } from './lib/riftBench';
 import { summarize, type Summary } from './lib/stats';
 
 export interface Bench {
@@ -306,6 +307,7 @@ export const benches: Bench[] = [
   gridTypicalBench(),
   gridWorstBench(),
   adventureBench(ENTITY_BUDGET_MS),
+  riftBench(ENTITY_BUDGET_MS),
 ];
 
 const GRID_TILES = 64; // 256 × 256 cells

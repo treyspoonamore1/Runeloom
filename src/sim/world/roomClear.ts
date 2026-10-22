@@ -14,7 +14,8 @@
 import { bossKinds, riftBossKinds } from '../../../data/progression';
 import { emit } from '../events';
 import { onRoomCleared } from '../hero/rewards';
-import { onBossDefeated } from './rift/rewards';
+import { onBossDefeated, onRiftRoomCleared } from './rift/rewards';
+import { isRiftRoomId } from './rift/types';
 import type { GameState } from '../state';
 import { parseRoom, type RoomHeader } from './room';
 import { roomFlags, type WorldState } from './worldState';
@@ -53,6 +54,7 @@ export function markRoomCleared(state: GameState, boss?: { x: number; y: number 
   const f = roomFlags(state.world, id);
   if (f.cleared) return;
   f.cleared = true;
+  if (isRiftRoomId(id)) onRiftRoomCleared(state);
   const first = !f.rewardsPaid && !paysAtShrine(state);
   if (first) {
     onRoomCleared(state, id, boss ? { x: boss.x, y: boss.y, source: 'boss' } : undefined);

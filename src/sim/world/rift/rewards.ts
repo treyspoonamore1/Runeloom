@@ -1,5 +1,6 @@
 /**
- * Boss rewards tied to rifts (M6):
+ * Rewards tied to rifts (M6):
+ * - Clearing a rift room mends tuning.rift.roomClearHeal of life and mana (no Loom Stones there).
  * - The Cinder Warden's first death drops the first Rift Sigil (data/rift.ts riftDrops.wardenSigilTier).
  * - A rift boss's death completes the rift: hero.riftTier rises to its tier (the ladder), and
  *   it drops a sigil one tier higher and some crafting currency (riftRewards), around its body.
@@ -12,6 +13,15 @@ import { rollCurrency } from '../../items/drops';
 import { dropLoot, type LootContent } from '../../items/loot';
 import { makeSigil, rollSigil } from '../../items/sigils';
 import type { GameState } from '../../state';
+
+/** A rift room was cleared: restore tuning.rift.roomClearHeal of max life and mana. */
+export function onRiftRoomCleared(state: GameState): void {
+  const p = state.player;
+  if (p.dead) return;
+  const f = state.tuning.rift.roomClearHeal;
+  p.life = Math.min(p.maxLife, p.life + p.maxLife * f);
+  p.mana = Math.min(p.maxMana, p.mana + p.maxMana * f);
+}
 
 export function onBossDefeated(state: GameState, kind: string, x: number, y: number): void {
   const out: LootContent[] = [];

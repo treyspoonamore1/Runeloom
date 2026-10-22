@@ -161,8 +161,10 @@ function shuffled<T>(rng: Rng, list: readonly T[]): T[] {
   return out;
 }
 
-function pickSpawn(rng: Rng, tier: number): RiftSpawn {
-  const list = riftSpawns.filter((s) => (s.fromTier ?? 1) <= tier);
+function pickSpawn(rng: Rng, tier: number, chunk: string): RiftSpawn {
+  const list = riftSpawns.filter(
+    (s) => (s.fromTier ?? 1) <= tier && !(s.notIn as readonly string[] | undefined)?.includes(chunk),
+  );
   let total = 0;
   for (const s of list) total += s.weight;
   let r = rng.float() * total;
@@ -173,8 +175,8 @@ function pickSpawn(rng: Rng, tier: number): RiftSpawn {
   return list[list.length - 1]!;
 }
 
-function spawnLine(rng: Rng, marker: string, tier: number): string {
-  const s = pickSpawn(rng, tier);
+function spawnLine(rng: Rng, marker: string, tier: number, chunk: string): string {
+  const s = pickSpawn(rng, tier, chunk);
   const rare = riftRarity.rare.base + riftRarity.rare.perTier * (tier - 1);
   const magic = riftRarity.magic.base + riftRarity.magic.perTier * (tier - 1);
   const r = rng.float();
@@ -213,7 +215,7 @@ function roomText(
   for (const r of rows) for (const ch of r) if (ch >= '1' && ch <= '9') markers.add(ch);
   for (const m of [...markers].sort()) {
     if (bossKind !== null) lines.push(`@spawn ${m} enemy:${bossKind}`);
-    else lines.push(spawnLine(rng, m, spec.tier));
+    else lines.push(spawnLine(rng, m, spec.tier, room.template.replace(/^rift\/chunks\//, '')));
   }
   if (bossKind !== null) lines.push('@link D cleared');
   return `${lines.join('\n')}\n${rows.map((r) => r.join('')).join('\n')}\n`;

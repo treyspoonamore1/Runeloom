@@ -55,6 +55,16 @@ describe('rift generator', () => {
     expect(boss.header.links).toContainEqual({ door: 'D', condition: 'cleared' });
   });
 
+  it('keeps Tinderling packs out of the oil and bramble chunks', () => {
+    for (let seed = 0; seed < 300; seed++) {
+      const r = generateRift(spec(seed, 6), ROOMS);
+      for (const p of r.plan) {
+        if (!/oilworks|thicket/.test(p.template)) continue;
+        expect(r.rooms[p.id]).not.toMatch(/pack:(tinderling_swarm|tar_crew)/);
+      }
+    }
+  });
+
   it('walls off sockets nothing is joined to', () => {
     const r = generateRift(spec(4), ROOMS);
     for (const p of r.plan) {

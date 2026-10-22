@@ -351,6 +351,14 @@ export const defaultTuning = {
     /** An exit triggers when the player's center is within radius + this many cells of the room edge, facing out. */
     exitSlack: 0.3,
   },
+  rift: {
+    /**
+     * Fraction of max life and mana restored when a rift room is cleared (M6). Rifts have no
+     * Loom Stones and the player has no life regeneration, so without it 6–10 rooms and a boss
+     * would be one life bar (feel).
+     */
+    roomClearHeal: 0.3,
+  },
 };
 
 export type Tuning = typeof defaultTuning;
