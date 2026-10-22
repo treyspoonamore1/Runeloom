@@ -15,8 +15,8 @@ import { DT } from '../core/constants';
 import type { Hasher } from '../core/hash';
 import { emit } from '../events';
 import type { GameState } from '../state';
-import type { FusePart, HeroState, Item, RuneItem } from '../hero/types';
-import { hashItem, hashPart, hashRune } from '../hero/hero';
+import type { FusePart, HeroState, Item, RiftSigil, RuneItem } from '../hero/types';
+import { hashItem, hashPart, hashRune, hashSigil } from '../hero/hero';
 import { isSolidCell } from '../world/room';
 import { unlockRune } from '../hero/unlock';
 
@@ -25,7 +25,8 @@ export type LootContent =
   | { kind: 'item'; item: Item }
   | { kind: 'part'; part: FusePart }
   | { kind: 'scrap'; amount: number }
-  | { kind: 'currency'; currency: CurrencyId; amount: number };
+  | { kind: 'currency'; currency: CurrencyId; amount: number }
+  | { kind: 'sigil'; sigil: RiftSigil };
 
 export interface LootDrop {
   /** Unique within the run (state.nextId space). */
@@ -88,6 +89,9 @@ export function grantContent(state: GameState, content: LootContent): void {
     case 'currency':
       hero.currency[content.currency] = (hero.currency[content.currency] ?? 0) + content.amount;
       break;
+    case 'sigil':
+      hero.sigils.push(content.sigil);
+      break;
   }
 }
 
@@ -134,6 +138,7 @@ export function hashLoot(h: Hasher, loot: readonly LootDrop[]): void {
     else if (c.kind === 'item') hashItem(h, c.item);
     else if (c.kind === 'part') hashPart(h, c.part);
     else if (c.kind === 'currency') h.string(c.currency).byte(0).u32(c.amount);
+    else if (c.kind === 'sigil') hashSigil(h, c.sigil);
     else h.u32(c.amount);
   }
 }

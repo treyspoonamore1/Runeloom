@@ -5,6 +5,7 @@
  * CONTRACT (M4): room ids here are the file paths under data/rooms (without .txt). The content
  * agent authors these files; the world agent connects them; the hero agent pays the rewards.
  */
+import { riftBosses } from './rift';
 import type { RuneId } from './runes';
 
 /** Every M4 room, in intended play order (CONTENT §9). */
@@ -117,5 +118,11 @@ export const runeDiscovery = {
   >,
 };
 
-/** Enemy kinds that are bosses: their death clears their room and is remembered in WorldState.bossesDefeated. */
-export const bossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden'];
+/**
+ * Enemy kinds that are bosses: their death clears their room. The region's bosses are
+ * remembered in WorldState.bossesDefeated; rift bosses (data/rift.ts riftBosses) only in the open
+ * rift (WorldState.rift.bossDead), since every rift has one.
+ */
+export const regionBossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden'];
+export const riftBossKinds: readonly string[] = riftBosses.map((b) => b.boss);
+export const bossKinds: readonly string[] = [...regionBossKinds, ...riftBossKinds];

@@ -23,12 +23,15 @@ export const DUNGEONS: readonly string[] = ['kiln'];
 export const BOSS_INFO: Record<string, { name: string; marks: number[] }> = {
   tar_matriarch: { name: 'Tar Matriarch', marks: [0.5] },
   cinder_warden: { name: 'The Cinder Warden', marks: [0.66, 0.33] },
+  rift_matriarch: { name: 'Rift Matriarch', marks: [0.5] },
+  rift_warden: { name: 'Rift Warden', marks: [0.66, 0.33] },
 };
 
 export const REGION_NAMES: Record<string, string> = {
   emberwood: 'Emberwood',
   kiln: 'The Sunken Kiln',
   test: 'Test grounds',
+  rift: 'Rift',
 };
 
 export interface BossSnap {

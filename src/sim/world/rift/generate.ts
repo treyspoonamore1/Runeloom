@@ -27,7 +27,7 @@ import { EXIT_CHAR, OPPOSITE } from '../exits';
 import { parseRoom } from '../room';
 import type { Edge, RoomSource } from '../worldState';
 import { applyRiftTerrain } from './terrain';
-import type { RiftSpec } from './types';
+import { riftRoomPrefix, type RiftSpec } from './types';
 
 export interface RiftRoomPlan {
   id: string;
@@ -58,14 +58,7 @@ const DIRS: readonly { edge: Edge; dx: number; dy: number }[] = [
   { edge: 'w', dx: -1, dy: 0 },
 ];
 
-export function riftRoomPrefix(index: number): string {
-  return `rift/${index}/`;
-}
-
-/** True for a generated rift room id. */
-export function isRiftRoomId(id: string): boolean {
-  return /^rift\/\d+\//.test(id);
-}
+export { isRiftRoomId, riftRoomPrefix } from './types';
 
 /** Builds the rift a spec describes from the templates in `templates`. */
 export function generateRift(spec: RiftSpec, templates: RoomSource): GeneratedRift {

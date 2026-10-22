@@ -348,7 +348,7 @@ function countDrop(log: RoomLog, c: import('../items/loot').LootContent): void {
   if (c.kind === 'rune') log.drops.runes.push(c.rune.rune);
   else if (c.kind === 'item') log.drops.items++;
   else if (c.kind === 'part') log.drops.parts.push(c.part.part);
-  else log.drops.scrap += c.amount;
+  else if (c.kind === 'scrap') log.drops.scrap += c.amount;
 }
 
 /** The Capacity weaves compile against now (spindle base, Loom Shards, affixes, passives). */

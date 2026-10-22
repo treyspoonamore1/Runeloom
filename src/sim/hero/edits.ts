@@ -14,6 +14,7 @@ import { equip, fuse, salvage, unequip, unfuse } from './equip';
 import { refreshHero } from './hero';
 import { applyCraft } from '../items/craft';
 import { restAtLoomStone, travelToLoomStone } from '../world/adventure';
+import { openRift } from '../world/rift/run';
 
 export type HeroEdit =
   | { kind: 'equip'; uid: number; slot: EquipSlot }
@@ -32,7 +33,9 @@ export type HeroEdit =
   /** Fast travel from an active Loom Stone to another activated one (region map). */
   | { kind: 'travel'; roomId: string; key: string }
   /** Rest at the Loom Stone the player stands at: full life and mana, rooms repopulate. */
-  | { kind: 'rest' };
+  | { kind: 'rest' }
+  /** Open a rift with the Rift Sigil `uid` at the Loom Stone the player stands at (M6, world/rift/run.ts). */
+  | { kind: 'openRift'; uid: number };
 /**
  * A HeroEdit recorded by the Session, applied between ticks when `state.tick === tick` (like
  * LoadoutEdit). `after`: how many Loom edits the session had recorded before it, so replays keep
@@ -54,13 +57,14 @@ export function applyHeroEdit(state: GameState, edit: HeroEdit): string | null {
   // ---- World edits (world agent): Loom Stone rest and fast travel (world/adventure.ts) ----
   if (edit.kind === 'travel') return travelToLoomStone(state, edit.roomId, edit.key);
   if (edit.kind === 'rest') return restAtLoomStone(state);
+  if (edit.kind === 'openRift') return openRift(state, edit.uid);
   // ---- Equipment (hero agent) ----
   const err = applyEquipmentEdit(state, edit);
   if (err === null) refreshHero(state);
   return err;
 }
 
-type EquipmentEdit = Exclude<HeroEdit, { kind: 'allocate' | 'refund' | 'travel' | 'rest' }>;
+type EquipmentEdit = Exclude<HeroEdit, { kind: 'allocate' | 'refund' | 'travel' | 'rest' | 'openRift' }>;
 
 function applyEquipmentEdit(state: GameState, edit: EquipmentEdit): string | null {
   if (state.mode !== 'adventure') return 'Only in adventure mode';

@@ -12,6 +12,7 @@
  * - UI agent: reads these through src/app/hero.ts; never writes them directly.
  */
 import type { CurrencyId } from '../../../data/currency';
+import type { RiftModId } from '../../../data/rift';
 import type { RuneId } from '../../../data/runes';
 
 /** Equipment slots (DESIGN §8.1). Runes live in the pouch and weave slots, not here. */
@@ -65,6 +66,15 @@ export interface Item {
   unique?: string;
 }
 
+/** A Rift Sigil (DESIGN §10.4, M6): opens a rift of its tier with its modifiers at a Loom Stone. */
+export interface RiftSigil {
+  uid: number;
+  /** 1–16. */
+  tier: number;
+  /** Prefixes first, then suffixes (data/rift.ts riftMods). */
+  mods: RiftModId[];
+}
+
 export interface HeroState {
   /** Character level, from 1. */
   level: number;
@@ -89,6 +99,10 @@ export interface HeroState {
   currency: Partial<Record<CurrencyId, number>>;
   /** Extra passive points from bosses and side puzzles (DESIGN §9). */
   patternSeeds: number;
-  /** Next uid for runes, items and parts (one id space). */
+  /** Rift Sigils owned (M6). */
+  sigils: RiftSigil[];
+  /** Highest rift tier completed, 0 for none: sigils up to one tier above it can be opened (M6 tier ladder). */
+  riftTier: number;
+  /** Next uid for runes, items, parts and sigils (one id space). */
   nextUid: number;
 }

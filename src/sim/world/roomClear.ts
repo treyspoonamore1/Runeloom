@@ -4,19 +4,19 @@
  * - A room is cleared the first moment all its enemies are dead; a room that spawns none is
  *   cleared on entry. A boss room (one whose @spawn names an enemy in data/progression.ts
  *   bossKinds) is cleared when its boss dies, whatever else is still alive, and the boss goes
- *   into WorldState.bossesDefeated.
+ *   into WorldState.bossesDefeated (a rift boss: WorldState.rift.bossDead).
  * - The first clear pays the room's rewards once per save: `onRoomCleared` (hero/rewards.ts),
  *   then RoomFlags.rewardsPaid. A room with a rune shrine (`R`) pays them only when the player
  *   touches the shrine (objectTouch.ts), so neither its clear nor `@clear exit` pays them.
  * - A cleared room stays empty when re-entered until the player rests at a Loom Stone or dies;
  *   then every room repopulates except boss rooms whose boss is dead.
  */
-import { bossKinds } from '../../../data/progression';
+import { bossKinds, riftBossKinds } from '../../../data/progression';
 import { emit } from '../events';
 import { onRoomCleared } from '../hero/rewards';
 import type { GameState } from '../state';
 import { parseRoom, type RoomHeader } from './room';
-import { roomFlags } from './worldState';
+import { roomFlags, type WorldState } from './worldState';
 
 /** The current room pays its guaranteed runes at a rune shrine (`R`), not on clear. */
 export function paysAtShrine(state: GameState): boolean {
@@ -31,10 +31,16 @@ export function roomBossKinds(header: Pick<RoomHeader, 'spawns'>): string[] {
   return out;
 }
 
+/** True once boss `kind` is dead: for good (region bosses), or in the open rift (rift bosses). */
+export function bossDead(world: WorldState, kind: string): boolean {
+  if (riftBossKinds.includes(kind)) return world.rift?.bossDead === true;
+  return world.bossesDefeated.includes(kind);
+}
+
 /** A boss room whose bosses are all dead: it never repopulates. */
 export function bossRoomDone(state: GameState, header: Pick<RoomHeader, 'spawns'>): boolean {
   const bosses = roomBossKinds(header);
-  return bosses.length > 0 && bosses.every((k) => state.world.bossesDefeated.includes(k));
+  return bosses.length > 0 && bosses.every((k) => bossDead(state.world, k));
 }
 
 /**
@@ -72,8 +78,11 @@ export function stepRoomClear(state: GameState): void {
   const w = state.world;
   let boss: { x: number; y: number } | undefined;
   for (const e of state.enemies) {
-    if (!e.dead || !bossKinds.includes(e.kind) || w.bossesDefeated.includes(e.kind)) continue;
-    w.bossesDefeated.push(e.kind);
+    if (!e.dead || !bossKinds.includes(e.kind) || bossDead(w, e.kind)) continue;
+    if (riftBossKinds.includes(e.kind)) {
+      if (!w.rift) continue; // A rift boss spawned outside a rift (dev console) is just an enemy.
+      w.rift.bossDead = true;
+    } else w.bossesDefeated.push(e.kind);
     boss = { x: e.x, y: e.y };
     emit(state, { type: 'bossDefeated', kind: e.kind, roomId: state.room.id, x: e.x, y: e.y });
   }

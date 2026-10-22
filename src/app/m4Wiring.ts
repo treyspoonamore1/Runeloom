@@ -120,7 +120,12 @@ export const M4_STATE = {
 };
 
 /** Enemy kinds that are bosses (data/progression.ts bossKinds, repeated so audio needs no data import). */
-export const BOSS_KINDS: ReadonlySet<string> = new Set(['tar_matriarch', 'cinder_warden']);
+export const BOSS_KINDS: ReadonlySet<string> = new Set([
+  'tar_matriarch',
+  'cinder_warden',
+  'rift_matriarch',
+  'rift_warden',
+]);
 
 /** Where a sim event happened: x/y, or the tile center of the object named by `key`. */
 export function eventPos(state: GameState, ev: Record<string, unknown>): { x: number; y: number } {

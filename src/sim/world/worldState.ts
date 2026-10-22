@@ -13,6 +13,7 @@
  *   repopulates every room except boss rooms whose boss is dead.
  */
 import type { Hasher } from '../core/hash';
+import type { RiftSpec } from './rift/types';
 
 /** Room file texts by id ("emberwood/e1_glade"). The app builds it with Vite ?raw, tools from disk. */
 export type RoomSource = Readonly<Record<string, string>>;
@@ -61,6 +62,16 @@ export interface WorldState {
   bossesDefeated: string[];
   /** A transition requested this step, applied at the end of the step. Null otherwise. */
   pending: PendingTransition | null;
+  /** The open rift (M6), or null. Its rooms are rebuilt from the spec (world/rift/run.ts). */
+  rift: ActiveRift | null;
+  /** Rifts opened in this save; the next rift's index (its room ids' prefix). */
+  riftCount: number;
+}
+
+/** An open rift: what it is built from, and whether its boss has died. */
+export interface ActiveRift {
+  spec: RiftSpec;
+  bossDead: boolean;
 }
 
 /**
@@ -85,6 +96,8 @@ export function createWorldState(roomId: string): WorldState {
     respawn: null,
     bossesDefeated: [],
     pending: null,
+    rift: null,
+    riftCount: 0,
   };
 }
 
@@ -148,5 +161,12 @@ export function hashWorld(h: Hasher, w: WorldState): void {
     h.string(w.pending.roomId).byte(0);
     hashArrival(h, w.pending.arrival);
     h.string(w.pending.reason ?? 'exit').byte(0);
+  }
+  h.u32(w.riftCount).bool(w.rift !== null);
+  if (w.rift) {
+    const s = w.rift.spec;
+    h.u32(s.index).u32(s.seed).u32(s.tier).bool(w.rift.bossDead).u32(s.mods.length);
+    for (const m of s.mods) h.string(m).byte(0);
+    h.string(s.home.roomId).byte(0).string(s.home.key).byte(0);
   }
 }

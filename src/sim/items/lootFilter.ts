@@ -13,10 +13,10 @@ import type { LootContent } from './loot';
 import { kindOfBase } from './items';
 
 export type LootAction = 'show' | 'highlight' | 'hide';
-export type LootWhat = 'any' | 'item' | 'rune' | 'part' | 'currency' | 'scrap';
+export type LootWhat = 'any' | 'item' | 'rune' | 'part' | 'currency' | 'scrap' | 'sigil';
 
 export const lootActions: readonly LootAction[] = ['show', 'highlight', 'hide'];
-export const lootWhats: readonly LootWhat[] = ['any', 'item', 'rune', 'part', 'currency', 'scrap'];
+export const lootWhats: readonly LootWhat[] = ['any', 'item', 'rune', 'part', 'currency', 'scrap', 'sigil'];
 export const rarityOrder: readonly ItemRarity[] = ['normal', 'magic', 'rare', 'unique'];
 
 export interface LootRule {

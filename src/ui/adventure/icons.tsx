@@ -35,6 +35,7 @@ export type IconKind =
   | 'shard'
   | 'stone'
   | 'rune'
+  | 'sigil'
   | 'level';
 
 const SHAPES: Record<IconKind, () => JSX.Element> = {
@@ -96,6 +97,13 @@ const SHAPES: Record<IconKind, () => JSX.Element> = {
         stroke-linecap="round"
       />
       <circle cx="9" cy="10" r="3" fill="#c4623a" {...S} stroke-width={1.6} />
+    </>
+  ),
+  sigil: () => (
+    <>
+      <path d="M16 3l11 6.5v13L16 29 5 22.5v-13z" fill="#2a2236" {...S} />
+      <path d="M16 7l7.5 4.5v9L16 25l-7.5-4.5v-9z" stroke="#b48cff" stroke-width={1.6} fill="none" />
+      <path d="M17 9l2 6-4 2 3 7-5-7 4-2z" fill="#e6d8ff" />
     </>
   ),
   key: () => (

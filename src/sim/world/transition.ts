@@ -33,6 +33,8 @@ import { arrivalPoint, OPPOSITE } from './exits';
 import { bossRoomDone, markRoomCleared, repopulateRooms, payRewardsOnExit } from './roomClear';
 import { startRoom } from '../../../data/progression';
 import { roomFlags, type Arrival } from './worldState';
+import { closeRift } from './rift/rooms';
+import { isRiftRoomId } from './rift/types';
 
 /** Applies a pending transition, if any: repopulates first for a respawn or rest. */
 export function processTransition(state: GameState): void {
@@ -43,6 +45,8 @@ export function processTransition(state: GameState): void {
   if (reason === 'exit' && pending.arrival.kind === 'edge') payRewardsOnExit(state, pending.arrival.from);
   if (reason === 'respawn' || reason === 'rest') repopulateRooms(state);
   enterRoom(state, pending.roomId, pending.arrival);
+  // Arriving anywhere outside the open rift ends it (world/rift/run.ts).
+  if (state.world.rift && !isRiftRoomId(pending.roomId)) closeRift(state, reason === 'respawn');
 }
 
 /** Rebuilds the world around the player in room `roomId` (see the file comment). */

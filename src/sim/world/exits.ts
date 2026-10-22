@@ -11,6 +11,7 @@ import type { GameState } from '../state';
 import type { Room } from './room';
 import { tileChar } from './objectGround';
 import type { Edge } from './worldState';
+import { isRiftRoomId } from './rift/types';
 
 export const EXIT_CHAR: Readonly<Record<Edge, string>> = { w: '<', e: '>', n: '^', s: 'v' };
 export const OPPOSITE: Readonly<Record<Edge, Edge>> = { w: 'e', e: 'w', n: 's', s: 'n' };
@@ -115,5 +116,13 @@ export function stepExits(state: GameState): void {
   if (p.faceX * ox + p.faceY * oy < FACING_OUT) return;
   const target = exitTarget(state, edge);
   if (!target) return;
-  state.world.pending = { roomId: target, arrival: { kind: 'edge', from: edge }, reason: 'exit' };
+  // A rift's way home (M6) leads to the Loom Stone it was opened from, not to an edge.
+  const rift = state.world.rift;
+  const home =
+    rift && isRiftRoomId(state.room.id) && target === rift.spec.home.roomId ? rift.spec.home : null;
+  state.world.pending = {
+    roomId: target,
+    arrival: home ? { kind: 'loomStone', key: home.key } : { kind: 'edge', from: edge },
+    reason: 'exit',
+  };
 }

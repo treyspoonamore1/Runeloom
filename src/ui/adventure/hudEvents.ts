@@ -7,6 +7,7 @@
  */
 import { currencies } from '../../../data/currency';
 import type { LootContent } from '../../sim/items/loot';
+import { sigilModLine, sigilName } from '../../sim/items/sigils';
 import type { ItemRarity } from '../../sim/hero/types';
 
 export const HUD_EVENT = {
@@ -59,6 +60,7 @@ export type ToastKind =
   | 'part'
   | 'scrap'
   | 'currency'
+  | 'sigil'
   | 'key'
   | 'bigKey'
   | 'heart'
@@ -111,6 +113,7 @@ function contentToast(c: LootContent, names: ToastNames, runeSub: string): Toast
       `${c.amount > 1 ? `${c.amount}× ` : ''}${currencies[c.currency].name}`,
       'Currency',
     );
+  if (c.kind === 'sigil') return toast('sigil', sigilName(c.sigil), sigilModLine(c.sigil.mods));
   return toast('scrap', `+${c.amount} Thread Scrap`, '', null, c.amount);
 }
 

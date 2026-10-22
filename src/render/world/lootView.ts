@@ -60,6 +60,8 @@ export function lootLook(c: LootContent): LootLook {
       const color = L.currency[c.currency];
       return { tex: 'loot_currency', tint: color, glyph: null, glyphTint: 0, color, beam: false };
     }
+    case 'sigil':
+      return { tex: 'loot_sigil', tint: L.sigil, glyph: null, glyphTint: 0, color: L.sigil, beam: true };
   }
 }
 

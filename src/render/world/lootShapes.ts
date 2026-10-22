@@ -4,7 +4,7 @@ import type { Pen } from '../pen';
 
 /**
  * Baked loot drops (DESIGN §8): rune stones with a glyph per rune kind, an item satchel, a Fuse
- * part, a Thread Scrap spool, a currency knot and the light beam of rare and unique drops. Anchor at the drop's
+ * part, a Thread Scrap spool, a currency knot, a Rift Sigil and the light beam of rare and unique drops. Anchor at the drop's
  * resting point; white parts are tinted per drop.
  */
 const W = 0xffffff;
@@ -102,6 +102,15 @@ function currency(p: Pen): void {
   p.ellipse(-0.22, -0.26, 0.14, 0.08).fill({ color: W, alpha: 0.4 });
 }
 
+/** A Rift Sigil: a hexagonal slate tablet with a tear through it (white parts tinted). */
+function sigil(p: Pen): void {
+  p.poly([0, -0.85, 0.72, -0.42, 0.72, 0.42, 0, 0.85, -0.72, 0.42, -0.72, -0.42])
+    .fill(0x2a2236)
+    .stroke(0.14, INK);
+  p.poly([0, -0.62, 0.52, -0.3, 0.52, 0.3, 0, 0.62, -0.52, 0.3, -0.52, -0.3]).stroke(0.08, W);
+  p.poly([0.05, -0.5, 0.2, -0.08, -0.08, 0.06, 0.1, 0.48, -0.2, 0.02, 0.06, -0.12]).fill(W);
+}
+
 /** Light beam of rare and unique drops: a soft column, white (tinted), base at (0, 0). */
 function beam(p: Pen): void {
   for (let i = 0; i < 6; i++) {
@@ -136,6 +145,7 @@ export function lootAtlasEntries(): AtlasEntry[] {
     { name: 'loot_part', x0: -0.95, y0: -0.95, x1: 0.95, y1: 0.95, draw: part },
     { name: 'loot_scrap', x0: -0.75, y0: -0.65, x1: 1.1, y1: 0.95, draw: scrap },
     { name: 'loot_currency', x0: -0.8, y0: -0.8, x1: 0.8, y1: 0.8, draw: currency },
+    { name: 'loot_sigil', x0: -0.95, y0: -1.0, x1: 0.95, y1: 1.0, draw: sigil },
     { name: 'loot_beam', x0: -0.6, y0: -1.1, x1: 0.6, y1: 0.1, draw: beam },
   ];
 }

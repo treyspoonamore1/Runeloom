@@ -22,7 +22,9 @@ import type { HeroState } from '../hero/types';
 import { createGame, type GameState } from '../state';
 import type { LoadoutSpec } from '../weave/runtime/loadout';
 import { objectCenter, type WorldObject } from './objects';
-import { repopulateRooms, roomBossKinds } from './roomClear';
+import { bossDead, repopulateRooms, roomBossKinds } from './roomClear';
+import { withRiftRooms } from './rift/rooms';
+import { isRiftRoomId, riftRoomPrefix } from './rift/types';
 import { parseRoom } from './room';
 import { enterRoom } from './transition';
 export { requestRespawn } from './transition';
@@ -50,20 +52,30 @@ export interface AdventureOptions {
  */
 export function createAdventure(opts: AdventureOptions): GameState {
   const world = opts.world ?? createWorldState(opts.startRoomId ?? startRoom);
-  // A save made in a boss room whose boss still lives (autosave on entering K5 or K10, which
-  // have no Loom Stone) loads at the respawn Loom Stone instead of beside the boss.
-  const saved = opts.rooms[world.roomId];
   const r = world.respawn;
-  if (opts.world && saved !== undefined && r && opts.rooms[r.roomId] !== undefined) {
+  // A save made in a rift (M6) rebuilds its rooms; one that names a rift room without an open
+  // rift (or the other way round) loads at the respawn Loom Stone, out of any rift.
+  let rooms = opts.rooms;
+  if (world.rift && isRiftRoomId(world.roomId)) rooms = withRiftRooms(rooms, world.rift.spec);
+  else {
+    world.rift = null;
+    if (isRiftRoomId(world.roomId) && r) world.roomId = r.roomId;
+  }
+  // A save made in a boss room whose boss still lives (autosave on entering K5 or K10, which
+  // have no Loom Stone) loads at the respawn Loom Stone instead of beside the boss; in a rift's
+  // boss arena, at the rift's entry.
+  const saved = rooms[world.roomId];
+  if (opts.world && saved !== undefined && r && rooms[r.roomId] !== undefined) {
     const header = parseRoom(saved).header;
-    if (roomBossKinds(header).some((k) => !world.bossesDefeated.includes(k))) world.roomId = r.roomId;
+    if (roomBossKinds(header).some((k) => !bossDead(world, k)))
+      world.roomId = world.rift ? `${riftRoomPrefix(world.rift.spec.index)}entry` : r.roomId;
   }
   const roomId = world.roomId;
-  if (opts.rooms[roomId] === undefined) throw new Error(`createAdventure: no room "${roomId}"`);
+  if (rooms[roomId] === undefined) throw new Error(`createAdventure: no room "${roomId}"`);
   const fresh = opts.hero === undefined;
   const state = createGame({
     seed: opts.seed,
-    rooms: opts.rooms,
+    rooms,
     roomId,
     hero: opts.hero ?? newGameHero(),
     world,

@@ -6,7 +6,14 @@
  * hero/items agent fills in the item and level parts; the effects agent the passive and Fuse
  * parts (through its own aggregation function called from here).
  */
-import { EQUIP_SLOTS, type FusePart, type HeroState, type Item, type RuneItem } from './types';
+import {
+  EQUIP_SLOTS,
+  type FusePart,
+  type HeroState,
+  type Item,
+  type RiftSigil,
+  type RuneItem,
+} from './types';
 import { emptyHeroMods, type HeroMods } from './mods';
 import { addPassiveAndPartMods } from './effectMods';
 import { syncHeroEffects } from './effects';
@@ -34,6 +41,8 @@ export function createHero(): HeroState {
     threadScrap: 0,
     currency: {},
     patternSeeds: 0,
+    sigils: [],
+    riftTier: 0,
     nextUid: 1,
   };
 }
@@ -112,4 +121,11 @@ export function hashHero(h: Hasher, hero: HeroState): void {
   for (const n of hero.passives) h.string(n).byte(0);
   h.u32(hero.heartSeeds).u32(hero.loomShards).u32(hero.threadScrap).u32(hero.patternSeeds);
   for (const c of currencyIds) h.u32(hero.currency[c] ?? 0);
+  h.u32(hero.sigils.length).u32(hero.riftTier);
+  for (const g of hero.sigils) hashSigil(h, g);
+}
+
+export function hashSigil(h: Hasher, g: RiftSigil): void {
+  h.u32(g.uid).u32(g.tier).u32(g.mods.length);
+  for (const m of g.mods) h.string(m).byte(0);
 }

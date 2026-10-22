@@ -239,3 +239,13 @@ export const sigilRolls = {
     [10, 20, 30, 25, 15],
   ],
 };
+
+/** Sigils from rifts (M6). */
+export const riftDrops = {
+  /** Chance per drop roll (data/loot.ts rolls) in a rift that a Rift Sigil drops. */
+  sigilChance: 0.012,
+  /** A dropped sigil is the rift's tier, or one tier higher with this chance (at most 16). */
+  tierUpChance: 0.25,
+  /** The first sigil: the Cinder Warden drops a tier-1 sigil the first time he dies. */
+  wardenSigilTier: 1,
+};

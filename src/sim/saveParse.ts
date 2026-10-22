@@ -10,6 +10,7 @@ import { isFusePartId } from '../../data/fuseParts';
 import { isRuneId, type RuneId } from '../../data/runes';
 import { isSpindleId } from '../../data/spindles';
 import { maxRuneLevel } from '../../data/progression';
+import { isRiftModId, RIFT_TIERS, riftDrops, type RiftModId } from '../../data/rift';
 import type { RngState } from './core/rng';
 import { craftRngFor } from './rngStreams';
 import { createHero } from './hero/hero';
@@ -19,8 +20,10 @@ import {
   type HeroState,
   type Item,
   type ItemRarity,
+  type RiftSigil,
   type RuneItem,
 } from './hero/types';
+import { makeSigil } from './items/sigils';
 import { kindOfBase, slotsForKind, socketCount } from './items/items';
 import { createWorldState, type RoomFlags, type WorldState } from './world/worldState';
 import { parseWeave } from './weave/notation';
@@ -144,6 +147,30 @@ function item(v: unknown, path: string): Item {
   return out;
 }
 
+function riftMods(v: unknown, path: string): RiftModId[] {
+  const out = strs(v, path);
+  out.forEach((m, i) => {
+    if (!isRiftModId(m)) fail(`${path}[${i}]`, `is not a rift modifier ("${m}")`);
+  });
+  if (new Set(out).size !== out.length) fail(path, 'repeats a modifier');
+  return out as RiftModId[];
+}
+
+function riftTierOf(v: unknown, path: string): number {
+  const t = int(v, path, 1);
+  if (t > RIFT_TIERS) fail(path, `is above ${RIFT_TIERS}`);
+  return t;
+}
+
+function sigil(v: unknown, path: string): RiftSigil {
+  const o = obj(v, path);
+  return {
+    uid: int(o.uid, `${path}.uid`, 1),
+    tier: riftTierOf(o.tier, `${path}.tier`),
+    mods: riftMods(o.mods, `${path}.mods`),
+  };
+}
+
 function currencyStacks(v: unknown, path: string): HeroState['currency'] {
   const o = obj(v, path);
   const out: HeroState['currency'] = {};
@@ -179,6 +206,8 @@ export function parseHero(v: unknown): HeroState {
     threadScrap: opt(o, 'threadScrap', int, d.threadScrap, P),
     currency: opt(o, 'currency', currencyStacks, d.currency, P),
     patternSeeds: opt(o, 'patternSeeds', int, d.patternSeeds, P),
+    sigils: opt(o, 'sigils', (x, p) => arr(x, p).map((g, i) => sigil(g, `${p}[${i}]`)), d.sigils, P),
+    riftTier: opt(o, 'riftTier', int, d.riftTier, P),
     nextUid: opt(o, 'nextUid', (x, p) => int(x, p, 1), d.nextUid, P),
   };
   hero.unlockedRunes = [...new Set([...hero.unlockedRunes, ...hero.runes.map((r) => r.rune)])].sort();
@@ -197,6 +226,7 @@ export function parseHero(v: unknown): HeroState {
     ...hero.runes.map((r) => r.uid),
     ...hero.items.map((i) => i.uid),
     ...hero.parts.map((p) => p.uid),
+    ...hero.sigils.map((g) => g.uid),
   ];
   for (const it of hero.items) for (const f of it.fused) if (f) uids.push(f.uid);
   if (new Set(uids).size !== uids.length) fail('hero', 'has two things with one uid');
@@ -234,6 +264,25 @@ export function parseWorld(v: unknown): WorldState {
   if (o.respawn !== null && o.respawn !== undefined) {
     const r = obj(o.respawn, 'world.respawn');
     w.respawn = { roomId: str(r.roomId, 'world.respawn.roomId'), key: str(r.key, 'world.respawn.key') };
+  }
+  w.riftCount = opt(o, 'riftCount', int, 0, P);
+  if (o.rift !== null && o.rift !== undefined) {
+    const r = obj(o.rift, 'world.rift');
+    const s = obj(r.spec, 'world.rift.spec');
+    const home = obj(s.home, 'world.rift.spec.home');
+    w.rift = {
+      spec: {
+        index: int(s.index, 'world.rift.spec.index'),
+        seed: int(s.seed, 'world.rift.spec.seed') >>> 0,
+        tier: riftTierOf(s.tier, 'world.rift.spec.tier'),
+        mods: riftMods(s.mods, 'world.rift.spec.mods'),
+        home: {
+          roomId: str(home.roomId, 'world.rift.spec.home.roomId'),
+          key: str(home.key, 'world.rift.spec.home.key'),
+        },
+      },
+      bossDead: opt(r, 'bossDead', bool, false, 'world.rift'),
+    };
   }
   return w;
 }
@@ -310,13 +359,21 @@ export function parseSaveData(data: unknown): SaveData {
       rngs[k] = LATE_RNGS[k as keyof typeof LATE_RNGS](int(o.seed, 'seed') >>> 0);
     else rngs[k] = rngState(r[k], `rngs.${k}`);
   }
+  const world = parseWorld(o.world);
+  // Saves from before M6 that beat the Cinder Warden get the tier-1 sigil he now drops.
+  if (
+    world.bossesDefeated.includes('cinder_warden') &&
+    o.hero !== undefined &&
+    obj(o.hero, 'hero').sigils === undefined
+  )
+    hero.sigils.push(makeSigil(hero, riftDrops.wardenSigilTier, []));
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
     seed: int(o.seed, 'seed') >>> 0,
     tick: opt(o, 'tick', int, 0, 'save'),
     hero,
-    world: parseWorld(o.world),
+    world,
     weaves: parseWeaves(o.weaves, hero),
     rngs,
   };

@@ -22,7 +22,11 @@ export type WorldEvent =
     }
   /** The room's enemies are all dead (or its boss), or it had none. first: rewards were paid now. */
   | { type: 'roomCleared'; id: string; first: boolean }
-  /** A boss died; its room stays empty for good (WorldState.bossesDefeated). */
+  /** A rift opened (M6) and the player is in its entry; `index` is its room ids' number. */
+  | { type: 'riftOpened'; tier: number; mods: readonly string[]; index: number }
+  /** The rift ended: its boss died and the player went home, the player left early, or died in it. */
+  | { type: 'riftClosed'; tier: number; completed: boolean; reason: 'completed' | 'left' | 'died' }
+  /** A boss died; its room stays empty for good (WorldState.bossesDefeated; rift bosses: until the rift closes). */
   | { type: 'bossDefeated'; kind: string; roomId: string; x: number; y: number }
   /** A door tile opened: a `D` whose @link condition was met, a `K` a small key opened, a `G` the big key opened. */
   | { type: 'doorOpened'; key: string; kind: ObjectKind; link: string; x: number; y: number }

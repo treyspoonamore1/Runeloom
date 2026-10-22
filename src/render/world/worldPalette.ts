@@ -71,6 +71,8 @@ export const LOOT = {
   runeKind: { trigger: 0xf2c35b, form: 0xfff0cf, element: 0xff8f52, modifier: 0xbfaeff, branch: 0x72dcc8 },
   part: 0x9ad06a,
   scrap: 0xc9b9a6,
+  /** Rift Sigils (M6): a violet tablet with a beam, so a sigil drop is never missed. */
+  sigil: 0xb48cff,
   /** Crafting currencies (data/currency.ts) by id. */
   currency: {
     weavers_knot: 0x9fb4ff,

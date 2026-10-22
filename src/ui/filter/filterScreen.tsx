@@ -30,6 +30,7 @@ const WHAT: Record<LootWhat, string> = {
   part: 'Fuse parts',
   currency: 'Currency',
   scrap: 'Thread Scrap',
+  sigil: 'Rift Sigils',
 };
 const ACTION: Record<LootAction, string> = { show: 'Show', highlight: 'Highlight', hide: 'Hide' };
 const RARITY: Record<ItemRarity, string> = {
@@ -165,6 +166,7 @@ function samples(): { label: string; c: LootContent }[] {
     { label: 'Rune', c: { kind: 'rune', rune: { uid: 0, rune: 'bolt', level: 1, xp: 0, quality: 0 } } },
     { label: 'Fuse part', c: { kind: 'part', part: { uid: 0, part: 'tinder_tooth', tier: 1 } } },
     { label: 'Thread Scrap', c: { kind: 'scrap', amount: 1 } },
+    { label: 'Rift Sigil', c: { kind: 'sigil', sigil: { uid: 0, tier: 1, mods: [] } } },
     ...currencyIds.map((id) => ({
       label: currencies[id].name,
       c: { kind: 'currency', currency: id, amount: 1 } as LootContent,
