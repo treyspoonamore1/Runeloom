@@ -227,7 +227,7 @@ Monster rarity: Magic packs (blue) have 1–2 mods and ×1.7 life. Rares (yellow
 | Waterlogged | Always Wet: immune to Ignite, conductive |
 | Frostbound | Can't be chilled or frozen |
 | Grounded | Immune to Shock and arcs |
-| Volatile | Explodes 1 s after death in a 4-cell radius for 20% of its life as Fire damage |
+| Volatile | Explodes 1 s after death in a 4-cell radius for 3× its attack damage as Fire. Blasts on top of each other (within 2 cells and 0.5 s) hit once (M6.5) |
 | Swarming | Brings 2 extra minions of a weaker type |
 | Thick-skinned | +40% life |
 

@@ -6,6 +6,8 @@ import { OWNER } from '../../../data/materials';
 import { applyHit } from '../../../src/sim/combat/hits';
 import { makePacket } from '../../../src/sim/combat/damage';
 import { PLAYER_ID } from '../../../src/sim/actors/enemies';
+import { enemyAttackPacket } from '../../../src/sim/combat/enemyAttacks';
+import { enemyDef } from '../../../data/enemies';
 import { hitWith } from '../combat/helpers';
 import { arena, idx, ofType, run } from './helpers';
 
@@ -72,11 +74,12 @@ describe('M5 monster mods', () => {
     expect(src.ailments.shock.timeLeft).toBeGreaterThan(0);
   });
 
-  it('Volatile: 1 s after death, a 4-cell enemy-owned blast for 20% of its life as Fire', () => {
+  it('Volatile: 1 s after death, a 4-cell enemy-owned blast for 3× its attack as Fire (M6.5)', () => {
     const s = still(arena(100, 40));
-    const v = spawnEnemy(s, 'shieldbearer', 100, 43, { rarity: 'magic', mods: ['volatile'] });
+    const v = spawnEnemy(s, 'shieldbearer', 100, 43, { rarity: 'rare', mods: ['volatile', 'thick_skinned'] });
     const bystander = spawnEnemy(s, 'shieldbearer', 101, 40);
-    const blast = v.maxLife * 0.2;
+    // Its own attack at its area level: rarity and Thick-skinned's life don't raise it.
+    const blast = 3 * enemyAttackPacket(s, v, enemyDef('shieldbearer').attack!).base.physical;
     const life = s.player.life;
     hitWith(s, v, 10_000, 'physical');
     expect(s.volatiles).toHaveLength(1);
@@ -91,6 +94,23 @@ describe('M5 monster mods', () => {
     expect(bystander.life).toBe(bystander.maxLife);
     expect(s.grid.fire[idx(s, 100, 43)]).toBeGreaterThan(0);
     expect(s.grid.owner[idx(s, 100, 43)]).toBe(OWNER.enemy);
+  });
+
+  it('Volatile: blasts armed on top of each other hit once', () => {
+    const s = still(arena(100, 40));
+    const a = spawnEnemy(s, 'shieldbearer', 100, 43, { rarity: 'magic', mods: ['volatile'] });
+    const b = spawnEnemy(s, 'shieldbearer', 101, 43, { rarity: 'magic', mods: ['volatile'] });
+    hitWith(s, a, 10_000, 'physical');
+    run(s, 10);
+    hitWith(s, b, 10_000, 'physical');
+    expect(s.volatiles.map((v) => v.harmless)).toEqual([false, true]);
+    const ev = run(s, 70);
+    // Two explosions show, one hits (burning ground after it is a separate, small damage).
+    expect(ofType(ev, 'explosion')).toHaveLength(2);
+    const blastHits = ofType(ev, 'hit').filter(
+      (h) => h.target === 'player' && (h.sourceId === a.id || h.sourceId === b.id),
+    );
+    expect(blastHits).toHaveLength(1);
   });
 
   it('Volatile: out of reach, nothing; leaving the room disarms it', () => {

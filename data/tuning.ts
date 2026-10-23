@@ -256,6 +256,12 @@ export const defaultTuning = {
     explosion: { radius: 4, damage: 30, oilRadius: 3 },
     /** DESIGN §6.4: terrain-fire ignite DPS = this fraction of refLife(area level) per second. */
     terrainFireLifeFraction: 0.1,
+    /**
+     * Above this area level terrain fire grows like monster damage (enemyDamageGrowth), not like
+     * monster life (M6.5): rifts reach level 30, where life growth made burning ground outpace
+     * everything else. The region (levels 1–10) is unchanged.
+     */
+    terrainFireKneeLevel: 10,
     /** DESIGN §7: refLife(L) = refLifeBase × enemyLifeGrowth^(L − 1). */
     refLifeBase: 50,
   },

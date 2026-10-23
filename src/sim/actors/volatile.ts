@@ -1,7 +1,10 @@
 /**
- * Volatile (CONTENT §5, M5): a monster with the mod arms a blast where it dies. After `delay`
- * seconds it explodes: enemy-owned fire in `radius` cells and `lifeFraction` × its max life as
- * Fire damage to the player if inside (enemy-owned, so other enemies are safe). The armed blast
+ * Volatile (CONTENT §5, M5; M6.5 rescale): a monster with the mod arms a blast where it dies.
+ * After `delay` seconds it explodes: enemy-owned fire in `radius` cells and `hitMult` × the
+ * monster's own attack damage at its area level as Fire damage to the player if inside
+ * (enemy-owned, so other enemies are safe). Rarity and life mods don't raise it. A blast armed
+ * within `stackRadius` cells and `stackWindow` s of one still armed is harmless (it still burns
+ * the ground and shows), so a pack of Volatile monsters dying together hits once. The armed blast
  * lives in `state.volatiles` (room-scoped, hashed); the renderer draws it as a telegraph
  * (render/telegraphView.ts) that fills as the fuse runs out.
  */
@@ -14,6 +17,8 @@ import type { GameState } from '../state';
 import { applyBlast } from './blasts';
 import type { Enemy } from './enemies';
 import { modVolatile } from './rarity';
+import { enemyDef } from '../../../data/enemies';
+import { scaleByLevel } from '../combat/damage';
 
 export interface VolatileBlast {
   x: number;
@@ -26,6 +31,8 @@ export interface VolatileBlast {
   delay: number;
   /** The dead monster's id (damage attribution). */
   sourceId: number;
+  /** Overlaps an earlier armed blast: no damage (it still burns and shows). */
+  harmless: boolean;
 }
 
 /** Timers within this of zero count as elapsed. */
@@ -35,14 +42,24 @@ const TIME_EPSILON = 1e-9;
 export function armVolatile(state: GameState, e: Enemy): void {
   const v = e.mods.length > 0 ? modVolatile(e) : undefined;
   if (!v) return;
+  // Its own attack at its area level, as enemyAttackPacket scales it (no rarity or life mods).
+  const attack = enemyDef(e.kind).attack;
+  const growth = state.tuning.combat.enemyDamageGrowth;
+  const base = scaleByLevel(attack ? attack.damage : v.noAttackDamage, growth, e.areaLevel);
+  const harmless = state.volatiles.some(
+    (o) =>
+      Math.hypot(o.x - e.x, o.y - e.y) <= v.stackRadius &&
+      Math.abs(o.left - v.delay) <= v.stackWindow + TIME_EPSILON,
+  );
   const b: VolatileBlast = {
     x: e.x,
     y: e.y,
     radius: v.radius,
-    damage: e.maxLife * v.lifeFraction,
+    damage: base * v.hitMult,
     left: v.delay,
     delay: v.delay,
     sourceId: e.id,
+    harmless,
   };
   state.volatiles.push(b);
   emit(state, { type: 'volatileArmed', x: b.x, y: b.y, radius: b.radius, delay: b.delay });
@@ -77,6 +94,7 @@ export function stepVolatiles(state: GameState): void {
       owner: OWNER.enemy,
       sourceId: b.sourceId,
     });
+    if (b.harmless) continue;
     applyBlast(state, {
       x: b.x,
       y: b.y,
@@ -92,5 +110,5 @@ export function stepVolatiles(state: GameState): void {
 export function hashVolatiles(h: Hasher, list: readonly VolatileBlast[]): void {
   h.u32(list.length);
   for (const b of list)
-    h.num(b.x).num(b.y).num(b.radius).num(b.damage).num(b.left).num(b.delay).u32(b.sourceId);
+    h.num(b.x).num(b.y).num(b.radius).num(b.damage).num(b.left).num(b.delay).u32(b.sourceId).bool(b.harmless);
 }

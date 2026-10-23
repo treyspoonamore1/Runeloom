@@ -25,8 +25,20 @@ export interface MonsterModDef {
   noArcs?: boolean;
   /** Always Wet, as if standing in water (Waterlogged): Ignite can't take, Shock arcs to it. */
   alwaysWet?: boolean;
-  /** `delay` s after death, an enemy-owned Fire blast of `radius` cells for `lifeFraction` × its max life (Volatile). */
-  volatile?: { delay: number; radius: number; lifeFraction: number };
+  /**
+   * `delay` s after death, an enemy-owned Fire blast of `radius` cells (Volatile). Damage:
+   * `hitMult` × the monster's own attack at its area level (`noAttackDamage` at level 1 for kinds
+   * without one), so it scales like a hit, never with rarity or life mods. A blast armed within
+   * `stackRadius` cells and `stackWindow` s of one still armed deals no damage (no stacking).
+   */
+  volatile?: {
+    delay: number;
+    radius: number;
+    hitMult: number;
+    noAttackDamage: number;
+    stackRadius: number;
+    stackWindow: number;
+  };
   /** Extra minions of a weaker kind (swarmMinion) its group brings (Swarming 2). */
   swarm?: number;
   /** Kinds it never rolls on, where it would mean nothing or break the kind (always-burning, always-wet). */
@@ -75,9 +87,9 @@ export const monsterMods = {
   },
   volatile: {
     name: 'Volatile',
-    description: 'Explodes 1 s after death in a 4-cell radius for 20% of its life as Fire damage',
+    description: 'Explodes 1 s after death in a 4-cell radius for 3× its attack as Fire damage',
     ships: 'M5',
-    volatile: { delay: 1, radius: 4, lifeFraction: 0.2 },
+    volatile: { delay: 1, radius: 4, hitMult: 3, noAttackDamage: 10, stackRadius: 2, stackWindow: 0.5 },
   },
   swarming: {
     name: 'Swarming',

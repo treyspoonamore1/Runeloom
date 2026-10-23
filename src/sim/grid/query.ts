@@ -7,7 +7,8 @@
  * - `chargeEventInfo(state, id)`: the damage, owner and source of a charge event. An entity is
  *   hit once per event id (rules 11, 12): when the charge lands on its cell, or when it first
  *   steps onto a cell with that id while `charged`. Water damage = damage × the cell's falloff.
- * - `terrainFireDps(state, onOil)`: rule 16's ignite DPS (refLife(area level) × 10%, ×2 on oil).
+ * - `terrainFireDps(state, onOil)`: rule 16's ignite DPS (refLife(area level) × 10%, ×2 on oil;
+ *   above the knee level it grows like monster damage).
  * - `state.grid.blasts`: explosions of the latest grid tick (cleared by the next one).
  * - Ownership: `fireOwner` / `chargeOwner` are OWNER codes; hazards hurt the other team and
  *   never their owner team; world-owned ones hurt everyone (hazardHurts).
@@ -136,9 +137,16 @@ export function refLife(state: GameState, level = areaLevel(state)): number {
   return scaleByLevel(state.tuning.grid.refLifeBase, state.tuning.combat.enemyLifeGrowth, level);
 }
 
-/** Rule 16 / DESIGN §6.4 terrain-fire ignite DPS at the current area level; doubled on burning oil. */
+/**
+ * Rule 16 / DESIGN §6.4 terrain-fire ignite DPS at the current area level; doubled on burning oil.
+ * Up to tuning.grid.terrainFireKneeLevel it is 10% of refLife; above, it grows with
+ * enemyDamageGrowth from there (M6.5), like every other hazard.
+ */
 export function terrainFireDps(state: GameState, onOil: boolean): number {
-  const dps = refLife(state) * state.tuning.grid.terrainFireLifeFraction;
+  const level = areaLevel(state);
+  const knee = state.tuning.grid.terrainFireKneeLevel;
+  const base = refLife(state, Math.min(level, knee)) * state.tuning.grid.terrainFireLifeFraction;
+  const dps = level > knee ? base * Math.pow(state.tuning.combat.enemyDamageGrowth, level - knee) : base;
   return onOil ? dps * oil.fireDpsMult : dps;
 }
 

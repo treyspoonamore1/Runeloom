@@ -245,3 +245,18 @@ describe('query hooks', () => {
     expect(hazardHurts(OWNER.world, OWNER.player)).toBe(true);
   });
 });
+
+describe('terrain fire DPS by area level (M6.5)', () => {
+  it('grows like monster life up to the knee level, then like monster damage', async () => {
+    const { createGame } = await import('../../../src/sim');
+    const { terrainFireDps } = await import('../../../src/sim/grid/query');
+    const at = (level: number) => {
+      const s = createGame({ seed: 1, roomText: `@id t\n@level ${level}\n####\n#..#\n####\n` });
+      return terrainFireDps(s, false);
+    };
+    const T = (await import('../../../data/tuning')).defaultTuning;
+    expect(at(10)).toBeCloseTo(50 * 0.1 * Math.pow(T.combat.enemyLifeGrowth, 9));
+    expect(at(30) / at(10)).toBeCloseTo(Math.pow(T.combat.enemyDamageGrowth, 20));
+    expect(at(30)).toBeLessThan(50 * 0.1 * Math.pow(T.combat.enemyLifeGrowth, 29) * 0.6);
+  });
+});
