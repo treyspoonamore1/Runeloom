@@ -15,6 +15,7 @@ import {
   type RiftRunLog,
 } from '../../src/sim/bots/riftBot';
 import { rollSigilMods } from '../../src/sim/items/sigils';
+import { runRiftLadder, type LadderResult } from '../../src/sim/bots/riftLadder';
 
 export interface RiftCliOptions {
   count: number;
@@ -136,4 +137,45 @@ export function runRiftBotCli(o: RiftBotCliOptions): void {
       }),
     );
   else console.log(`${rows.length} tier rows in ${((performance.now() - t0) / 1000).toFixed(0)} s`);
+}
+
+/**
+ * `npm run sim -- --rift-ladder [--seed 1] [--seeds 3] [--target 8] [--verbose] [--json]` (M6.5):
+ * a new game played to the Warden, then the same character climbs the rift ladder with what it
+ * finds (src/sim/bots/riftLadder.ts). Prints hours to each tier's first clear and every rift.
+ */
+export function runRiftLadderCli(o: {
+  seed: number;
+  seeds: number;
+  target: number;
+  verbose?: boolean;
+  json?: boolean;
+}): void {
+  const rooms = loadAllRooms();
+  const results: LadderResult[] = [];
+  for (let k = 0; k < o.seeds; k++) {
+    const r = runRiftLadder({ seed: o.seed + k, rooms, targetTier: o.target });
+    results.push(r);
+    if (o.json) continue;
+    const fails = r.rifts.filter((x) => !x.completed);
+    console.log(
+      `seed ${r.seed}: campaign ${r.campaignHours.toFixed(2)} h; ${r.rifts.length} rifts, ${fails.length} failed ` +
+        `(${fails.filter((x) => x.died).length} deaths); ` +
+        `${r.reachedTarget ? `tier ${o.target} at ${r.firstClear[o.target]!.toFixed(2)} h` : `tier ${o.target} not reached`}; level ${r.finalLevel}`,
+    );
+    console.log(
+      '  first clears (h): ' +
+        Object.entries(r.firstClear)
+          .map(([t, h]) => `T${t} ${h.toFixed(2)}`)
+          .join(', '),
+    );
+    if (o.verbose)
+      for (const x of r.rifts)
+        console.log(
+          `  T${x.tier} L${x.level} life ${Math.round(x.maxLife)} gear ${x.gearScore.toFixed(0)} ` +
+            `${x.completed ? 'cleared' : x.died ? 'DIED' : 'timeout'} ${x.seconds.toFixed(0)} s [${x.mods.join(' ')}]` +
+            (x.deathCause ? ` ${x.deathCause}` : ''),
+        );
+  }
+  if (o.json) console.log(JSON.stringify(results.map((r) => ({ ...r, rifts: r.rifts.length }))));
 }

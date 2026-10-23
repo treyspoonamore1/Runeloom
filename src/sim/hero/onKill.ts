@@ -11,7 +11,7 @@ import type { Enemy } from '../actors/enemies';
 import type { DeathCause } from '../events';
 import type { GameState } from '../state';
 import { dropKillLoot } from '../items/drops';
-import { grantXp, killXpFor } from './xp';
+import { grantXp, killXpFor, overLevelMult } from './xp';
 import { killXp } from '../../../data/loot';
 
 export function onEnemyKilled(state: GameState, e: Enemy, killerId: number, cause: DeathCause): void {
@@ -20,6 +20,9 @@ export function onEnemyKilled(state: GameState, e: Enemy, killerId: number, caus
   void cause;
   // Spawned Kiln Mites pay nothing, so a living Brood Kiln can't be farmed (data/loot.ts).
   if (e.special.parentId >= 0 && killXp.spawnedPayNothing.includes(e.kind)) return;
-  grantXp(state, killXpFor(e.kind, e.areaLevel, e.rarity), e.x, e.y);
+  const xp = killXpFor(e.kind, e.areaLevel, e.rarity);
+  // Out-levelling the area pays less (M6.5); a kill that pays anything pays at least 1.
+  const paid = xp > 0 ? Math.max(1, Math.round(xp * overLevelMult(state.hero.level, e.areaLevel))) : 0;
+  grantXp(state, paid, e.x, e.y);
   dropKillLoot(state, e);
 }

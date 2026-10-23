@@ -42,8 +42,15 @@ export const startRoom: RegionRoomId = regionRooms.e1;
  * cost less relative to early ones.
  */
 export function xpToNext(level: number): number {
-  return Math.round(68 * Math.pow(level, 1.6));
+  if (level <= xpCurve.kneeLevel) return Math.round(68 * Math.pow(level, 1.6));
+  // Past the region (M6.5): grows like kill XP grows per area level, so the player settles a
+  // few levels above the rift's area level instead of out-levelling it.
+  const knee = Math.round(68 * Math.pow(xpCurve.kneeLevel, 1.6));
+  return Math.round(knee * Math.pow(xpCurve.growth, level - xpCurve.kneeLevel));
 }
+
+/** The XP curve above the region (M6.5): × growth per level past kneeLevel (data/loot.ts killXp.growth). */
+export const xpCurve = { kneeLevel: 12, growth: 1.2 };
 
 /** Socketed runes level from 1 to this (DESIGN §5.1). */
 export const maxRuneLevel = 20;

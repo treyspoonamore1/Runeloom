@@ -222,3 +222,22 @@ describe('rift loot', () => {
     expect(share(['tinderbox', 'drought', 'live_wires', 'hardened'])).toBeGreaterThan(share([]));
   });
 });
+
+describe('Live Wires regression (M6.5)', () => {
+  it('a pulse in the tick a monster died arcs between wet monsters without reading stale slots', () => {
+    const rows = ['################'];
+    for (let y = 1; y < 9; y++) rows.push(`#${'~'.repeat(14)}#`);
+    rows.push('################');
+    rows[4] = '#~~~M~~~~~~~~~~#';
+    const s = inRift(['live_wires'], `@id rift/9/test\n@name Test\n@level 25\n${rows.join('\n')}\n`);
+    s.cheats.noAI = true;
+    s.cheats.god = true;
+    teleport(s, T(12), T(7));
+    const es = [0, 1, 2, 3].map((k) => spawnEnemy(s, 'shieldbearer', T(3 + k), T(5)));
+    // Run to the tick before the pulse, then kill the first monster so the list compacts.
+    while (s.grid.tick % 80 !== 79 || s.grid.clock !== 2) step(s, NEUTRAL_INPUT);
+    es[0]!.dead = true;
+    expect(() => step(s, NEUTRAL_INPUT)).not.toThrow();
+    expect(s.events.some((e) => e.type === 'pylonPulse')).toBe(true);
+  });
+});

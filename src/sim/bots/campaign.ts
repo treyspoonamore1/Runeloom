@@ -118,6 +118,8 @@ export interface CampaignOptions {
   onRoomStart?: (key: RoomKey, state: GameState) => void;
   /** Called after every fight tick (debugging). */
   onTick?: (key: RoomKey, state: GameState, nav: CampaignNav) => void;
+  /** Called with the game when the campaign ends (the rift ladder sim plays on from there). */
+  onEnd?: (state: GameState) => void;
 }
 
 export interface CampaignResult {
@@ -367,6 +369,7 @@ export function runCampaign(opts: CampaignOptions): CampaignResult {
     from = regionRooms[key];
     if (key === opts.until) break;
   }
+  opts.onEnd?.(state);
   return {
     seed: opts.seed,
     logs,

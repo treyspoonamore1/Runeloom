@@ -40,6 +40,9 @@ export function stepPylonPulse(state: GameState): void {
     hitDamage: damage,
     durationMult: 1,
   });
+  // The pulse runs after dead enemies were compacted out of the list (step.ts); hits look up arc
+  // targets through the spatial hash, so it must index the list as it is now.
+  state.enemyHash.rebuild(state.enemies);
   const r = pylonPulse.radius;
   for (const [x, y] of pylons) {
     emit(state, { type: 'pylonPulse', x, y, radius: r });

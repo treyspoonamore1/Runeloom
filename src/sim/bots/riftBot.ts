@@ -32,6 +32,7 @@ import { gearBases, type ItemKind } from '../../../data/items';
 import type { AffixRoll } from '../hero/types';
 import { makeSigil } from '../items/sigils';
 import { step } from '../step';
+import type { GameState } from '../state';
 import { WORLD_SOURCE_ID } from '../grid/cells';
 import { createAdventure } from '../world/adventure';
 import { touchLoomStone } from '../world/objectTouch';
@@ -189,11 +190,28 @@ export function runRiftBot(opts: RiftBotOptions): RiftRunLog {
   state.hero.sigils.push(sigil);
   const err = applyHeroEdit(state, { kind: 'openRift', uid: sigil.uid });
   if (err) throw new Error(`runRiftBot: ${err}`);
-  const rift = generateRift(state.world.rift!.spec, opts.rooms);
+  return clearOpenRift(state, opts.rooms, { ...opts, seed: opts.seed });
+}
+
+export interface ClearOptions {
+  build: RiftBuild;
+  seed: number;
+  maxRoomSeconds?: number;
+  stallSeconds?: number;
+}
+
+/**
+ * Clears the rift open in `state` with the campaign bot, room by room in the generator's order
+ * (see the file comment); stops at a death, a timeout or the boss's death. The player is left
+ * where it ended: dead (respawning home) or in the last room.
+ */
+export function clearOpenRift(state: GameState, rooms: RoomSource, opts: ClearOptions): RiftRunLog {
+  const spec = state.world.rift!.spec;
+  const rift = generateRift(spec, rooms);
   const byId = new Map(rift.plan.map((r) => [r.id, r]));
   const log: RiftRunLog = {
-    tier: opts.tier,
-    mods: opts.mods,
+    tier: spec.tier,
+    mods: [...spec.mods],
     build: opts.build,
     seed: opts.seed,
     level: state.hero.level,

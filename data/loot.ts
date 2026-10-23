@@ -73,6 +73,12 @@ export const lootFloor = {
  * the Tar Matriarch 400 → 1000 (the mini-boss carries the Kiln's second half).
  */
 export const killXp = {
+  /**
+   * Out-levelling an area (M6.5, like PoE): a kill in an area more than `safe` levels below the
+   * character's level pays × perLevel per extra level, at least `min` of its XP (rune XP too).
+   * Without it the rift ladder bot ran 15 levels ahead of the rifts and never met a challenge.
+   */
+  overLevel: { safe: 3, perLevel: 0.75, min: 0.05 },
   perBaseLife: 1,
   growth: 1.2,
   rarity: { normal: 1, magic: 1.7, rare: 4 },

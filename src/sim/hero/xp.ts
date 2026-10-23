@@ -28,6 +28,13 @@ export function killXpFor(kind: EnemyKind, areaLevel: number, rarity: EnemyRarit
   return Math.max(1, Math.round(xp));
 }
 
+/** The out-levelling XP multiplier (data/loot.ts killXp.overLevel): 1 within `safe` levels. */
+export function overLevelMult(heroLevel: number, areaLevel: number): number {
+  const o = killXp.overLevel;
+  const over = heroLevel - areaLevel - o.safe;
+  return over <= 0 ? 1 : Math.max(o.min, Math.pow(o.perLevel, over));
+}
+
 /**
  * Gives the hero `amount` XP (from a kill at x, y): levels up as often as it covers xpToNext,
  * each with a 'levelUp' event; then a full heal if it levelled and the player is alive. Socketed

@@ -17,6 +17,8 @@
  *       M6: generates `count` rifts per tier with random modifiers and solves each (tools/lib/riftCli.ts).
  *   npm run sim -- --rift-bot [--count 5] [--tier 4] [--builds fire,frost] [--seed 1] [--json]
  *       M6: the rift bot's clear rate per tier and reference build (tools/lib/riftCli.ts).
+ *   npm run sim -- --rift-ladder [--seed 1] [--seeds 3] [--target 8] [--verbose] [--json]
+ *       M6.5: a new game to the Warden, then the rift ladder with found gear (tools/lib/riftCli.ts).
  *   npm run sim -- --list
  */
 import {
@@ -35,7 +37,7 @@ import { parseArgs, requireInt, runCli } from './lib/args';
 import { checkReplay, readReplay } from './lib/replay';
 import { loadAllRooms, loadRoomText } from './lib/rooms';
 import { runCampaignCli, runEncountersCli } from './lib/campaign';
-import { runRiftBotCli, runRiftCli } from './lib/riftCli';
+import { runRiftBotCli, runRiftCli, runRiftLadderCli } from './lib/riftCli';
 import { riftBuilds, type RiftBuild } from '../src/sim/bots/riftBot';
 import { RIFT_TIERS } from '../data/rift';
 
@@ -67,6 +69,8 @@ runCli(() => {
     'rune-level': { kind: 'number' },
     rifts: { kind: 'boolean' },
     'rift-bot': { kind: 'boolean' },
+    'rift-ladder': { kind: 'boolean' },
+    target: { kind: 'number', default: 8 },
     builds: { kind: 'string' },
     count: {
       kind: 'number',
@@ -74,6 +78,17 @@ runCli(() => {
     },
     tier: { kind: 'number' },
   });
+
+  if (a['rift-ladder']) {
+    runRiftLadderCli({
+      seed: requireInt('seed', a.seed, 0),
+      seeds: requireInt('seeds', a.seeds, 1),
+      target: requireInt('target', a.target, 1),
+      verbose: a.verbose,
+      json: a.json,
+    });
+    return;
+  }
 
   if (a['rift-bot']) {
     const builds = (a.builds?.split(',') ?? [...riftBuilds]) as RiftBuild[];
