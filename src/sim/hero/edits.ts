@@ -14,7 +14,7 @@ import { equip, fuse, salvage, unequip, unfuse } from './equip';
 import { refreshHero } from './hero';
 import { applyCraft } from '../items/craft';
 import { restAtLoomStone, travelToLoomStone } from '../world/adventure';
-import { openRift } from '../world/rift/run';
+import { openRift, takeFreeSigil } from '../world/rift/run';
 
 export type HeroEdit =
   | { kind: 'equip'; uid: number; slot: EquipSlot }
@@ -35,7 +35,9 @@ export type HeroEdit =
   /** Rest at the Loom Stone the player stands at: full life and mana, rooms repopulate. */
   | { kind: 'rest' }
   /** Open a rift with the Rift Sigil `uid` at the Loom Stone the player stands at (M6, world/rift/run.ts). */
-  | { kind: 'openRift'; uid: number };
+  | { kind: 'openRift'; uid: number }
+  /** Take a plain tier-1 Rift Sigil when holding none, after the Warden (world/rift/run.ts). */
+  | { kind: 'freeSigil' };
 /**
  * A HeroEdit recorded by the Session, applied between ticks when `state.tick === tick` (like
  * LoadoutEdit). `after`: how many Loom edits the session had recorded before it, so replays keep
@@ -58,13 +60,17 @@ export function applyHeroEdit(state: GameState, edit: HeroEdit): string | null {
   if (edit.kind === 'travel') return travelToLoomStone(state, edit.roomId, edit.key);
   if (edit.kind === 'rest') return restAtLoomStone(state);
   if (edit.kind === 'openRift') return openRift(state, edit.uid);
+  if (edit.kind === 'freeSigil') return takeFreeSigil(state);
   // ---- Equipment (hero agent) ----
   const err = applyEquipmentEdit(state, edit);
   if (err === null) refreshHero(state);
   return err;
 }
 
-type EquipmentEdit = Exclude<HeroEdit, { kind: 'allocate' | 'refund' | 'travel' | 'rest' | 'openRift' }>;
+type EquipmentEdit = Exclude<
+  HeroEdit,
+  { kind: 'allocate' | 'refund' | 'travel' | 'rest' | 'openRift' | 'freeSigil' }
+>;
 
 function applyEquipmentEdit(state: GameState, edit: EquipmentEdit): string | null {
   if (state.mode !== 'adventure') return 'Only in adventure mode';

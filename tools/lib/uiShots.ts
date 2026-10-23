@@ -25,6 +25,7 @@ export const uiShotIds = [
   'rift_map',
   'rift_wires',
   'rift_boss',
+  'rift_wires_warn',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -252,7 +253,7 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
         return;
       }
       s.cheats.noAI = true;
-      if (shot === 'rift_wires') {
+      if (shot === 'rift_wires' || shot === 'rift_wires_warn') {
         // The first room past the entry with a pylon, the player beside one, 4 s of play.
         s.world.pending = { roomId: 'rift/0/r1', arrival: { kind: 'default' }, reason: 'exit' };
         session.step(still);
@@ -261,10 +262,17 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
           session.step(still);
           if (s.events.some((e) => e.type === 'pylonPulse')) break;
         }
+        if (shot === 'rift_wires_warn') {
+          // 0.8 s before the next pulse, then play live so the warning glow animates.
+          for (let i = 0; i < 4 * 60 - 48; i++) session.step(still);
+          w.ui!.open('play');
+          w.loop.paused = false;
+          return;
+        }
       }
       w.ui!.open('play');
     }, id);
-    await page.waitForTimeout(id === 'rift_wires' ? 120 : 400);
+    await page.waitForTimeout(id === 'rift_wires' ? 120 : id === 'rift_wires_warn' ? 450 : 400);
   } else if (id === 'loom') {
     // Strike's only copy sits in RMB: arming it shows why it can't go anywhere.
     await page.click('.lm-pouch .lm-chip.r-strike');

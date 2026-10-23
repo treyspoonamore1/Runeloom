@@ -257,6 +257,8 @@ export const riftDrops = {
   tierUpChance: 0.25,
   /** The first sigil: the Cinder Warden drops a tier-1 sigil the first time he dies. */
   wardenSigilTier: 1,
+  /** With no sigils left (after the Warden), the map offers a free one of this tier (M6.5). */
+  freeSigilTier: 1,
 };
 
 /** Live Wires pylon pulses (CONTENT §10): every pylon zaps what stands near it and electrifies its metal. */

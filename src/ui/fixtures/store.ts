@@ -125,6 +125,7 @@ export function fixtureApply(edit: HeroEdit): string | null {
     case 'travel':
     case 'rest':
     case 'openRift':
+    case 'freeSigil':
       return null;
   }
 }

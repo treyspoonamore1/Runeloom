@@ -17,7 +17,8 @@ import { emit } from '../../events';
 import type { GameState } from '../../state';
 import { loomStoneHere } from '../adventure';
 import { enterRoom } from '../transition';
-import { findSigil } from '../../items/sigils';
+import { findSigil, makeSigil } from '../../items/sigils';
+import { riftDrops } from '../../../../data/rift';
 import { installRiftRooms } from './rooms';
 import { riftRoomPrefix, type RiftSpec } from './types';
 
@@ -58,5 +59,26 @@ export function openRift(state: GameState, uid: number): string | null {
   installRiftRooms(state);
   emit(state, { type: 'riftOpened', tier: spec.tier, mods: spec.mods, index: spec.index });
   enterRoom(state, `${riftRoomPrefix(spec.index)}entry`, { kind: 'default' });
+  return null;
+}
+
+/**
+ * Why the hero can't take a free sigil now, or null (M6.5): after the Cinder Warden, a hero with
+ * no sigils and no rift open may take a plain tier-1 sigil (riftDrops.freeSigilTier), so failed
+ * rifts never lock anyone out of the endgame.
+ */
+export function freeSigilError(state: GameState): string | null {
+  if (state.mode !== 'adventure') return 'Only in adventure mode';
+  if (!state.world.bossesDefeated.includes('cinder_warden')) return 'Defeat the Cinder Warden first';
+  if (state.hero.sigils.length > 0) return 'You still hold a Rift Sigil';
+  if (state.world.rift) return 'A rift is already open';
+  return null;
+}
+
+/** HeroEdit 'freeSigil'. Returns why it can't, or null when the sigil is in the hero's bag. */
+export function takeFreeSigil(state: GameState): string | null {
+  const err = freeSigilError(state);
+  if (err) return err;
+  state.hero.sigils.push(makeSigil(state.hero, riftDrops.freeSigilTier, []));
   return null;
 }

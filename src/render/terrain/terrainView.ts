@@ -227,7 +227,10 @@ export class TerrainView {
     this.pack = pack;
     this.sources = {
       codes: dataSource(pack.codes, width, height, false),
-      fields: [dataSource(pack.fields[0], width, height, true), dataSource(pack.fields[1], width, height, true)],
+      fields: [
+        dataSource(pack.fields[0], width, height, true),
+        dataSource(pack.fields[1], width, height, true),
+      ],
       masks: dataSource(pack.masks, width, height, true),
       glow: dataSource(pack.glow, pack.tilesW, pack.tilesH, true),
     };

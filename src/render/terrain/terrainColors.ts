@@ -161,6 +161,8 @@ export const DEBUG_OWNER = [0xffffff, 0x3ad0ff, 0xff3050] as const;
 
 /** One-shot terrain effects from grid events (terrainFx.ts). Times in seconds, sizes in cells. */
 export const TERRAIN_ONESHOT = {
+  /** Live Wires (M6.5): seconds the pylons crackle before each pulse. */
+  pylonWarnSeconds: 1,
   /** Particles per layer (four layers). */
   capacity: 400,
   /** Particles in each of the three ordered disc layers. */

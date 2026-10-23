@@ -247,3 +247,17 @@ describe('save version 2 (M6.5 affix tiers)', () => {
     ]);
   });
 });
+
+describe('free tier-1 sigil (M6.5)', () => {
+  it('after the Warden, a hero with no sigils and no rift open can take one; otherwise not', () => {
+    const s = adventure('test/world_a');
+    run(s, 1);
+    expect(applyHeroEdit(s, { kind: 'freeSigil' })).toMatch(/Warden/);
+    s.world.bossesDefeated.push('cinder_warden');
+    expect(applyHeroEdit(s, { kind: 'freeSigil' })).toBeNull();
+    expect(s.hero.sigils.map((g) => [g.tier, g.mods])).toEqual([[1, []]]);
+    expect(applyHeroEdit(s, { kind: 'freeSigil' })).toMatch(/still hold/);
+    open(s, s.hero.sigils[0]!.uid);
+    expect(applyHeroEdit(s, { kind: 'freeSigil' })).toMatch(/already open/);
+  });
+});

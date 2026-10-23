@@ -5,7 +5,11 @@ import type { Atlas } from '../atlas';
 import { FxLayer } from '../particles';
 import type { Shake } from '../shake';
 import { TERRAIN as C, TERRAIN_ONESHOT as O } from './terrainColors';
+import { riftRules } from '../../sim/world/rift/rules';
+import { gridTicks } from '../../sim/grid/cells';
+import { TILE_CELLS } from '../../sim/core/constants';
 
+const PYLON_CHAR = 'M'.charCodeAt(0);
 const TAU = Math.PI * 2;
 const rand = (a: number, b: number): number => a + Math.random() * (b - a);
 
@@ -400,6 +404,58 @@ export class TerrainFx {
         align: 0.025,
       },
     );
+  }
+
+  // Live Wires warning (M6.5): the pylons of the room, and the grid tick last warned at.
+  private pylonRoom = '';
+  private pylonTiles: [number, number][] = [];
+  private warnTick = -1;
+
+  /**
+   * Live Wires: for the last warnSeconds before each pulse the room's pylons crackle and glow,
+   * brighter as it nears (render reads the grid clock; the sim's pulse is in world/rift/pulse.ts).
+   */
+  pylonWarn(s: GameState): void {
+    const seconds = riftRules(s).pylonPulseSeconds;
+    if (seconds <= 0) return;
+    if (this.pylonRoom !== s.room.id) {
+      this.pylonRoom = s.room.id;
+      this.pylonTiles = [];
+      const r = s.room;
+      for (let ty = 0; ty < r.tilesH; ty++)
+        for (let tx = 0; tx < r.tilesW; tx++)
+          if (r.tiles[ty * r.tilesW + tx] === PYLON_CHAR)
+            this.pylonTiles.push([(tx + 0.5) * TILE_CELLS, (ty + 0.5) * TILE_CELLS]);
+    }
+    const every = gridTicks(seconds);
+    const tick = s.grid.tick;
+    const left = every - (tick % every);
+    const warn = gridTicks(O.pylonWarnSeconds);
+    if (left > warn || tick === this.warnTick) return;
+    this.warnTick = tick;
+    const k = 1 - left / warn;
+    for (const [x, y] of this.pylonTiles) {
+      this.spawn(this.tAdd, 'glow', x, y - 1, 0, 0, 0.12, C.stormGlow, 2 + 3 * k, 2.5 + 3 * k, {
+        a0: 0.3 + 0.5 * k,
+        hold: 0,
+      });
+      if (rand(0, 1) < 0.3 + 0.6 * k)
+        this.burst(
+          this.tAdd,
+          'spark',
+          x,
+          y - 1.5,
+          1,
+          [6, 12],
+          [0.08, 0.15],
+          [C.stormCore, 0xffffff],
+          [0.6, 0.2],
+          {
+            drag: 6,
+            align: 0.025,
+          },
+        );
+    }
   }
 
   /** Live Wires (M6): a Storm ring out to the pulse's reach, so its size reads. */

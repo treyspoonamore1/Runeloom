@@ -310,6 +310,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
       const version = terrain.version;
       terrain.update(s.grid, time);
       terrainFx.update(dt);
+      terrainFx.pylonWarn(s);
       terrain.setPulses(terrainFx.pulses, terrainFx.clock);
       // Burnable props char and vanish with their cells (16 cells per prop, cheap); blocks
       // re-bake only when the count of block cells changes.

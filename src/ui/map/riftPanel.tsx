@@ -7,6 +7,7 @@ import type { Session } from '../../app/session';
 import { heroOf, sendEdit } from '../heroAdapter';
 import { note } from '../menus/frame';
 import { riftSummary, sigilViews, type ModLine } from './riftModel';
+import { freeSigilError } from '../../sim/world/rift/run';
 
 function Mods(p: { mods: readonly ModLine[] }) {
   if (p.mods.length === 0) return <p class="mn-muted rf-none">No modifiers</p>;
@@ -42,6 +43,10 @@ export function RiftPanel(p: { session: Session; standing: boolean; onOpened(): 
       </section>
     );
   const views = sigilViews(hero.sigils, hero.riftTier, p.standing, false);
+  const takeFree = () => {
+    const why = sendEdit(p.session, { kind: 'freeSigil' });
+    if (why) note(why);
+  };
   const open = (uid: number) => {
     const why = sendEdit(p.session, { kind: 'openRift', uid });
     if (why) note(why);
@@ -56,7 +61,18 @@ export function RiftPanel(p: { session: Session; standing: boolean; onOpened(): 
           : 'Complete a rift to climb the tiers. Tier 1 sigils open now.'}
       </p>
       {views.length === 0 ? (
-        <p class="mn-muted">You hold no sigils. The Cinder Warden guards the first; rifts drop more.</p>
+        freeSigilError(s) === null ? (
+          <>
+            <p class="mn-muted">
+              You hold no sigils. The Loom offers a plain one so you can always start again.
+            </p>
+            <button type="button" class="mn-btn rf-free" onClick={takeFree}>
+              Take a tier 1 sigil
+            </button>
+          </>
+        ) : (
+          <p class="mn-muted">You hold no sigils. The Cinder Warden guards the first; rifts drop more.</p>
+        )
       ) : null}
       <div class="rf-list">
         {views.map((v) => (
