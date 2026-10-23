@@ -3,7 +3,7 @@
  * (createHero, createWorldState), so a save from an older version keeps working; wrong types
  * and broken references throw an Error that names the field.
  */
-import { isAffixId } from '../../data/affixes';
+import { affixes, isAffixId, RIFT_TIER_SHIFT } from '../../data/affixes';
 import { isCurrencyId } from '../../data/currency';
 import { isUniqueId } from '../../data/uniques';
 import { isFusePartId } from '../../data/fuseParts';
@@ -333,8 +333,18 @@ function rngState(v: unknown, path: string): RngState {
 /** RNG streams newer than the first saves, with the state a new game gives them. */
 const LATE_RNGS = { craftRng: (seed: number) => craftRngFor(seed).getState() };
 
-/** Migrations from version n to n + 1, by n. None yet: version 1 is the first. */
-const migrations: Record<number, (o: Obj) => Obj> = {};
+/** Migrations from version n to n + 1, by n. */
+const migrations: Record<number, (o: Obj) => Obj> = {
+  // 1 → 2 (M6.5): three better affix tiers were added above the region's, so every stored tier
+  // of an affix that has them moves down by RIFT_TIER_SHIFT (the old tier 1 is now tier 4).
+  1: (o) => {
+    const hero = o.hero as { items?: { affixes?: { id: string; tier: number }[] }[] } | undefined;
+    for (const it of hero?.items ?? [])
+      for (const a of it.affixes ?? [])
+        if (isAffixId(a.id) && affixes[a.id].tiers.length > RIFT_TIER_SHIFT) a.tier += RIFT_TIER_SHIFT;
+    return o;
+  },
+};
 
 export function parseSaveData(data: unknown): SaveData {
   let o = obj(data, 'save');

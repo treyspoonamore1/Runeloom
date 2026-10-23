@@ -103,7 +103,33 @@ export interface AffixDef {
   tiers: readonly AffixTier[];
 }
 
-/** Three tiers at item levels 1, `mid` and `top` (T3, T2, T1). */
+/**
+ * Rift tiers (M6.5): item levels and multipliers on the region's best range for the tiers above
+ * it, so gear keeps improving up to rift area level 30 and past it with Rekindles.
+ */
+export const riftAffixTiers: readonly { itemLevel: number; mult: number }[] = [
+  { itemLevel: 16, mult: 1.4 },
+  { itemLevel: 24, mult: 1.85 },
+  { itemLevel: 32, mult: 2.35 },
+];
+
+/** Tiers added above the region's best (rounded, each range above the one below it). */
+function riftTiers(best: [number, number]): [number, number][] {
+  const out: [number, number][] = [];
+  let prevMax = best[1];
+  for (const t of riftAffixTiers) {
+    const min = Math.max(prevMax + 1, Math.round(best[0] * t.mult));
+    const max = Math.max(min, Math.round(best[1] * t.mult));
+    out.push([min, max]);
+    prevMax = max;
+  }
+  return out;
+}
+
+/**
+ * Six tiers: the region's three at item levels 1, `mid` and `top` (T6, T5, T4), then the rift
+ * tiers at item levels 16, 24 and 32 (T3, T2, T1; riftAffixTiers).
+ */
 function tiers3(
   t3: [number, number],
   t2: [number, number],
@@ -111,12 +137,20 @@ function tiers3(
   mid = 5,
   top = 9,
 ): AffixTier[] {
+  const rift = riftTiers(t1);
   return [
-    { tier: 1, itemLevel: top, min: t1[0], max: t1[1] },
-    { tier: 2, itemLevel: mid, min: t2[0], max: t2[1] },
-    { tier: 3, itemLevel: 1, min: t3[0], max: t3[1] },
+    ...rift
+      .map((r, i) => ({ itemLevel: riftAffixTiers[i]!.itemLevel, min: r[0], max: r[1] }))
+      .reverse()
+      .map((t, i) => ({ tier: i + 1, ...t })),
+    { tier: 4, itemLevel: top, min: t1[0], max: t1[1] },
+    { tier: 5, itemLevel: mid, min: t2[0], max: t2[1] },
+    { tier: 6, itemLevel: 1, min: t3[0], max: t3[1] },
   ];
 }
+
+/** Tiers added above the region's three in M6.5: a save from before then adds this to every tier. */
+export const RIFT_TIER_SHIFT = riftAffixTiers.length;
 
 const RESIST_KINDS: readonly ItemKind[] = ['cloak', 'hood', 'boots', 'charm'];
 
@@ -240,7 +274,7 @@ export const affixes = {
     kind: 'prefix',
     group: 'life_inc',
     stat: 'life_inc',
-    kinds: ['cloak'],
+    kinds: ['cloak', 'hood', 'boots'],
     weight: 100,
     tiers: tiers3([3, 5], [6, 8], [9, 12]),
   },

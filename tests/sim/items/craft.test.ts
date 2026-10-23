@@ -168,16 +168,16 @@ describe(`crafting probabilities, ${N.toLocaleString('en')} rolls each (M5 accep
         if (a.id === 'fire_resist') {
           rolls++;
           tierCount.set(a.tier, (tierCount.get(a.tier) ?? 0) + 1);
-          if (a.tier === 3) valueCount.set(a.value, (valueCount.get(a.value) ?? 0) + 1);
+          if (a.tier === 6) valueCount.set(a.value, (valueCount.get(a.value) ?? 0) + 1);
         }
     }
-    // Resist tiers: T3 from item level 1, T2 from 4, T1 from 8 (data/affixes.ts).
+    // Resist tiers: T6 from item level 1, T5 from 4, T4 from 8, rift tiers from 16 (data/affixes.ts).
     const allowed = tiersAt(affixes.fire_resist, 6);
-    expect(allowed.map((t) => t.tier)).toEqual([2, 3]);
+    expect(allowed.map((t) => t.tier)).toEqual([5, 6]);
     for (const t of allowed) expectRate(tierCount.get(t.tier) ?? 0, rolls, 1 / allowed.length);
-    const t3 = affixes.fire_resist.tiers.find((t) => t.tier === 3)!;
+    const t3 = affixes.fire_resist.tiers.find((t) => t.tier === 6)!;
     const span = t3.max - t3.min + 1;
-    const t3Rolls = tierCount.get(3) ?? 0;
+    const t3Rolls = tierCount.get(6) ?? 0;
     for (let v = t3.min; v <= t3.max; v++) expectRate(valueCount.get(v) ?? 0, t3Rolls, 1 / span);
   });
 

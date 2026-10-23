@@ -226,3 +226,24 @@ describe('rift room mend', () => {
     expect(s.player.mana).toBeGreaterThanOrEqual(s.player.maxMana * 0.3);
   });
 });
+
+describe('save version 2 (M6.5 affix tiers)', () => {
+  it('a version 1 save moves stored affix tiers below the three new rift tiers', () => {
+    const s = adventure('test/world_a');
+    const old = makeSave(s) as unknown as {
+      version: number;
+      hero: { items: { affixes: { id: string; tier: number; value: number }[] }[] };
+    };
+    old.version = 1;
+    old.hero.items[0]!.affixes = [
+      { id: 'fire_damage', tier: 1, value: 20 },
+      { id: 'capacity', tier: 1, value: 1 },
+    ];
+    const back = parseSave(JSON.stringify(old));
+    expect(back.version).toBe(2);
+    expect(back.hero.items[0]!.affixes).toEqual([
+      { id: 'fire_damage', tier: 4, value: 20 },
+      { id: 'capacity', tier: 1, value: 1 },
+    ]);
+  });
+});

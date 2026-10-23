@@ -8,12 +8,15 @@ const defs: Record<string, AffixDef> = affixes;
 describe('affix rolls (DESIGN §8.2, CONTENT §3)', () => {
   it('tiers are gated by item level', () => {
     const fire = affixes.fire_damage;
-    expect(tiersAt(fire, 1).map((t) => t.tier)).toEqual([3]);
-    expect(tiersAt(fire, 5).map((t) => t.tier)).toEqual([2, 3]);
-    expect(tiersAt(fire, 10).map((t) => t.tier)).toEqual([1, 2, 3]);
+    expect(tiersAt(fire, 1).map((t) => t.tier)).toEqual([6]);
+    expect(tiersAt(fire, 5).map((t) => t.tier)).toEqual([5, 6]);
+    expect(tiersAt(fire, 10).map((t) => t.tier)).toEqual([4, 5, 6]);
+    // M6.5 rift tiers: item levels 16, 24 and 32.
+    expect(tiersAt(fire, 16).map((t) => t.tier)).toEqual([3, 4, 5, 6]);
+    expect(tiersAt(fire, 32).map((t) => t.tier)).toEqual([1, 2, 3, 4, 5, 6]);
     const rng = new Rng(1);
     for (let i = 0; i < 400; i++) {
-      for (const a of rollMagicAffixes(rng, 'spindle', 3)) expect(a.tier).toBe(3);
+      for (const a of rollMagicAffixes(rng, 'spindle', 3)) expect(a.tier).toBe(6);
       for (const a of rollMagicAffixes(rng, 'cloak', 9)) {
         const def = defs[a.id]!;
         const tier = def.tiers.find((t) => t.tier === a.tier)!;

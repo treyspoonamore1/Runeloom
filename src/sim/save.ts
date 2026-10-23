@@ -23,7 +23,7 @@ import { syncWeaveSpindle } from './hero/equip';
 import { parseSaveData } from './saveParse';
 
 export const SAVE_FORMAT = 'runeloom-save';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 /** The RNG streams a save restores. */
 export const SAVED_RNGS = [
