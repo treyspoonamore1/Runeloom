@@ -250,7 +250,7 @@ Each row is one rule and gets one unit test named after its number (`rule 07: fr
 
 | Ailment | Rule (starting values) |
 |---|---|
-| Ignite | Damage over time of 50% of the triggering fire hit per second for 3 s. A new ignite replaces the old one only if stronger. Terrain fire ignites at **terrain-fire DPS** = 10% of `refLife(area level)` per second (§7) |
+| Ignite | Damage over time of 50% of the triggering fire hit per second for 3 s. A new ignite replaces the old one only if stronger. Terrain fire ignites at **terrain-fire DPS** = 10% of `refLife(area level)` per second (§7); above area level 10 it grows like monster damage (×1.09 a level) instead (M6.5) |
 | Chill | Each frost hit adds (damage ÷ max life) × 200 chill. Slow = 0.3% per chill point, max 30%. Decays 25 chill/s |
 | Freeze | At 100 chill: frozen for 1.2 s (can't act) |
 | Boss chill | Bosses use their own rule: each Frost hit adds a flat 12 chill (×1.5 if Wet), whatever its damage. Chill decays 10/s, slow max 15%. Freeze lasts 0.8 s, then 6 s of freeze immunity |
@@ -272,7 +272,7 @@ The player suffers the same ailments from enemy and world hazards, with player-s
 - Enemy life = base life × 1.12^(area level − 1). Magic ×1.7, Rare ×4.
 - Enemy damage = base damage × 1.09^(area level − 1). Boss numbers in CONTENT §5 are absolute.
 - `refLife(L) = 50 × 1.12^(L − 1)`: the life of a reference enemy at area level L. Terrain hazards scale from it.
-- XP to next level = round(68 × L^1.6) (tuned by the M4 balance sim from the starting point round(30 × L^2.2)). Kill XP = the enemy's base life × 1.2^(area level − 1) × rarity (Magic ×1.7, Rare ×4); bosses have fixed values. Target: about level 12 when the player reaches the Cinder Warden, after 45 to 75 minutes. The campaign bot (`npm run sim -- --campaign`) reaches the Warden at level 12.
+- XP to next level = round(68 × L^1.6) up to level 12 (tuned by the M4 balance sim from the starting point round(30 × L^2.2)), then × 1.2 per level above 12 (M6.5, rifts). Kills in an area more than 3 levels below the character pay × 0.75 per extra level, at least 5%. Kill XP = the enemy's base life × 1.2^(area level − 1) × rarity (Magic ×1.7, Rare ×4); bosses have fixed values. Target: about level 12 when the player reaches the Cinder Warden, after 45 to 75 minutes. The campaign bot (`npm run sim -- --campaign`) reaches the Warden at level 12.
 
 ## 8. Items
 

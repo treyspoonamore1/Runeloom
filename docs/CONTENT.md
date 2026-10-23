@@ -146,9 +146,11 @@ Affix pools (M4 ships Magic items; Rare tiers in M5):
 |---|---|---|
 | Spindle | % increased Fire / Frost / Storm damage, % increased damage with branch spells, +flat Strike damage | % increased cast speed, +% crit chance, % reduced mana cost, % increased terrain effect duration, +1 Capacity (item level 15+, rare weight) |
 | Cloak | + max life, % increased life | + Fire / Frost / Storm resistance, + mana regen |
-| Hood | + max mana, % increased ailment duration | + resistances, % increased chill / shock / ignite effect |
-| Boots | % increased move speed | + resistances, % faster dodge recharge |
+| Hood | + max mana, % increased ailment duration, % increased life (M6.5) | + resistances, % increased chill / shock / ignite effect |
+| Boots | % increased move speed, % increased life (M6.5) | + resistances, % faster dodge recharge |
 | Charm | % increased elemental damage, + life | + resistances, % increased spread chance for fire you create, % increased conduction range |
+
+Tiers (M6.5): every affix but +1 Capacity has six. Tiers 4–6 roll from item levels 1, about 5 and about 9 (the region); tiers 3, 2 and 1 from item levels 16, 24 and 32 (rifts), at about 1.4×, 1.85× and 2.35× the tier 4 range (data/affixes.ts).
 
 ---
 
