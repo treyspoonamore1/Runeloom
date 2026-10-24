@@ -160,20 +160,24 @@ function joinPoints(a: PlacedRoom, b: PlacedRoom): [number, number, number, numb
   return [acx, acy, bcx, bcy];
 }
 
-/** Loom Stones you can travel to from where you stand: activated, and not the one you are at. */
+/**
+ * Loom Stones you can travel to from where you stand: activated, and not the one you are at.
+ * `names` (room id → name) covers rooms the layout doesn't show, such as the Hearth (M7).
+ */
 export function travelTargets(
   layout: MapLayout,
   activated: readonly string[],
   standing: { roomId: string; key: string } | null,
+  names: ReadonlyMap<string, string> = new Map(),
 ): Array<{ roomId: string; key: string; name: string }> {
   if (!standing) return [];
   const here = `${standing.roomId}#${standing.key}`;
-  const names = new Map(layout.rooms.map((r) => [r.id, r.name]));
+  const known = new Map([...names, ...layout.rooms.map((r) => [r.id, r.name] as const)]);
   return activated
     .filter((k) => k !== here)
     .map((k) => {
       const i = k.indexOf('#');
       const roomId = k.slice(0, i);
-      return { roomId, key: k.slice(i + 1), name: names.get(roomId) ?? roomId };
+      return { roomId, key: k.slice(i + 1), name: known.get(roomId) ?? roomId };
     });
 }

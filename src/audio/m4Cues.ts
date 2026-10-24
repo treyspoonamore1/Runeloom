@@ -66,13 +66,15 @@ export function m4Sounds(c: M4Cue): M4SoundCue[] {
     case 'lootDropped': {
       // The loot filter (app/lootFilterStore.ts): hidden drops are silent, highlighted ones chime like a Rare.
       const act = c.content ? filterAction(c.content) : 'show';
-      if (act === 'hide') return [];
+      // Embers (M7) drop by the dozen: silent on the floor.
+      if (act === 'hide' || c.content?.kind === 'embers') return [];
       const r = c.content?.kind === 'item' ? c.content.item.rarity : 'normal';
       if (r === 'unique') return [at('lootDropUnique', c)];
       return [at(r === 'rare' || act === 'highlight' ? 'lootDropRare' : 'lootDrop', c)];
     }
     case 'lootPicked':
       if (c.content && filterAction(c.content) === 'hide') return [];
+      if (c.content?.kind === 'embers') return [{ id: 'emberPickup' }];
       return [{ id: c.content?.kind === 'rune' ? 'runePickup' : 'lootPickup' }];
     case 'levelUp':
       return [{ id: 'levelUp' }];

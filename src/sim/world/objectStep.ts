@@ -1,7 +1,8 @@
 /**
  * One tick of the world systems in adventure mode (called by stepObjects, objects.ts), in order:
  * room cleared and boss deaths → Storm charge on switches → timed braziers → pressure plates →
- * block pushes and slides → touches (chests, key doors, pickups, Loom Stones) → @link doors →
+ * block pushes and slides → touches (chests, key doors, pickups, Loom Stones) → Hearth stations
+ * (Interact, hub.ts) → @link doors →
  * edge exits. Fire and Storm hits on objects happen earlier, inside applyElement (objectHits.ts).
  */
 import { DT } from '../core/constants';
@@ -15,6 +16,7 @@ import { stepLinks } from './objectLinks';
 import { stepPlates, stepTouches } from './objectTouch';
 import { stepRoomClear } from './roomClear';
 import { stepExits } from './exits';
+import { stepHub } from './hub';
 
 const TIME_EPSILON = 1e-9;
 
@@ -37,6 +39,7 @@ export function stepObjectSystems(state: GameState, input: InputFrame | undefine
   stepPlates(state);
   stepBlocks(state, input);
   stepTouches(state);
+  stepHub(state, input);
   stepLinks(state);
   stepExits(state);
 }

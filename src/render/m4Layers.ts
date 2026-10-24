@@ -17,6 +17,7 @@ import { LootView } from './world/lootView';
 import { MomentsView } from './world/momentsView';
 import { RuneGetView } from './world/runeGetView';
 import type { Shake } from './shake';
+import { HubView } from './hub/hubView';
 
 /** Atlas entries of everything M4 adds. */
 export function m4AtlasEntries(): AtlasEntry[] {
@@ -53,6 +54,8 @@ export class M4Layers {
   readonly moments: MomentsView;
   /** The hero holding a new element rune overhead (the HUD's item-get panel drives it). */
   readonly runeGet: RuneGetView;
+  /** The Hearth's hub (M7): NPCs, the fire, buildings by level, the station prompt. */
+  readonly hub: HubView;
   /** Ground layer under the bodies (rarity rings and glows). */
   readonly ground = new Container();
   /** Screen-space layer under damage numbers (Rare name plates). */
@@ -68,6 +71,8 @@ export class M4Layers {
     this.loot = new LootView(atlas, this.fx);
     this.moments = new MomentsView(this.fx, shake);
     this.runeGet = new RuneGetView(atlas, this.fx);
+    this.hub = new HubView(atlas, this.fx, this.objects.root);
+    this.fx.over.addChild(this.hub.top);
     this.ground.addChild(this.rarity.glows.container, this.rarity.ground.container);
     this.screen.addChild(this.rarity.plates, this.moments.screen);
   }
@@ -80,6 +85,7 @@ export class M4Layers {
     this.fx.reset();
     this.moments.reset();
     this.runeGet.reset();
+    this.hub.reset();
   }
 
   /** Tiles the object layer draws, so the room bake leaves them out. */
@@ -89,6 +95,7 @@ export class M4Layers {
 
   handle(s: GameState, events: readonly SimEvent[], dt: number): void {
     this.state = s;
+    this.hub.handle(events);
     const cues = this.signals.update(s, events, dt);
     this.tele.handle(cues, s);
     for (const c of cues) {
@@ -115,6 +122,7 @@ export class M4Layers {
     this.rarity.update(s, enemies, dt, xf);
     this.tele.update(s, this.signals, dt);
     this.objects.update(s, dt);
+    this.hub.update(s, dt);
     this.fx.update(dt);
   }
 

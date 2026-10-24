@@ -295,6 +295,11 @@ export class PickupLook extends Look {
   }
 }
 
+/** Draws nothing (an object another layer draws, such as a Hearth station tile). */
+export class HiddenLook extends Look {
+  protected pose(): void {}
+}
+
 export class LoomStoneLook extends Look {
   private readonly rune: Sprite;
   private readonly ring: Sprite;

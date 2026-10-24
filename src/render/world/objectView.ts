@@ -10,6 +10,7 @@ import {
   BrazierLook,
   ChestLook,
   DoorLook,
+  HiddenLook,
   LoomStoneLook,
   PickupLook,
   PlateLook,
@@ -106,6 +107,9 @@ export class ObjectView {
         return new LoomStoneLook(this.atlas, o);
       case 'rune_shrine':
         return new ShrineLook(this.atlas, o, shrineRune(s.room.id));
+      default:
+        // Hearth stations: the hub layer draws them.
+        return new HiddenLook(this.atlas, o);
     }
   }
 }

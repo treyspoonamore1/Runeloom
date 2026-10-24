@@ -18,7 +18,7 @@ export const hearthRoom = 'hearth/hearth';
  * activates it, so fast travel reaches the Hearth from any Loom Stone. A test checks it matches
  * the file.
  */
-export const hearthStone = { roomId: hearthRoom, key: 'loom_stone@14,9' } as const;
+export const hearthStone = { roomId: hearthRoom, key: 'loom_stone@16,13' } as const;
 
 export const BUILDING_IDS = ['kindling_pit', 'rune_garden', 'expedition_board', 'salvage_loom'] as const;
 export type BuildingId = (typeof BUILDING_IDS)[number];

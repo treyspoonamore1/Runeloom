@@ -29,6 +29,8 @@ export interface LootLook {
   /** Rarity or kind color for the ring, glow and pickup sparkle. */
   color: number;
   beam: boolean;
+  /** Small and frequent (Embers): no ring, a softer pickup. */
+  small?: boolean;
 }
 
 /** How a drop looks: rune stones by kind (element runes by element), items by rarity. */
@@ -63,8 +65,7 @@ export function lootLook(c: LootContent): LootLook {
     case 'sigil':
       return { tex: 'loot_sigil', tint: L.sigil, glyph: null, glyphTint: 0, color: L.sigil, beam: true };
     case 'embers':
-      // M7 placeholder look: the hub agent gives Embers their own sprite.
-      return { tex: 'loot_scrap', tint: 0xff8a3d, glyph: null, glyphTint: 0, color: 0xff8a3d, beam: false };
+      return { tex: 'loot_embers', tint: 0xffffff, glyph: null, glyphTint: 0, color: L.embers, beam: false, small: true };
   }
 }
 
@@ -107,6 +108,13 @@ export class LootView {
     if (c.type !== 'lootPicked' || !c.content || filterAction(c.content) === 'hide') return;
     const look = lootLook(c.content);
     const fx = this.fx;
+    if (look.small) {
+      // Embers drop by the dozen: a quick flight and a soft warm sparkle.
+      const q = fx.top.spawn(this.atlas.get(look.tex), c.x, c.y - 0.5, (s.player.x - c.x) / 0.18, (s.player.y - 1 - c.y + 0.5) / 0.18, 0.18, 0xffffff, 0.8, 0.3);
+      if (q) q.hold = 0.6;
+      fx.burst(fx.add, fx.t.dot, s.player.x, s.player.y - 1, 3, [1.5, 3], [0.2, 0.35], [look.color, 0xffe2a0], [0.3, 0.05], 0.4, (r) => (r.drag = 3));
+      return;
+    }
     // The drop flies to the player and sparkles in its color.
     const life = L.pickupTime;
     const p = fx.top.spawn(
@@ -215,10 +223,10 @@ export class LootView {
     const appear = smoothstep(0.6, 1, u);
     v.ring.position.set(0, 0.35);
     v.ring.scale.set(1.25, 0.6);
-    v.ring.alpha = 0.85 * appear;
+    v.ring.alpha = v.look.small ? 0 : 0.85 * appear;
     v.glow.position.set(0, -0.5 - bob);
     v.glow.scale.set(1.8 + 0.2 * Math.sin(t * 3));
-    v.glow.alpha = 0.3 * appear;
+    v.glow.alpha = (v.look.small ? 0.45 : 0.3) * appear;
     if (v.look.beam) {
       v.beam.position.set(0, 0.3);
       v.beam.scale.set(L.beamWidth * (0.9 + 0.1 * Math.sin(t * 2.3)), L.beamHeight * appear);

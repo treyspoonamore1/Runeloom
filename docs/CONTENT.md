@@ -277,8 +277,13 @@ Rooms are text files in `data/rooms/<region>/<room>.txt`. Lines starting with `@
 | `H` | Heart Seed |
 | `L` | Loom Shard |
 | `x` | Loom Stone: waypoint and respawn point |
+| `s` `r` `C` | Hearth NPCs (M7, hub only): the Spindlewright, the Runekeeper, the Cartographer |
+| `F` | The Hearth fire (M7, hub only): decorative, never burns anything |
+| `p` `y` `E` `V` | Hearth building plots (M7, hub only): Kindling Pit, Rune Garden, Expedition Board, Salvage Loom |
 | `1`–`9` | Spawn markers |
 | `<` `>` `^` `v` | Exits on the west, east, north and south edges, placed in the edge column or row |
+
+Hearth stations are solid and inert, and Interact (F) beside one opens its screen. A station that covers several tiles repeats its character in one rectangle (the hub draws 3×2 buildings and a 3×3 Hearth fire).
 
 A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `R`, `S`, `T`, `x`, `c`, `\|`, `b`, `&`, `P`) sits on the most common ground among its 4 neighbors. Ties go to stone. This is how the Heart Seed in the example below ends up floating on deep water.
 

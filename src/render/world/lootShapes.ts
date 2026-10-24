@@ -93,6 +93,19 @@ function scrap(p: Pen): void {
   p.moveTo(0.5, 0.1).bez(0.9, 0.3, 0.6, 0.7, 0.95, 0.75).stroke(0.08, 0xc9b9a6);
 }
 
+/** Embers (M7): a small glowing ember mote, a flame-tipped coal in warm orange. */
+function embers(p: Pen): void {
+  for (let i = 0; i < 4; i++) p.circle(0, 0.05, 0.62 - i * 0.12).fill({ color: 0xff8a3d, alpha: 0.16 });
+  p.moveTo(0, -0.5)
+    .bez(0.22, -0.28, 0.4, -0.05, 0.32, 0.18)
+    .quad(0, 0.46, -0.32, 0.18)
+    .bez(-0.4, -0.05, -0.22, -0.28, 0, -0.5)
+    .close()
+    .fill(0xff8a3d)
+    .stroke(0.1, INK);
+  p.circle(0, 0.08, 0.16).fill(0xffe2a0);
+}
+
 /** Crafting currency: a wound knot of thread with a bright core (white parts tinted per currency). */
 function currency(p: Pen): void {
   p.circle(0, 0, 0.62).fill(0x3a3040).stroke(0.14, INK);
@@ -144,6 +157,7 @@ export function lootAtlasEntries(): AtlasEntry[] {
     { name: 'loot_gem', x0: -0.45, y0: -0.45, x1: 0.45, y1: 0.45, draw: gem },
     { name: 'loot_part', x0: -0.95, y0: -0.95, x1: 0.95, y1: 0.95, draw: part },
     { name: 'loot_scrap', x0: -0.75, y0: -0.65, x1: 1.1, y1: 0.95, draw: scrap },
+    { name: 'loot_embers', x0: -0.7, y0: -0.7, x1: 0.7, y1: 0.7, draw: embers },
     { name: 'loot_currency', x0: -0.8, y0: -0.8, x1: 0.8, y1: 0.8, draw: currency },
     { name: 'loot_sigil', x0: -0.95, y0: -1.0, x1: 0.95, y1: 1.0, draw: sigil },
     { name: 'loot_beam', x0: -0.6, y0: -1.1, x1: 0.6, y1: 0.1, draw: beam },
