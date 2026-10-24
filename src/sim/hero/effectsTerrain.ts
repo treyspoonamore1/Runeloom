@@ -50,9 +50,11 @@ export function waterConduction(state: GameState, owner: number): { maxDistance:
   };
 }
 
-/** Stormglass: ice carries Storm charge like water for `owner`'s chains. */
+/** Stormglass (or the Stormglass Memory mutation, M7): ice carries Storm charge like water for `owner`'s chains. */
 export function iceConducts(state: GameState, owner: number): boolean {
-  return owner === OWNER.player && (state.heroMods.effects.stormglass ?? 0) > 0;
+  if (owner !== OWNER.player) return false;
+  const fx = state.heroMods.effects;
+  return (fx.stormglass ?? 0) > 0 || (fx.ice_conducts ?? 0) > 0;
 }
 
 /** Multiplier on the spread chance of player-owned fire (1 when none). */

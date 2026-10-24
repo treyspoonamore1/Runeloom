@@ -3,16 +3,21 @@
  * - Clearing a rift room mends tuning.rift.roomClearHeal of life and mana (no Loom Stones there).
  * - The Cinder Warden's first death drops the first Rift Sigil (data/rift.ts riftDrops.wardenSigilTier).
  * - A rift boss's death completes the rift: hero.riftTier rises to its tier (the ladder), and
- *   it drops a sigil one tier higher and some crafting currency (riftRewards), around its body.
+ *   it drops a sigil one tier higher (at most the Rekindle cap, M7), some crafting currency
+ *   (riftRewards) and, once the Hearth is lit, Embers (meta/embers.ts), around its body.
+ * - The Cinder Warden's first death also lights the Hearth (M7, meta/hearth.ts lightHearth).
  * Called by world/roomClear.ts when a boss dies, after the death is recorded.
  */
-import { RIFT_TIERS, riftDrops, riftRewards } from '../../../../data/rift';
+import { riftDrops, riftRewards } from '../../../../data/rift';
 import { riftBossKinds } from '../../../../data/progression';
 import { emit } from '../../events';
 import { rollCurrency } from '../../items/drops';
 import { dropLoot, type LootContent } from '../../items/loot';
 import { makeSigil, rollSigil } from '../../items/sigils';
 import type { GameState } from '../../state';
+import { lightHearth } from '../../meta/hearth';
+import { riftEmbers } from '../../meta/embers';
+import { maxRiftTier } from '../../meta/view';
 
 /** A rift room was cleared: restore tuning.rift.roomClearHeal of max life and mana. */
 export function onRiftRoomCleared(state: GameState): void {
@@ -25,18 +30,26 @@ export function onRiftRoomCleared(state: GameState): void {
 
 export function onBossDefeated(state: GameState, kind: string, x: number, y: number): void {
   const out: LootContent[] = [];
-  if (kind === 'cinder_warden')
+  if (kind === 'cinder_warden') {
     out.push({ kind: 'sigil', sigil: makeSigil(state.hero, riftDrops.wardenSigilTier, []) });
+    lightHearth(state); // M7: the Warden's first death lights the Hearth.
+  }
   const rift = state.world.rift;
   if (riftBossKinds.includes(kind) && rift) {
     const tier = rift.spec.tier;
     const best = tier > state.hero.riftTier;
     if (best) state.hero.riftTier = tier;
     emit(state, { type: 'riftCompleted', tier, newBest: best });
-    out.push({ kind: 'sigil', sigil: rollSigil(state.hero, state.lootRng, Math.min(RIFT_TIERS, tier + 1)) });
+    // The next tier's sigil, never above the Rekindle cap (M7).
+    out.push({
+      kind: 'sigil',
+      sigil: rollSigil(state.hero, state.lootRng, Math.min(maxRiftTier(state.hero), tier + 1)),
+    });
     const n = riftRewards.currencyBase + Math.floor(tier / riftRewards.currencyPerTiers);
     for (let i = 0; i < n; i++)
       out.push({ kind: 'currency', currency: rollCurrency(state.lootRng), amount: 1 });
+    const em = riftEmbers(state, tier); // M7: the rift completion Embers.
+    if (em > 0) out.push({ kind: 'embers', amount: em });
   }
   // Placed after the boss's own drops (dropKillLoot ran at its death), farther out.
   out.forEach((c, i) => dropLoot(state, x, y, c, 8 + i));

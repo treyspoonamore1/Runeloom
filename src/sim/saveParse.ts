@@ -388,7 +388,9 @@ export function parseSaveData(data: unknown): SaveData {
     obj(o.hero, 'hero').sigils === undefined
   )
     hero.sigils.push(makeSigil(hero, riftDrops.wardenSigilTier, []));
-  migrateHearth(hero, world, o.hero !== undefined && obj(o.hero, 'hero').hearth !== undefined);
+  const weaves = parseWeaves(o.weaves, hero);
+  const socketed = new Set(weaves.runes.flatMap((r) => r ?? []));
+  migrateHearth(hero, world, o.hero !== undefined && obj(o.hero, 'hero').hearth !== undefined, socketed);
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
@@ -396,7 +398,7 @@ export function parseSaveData(data: unknown): SaveData {
     tick: opt(o, 'tick', int, 0, 'save'),
     hero,
     world,
-    weaves: parseWeaves(o.weaves, hero),
+    weaves,
     rngs,
   };
 }

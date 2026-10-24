@@ -65,6 +65,8 @@ export interface StatLine {
  * - tar_gland: your Fire hits leave an oil patch of this radius (cells), then ignite it.
  * - oiled_on_hit: your hits apply Oiled for this many seconds.
  * - projectile_speed_inc: Bolt and Lob projectiles this much faster.
+ * - ice_conducts: ice conducts your Storm, as Stormglass, without its damage (the Stormglass
+ *   Memory mutation, M7; src/sim/meta/mutations.ts).
  */
 export const EFFECT_KEYS = [
   'wildheart',
@@ -83,6 +85,7 @@ export const EFFECT_KEYS = [
   'tar_gland',
   'oiled_on_hit',
   'projectile_speed_inc',
+  'ice_conducts',
 ] as const;
 export type EffectKey = (typeof EFFECT_KEYS)[number];
 
