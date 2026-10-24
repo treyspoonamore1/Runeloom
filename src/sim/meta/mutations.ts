@@ -7,7 +7,7 @@
  * - threads agent: Twin Threads (the fifth weave slot on R) and Kindred Flame (combat).
  * Systems read ownership with `mutationCount` / `hasMutation`, never hearth.mutations directly.
  */
-import type { MutationId } from '../../../data/hearth';
+import { mutationEffects, type MutationId } from '../../../data/hearth';
 import type { HeroMods } from '../hero/mods';
 import type { HeroState } from '../hero/types';
 
@@ -26,6 +26,11 @@ export function hasMutation(hero: Readonly<HeroState>, id: MutationId): boolean 
  * Thread's depth cap still wins). Meta agent; the threads agent adds Kindred Flame.
  */
 export function addMutationMods(hero: Readonly<HeroState>, mods: HeroMods): void {
-  void hero;
-  void mods;
+  // ---- Deeper Weave (meta agent): branches nest one deeper ----
+  if (hasMutation(hero, 'deeper_weave')) mods.maxDepth = Math.max(mods.maxDepth, mutationEffects.deeperDepth);
+  // ---- Stormglass Memory (meta agent): ice conducts your Storm (the keystone's conduction only) ----
+  if (hasMutation(hero, 'stormglass_memory')) mods.effects[ICE_CONDUCTS] = 1;
 }
+
+/** HeroMods.effects key for "ice conducts the player's Storm" without Stormglass's damage (hero/effectsTerrain.ts iceConducts). */
+export const ICE_CONDUCTS = 'ice_conducts';

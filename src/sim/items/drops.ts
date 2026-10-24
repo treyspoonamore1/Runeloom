@@ -25,6 +25,10 @@ import { rollSigil } from './sigils';
 import { riftDrops } from '../../../data/rift';
 import { riftRules } from '../world/rift/rules';
 import { isRiftRoomId } from '../world/rift/types';
+import { killEmbers } from '../meta/embers';
+import { hasMutation } from '../meta/mutations';
+import { maxRiftTier } from '../meta/view';
+import { mutationEffects } from '../../../data/hearth';
 
 /** Fuse part tier for an area level (DESIGN §8.4). */
 export function partTierFor(areaLevel: number): 1 | 2 | 3 {
@@ -148,7 +152,9 @@ export function rollKillLoot(state: GameState, e: Enemy): LootContent[] {
     }
     if (rift && isRiftRoomId(state.room.id) && rng.chance(riftDrops.sigilChance * qty)) {
       const up = rng.chance(riftDrops.tierUpChance) ? 1 : 0;
-      out.push({ kind: 'sigil', sigil: rollSigil(state.hero, rng, rift.spec.tier + up) });
+      // M7: never above the Rekindle tier cap.
+      const tier = Math.min(maxRiftTier(state.hero), rift.spec.tier + up);
+      out.push({ kind: 'sigil', sigil: rollSigil(state.hero, rng, tier) });
     }
   }
   // M5 rune discovery (data/progression.ts runeDiscovery): Rares sometimes, bosses always.
@@ -162,11 +168,14 @@ export function rollKillLoot(state: GameState, e: Enemy): LootContent[] {
     const u = rollUnique(state, level);
     if (u) out.push({ kind: 'item', item: u });
   }
+  // M7 Embers (meta/embers.ts): every kill once the Hearth is lit; no RNG, so no roll changes.
+  const em = killEmbers(state, e);
+  if (em > 0) out.push({ kind: 'embers', amount: em });
   return out;
 }
 
 /**
- * A locked M5 rune the area level allows (not unlocked and not already in `pending` drops),
+ * A locked M5 rune (or, with the Shatterpoint mutation, the Shatter trigger) the area level allows (not unlocked and not already in `pending` drops),
  * picked evenly with the loot RNG, or null when none is left.
  */
 export function rollDiscovery(
@@ -177,7 +186,10 @@ export function rollDiscovery(
   const have = new Set<string>(state.hero.unlockedRunes);
   for (const c of pending) if (c.kind === 'rune') have.add(c.rune.rune);
   for (const d of state.loot) if (d.content.kind === 'rune') have.add(d.content.rune.rune);
-  const list = (Object.entries(runeDiscovery.from) as [RuneId, number][])
+  // M7 Shatterpoint: the Shatter trigger joins discovery once the mutation is owned.
+  const from: Partial<Record<RuneId, number>> = { ...runeDiscovery.from };
+  if (hasMutation(state.hero, 'shatterpoint')) Object.assign(from, mutationEffects.shatterpointRunes);
+  const list = (Object.entries(from) as [RuneId, number][])
     .filter(([id, from]) => from <= areaLevel && !have.has(id))
     .map(([id]) => id);
   if (list.length === 0) return null;
