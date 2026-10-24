@@ -15,6 +15,7 @@ import {
 } from '../../../src/sim';
 import { makeSigil } from '../../../src/sim/items/sigils';
 import { isRiftRoomId } from '../../../src/sim/world/rift/types';
+import { rekindlesForTier } from '../../../src/sim/meta/view';
 import { adventure, ROOMS, run, runUntil, T, teleport } from './worldHelpers';
 
 const SOUTH: InputFrame = { moveX: 0, moveY: 1, aimX: 0, aimY: 0, buttons: 0 };
@@ -162,6 +163,7 @@ describe('rift bosses and rewards', () => {
   function inArena(tier: number): GameState {
     const { s, uid } = atStone(tier);
     s.hero.riftTier = tier - 1;
+    s.hero.hearth.rekindles = rekindlesForTier(tier); // M7: past the Rekindle tier cap.
     open(s, uid);
     s.world.pending = { roomId: 'rift/0/boss', arrival: { kind: 'edge', from: 'n' }, reason: 'exit' };
     run(s, 1);

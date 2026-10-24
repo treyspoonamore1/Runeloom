@@ -19,6 +19,7 @@ import type { FusePart, HeroState, Item, RiftSigil, RuneItem } from '../hero/typ
 import { hashItem, hashPart, hashRune, hashSigil } from '../hero/hero';
 import { isSolidCell } from '../world/room';
 import { unlockRune } from '../hero/unlock';
+import { autoSalvage } from '../meta/salvage';
 
 export type LootContent =
   | { kind: 'rune'; rune: RuneItem }
@@ -71,8 +72,12 @@ export function dropLoot(state: GameState, x: number, y: number, content: LootCo
   return drop;
 }
 
-/** Adds a drop's content to the hero: runes to the pouch, items to the inventory, parts, Thread Scrap. */
-export function grantContent(state: GameState, content: LootContent): void {
+/**
+ * Adds a drop's content to the hero: runes to the pouch, items to the inventory (or the Salvage
+ * Loom, M7: meta/salvage.ts, sending 'autoSalvaged' at `at`, default the player), parts, Thread
+ * Scrap, currency, sigils, Embers.
+ */
+export function grantContent(state: GameState, content: LootContent, at?: { x: number; y: number }): void {
   const hero: HeroState = state.hero;
   switch (content.kind) {
     case 'rune':
@@ -80,7 +85,8 @@ export function grantContent(state: GameState, content: LootContent): void {
       unlockRune(state, content.rune.rune);
       break;
     case 'item':
-      hero.items.push(content.item);
+      if (!autoSalvage(state, content.item, at?.x ?? state.player.x, at?.y ?? state.player.y))
+        hero.items.push(content.item);
       break;
     case 'part':
       hero.parts.push(content.part);
@@ -113,7 +119,7 @@ export function stepLoot(state: GameState): void {
     const dx = d.x - p.x;
     const dy = d.y - p.y;
     if (!p.dead && d.age >= T.pickupDelay && dx * dx + dy * dy <= r2) {
-      grantContent(state, d.content);
+      grantContent(state, d.content, d);
       emit(state, { type: 'lootPicked', id: d.id, x: d.x, y: d.y, content: d.content, onExit: false });
       continue;
     }
@@ -128,7 +134,7 @@ export function stepLoot(state: GameState): void {
  */
 export function collectRoomLoot(state: GameState): void {
   for (const d of state.loot) {
-    grantContent(state, d.content);
+    grantContent(state, d.content, d);
     emit(state, { type: 'lootPicked', id: d.id, x: d.x, y: d.y, content: d.content, onExit: true });
   }
   state.loot.length = 0;

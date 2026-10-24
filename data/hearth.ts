@@ -8,6 +8,7 @@
  * (src/sim/meta/*); the hub agent owns the room file and keeps `hearthStone` in sync with it.
  */
 import type { CurrencyId } from './currency';
+import type { RuneId } from './runes';
 
 /** The hub's room id (data/rooms/hearth/hearth.txt). */
 export const hearthRoom = 'hearth/hearth';
@@ -33,13 +34,19 @@ export const STATION_IDS = [
 export type StationId = (typeof STATION_IDS)[number];
 
 export const stations: Readonly<Record<StationId, { name: string; text: string }>> = {
-  spindlewright: { name: 'The Spindlewright', text: 'Crafting bench, and crafting currencies for Thread Scrap' },
+  spindlewright: {
+    name: 'The Spindlewright',
+    text: 'Crafting bench, and crafting currencies for Thread Scrap',
+  },
   runekeeper: { name: 'The Runekeeper', text: 'Keeps runes in the Rune Garden, where they grow' },
   cartographer: { name: 'The Cartographer', text: 'Opens rifts with your Rift Sigils' },
   hearth_fire: { name: 'The Hearth', text: 'Rekindle, and spend Ash on Mutations' },
   kindling_pit: { name: 'Kindling Pit', text: 'Makes Thread Scrap every minute' },
   rune_garden: { name: 'Rune Garden', text: 'Runes planted here gain XP every minute' },
-  expedition_board: { name: 'Expedition Board', text: 'Send hired Weavers on timed rifts for Fuse parts and currency' },
+  expedition_board: {
+    name: 'Expedition Board',
+    text: 'Send hired Weavers on timed rifts for Fuse parts and currency',
+  },
   salvage_loom: { name: 'Salvage Loom', text: 'Salvages gear you pick up below a rarity into Thread Scrap' },
 };
 
@@ -158,7 +165,13 @@ export interface MutationDef {
 
 /** CONTENT §11. */
 export const mutations = {
-  deeper_weave: { id: 'deeper_weave', name: 'Deeper Weave', ash: 3, max: 1, text: 'Branches can nest 4 deep' },
+  deeper_weave: {
+    id: 'deeper_weave',
+    name: 'Deeper Weave',
+    ash: 3,
+    max: 1,
+    text: 'Branches can nest 4 deep',
+  },
   shatterpoint: {
     id: 'shatterpoint',
     name: 'Shatterpoint',
@@ -173,7 +186,13 @@ export const mutations = {
     max: 1,
     text: 'Ice conducts Storm, as the Stormglass keystone',
   },
-  bright_hearth: { id: 'bright_hearth', name: 'Bright Hearth', ash: 1, max: 10, text: '+10% Hearth production' },
+  bright_hearth: {
+    id: 'bright_hearth',
+    name: 'Bright Hearth',
+    ash: 1,
+    max: 10,
+    text: '+10% Hearth production',
+  },
   sigil_cache: {
     id: 'sigil_cache',
     name: 'Sigil Cache',
@@ -181,7 +200,13 @@ export const mutations = {
     max: 1,
     text: 'Start each Rekindle with five tier 3 Rift Sigils',
   },
-  twin_threads: { id: 'twin_threads', name: 'Twin Threads', ash: 4, max: 1, text: 'A fifth weave slot, bound to R' },
+  twin_threads: {
+    id: 'twin_threads',
+    name: 'Twin Threads',
+    ash: 4,
+    max: 1,
+    text: 'A fifth weave slot, bound to R',
+  },
   kindred_flame: {
     id: 'kindred_flame',
     name: 'Kindred Flame',
@@ -208,4 +233,6 @@ export const mutationEffects = {
   sigilCache: { tier: 3, count: 5 },
   /** Deeper Weave: the deepest branch allowed. */
   deeperDepth: 4,
+  /** Shatterpoint: runes that join rune discovery (data/progression.ts runeDiscovery), by the area level they start at. */
+  shatterpointRunes: { shatter: 1 } as Readonly<Partial<Record<RuneId, number>>>,
 };

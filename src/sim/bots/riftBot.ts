@@ -42,6 +42,7 @@ import { roomFlags, type Edge, type RoomSource } from '../world/worldState';
 import { referenceHero } from './campaignEncounter';
 import { CampaignNav } from './campaignNav';
 import { applyReferenceBuild } from './campaignPlan';
+import { rekindlesForTier } from '../meta/view';
 
 /** Finish a room's enemies when none could be reached or shot for this long (as the campaign does). */
 const STRANDED_TICKS = 10 * SIM_HZ;
@@ -151,6 +152,7 @@ export function riftCharacter(tier: number): HeroState {
   }
   hero.unlockedRunes.sort();
   hero.riftTier = 16;
+  hero.hearth.rekindles = rekindlesForTier(16); // M7: every tier opens (the Rekindle tier cap).
   // Gear: a Rare of every slot at the area's item level (applyReferenceBuild equips it).
   const spindle = hero.items.find((it) => it.uid === hero.equipped.spindle)!;
   spindle.rarity = 'rare';

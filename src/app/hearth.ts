@@ -34,11 +34,17 @@ import {
   maxRiftTier,
   maxRiftTierFor,
   mutationCost,
+  productionMult,
   salvageCap,
+  salvageMult,
   upgradeCost,
   weavers,
 } from '../sim/meta/view';
-import { rekindle } from '../../data/hearth';
+import { expeditionRewardCounts } from '../sim/meta/expeditions';
+import { rekindleError } from '../sim/meta/rekindle';
+import { hearthGateError } from '../sim/meta/edits';
+import { freeRunes } from '../sim/hero/runes';
+import { maxRuneLevel } from '../../data/progression';
 import { stationHere } from '../sim/world/hub';
 import { sendHeroEdit } from './hero';
 import type { Session } from './session';
@@ -136,11 +142,19 @@ export interface GardenView {
 }
 
 export function getGarden(session: Session): GardenView {
-  const hero = session.state.hero;
+  const s = session.state;
+  const hero = s.hero;
   const h = hero.hearth;
   const level = h.buildings.rune_garden;
   const planted = h.garden.map((u) => hero.runes.find((r) => r.uid === u)).filter((r): r is RuneItem => !!r);
-  return { plots: gardenPlots(level), planted, xpPerMinute: gardenXpPerMinute(level), plantable: [] };
+  // freeRunes already leaves out socketed and planted runes; a max-level rune has nothing to gain.
+  const plantable = freeRunes(s).filter((r) => r.level < maxRuneLevel);
+  return {
+    plots: gardenPlots(level),
+    planted,
+    xpPerMinute: gardenXpPerMinute(level) * productionMult(hero),
+    plantable,
+  };
 }
 
 export interface ExpeditionBoardView {
@@ -152,6 +166,8 @@ export interface ExpeditionBoardView {
   expeditions: readonly Expedition[];
   /** Seconds an expedition of `tier` takes. */
   seconds(tier: number): number;
+  /** What an expedition of `tier` brings back: Fuse parts, crafting currencies, Embers. */
+  rewards(tier: number): { parts: number; currency: number; embers: number };
 }
 
 export function getExpeditionBoard(session: Session): ExpeditionBoardView {
@@ -164,6 +180,7 @@ export function getExpeditionBoard(session: Session): ExpeditionBoardView {
     maxTier: maxExpeditionTier(hero),
     expeditions: h.expeditions,
     seconds: (tier) => expeditionSeconds(hero, tier),
+    rewards: (tier) => expeditionRewardCounts(tier),
   };
 }
 
@@ -172,11 +189,19 @@ export interface SalvageView {
   /** The highest setting the Salvage Loom's level allows. */
   cap: SalvageSetting;
   options: readonly SalvageSetting[];
+  /** Thread Scrap × this per salvaged item (round(scrap value × mult)). */
+  scrapMult: number;
 }
 
 export function getSalvage(session: Session): SalvageView {
   const h = session.state.hero.hearth;
-  return { setting: h.salvage, cap: salvageCap(h.buildings.salvage_loom), options: ['off', 'normal', 'magic', 'rare'] };
+  const level = h.buildings.salvage_loom;
+  return {
+    setting: h.salvage,
+    cap: salvageCap(level),
+    options: ['off', 'normal', 'magic', 'rare'],
+    scrapMult: salvageMult(level),
+  };
 }
 
 export interface TradeView {
@@ -213,17 +238,25 @@ export interface RekindleView {
 export function getRekindle(session: Session): RekindleView {
   const s = session.state;
   const hero = s.hero;
-  let blocker: string | null = null;
-  if (hero.riftTier < rekindle.unlockTier) blocker = `Complete a tier ${rekindle.unlockTier} rift first`;
-  else if (s.world.rift) blocker = 'Close the open rift first';
-  else if (!inHearth(s)) blocker = 'Only at the Hearth';
+  const blocker = rekindleError(s) ?? hearthGateError(s);
   return {
     blocker,
     ash: ashForRekindle(hero),
     maxTier: maxRiftTier(hero),
     nextMaxTier: maxRiftTierFor(hero.hearth.rekindles + 1),
-    resets: ['Embers', 'Hearth buildings', 'Rune Garden plots (runes return to the pouch)', 'Rift tier progress', 'Rift Sigils'],
-    keeps: ['Level, XP and passives', 'Items, runes and their levels', 'Thread Scrap and currencies', 'Ash and Mutations'],
+    resets: [
+      'Embers',
+      'Hearth buildings',
+      'Rune Garden plots (runes return to the pouch)',
+      'Rift tier progress',
+      'Rift Sigils',
+    ],
+    keeps: [
+      'Level, XP and passives',
+      'Items, runes and their levels',
+      'Thread Scrap and currencies',
+      'Ash and Mutations',
+    ],
   };
 }
 
@@ -280,7 +313,15 @@ export function applyOfflineGains(session: Session, savedAtMs: number, nowMs: nu
   const whole = Math.floor(seconds);
   const err = sendHearthEdit(session, { kind: 'offline', seconds: whole });
   if (err !== null) return null;
-  const ev = session.state.events.find((e) => e.type === 'offlineGains');
-  if (ev && ev.type === 'offlineGains') return { ...ev };
+  // The session moved the edit's events to pendingEvents when it recorded it.
+  const all = [...session.pendingEvents, ...session.state.events];
+  for (let i = all.length - 1; i >= 0; i--) {
+    const ev = all[i]!;
+    if (ev.type === 'offlineGains') {
+      const { type, ...gains } = ev;
+      void type;
+      return gains;
+    }
+  }
   return { seconds: whole, scrap: 0, runeXp: 0, runeLevels: 0, expeditionsReturned: 0 };
 }

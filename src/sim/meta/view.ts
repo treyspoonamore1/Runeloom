@@ -52,7 +52,9 @@ export function gardenXpPerMinute(level: number): number {
 
 /** Expedition Board Weavers at a level. */
 export function weavers(level: number): number {
-  return level <= 0 ? 0 : Math.min(expeditionBoard.maxWeavers, 1 + Math.floor((level - 1) / expeditionBoard.weaverEvery));
+  return level <= 0
+    ? 0
+    : Math.min(expeditionBoard.maxWeavers, 1 + Math.floor((level - 1) / expeditionBoard.weaverEvery));
 }
 
 /** Highest tier an expedition can run: the best tier completed this cycle, at least 1. */
@@ -86,6 +88,14 @@ export function maxRiftTierFor(rekindles: number): number {
 
 export function maxRiftTier(hero: Readonly<HeroState>): number {
   return maxRiftTierFor(hero.hearth.rekindles);
+}
+
+/** The fewest Rekindles that let a rift of `tier` open (bots and tests that start past the cap). */
+export function rekindlesForTier(tier: number): number {
+  return Math.max(
+    0,
+    Math.ceil((Math.min(tier, RIFT_TIERS) - rekindle.baseMaxTier) / rekindle.maxTierPerRekindle),
+  );
 }
 
 /** Ash a Rekindle would give now (0 when it isn't unlocked). */

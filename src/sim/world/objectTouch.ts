@@ -17,6 +17,7 @@ import { distToTile, isBlock } from './objectBlocks';
 import { openDoor, sendNote } from './objectGround';
 import { dungeonOf, loomStoneId, roomFlags } from './worldState';
 import { bossRoomDone, roomBossKinds } from './roomClear';
+import { dropChestEmbers } from '../meta/embers';
 
 function inTile(x: number, y: number, o: WorldObject): boolean {
   const x0 = o.tx * TILE_CELLS;
@@ -81,6 +82,7 @@ function touchChest(state: GameState, o: WorldObject): void {
     x: c.x,
     y: c.y,
   });
+  dropChestEmbers(state, c.x, c.y); // M7: Embers once the Hearth is lit.
   sendNote(state, o);
 }
 
