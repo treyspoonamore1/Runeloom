@@ -76,7 +76,7 @@ function BuildingCard(p: { b: BuildingView; embers: number; onUpgrade(): void })
 
 export function BuildingsPanel(p: PanelProps) {
   return (
-    <div class="hx-grid">
+    <div class="hx-grid wide">
       {p.snap.buildings.map((b) => (
         <BuildingCard
           key={b.id}

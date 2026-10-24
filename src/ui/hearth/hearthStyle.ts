@@ -19,6 +19,9 @@ const hearthCss = `
 .hx-num.up { animation: hx-pop 0.55s ease-out; }
 .hx-num.down { animation: hx-dip 0.4s ease-out; }
 @keyframes hx-pop { 0% { transform: scale(1); } 30% { transform: scale(1.22); color: var(--ember-hi); filter: drop-shadow(0 0 calc(var(--u) * 0.9) rgba(255, 190, 90, 0.9)); } 100% { transform: scale(1); } }
+/* On the gold level badge the number keeps its dark ink: only the size pulses. */
+.hx-lv .hx-num.up { animation: hx-bump 0.55s ease-out; }
+@keyframes hx-bump { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes hx-dip { 0% { opacity: 0.55; } 100% { opacity: 1; } }
 .hx-rates { margin: 0; padding: calc(var(--u) * 0.7) calc(var(--u) * 1); list-style: none; border-radius: calc(var(--u) * 1); background: rgba(255, 138, 58, 0.09); box-shadow: inset 0 0 0 calc(var(--u) * 0.2) rgba(255, 138, 58, 0.3); font-size: calc(var(--u) * 1.5); color: var(--sand); }
 .hx-rates li { display: flex; justify-content: space-between; gap: calc(var(--u) * 1); padding: calc(var(--u) * 0.15) 0; }
@@ -38,7 +41,8 @@ const hearthCss = `
 .hx-err { color: #ffd0c4; background: rgba(138, 31, 38, 0.55); box-shadow: inset 0 0 0 calc(var(--u) * 0.25) #ff9a85; animation: rl-fade 0.15s ease-out; }
 .hx-ok { color: #c8f5ea; background: rgba(26, 82, 64, 0.6); box-shadow: inset 0 0 0 calc(var(--u) * 0.25) #72dcc8; }
 .hx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 33), 1fr)); gap: calc(var(--u) * 1.2); }
-.hx-grid.one { grid-template-columns: minmax(0, calc(var(--u) * 52)); }
+.hx-grid.wide { grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 46), 1fr)); }
+.hx-grid.one { grid-template-columns: minmax(0, 1fr); max-width: calc(var(--u) * 52); }
 .hx-card { position: relative; display: flex; flex-direction: column; gap: calc(var(--u) * 0.7); min-width: 0; padding: calc(var(--u) * 1.2); border-radius: calc(var(--u) * 1.3); color: var(--sand);
   background: linear-gradient(180deg, #2f2866, #1d1840); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink), 0 0 0 calc(var(--u) * 0.5) rgba(242, 195, 91, 0.35); }
 .hx-card h4 { margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: calc(var(--u) * 1); font-size: calc(var(--u) * 2.1); color: var(--cream); }
@@ -122,7 +126,7 @@ const hearthCss = `
 @media (max-width: 760px) {
   .mn-root.hx { --u: 5px; }
   .hx-away-bg { --u: 5px; }
-  .hx-body { grid-template-columns: 1fr !important; }
+  .hx-body { grid-template-columns: 1fr !important; align-content: start; }
   .hx-nav { flex: none; }
   .hx-tabs { flex-direction: row; flex-wrap: wrap; }
   .hx-tab { flex: 1 1 auto; }
@@ -130,9 +134,10 @@ const hearthCss = `
   .hx-coin { flex-direction: column; align-items: flex-start; gap: calc(var(--u) * 0.2); }
   .hx-coin span { flex: none; }
   .hx-split, .hx-lists { grid-template-columns: 1fr; }
-  .hx-grid { grid-template-columns: 1fr; }
+  .hx-grid, .hx-grid.wide { grid-template-columns: 1fr; }
+  .hx-grid.one { max-width: none; }
 }
-@media (prefers-reduced-motion: reduce) { .hx-num.up, .hx-num.down, .hx-badge, .hx-card.ready, .hx-card.flash, .hx-plus { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hx-num.up, .hx-num.down, .hx-lv .hx-num.up, .hx-badge, .hx-card.ready, .hx-card.flash, .hx-plus { animation: none; } }
 `;
 
 export function injectHearthStyle(): void {
