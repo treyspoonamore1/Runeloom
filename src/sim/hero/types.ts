@@ -14,6 +14,7 @@
 import type { CurrencyId } from '../../../data/currency';
 import type { RiftModId } from '../../../data/rift';
 import type { RuneId } from '../../../data/runes';
+import type { HearthState } from '../meta/types';
 
 /** Equipment slots (DESIGN §8.1). Runes live in the pouch and weave slots, not here. */
 export const EQUIP_SLOTS = ['spindle', 'cloak', 'hood', 'boots', 'charm1', 'charm2'] as const;
@@ -103,6 +104,8 @@ export interface HeroState {
   sigils: RiftSigil[];
   /** Highest rift tier completed, 0 for none: sigils up to one tier above it can be opened (M6 tier ladder). */
   riftTier: number;
-  /** Next uid for runes, items, parts and sigils (one id space). */
+  /** The Hearth (M7, meta/types.ts): Embers, buildings, garden, expeditions, Rekindles, Ash, Mutations. */
+  hearth: HearthState;
+  /** Next uid for runes, items, parts, sigils and expeditions (one id space). */
   nextUid: number;
 }

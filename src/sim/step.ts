@@ -13,6 +13,7 @@ import { stepLab } from './world/lab';
 import { stepAilments } from './combat/ailmentTick';
 import { stepGrid } from './grid/tick';
 import { stepObjects } from './world/objects';
+import { stepHearth } from './meta/hearth';
 import { stepLoot } from './items/loot';
 import { processTransition } from './world/transition';
 import { stepEntityTerrain } from './actors/terrain';
@@ -33,7 +34,7 @@ const TIME_EPSILON = 1e-9;
  * repeats, then every instance in spawn order) → enemy projectiles → entity terrain (Wet, Oiled,
  * burning ground, charge, falls, trails, Blind; actors/terrain.ts) → ailments (ignite damage,
  * decay, timers) → arena (count kills, spawn, waves) → Chemistry Lab scripts → puzzle objects and
- * pickups (world/objects.ts) → loot pickup (items/loot.ts) → remove dead enemies, ended projectiles
+ * pickups (world/objects.ts) → loot pickup (items/loot.ts) → the Hearth's clock (meta/hearth.ts) → remove dead enemies, ended projectiles
  * and spells → chemistry grid (every 3rd non-hitstop tick, 20 Hz; grid/tick.ts), then that grid
  * tick's explosions hit entities (actors/blasts.ts) and Live Wires pylons pulse (world/rift/pulse.ts) → a pending room transition
  * (world/transition.ts).
@@ -59,6 +60,7 @@ export function step(state: GameState, input: InputFrame): void {
   stepObjects(state, input);
   stepLoot(state);
   stepVolatiles(state);
+  if (state.mode === 'adventure') stepHearth(state);
   compactEnemies(state);
   compactProjectiles(state);
   compactSpells(state);

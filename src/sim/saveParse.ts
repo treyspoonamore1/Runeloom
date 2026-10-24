@@ -29,6 +29,7 @@ import { createWorldState, type RoomFlags, type WorldState } from './world/world
 import { parseWeave } from './weave/notation';
 import { LOADOUT_SLOTS } from './weave/runtime/loadout';
 import { runeOrder } from './hero/runes';
+import { migrateHearth, parseHearth } from './meta/saveHearth';
 import {
   SAVE_FORMAT,
   SAVE_VERSION,
@@ -208,6 +209,7 @@ export function parseHero(v: unknown): HeroState {
     patternSeeds: opt(o, 'patternSeeds', int, d.patternSeeds, P),
     sigils: opt(o, 'sigils', (x, p) => arr(x, p).map((g, i) => sigil(g, `${p}[${i}]`)), d.sigils, P),
     riftTier: opt(o, 'riftTier', int, d.riftTier, P),
+    hearth: parseHearth(o.hearth),
     nextUid: opt(o, 'nextUid', (x, p) => int(x, p, 1), d.nextUid, P),
   };
   hero.unlockedRunes = [...new Set([...hero.unlockedRunes, ...hero.runes.map((r) => r.rune)])].sort();
@@ -344,6 +346,8 @@ const migrations: Record<number, (o: Obj) => Obj> = {
         if (isAffixId(a.id) && affixes[a.id].tiers.length > RIFT_TIER_SHIFT) a.tier += RIFT_TIER_SHIFT;
     return o;
   },
+  // 2 → 3 (M7): the Hearth (hero.hearth); parseHearth fills it and migrateHearth lights it.
+  2: (o) => o,
 };
 
 export function parseSaveData(data: unknown): SaveData {
@@ -377,6 +381,7 @@ export function parseSaveData(data: unknown): SaveData {
     obj(o.hero, 'hero').sigils === undefined
   )
     hero.sigils.push(makeSigil(hero, riftDrops.wardenSigilTier, []));
+  migrateHearth(hero, world, o.hero !== undefined && obj(o.hero, 'hero').hearth !== undefined);
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,

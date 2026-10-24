@@ -24,6 +24,8 @@ import { addHeroItemMods } from './aggregate';
 import { addUniqueMods } from './uniques';
 import { syncPlayerToHero } from '../actors/playerVitals';
 import { recompileWeaves } from '../weave/runtime/loadout';
+import { createHearth, hashHearth } from '../meta/hearth';
+import { addMutationMods } from '../meta/mutations';
 
 /** A level 1 character with nothing: sandbox, arena and lab games use it as is. */
 export function createHero(): HeroState {
@@ -43,6 +45,7 @@ export function createHero(): HeroState {
     patternSeeds: 0,
     sigils: [],
     riftTier: 0,
+    hearth: createHearth(),
     nextUid: 1,
   };
 }
@@ -71,6 +74,7 @@ export function heroModsOf(hero: Readonly<HeroState>): HeroMods {
   const mods = emptyHeroMods();
   addHeroItemMods(mods, hero as HeroState);
   addPassiveAndPartMods(hero as HeroState, mods);
+  addMutationMods(hero, mods);
   addUniqueMods(hero as HeroState, mods);
   return mods;
 }
@@ -123,6 +127,7 @@ export function hashHero(h: Hasher, hero: HeroState): void {
   for (const c of currencyIds) h.u32(hero.currency[c] ?? 0);
   h.u32(hero.sigils.length).u32(hero.riftTier);
   for (const g of hero.sigils) hashSigil(h, g);
+  hashHearth(h, hero.hearth);
 }
 
 export function hashSigil(h: Hasher, g: RiftSigil): void {

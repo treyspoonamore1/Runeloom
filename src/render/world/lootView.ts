@@ -62,6 +62,9 @@ export function lootLook(c: LootContent): LootLook {
     }
     case 'sigil':
       return { tex: 'loot_sigil', tint: L.sigil, glyph: null, glyphTint: 0, color: L.sigil, beam: true };
+    case 'embers':
+      // M7 placeholder look: the hub agent gives Embers their own sprite.
+      return { tex: 'loot_scrap', tint: 0xff8a3d, glyph: null, glyphTint: 0, color: 0xff8a3d, beam: false };
   }
 }
 

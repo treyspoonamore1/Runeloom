@@ -26,7 +26,9 @@ export type LootContent =
   | { kind: 'part'; part: FusePart }
   | { kind: 'scrap'; amount: number }
   | { kind: 'currency'; currency: CurrencyId; amount: number }
-  | { kind: 'sigil'; sigil: RiftSigil };
+  | { kind: 'sigil'; sigil: RiftSigil }
+  /** Embers (M7, DESIGN §11): Hearth currency, from every kill once the Hearth is lit. */
+  | { kind: 'embers'; amount: number };
 
 export interface LootDrop {
   /** Unique within the run (state.nextId space). */
@@ -91,6 +93,9 @@ export function grantContent(state: GameState, content: LootContent): void {
       break;
     case 'sigil':
       hero.sigils.push(content.sigil);
+      break;
+    case 'embers':
+      hero.hearth.embers += content.amount;
       break;
   }
 }

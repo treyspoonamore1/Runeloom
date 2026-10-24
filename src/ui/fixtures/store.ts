@@ -127,6 +127,8 @@ export function fixtureApply(edit: HeroEdit): string | null {
     case 'openRift':
     case 'freeSigil':
       return null;
+    default:
+      return null;
   }
 }
 

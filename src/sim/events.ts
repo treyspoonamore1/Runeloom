@@ -5,6 +5,7 @@ import type { FormParams } from './weave/program';
 import type { SpellEndReason } from './weave/runtime/types';
 import type { HeroEvent } from './hero/events';
 import type { WorldEvent } from './world/worldEvents';
+import type { HearthEvent } from './meta/events';
 import type { EnemyEvent } from './enemyEvents';
 
 /**
@@ -331,7 +332,9 @@ export type SimEvent =
   /** Character, XP and loot events (M4): hero/events.ts. */
   | HeroEvent
   /** World and puzzle events (M4): rooms, doors, keys, pickups, puzzle objects (world/worldEvents.ts). */
-  | WorldEvent;
+  | WorldEvent
+  /** The Hearth (M7): lighting, stations, buildings, garden, expeditions, offline, Rekindle (meta/events.ts). */
+  | HearthEvent;
 
 /** Fields of 'waterElectrified' and 'metalElectrified'. */
 export interface ElectrifyFields {
