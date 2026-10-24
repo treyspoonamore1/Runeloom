@@ -10,15 +10,15 @@ import { makeSigil } from '../../sim/items/sigils';
 export function litFixtureHearth(hero: HeroState): void {
   const h = createHearth();
   h.lit = true;
-  h.embers = 1240;
-  h.embersSpent = 4800;
+  h.embers = 1800;
+  h.embersSpent = 24000;
   h.buildings = { kindling_pit: 6, rune_garden: 5, expedition_board: 7, salvage_loom: 5 };
   const planted = ['bolt', 'fire'].map((id) => hero.runes.find((r) => r.rune === id)).filter((r) => !!r);
   h.garden = planted.map((r) => r!.uid);
   planted.forEach((r, i) => (r!.xp = [740, 1180][i] ?? 0));
   h.expeditions = [
-    { uid: hero.nextUid++, tier: 3, left: 412, duration: 960 },
-    { uid: hero.nextUid++, tier: 2, left: 0, duration: 840 },
+    { uid: hero.nextUid++, tier: 3, left: 412, duration: 585 },
+    { uid: hero.nextUid++, tier: 2, left: 0, duration: 510 },
   ];
   h.salvage = 'normal';
   h.rekindles = 1;

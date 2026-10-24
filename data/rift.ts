@@ -252,14 +252,38 @@ export const sigilRolls = {
 /** Sigils from rifts (M6). */
 export const riftDrops = {
   /** Chance per drop roll (data/loot.ts rolls) in a rift that a Rift Sigil drops. */
-  sigilChance: 0.012,
+  sigilChance: 0.006,
   /** A dropped sigil is the rift's tier, or one tier higher with this chance (at most 16). */
-  tierUpChance: 0.25,
+  tierUpChance: 0.05,
+  /**
+   * M7: the rift boss's sigil is one tier higher with chance max(min, base − perTier × (tier − 1))
+   * + perClear × the best tier's earlier completions (hero.riftBestClears; only when the rift is
+   * the best tier), else the rift's own tier (riftBossTierUpChance). Sigil supply paces the climb;
+   * perClear keeps every rift a step toward the next tier.
+   */
+  bossTierUp: { base: 0.1, perTier: 0.012, min: 0.01, perClear: 0.009 },
   /** The first sigil: the Cinder Warden drops a tier-1 sigil the first time he dies. */
   wardenSigilTier: 1,
   /** With no sigils left (after the Warden), the map offers a free one of this tier (M6.5). */
   freeSigilTier: 1,
 };
+
+/**
+ * Rift tiers grow harder than their area level alone (M7 balance): monster life and monster hit
+ * damage × (1 + perTier)^(tier − 1), on top of the area level's growth and the sigil's prefixes.
+ * Kill XP and Embers don't change (they follow the area level), so climbing needs the power gear,
+ * crafting and the Hearth give, not only levels.
+ */
+export const riftTierScaling = { lifeMorePerTier: 0.06, damageMorePerTier: 0.04 };
+
+/**
+ * The chance a rift boss of `tier` drops the next tier's sigil (riftDrops.bossTierUp), after
+ * `bestClears` earlier completions of it as the best tier (0 below the best).
+ */
+export function riftBossTierUpChance(tier: number, bestClears = 0): number {
+  const b = riftDrops.bossTierUp;
+  return Math.min(1, Math.max(b.min, b.base - b.perTier * (tier - 1)) + b.perClear * Math.max(0, bestClears));
+}
 
 /** Live Wires pylon pulses (CONTENT §10): every pylon zaps what stands near it and electrifies its metal. */
 export const pylonPulse = {
@@ -271,7 +295,8 @@ export const pylonPulse = {
 
 /**
  * Completing a rift (its boss dies, M6): the tier ladder moves up to its tier, and its boss
- * drops, besides its usual boss loot, a sigil one tier higher (tier 16: another 16) and
+ * drops, besides its usual boss loot, a sigil (M7: one tier higher with riftBossTierUpChance,
+ * else its own tier; never above the Rekindle cap) and
  * `currencyBase + floor(tier / currencyPerTiers)` crafting currencies.
  */
 export const riftRewards = {

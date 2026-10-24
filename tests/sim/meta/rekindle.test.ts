@@ -26,6 +26,7 @@ function deepCycle(): GameState {
   plant(state, ['bolt', 'nova'], 7);
   h.expeditions.push({ uid: hero.nextUid++, tier: 4, left: 120, duration: 1080 });
   hero.riftTier = 9;
+  hero.riftBestClears = 4;
   hero.sigils.push(makeSigil(hero, 9, ['hardened']), makeSigil(hero, 10, []));
   hero.items.push(makeItem(hero, 'travelers_cloak', 'rare', 20));
   hero.parts.push(makePart(hero, 'kiln_chitin', 3));
@@ -54,6 +55,7 @@ describe('Rekindle (M7 acceptance)', () => {
     h.garden = [];
     h.salvage = 'off';
     expected.hero.riftTier = 0;
+    expected.hero.riftBestClears = 0;
     expected.hero.sigils = [];
     h.ash = before.hero.hearth.ash + ash;
     h.rekindles = before.hero.hearth.rekindles + 1;

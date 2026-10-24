@@ -193,9 +193,9 @@ export function spawnEnemy(
     ? def.life * riftBossScale(kind, areaLevel, state.tuning.combat.enemyLifeGrowth)
     : scaleByLevel(def.life, state.tuning.combat.enemyLifeGrowth, areaLevel);
   if (rarity !== 'normal' || mods.length > 0) life *= rarityLifeMult(rarity, mods);
-  // Rift prefixes (M6): Hardened, Resolute, Hasty.
+  // Rift prefixes (M6): Hardened, Resolute, Hasty; the tier's life growth (M7).
   const rift = riftRules(state);
-  life *= 1 + rift.monsterLifeMore;
+  life *= (1 + rift.monsterLifeMore) * rift.tierLifeMult;
   const resist = { ...def.resist };
   if (rift.monsterResistAdd !== 0)
     for (const k of ['fire', 'frost', 'storm'] as const) resist[k] += rift.monsterResistAdd;

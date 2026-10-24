@@ -210,6 +210,7 @@ export function parseHero(v: unknown): HeroState {
     patternSeeds: opt(o, 'patternSeeds', int, d.patternSeeds, P),
     sigils: opt(o, 'sigils', (x, p) => arr(x, p).map((g, i) => sigil(g, `${p}[${i}]`)), d.sigils, P),
     riftTier: opt(o, 'riftTier', int, d.riftTier, P),
+    riftBestClears: opt(o, 'riftBestClears', int, d.riftBestClears, P),
     hearth: parseHearth(o.hearth),
     nextUid: opt(o, 'nextUid', (x, p) => int(x, p, 1), d.nextUid, P),
   };

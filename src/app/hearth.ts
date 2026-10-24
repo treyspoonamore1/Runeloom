@@ -167,7 +167,7 @@ export interface ExpeditionBoardView {
   /** Seconds an expedition of `tier` takes. */
   seconds(tier: number): number;
   /** What an expedition of `tier` brings back: Fuse parts, crafting currencies, Embers. */
-  rewards(tier: number): { parts: number; currency: number; embers: number };
+  rewards(tier: number): { parts: number; currency: number; embers: number; sigils: number };
 }
 
 export function getExpeditionBoard(session: Session): ExpeditionBoardView {

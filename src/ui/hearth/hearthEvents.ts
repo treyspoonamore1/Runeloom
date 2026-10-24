@@ -73,7 +73,9 @@ export function hearthToast(e: LooseEvent): ToastSpec | null {
       return spec(
         'hearth',
         'Expedition collected',
-        `${plural(Number(e.parts), 'Fuse part')}, ${Number(e.currency)} currency, ${Number(e.embers)} Embers`,
+        `${plural(Number(e.parts), 'Fuse part')}, ${Number(e.currency)} currency, ` +
+          (Number(e.sigils) > 0 ? `${plural(Number(e.sigils), 'Rift Sigil')}, ` : '') +
+          `${Number(e.embers)} Embers`,
       );
     case HEARTH_EVENT.autoSalvaged: {
       const n = Number(e.scrap);

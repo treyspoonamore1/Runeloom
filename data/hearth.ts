@@ -45,15 +45,15 @@ export const stations: Readonly<Record<StationId, { name: string; text: string }
   rune_garden: { name: 'Rune Garden', text: 'Runes planted here gain XP every minute' },
   expedition_board: {
     name: 'Expedition Board',
-    text: 'Send hired Weavers on timed rifts for Fuse parts and currency',
+    text: 'Send hired Weavers on timed rifts for Fuse parts, currency and Rift Sigils',
   },
   salvage_loom: { name: 'Salvage Loom', text: 'Salvages gear you pick up below a rarity into Thread Scrap' },
 };
 
 /** Embers (DESIGN §11): drop from everything once the Hearth is lit. */
 export const embers = {
-  /** Embers the Cinder Warden's death gives when it lights the Hearth (a first purchase or two). */
-  onLit: 150,
+  /** Embers the Cinder Warden's death gives when it lights the Hearth (any one first level, not two). */
+  onLit: 500,
   /** Per kill by monster rarity, at area level 1 (bosses use `boss`). */
   perKill: { normal: 1, magic: 3, rare: 8, unique: 8, boss: 60 },
   /** × this per area level above 1, like kill XP. */
@@ -73,10 +73,10 @@ export interface BuildingDef {
 }
 
 export const buildings: Readonly<Record<BuildingId, BuildingDef>> = {
-  kindling_pit: { id: 'kindling_pit', maxLevel: 25, costBase: 50, costGrowth: 1.35 },
-  rune_garden: { id: 'rune_garden', maxLevel: 20, costBase: 80, costGrowth: 1.4 },
-  expedition_board: { id: 'expedition_board', maxLevel: 15, costBase: 120, costGrowth: 1.5 },
-  salvage_loom: { id: 'salvage_loom', maxLevel: 10, costBase: 60, costGrowth: 1.6 },
+  kindling_pit: { id: 'kindling_pit', maxLevel: 25, costBase: 400, costGrowth: 1.22 },
+  rune_garden: { id: 'rune_garden', maxLevel: 20, costBase: 450, costGrowth: 1.25 },
+  expedition_board: { id: 'expedition_board', maxLevel: 15, costBase: 500, costGrowth: 1.25 },
+  salvage_loom: { id: 'salvage_loom', maxLevel: 10, costBase: 350, costGrowth: 1.3 },
 };
 
 /** Kindling Pit: Thread Scrap per minute at level L ≥ 1 = perMinute × growth^(L − 1). */
@@ -84,9 +84,12 @@ export const kindlingPit = { perMinute: 0.5, growth: 1.25 };
 
 /**
  * Rune Garden: plots at level L ≥ 1 = min(maxPlots, 1 + floor(L / plotEvery)); XP per minute for
- * each planted rune = xpPerMinute × growth^(L − 1).
+ * each planted rune = xpPerMinute × growth^(L − 1). M7 balance: at garden level 3 a fresh rune
+ * reaches rune level 10 in about 75 minutes of play, and at garden level 10 a plot earns about
+ * half of what a socketed rune earns in tier 8–10 rifts (about 2,000 XP a minute in the
+ * progression sim), so a spare rune is worth planting.
  */
-export const runeGarden = { plotEvery: 4, maxPlots: 6, xpPerMinute: 20, growth: 1.22 };
+export const runeGarden = { plotEvery: 4, maxPlots: 6, xpPerMinute: 150, growth: 1.25 };
 
 /**
  * Expedition Board: Weavers (expeditions out at once) at level L ≥ 1 = min(maxWeavers,
@@ -95,10 +98,10 @@ export const runeGarden = { plotEvery: 4, maxPlots: 6, xpPerMinute: 20, growth: 
  * with rolled rewards.
  */
 export const expeditionBoard = {
-  weaverEvery: 5,
+  weaverEvery: 4,
   maxWeavers: 3,
-  baseSeconds: 600,
-  perTierSeconds: 120,
+  baseSeconds: 360,
+  perTierSeconds: 75,
   rewards: {
     /** Fuse parts per expedition: min + floor(tier / perTier). Tier by the tier's area level. */
     parts: { min: 1, perTier: 4 },
@@ -106,6 +109,12 @@ export const expeditionBoard = {
     currency: { min: 1, perTier: 3 },
     /** Embers: perTier × tier. */
     embersPerTier: 15,
+    /**
+     * Rift Sigils per expedition (M7 balance). Each is rolled like a rift boss's sigil (data/rift.ts
+     * riftBossTierUpChance): its tier, or the next with a chance; an expedition of the best tier
+     * counts as a completion of it (hero.riftBestClears). The Hearth's share of the climb.
+     */
+    sigils: { count: 1 },
   },
 };
 

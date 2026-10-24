@@ -371,6 +371,7 @@ Reward: the Storm rune, a Pattern Seed, a Cinder Heart part, and loot.
 - Opened with Rift Sigils: items with tier 1 to 16 and 0 to 4 modifiers. Each modifier adds item quantity and rarity.
 - Many modifiers change chemistry. Examples in CONTENT §10.
 - MVP endgame is a tier ladder. A hex-map "atlas" with adjacent-node bonuses comes in M8.
+- The ladder (M7): completing a rift's boss drops a sigil of its tier, or of the next tier with a chance that falls with the tier and grows with every completion of your best tier, so each rift brings the next tier closer. Higher tiers also give monsters more life and damage than their area level alone (CONTENT §10, Tiers).
 
 ## 11. Meta progression: the Hearth (M7)
 
@@ -382,7 +383,7 @@ The Hearth is the hub. NPCs: the Spindlewright (crafting bench), the Runekeeper 
 |---|---|
 | Kindling Pit | Thread Scrap per minute |
 | Rune Garden | XP for runes stored in it |
-| Expedition Board | Send hired Weavers on timed rifts for parts and currency |
+| Expedition Board | Send hired Weavers on timed rifts for parts, currency and Rift Sigils; one of your best tier counts toward the next tier like a completion |
 | Salvage Loom | Auto-salvages loot below a filter into Thread Scrap |
 
 Offline progress is capped at 8 hours.

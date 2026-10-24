@@ -11,7 +11,7 @@ export function ExpeditionsPanel(p: PanelProps) {
     return (
       <p class="hx-away">
         Build the Expedition Board in Buildings first. Hired Weavers run rifts for you and bring back Fuse
-        parts, currency and Embers.
+        parts, currency, Rift Sigils and Embers.
       </p>
     );
   const rows = expeditionRows(b.expeditions);

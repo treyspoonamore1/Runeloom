@@ -1,6 +1,13 @@
 /** M7: every Hearth edit (meta/edits.ts), its effect and its refusals. */
 import { describe, expect, it } from 'vitest';
-import { buildings, expeditionBoard, hearthRoom, mutations, spindlewrightPrices } from '../../../data/hearth';
+import {
+  buildings,
+  embers,
+  expeditionBoard,
+  hearthRoom,
+  mutations,
+  spindlewrightPrices,
+} from '../../../data/hearth';
 import { maxRuneLevel } from '../../../data/progression';
 import { riftAreaLevel } from '../../../data/rift';
 import { createGame, newGameHero } from '../../../src/sim';
@@ -34,22 +41,24 @@ describe('hearthUpgrade', () => {
     const cost = upgradeCost('kindling_pit', 0);
     ok(s, { kind: 'hearthUpgrade', building: 'kindling_pit' });
     expect(h.buildings.kindling_pit).toBe(1);
-    expect(h.embers).toBe(150 - cost);
+    expect(h.embers).toBe(embers.onLit - cost);
     expect(h.embersSpent).toBe(cost);
     expect(s.events).toContainEqual({ type: 'buildingUpgraded', building: 'kindling_pit', level: 1 });
   });
 
-  it("the first visit's 150 Embers buy one or two first levels", () => {
+  it("the first visit's Embers buy any one first level, not two (M7 balance)", () => {
     const firsts = (Object.keys(buildings) as (keyof typeof buildings)[]).map((b) => upgradeCost(b, 0));
     const cheapest = [...firsts].sort((a, b) => a - b);
-    expect(cheapest[0]! + cheapest[1]!).toBeLessThanOrEqual(150);
-    expect(cheapest[0]! + cheapest[1]! + cheapest[2]!).toBeGreaterThan(150);
+    expect(cheapest.at(-1)!).toBeLessThanOrEqual(embers.onLit);
+    expect(cheapest[0]! + cheapest[1]!).toBeGreaterThan(embers.onLit);
   });
 
   it('is refused without the Embers and at max level', () => {
     const s = hub();
     s.hero.hearth.embers = 10;
-    expect(applyHeroEdit(s, { kind: 'hearthUpgrade', building: 'rune_garden' })).toMatch(/Needs 80 Embers/);
+    expect(applyHeroEdit(s, { kind: 'hearthUpgrade', building: 'rune_garden' })).toBe(
+      `Needs ${upgradeCost('rune_garden', 0)} Embers (you have 10)`,
+    );
     s.hero.hearth.embers = 1e9;
     build(s, { salvage_loom: buildings.salvage_loom.maxLevel });
     expect(applyHeroEdit(s, { kind: 'hearthUpgrade', building: 'salvage_loom' })).toMatch(/highest level/);
@@ -105,6 +114,7 @@ describe('expeditions', () => {
     expect(s.events).toContainEqual({ type: 'expeditionReturned', uid, tier: 9 });
     const parts = s.hero.parts.length;
     const embers = s.hero.hearth.embers;
+    const sigils = s.hero.sigils.length;
     ok(s, { kind: 'expeditionCollect', uid });
     const n = expeditionRewardCounts(9);
     expect(s.hero.parts.length - parts).toBe(n.parts);
@@ -115,6 +125,9 @@ describe('expeditions', () => {
     const cur = Object.values(s.hero.currency).reduce((a, b) => a + (b ?? 0), 0);
     expect(cur).toBe(n.currency);
     expect(s.hero.hearth.embers - embers).toBe(n.embers);
+    // M7 balance: its tier's sigil, or one tier higher (here at the tier cap, 10).
+    expect(s.hero.sigils.length - sigils).toBe(n.sigils);
+    for (const g of s.hero.sigils.slice(sigils)) expect([9, 10]).toContain(g.tier);
     expect(s.hero.hearth.expeditions).toEqual([]);
     expect(s.events).toContainEqual({
       type: 'expeditionCollected',
@@ -123,8 +136,26 @@ describe('expeditions', () => {
       parts: n.parts,
       currency: n.currency,
       embers: n.embers,
+      sigils: n.sigils,
     });
     expect(applyHeroEdit(s, { kind: 'expeditionCollect', uid })).toMatch(/No such/);
+  });
+
+  it('M7 balance: an expedition of the best tier counts as a completion of it; a lower one does not', () => {
+    const s = hub();
+    build(s, { expedition_board: 15 });
+    s.hero.riftTier = 6;
+    s.hero.riftBestClears = 2;
+    ok(s, { kind: 'expeditionSend', tier: 6 });
+    ok(s, { kind: 'expeditionSend', tier: 3 });
+    ok(s, { kind: 'offline', seconds: 8 * 3600 });
+    const [best, low] = s.hero.hearth.expeditions.map((e) => e.uid);
+    ok(s, { kind: 'expeditionCollect', uid: low! });
+    expect(s.hero.riftBestClears).toBe(2);
+    expect([3, 4]).toContain(s.hero.sigils.at(-1)!.tier);
+    ok(s, { kind: 'expeditionCollect', uid: best! });
+    expect(s.hero.riftBestClears).toBe(3);
+    expect([6, 7]).toContain(s.hero.sigils.at(-1)!.tier);
   });
 
   it('refuses tiers above the best completed (at least 1) and an unbuilt board', () => {

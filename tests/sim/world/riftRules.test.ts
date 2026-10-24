@@ -17,7 +17,7 @@ import { enemyDef } from '../../../data/enemies';
 import { moveAlong } from '../../../src/sim/ai/common';
 import { stepGrid } from '../../../src/sim/grid/tick';
 import { WORLD_SOURCE_ID } from '../../../src/sim/grid/cells';
-import { riftRules, rulesOf } from '../../../src/sim/world/rift/rules';
+import { riftRules, rulesOf, tierScaling } from '../../../src/sim/world/rift/rules';
 import { circle, hit, cellShape } from '../grid/helpers';
 import { inlineRoom, run, T, teleport } from './worldHelpers';
 
@@ -30,10 +30,10 @@ function roomText(fill = '.', extra = ''): string {
 }
 
 /** A game in the test room with a rift of `mods` open (entered again so spawns see the rules). */
-function inRift(mods: RiftModId[], text = roomText()): GameState {
+function inRift(mods: RiftModId[], text = roomText(), tier = 5): GameState {
   const s = inlineRoom(text);
   s.world.rift = {
-    spec: { index: 9, seed: 1, tier: 5, mods, home: { roomId: 'rift/9/test', key: 'x' } },
+    spec: { index: 9, seed: 1, tier, mods, home: { roomId: 'rift/9/test', key: 'x' } },
     bossDead: false,
   };
   enterRoom(s, 'rift/9/test', { kind: 'default' });
@@ -100,6 +100,27 @@ describe('rift rules', () => {
     };
     expect(hitBy(['brutal'], false)).toBeCloseTo(hitBy([], false) * 1.25);
     expect(hitBy(['brutal'], true)).toBeCloseTo(hitBy([], true));
+  });
+
+  it('M7: the tier multiplies monster life and monster hits, not world hazards (riftTierScaling)', () => {
+    const at = (tier: number) => inRift([], roomText(), tier);
+    const lifeAt = (tier: number) => spawnEnemy(at(tier), 'shieldbearer', T(5), T(5)).maxLife;
+    expect(lifeAt(7)).toBeCloseTo(lifeAt(1) * tierScaling(7).life);
+    const hitAt = (tier: number, world: boolean) => {
+      const s = at(tier);
+      s.cheats.noAI = true;
+      const e = spawnEnemy(s, 'shieldbearer', T(10), T(5));
+      const packet = enemyAttackPacket(s, e, enemyDef('shieldbearer').attack!);
+      return applyHit(s, s.player, packet, {
+        sourceId: world ? WORLD_SOURCE_ID : e.id,
+        dirX: 0,
+        dirY: 0,
+        knockback: 0,
+        owner: world ? OWNER.world : undefined,
+      })!.total;
+    };
+    expect(hitAt(7, false)).toBeCloseTo(hitAt(1, false) * tierScaling(7).damage);
+    expect(hitAt(7, true)).toBeCloseTo(hitAt(1, true));
   });
 
   it('Drought: fire spreads twice as fast', () => {

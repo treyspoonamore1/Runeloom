@@ -45,6 +45,7 @@ export function createHero(): HeroState {
     patternSeeds: 0,
     sigils: [],
     riftTier: 0,
+    riftBestClears: 0,
     hearth: createHearth(),
     nextUid: 1,
   };
@@ -125,7 +126,7 @@ export function hashHero(h: Hasher, hero: HeroState): void {
   for (const n of hero.passives) h.string(n).byte(0);
   h.u32(hero.heartSeeds).u32(hero.loomShards).u32(hero.threadScrap).u32(hero.patternSeeds);
   for (const c of currencyIds) h.u32(hero.currency[c] ?? 0);
-  h.u32(hero.sigils.length).u32(hero.riftTier);
+  h.u32(hero.sigils.length).u32(hero.riftTier).u32(hero.riftBestClears);
   for (const g of hero.sigils) hashSigil(h, g);
   hashHearth(h, hero.hearth);
 }

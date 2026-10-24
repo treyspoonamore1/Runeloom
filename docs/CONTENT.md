@@ -470,6 +470,14 @@ Suffixes change the chemistry:
 | of Choking Smoke | Smoke lasts twice as long. Monsters aren't Blinded by smoke | +20% item quantity |
 | of the Gale (M8) | Constant wind from the west | +15% item quantity |
 
+### Tiers (M7 balance)
+
+Source: `data/rift.ts` (`riftTierScaling`, `riftDrops`); tuned by the M7 progression sim.
+
+- **Difficulty**: besides the area level (10 + round(1.25 × tier)), rift monsters have life × 1.06^(tier − 1) and their hits deal × 1.04^(tier − 1) (tier 10: ×1.69 life, ×1.42 damage; tier 16: ×2.40, ×1.80), on top of the prefixes. Kill XP and Embers follow the area level only. World hazards don't scale with it.
+- **Rift Sigil supply**: completing a rift, its boss drops a sigil of the next tier with chance max(0.01, 0.10 − 0.012 × (tier − 1)) + 0.009 × (earlier completions of the best tier), else one of its own tier (never above the Rekindle cap). The extra chance counts only when the rift is your best tier completed, starts again at 0 on a new best, and survives failed rifts. Tier 1: 10%, tier 5: 5.2%, tier 8: 1.6%, tier 9 and up: 1%, each plus 0.9% a completion. An Expedition (§12) of the best tier rolls the same way and counts as a completion.
+- **Kill sigils**: a drop roll in a rift gives a sigil with 0.6% (× item quantity), of the rift's tier, or the next with 5%.
+
 ---
 
 ## 11. Mutations (M7)
@@ -489,11 +497,11 @@ Bought with Ash after a Rekindle. Permanent.
 
 ## 12. The Hearth (M7)
 
-Placeholder numbers, set so the first visit teaches the buildings; the M7 progression sim tunes them. Source: `data/hearth.ts`; formulas in `src/sim/meta/view.ts`.
+Tuned by the M7 progression sim (`npm run sim -- --progression`: the first Rekindle after 6 to 10 hours of play; notes/m7-balance-decisions.md). Source: `data/hearth.ts`; formulas in `src/sim/meta/view.ts`.
 
 ### Embers
 
-The Cinder Warden's first death lights the Hearth and gives **150 Embers**: the cheapest first levels cost 50 and 60, so it buys one or two buildings. From then on, in adventure mode only:
+The Cinder Warden's first death lights the Hearth and gives **500 Embers**: enough for any one first level (350 to 500), not two. From then on, in adventure mode only:
 
 | Source | Embers |
 |---|---|
@@ -511,14 +519,16 @@ Upgrading from level L to L + 1 costs round(base × growth^L) Embers. Production
 
 | Building | Max level | Cost base, growth | First levels cost | Effect at level L ≥ 1 |
 |---|---|---|---|---|
-| Kindling Pit | 25 | 50, ×1.35 | 50, 68, 91, 123, 166 | 0.5 × 1.25^(L − 1) Thread Scrap a minute (L5 1.2, L10 3.7, L15 11.4, L20 34.7, L25 106) |
-| Rune Garden | 20 | 80, ×1.4 | 80, 112, 157, 220, 307 | min(6, 1 + floor(L / 4)) plots; each planted rune gains 20 × 1.22^(L − 1) XP a minute (L5 44, L10 120, L15 324, L20 875) |
-| Expedition Board | 15 | 120, ×1.5 | 120, 180, 270, 405, 608 | min(3, 1 + floor((L − 1) / 5)) Weavers: 1 at L1, 2 at L6, 3 at L11 |
-| Salvage Loom | 10 | 60, ×1.6 | 60, 96, 154, 246, 393 | Salvages Normal gear from L1, Magic from L4, Rare from L8; Thread Scrap × (1 + 0.1 L) |
+| Kindling Pit | 25 | 400, ×1.22 | 400, 488, 595, 726, 886 | 0.5 × 1.25^(L − 1) Thread Scrap a minute (L5 1.2, L10 3.7, L15 11.4, L20 34.7, L25 106) |
+| Rune Garden | 20 | 450, ×1.25 | 450, 563, 703, 879, 1099 | min(6, 1 + floor(L / 4)) plots; each planted rune gains 150 × 1.25^(L − 1) XP a minute (L5 366, L10 1,118, L15 3,411, L20 10,408) |
+| Expedition Board | 15 | 500, ×1.25 | 500, 625, 781, 977, 1221 | min(3, 1 + floor((L − 1) / 4)) Weavers: 1 at L1, 2 at L5, 3 at L9 |
+| Salvage Loom | 10 | 350, ×1.3 | 350, 455, 592, 769, 1000 | Salvages Normal gear from L1, Magic from L4, Rare from L8; Thread Scrap × (1 + 0.1 L) |
+
+In the progression sim this is about one upgrade per rift over the first dozen rifts, then one every rift or two; the model player has the four buildings at about 11–14 / 9–11 / 9–11 / 8–9 at its first Rekindle.
 
 - **Kindling Pit**: fractional Thread Scrap carries over between seconds (and offline spans), so production is exact over time.
 - **Rune Garden**: a planted rune stays in the pouch but can't be socketed; only unsocketed runes below level 20 can be planted. Rune quality adds XP as it does for socketed runes (1% per point). XP stops at level 20.
-- **Expedition Board**: an expedition runs a tier from 1 up to the best tier completed this cycle (at least 1) and takes 600 + 120 × tier seconds (tier 1: 12 min, tier 8: 26 min). Rewards are rolled on collect with the loot RNG: 1 + floor(tier / 4) Fuse parts (any non-boss part, tier by the rift tier's area level), 1 + floor(tier / 3) crafting currencies (by drop weight), 15 × tier Embers.
+- **Expedition Board**: an expedition runs a tier from 1 up to the best tier completed this cycle (at least 1) and takes 360 + 75 × tier seconds (tier 1: 7.25 min, tier 8: 16 min). Rewards are rolled on collect with the loot RNG: 1 + floor(tier / 4) Fuse parts (any non-boss part, tier by the rift tier's area level), 1 + floor(tier / 3) crafting currencies (by drop weight), one Rift Sigil, 15 × tier Embers. The sigil is rolled like a rift boss's (§10, Rift Sigil supply): its tier, or the next with the boss's chance; an expedition of the best tier counts as a completion of it, so Weavers bring the next tier closer.
 - **Salvage Loom**: gear (spindles included) picked up, or brought back by an expedition, at or below the setting and the level's cap turns into round(salvage value × (1 + 0.1 L)) Thread Scrap (salvage values: Normal 1, Magic 2, Rare 4). Never uniques.
 
 ### The Spindlewright's prices (Thread Scrap, one currency each)
@@ -534,8 +544,8 @@ The app sends the wall-clock gap since the save as one recorded edit: ignored un
 ### Rekindle and Ash
 
 - Unlocks once a tier 8 rift was completed this cycle, at the Hearth, with no rift open.
-- Ash = (best tier this cycle − 7) + floor(√(Embers spent on buildings this cycle ÷ 2000)). Tier 8 with 8,000 Embers spent gives 3.
+- Ash = (best tier this cycle − 7) + floor(√(Embers spent on buildings this cycle ÷ 2000)). Tier 8 with 8,000 Embers spent gives 3; the progression sim's first Rekindle (tier 10, 47,000 to 80,000 spent) gives 7 to 9.
 - Rifts open up to tier 10 before the first Rekindle; each Rekindle adds 2 (12, 14, 16).
-- Resets Embers, Embers spent, building levels and the Kindling Pit's carry, the Rune Garden (runes back in the pouch with their levels), the Salvage Loom setting, the rift tier ladder and Rift Sigils. Everything else stays, expeditions already out included.
+- Resets Embers, Embers spent, building levels and the Kindling Pit's carry, the Rune Garden (runes back in the pouch with their levels), the Salvage Loom setting, the rift tier ladder (with its best-tier completion count) and Rift Sigils. Everything else stays, expeditions already out included.
 - Sigil Cache: after each Rekindle, five plain tier 3 sigils, and the ladder starts as if tier 2 were completed so they open.
 - Mutation effects: Bright Hearth +10% Kindling Pit Scrap and Rune Garden XP per purchase; Swift Expeditions ÷ 1.5 duration for expeditions sent after buying it; Deeper Weave depth 4 (The First Thread still caps at 2); Stormglass Memory: ice conducts your Storm like water (not the keystone's extra damage); Shatterpoint: the Shatter trigger joins rune discovery (Rares and bosses) at any area level.

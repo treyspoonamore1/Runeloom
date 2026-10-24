@@ -3,12 +3,14 @@
  * - Clearing a rift room mends tuning.rift.roomClearHeal of life and mana (no Loom Stones there).
  * - The Cinder Warden's first death drops the first Rift Sigil (data/rift.ts riftDrops.wardenSigilTier).
  * - A rift boss's death completes the rift: hero.riftTier rises to its tier (the ladder), and
- *   it drops a sigil one tier higher (at most the Rekindle cap, M7), some crafting currency
+ *   it drops a sigil, one tier higher with riftBossTierUpChance (M7: more likely with each
+ *   completion of the best tier, hero.riftBestClears) else its own tier, at most the Rekindle
+ *   cap, some crafting currency
  *   (riftRewards) and, once the Hearth is lit, Embers (meta/embers.ts), around its body.
  * - The Cinder Warden's first death also lights the Hearth (M7, meta/hearth.ts lightHearth).
  * Called by world/roomClear.ts when a boss dies, after the death is recorded.
  */
-import { riftDrops, riftRewards } from '../../../../data/rift';
+import { riftBossTierUpChance, riftDrops, riftRewards } from '../../../../data/rift';
 import { riftBossKinds } from '../../../../data/progression';
 import { emit } from '../../events';
 import { rollCurrency } from '../../items/drops';
@@ -37,13 +39,21 @@ export function onBossDefeated(state: GameState, kind: string, x: number, y: num
   const rift = state.world.rift;
   if (riftBossKinds.includes(kind) && rift) {
     const tier = rift.spec.tier;
-    const best = tier > state.hero.riftTier;
-    if (best) state.hero.riftTier = tier;
+    const hero = state.hero;
+    const best = tier > hero.riftTier;
+    if (best) {
+      hero.riftTier = tier;
+      hero.riftBestClears = 0;
+    }
     emit(state, { type: 'riftCompleted', tier, newBest: best });
-    // The next tier's sigil, never above the Rekindle cap (M7).
+    // M7: the next tier's sigil with a chance that grows with each completion of the best tier,
+    // else this tier's; never above the Rekindle cap.
+    const atBest = tier === hero.riftTier;
+    const up = state.lootRng.chance(riftBossTierUpChance(tier, atBest ? hero.riftBestClears : 0)) ? 1 : 0;
+    if (atBest) hero.riftBestClears++;
     out.push({
       kind: 'sigil',
-      sigil: rollSigil(state.hero, state.lootRng, Math.min(maxRiftTier(state.hero), tier + 1)),
+      sigil: rollSigil(state.hero, state.lootRng, Math.min(maxRiftTier(state.hero), tier + up)),
     });
     const n = riftRewards.currencyBase + Math.floor(tier / riftRewards.currencyPerTiers);
     for (let i = 0; i < n; i++)
