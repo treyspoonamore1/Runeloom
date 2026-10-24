@@ -53,6 +53,7 @@ export function ruleMatches(rule: LootRule, c: LootContent): boolean {
 
 /** What the filter does with a drop: the first matching rule's action, else 'show'. */
 export function lootAction(filter: Readonly<LootFilter>, c: LootContent): LootAction {
+  if (c.kind === 'embers') return 'show'; // M7: Embers are never hidden (DECISIONS 2026-10-24).
   for (const r of filter.rules) if (ruleMatches(r, c)) return r.action;
   return 'show';
 }

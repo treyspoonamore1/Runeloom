@@ -21,10 +21,14 @@ import { findSigil, makeSigil } from '../../items/sigils';
 import { riftDrops } from '../../../../data/rift';
 import { installRiftRooms } from './rooms';
 import { riftRoomPrefix, type RiftSpec } from './types';
+import { maxRiftTier } from '../../meta/view';
 
-/** The highest sigil tier the hero may open (the tier ladder): one above the best completed. */
+/**
+ * The highest sigil tier the hero may open: one above the best completed (the tier ladder), and
+ * never above the Rekindle cap (M7, meta/view.ts maxRiftTier: 10, +2 per Rekindle, up to 16).
+ */
 export function maxOpenTier(state: GameState): number {
-  return state.hero.riftTier + 1;
+  return Math.min(state.hero.riftTier + 1, maxRiftTier(state.hero));
 }
 
 /** Why the sigil `uid` can't be opened here now, or null. */
@@ -33,6 +37,8 @@ export function openRiftError(state: GameState, uid: number): string | null {
   if (state.world.rift) return 'A rift is already open';
   const sigil = findSigil(state.hero, uid);
   if (!sigil) return `No Rift Sigil ${uid}`;
+  const cap = maxRiftTier(state.hero);
+  if (sigil.tier > cap) return `Rekindle to open tiers above ${cap}`;
   if (sigil.tier > maxOpenTier(state)) return `Complete a tier ${sigil.tier - 1} rift first`;
   if (!loomStoneHere(state)) return 'Stand at an activated Loom Stone';
   return null;

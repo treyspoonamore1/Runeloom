@@ -52,18 +52,28 @@ export function slotOfRune(state: GameState, uid: number): number {
   return state.weaves.slots.findIndex((s) => s.runes?.includes(uid) ?? false);
 }
 
-/** Rune items free for `slot` (in the pouch, or already in that slot), best first: level, then oldest. */
-export function freeRunes(state: GameState, slot = -1): RuneItem[] {
+/**
+ * Uids that can't go into a weave `slot` now: socketed in another slot, or planted in the Rune
+ * Garden (M7: a planted rune is not in the pouch for socketing).
+ */
+function takenUids(state: GameState, slot: number): Set<number> {
   const taken = socketedUids(state, slot);
+  for (const u of state.hero.hearth.garden) taken.add(u);
+  return taken;
+}
+
+/** Rune items free for `slot` (in the pouch and not planted, or already in that slot), best first: level, then oldest. */
+export function freeRunes(state: GameState, slot = -1): RuneItem[] {
+  const taken = takenUids(state, slot);
   return state.hero.runes.filter((r) => !taken.has(r.uid)).sort((a, b) => b.level - a.level || a.uid - b.uid);
 }
 
-/** Owned and free counts per rune id (free: in the pouch, or in `slot` when given). */
+/** Owned and free counts per rune id (free: in the pouch and not planted, or in `slot` when given). */
 export function runeCounts(
   state: GameState,
   slot = -1,
 ): Partial<Record<RuneId, { free: number; total: number }>> {
-  const taken = socketedUids(state, slot);
+  const taken = takenUids(state, slot);
   const out: Partial<Record<RuneId, { free: number; total: number }>> = {};
   for (const r of state.hero.runes) {
     const c = (out[r.rune] ??= { free: 0, total: 0 });
