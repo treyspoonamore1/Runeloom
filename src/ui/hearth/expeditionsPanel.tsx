@@ -1,6 +1,6 @@
 /** Expedition Board: Weavers, sending by tier, the live list of expeditions out and ready. */
 import { Icon } from '../adventure/icons';
-import { expeditionRows, sendOptions } from './hearthModel';
+import { expeditionRows, rewardText, sendOptions } from './hearthModel';
 import { BuildingUpgrade } from './buildingsPanel';
 import type { PanelProps } from './panelTypes';
 
@@ -39,6 +39,7 @@ export function ExpeditionsPanel(p: PanelProps) {
             type="button"
             class="hx-chip"
             disabled={b.free <= 0}
+            title={`Brings back ${rewardText(b.rewards(o.tier))}`}
             onClick={() =>
               p.act({ kind: 'expeditionSend', tier: o.tier }, `A Weaver set out on a tier ${o.tier} rift`)
             }
@@ -74,6 +75,9 @@ export function ExpeditionsPanel(p: PanelProps) {
               <i style={`--f:${r.frac}`} />
             </div>
             <p class={r.ready ? '' : 'mn-muted'}>{r.text}</p>
+            <p class="mn-muted">
+              {r.ready ? 'Brings' : 'Will bring'}: {rewardText(b.rewards(r.tier))}
+            </p>
             <button
               type="button"
               class={`mn-btn hx-btn${r.ready ? ' gold' : ''}`}

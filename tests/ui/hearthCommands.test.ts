@@ -7,7 +7,11 @@ vi.mock('../../src/sim/meta/debug', () => ({
   debugSetAsh: (_s: unknown, n: number) => calls.push(['ash', n]),
   debugSetBuilding: (_s: unknown, b: string, l: number) => calls.push(['building', b, l]),
   debugSetRiftTier: (_s: unknown, n: number) => calls.push(['rifttier', n]),
-  debugOffline: (_s: unknown, sec: number) => calls.push(['offline', sec]),
+  debugOffline: (_s: unknown, sec: number) => {
+    calls.push(['offline', sec]);
+    return { seconds: sec, scrap: 7, runeXp: 90, runeLevels: 1, expeditionsReturned: 2 };
+  },
+  debugHearthLine: () => 'Embers 12',
 }));
 vi.mock('../../src/sim/world/transition', () => ({
   enterRoom: (_s: unknown, room: string, arrival: unknown) => calls.push(['enterRoom', room, arrival]),
@@ -129,7 +133,10 @@ describe('Hearth console commands', () => {
 
   it('offline takes hours and needs a lit Hearth', () => {
     const f = fake();
-    expect(f.reg.execute('offline 2.5', f.env).ok).toBe(true);
+    const off = f.reg.execute('offline 2.5', f.env);
+    expect(off.ok).toBe(true);
+    expect(off.lines[0]).toContain('+7 Thread Scrap');
+    expect(off.lines[0]).toContain('2 expeditions back');
     expect(calls).toEqual([['offline', 9000]]);
     const dark = fake({ lit: false });
     const r = dark.reg.execute('offline 1', dark.env);
@@ -158,7 +165,9 @@ describe('Hearth console commands', () => {
 
   it('hearth lights it, moves the player to the Hearth stone and tells the renderer', () => {
     const f = fake();
-    expect(f.reg.execute('hearth', f.env).ok).toBe(true);
+    const r = f.reg.execute('hearth', f.env);
+    expect(r.ok).toBe(true);
+    expect(r.lines).toEqual(['At the Hearth.', 'Embers 12']);
     expect(calls).toEqual([
       ['embers', 12],
       ['enterRoom', hearthRoom, { kind: 'loomStone', key: hearthStone.key }],

@@ -25,19 +25,6 @@ import { heroRev } from '../ui/heroAdapter';
 /** Events that trigger an autosave (names in the HUD's mapping table). */
 const AUTOSAVE_ON: readonly string[] = [HUD_EVENT.roomEnter, HUD_EVENT.loomStone];
 
-/**
- * Applies offline progress for a save written at `savedAt` and returns what it gave. The numbers
- * come from the 'offlineGains' event the edit sent: recording the edit moves it from the state's
- * events to the session's pending ones (the HUD shows the summary, not a toast).
- */
-export function offlineSummary(session: Session, savedAt: number, nowMs: number): OfflineGains | null {
-  const before = session.pendingEvents.length;
-  const gains = applyOfflineGains(session, savedAt, nowMs);
-  if (!gains) return null;
-  const ev = session.pendingEvents.slice(before).find((e) => e.type === 'offlineGains');
-  return ev && ev.type === 'offlineGains' ? { ...ev } : gains;
-}
-
 export interface AdventureFlow {
   /** Filled save slots, newest data after refresh(). */
   readonly slots: Signal<SaveRecord[]>;
@@ -132,7 +119,7 @@ export function createAdventureFlow(
       if (!r.ok) return r.error;
       start(r.save);
       // The wall-clock gap since this slot was written: the Hearth worked while the game was closed.
-      offline.value = offlineSummary(session, r.rec.savedAt, now());
+      offline.value = applyOfflineGains(session, r.rec.savedAt, now());
       return null;
     },
     async importText(text) {

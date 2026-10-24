@@ -6,7 +6,7 @@ vi.mock('../../src/app/hearth', async (orig) => ({
   applyOfflineGains: (...args: unknown[]) => apply(...args),
 }));
 
-import { createAdventureFlow, offlineSummary } from '../../src/app/adventure';
+import { createAdventureFlow } from '../../src/app/adventure';
 import { findScene } from '../../src/app/scenes';
 import { makeSave } from '../../src/app/saveFormat';
 import { memoryBackend, SaveStore } from '../../src/app/saveStore';
@@ -84,26 +84,5 @@ describe('offline progress on loading a slot', () => {
     const { flow } = setup(() => T0 + HOUR);
     expect(await flow.load('slot3')).toMatch(/empty/);
     expect(apply).not.toHaveBeenCalled();
-  });
-});
-
-describe('offlineSummary', () => {
-  it("reads the numbers from the edit's offlineGains event, which recording moved to pendingEvents", () => {
-    const scene = findScene('adventure')!;
-    const session = new Session({ seed: 3, roomId: scene.roomId, sceneId: scene.id, mode: scene.mode });
-    apply.mockImplementation((s: Session) => {
-      s.pendingEvents.push({ type: 'offlineGains', ...GAINS } as never);
-      return { seconds: 1, scrap: 0, runeXp: 0, runeLevels: 0, expeditionsReturned: 0 };
-    });
-    expect(offlineSummary(session, T0, T0 + HOUR)).toMatchObject(GAINS);
-  });
-
-  it('falls back to the returned gains, and passes null through', () => {
-    const scene = findScene('adventure')!;
-    const session = new Session({ seed: 3, roomId: scene.roomId, sceneId: scene.id, mode: scene.mode });
-    apply.mockReturnValueOnce(GAINS);
-    expect(offlineSummary(session, T0, T0 + HOUR)).toEqual(GAINS);
-    apply.mockReturnValueOnce(null);
-    expect(offlineSummary(session, T0, T0 + HOUR)).toBeNull();
   });
 });

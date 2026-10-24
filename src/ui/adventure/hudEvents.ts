@@ -135,6 +135,14 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
   // rune makes none (the item-get panel, src/ui/itemGet, is its moment).
   const rewarded = new Set<string>();
   const moments = new Set<string>();
+  // The Salvage Loom's 'autoSalvaged' comes before the same item's 'lootPicked': that pickup
+  // makes no item toast, only the merged Thread Scrap one.
+  const salvaged = new Map<string, number>();
+  for (const e of events)
+    if (e.type === 'autoSalvaged') {
+      const k = `${String(e.base)}|${String(e.rarity)}`;
+      salvaged.set(k, (salvaged.get(k) ?? 0) + 1);
+    }
   for (const e of events) {
     const c = e.content as LootContent | undefined;
     if (e.type === HUD_EVENT.rewardGranted && c?.kind === 'rune') rewarded.add(c.rune.rune);
@@ -145,6 +153,14 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
       case HUD_EVENT.lootPicked: {
         const c = e.content as LootContent | undefined;
         // Embers are counted by the HUD, not announced pickup by pickup (M7).
+        if (c?.kind === 'item') {
+          const k = `${c.item.base}|${c.item.rarity}`;
+          const n = salvaged.get(k) ?? 0;
+          if (n > 0) {
+            salvaged.set(k, n - 1);
+            break;
+          }
+        }
         if (c && c.kind !== 'embers' && !names.hidden?.(c))
           out.push(contentToast(c, names, 'Rune · into your pouch'));
         break;
@@ -272,7 +288,11 @@ export function pushToasts(
     const last = list[list.length - 1];
     const life = t.kind === 'level' ? opts.levelSeconds : opts.seconds;
     const window = t.kind === 'salvage' ? (opts.salvageWindow ?? opts.mergeWindow) : opts.mergeWindow;
-    if ((t.kind === 'scrap' || t.kind === 'salvage') && last?.kind === t.kind && last.until - opts.seconds + window > now) {
+    if (
+      (t.kind === 'scrap' || t.kind === 'salvage') &&
+      last?.kind === t.kind &&
+      last.until - opts.seconds + window > now
+    ) {
       const amount = last.amount + t.amount;
       list = [...list.slice(0, -1), { ...last, amount, title: `+${amount} Thread Scrap`, until: now + life }];
       continue;

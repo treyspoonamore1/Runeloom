@@ -26,8 +26,7 @@ import {
   type TradeView,
 } from '../../app/hearth';
 import type { Session } from '../../app/session';
-import type { HeroState, RuneItem } from '../../sim/hero/types';
-import { freeRunes } from '../../sim/hero/runes';
+import type { HeroState } from '../../sim/hero/types';
 import { productionMult, scrapPerMinute } from '../../sim/meta/view';
 import { fixturesOn } from '../fixtures/mode';
 import { fixtureHearthApply, fixtureHearthSession } from '../fixtures/hearthStore';
@@ -59,15 +58,6 @@ const live = (session: Session): Session => (fixturesOn.peek() ? fixtureHearthSe
 const heroIn = (session: Session): Readonly<HeroState> =>
   fixturesOn.peek() ? fixtureHero() : session.state.hero;
 
-/** Pouch runes that could go in a free plot: not socketed, not planted. */
-function plantable(session: Session, hero: Readonly<HeroState>): RuneItem[] {
-  const planted = new Set(hero.hearth.garden);
-  const free = fixturesOn.peek()
-    ? [...hero.runes].sort((a, b) => b.level - a.level || a.uid - b.uid)
-    : freeRunes(session.state);
-  return free.filter((r) => !planted.has(r.uid));
-}
-
 export function readHearthSummary(session: Session): HearthSummary {
   return getHearthSummary(live(session));
 }
@@ -82,7 +72,7 @@ export function readHearth(session: Session): HearthSnapshot {
   return {
     summary: getHearthSummary(s),
     buildings: getBuildings(s),
-    garden: { ...garden, plantable: plantable(session, hero) },
+    garden,
     board: getExpeditionBoard(s),
     salvage: getSalvage(s),
     trade: getSpindlewrightTrade(s),

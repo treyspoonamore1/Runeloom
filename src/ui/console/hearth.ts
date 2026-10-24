@@ -9,6 +9,7 @@ import { RIFT_TIERS } from '../../../data/rift';
 import type { Session } from '../../app/session';
 import { enterRoom } from '../../sim/world/transition';
 import {
+  debugHearthLine,
   debugOffline,
   debugSetAsh,
   debugSetBuilding,
@@ -131,9 +132,9 @@ export function registerHearthCommands<C extends HearthEnv>(reg: CommandRegistry
       adventureOnly(c.session);
       if (!c.session.state.hero.hearth.lit)
         throw new CommandError('The Hearth is not lit. Try "embers 100" first.');
-      debugOffline(c.session.state, seconds);
+      const g = debugOffline(c.session.state, seconds);
       c.session.markEdited();
-      return `Applied ${(seconds / 3600).toFixed(2)} h of offline progress.`;
+      return `Applied ${(seconds / 3600).toFixed(2)} h of offline progress: +${g.scrap} Thread Scrap, +${g.runeXp} rune XP (${g.runeLevels} levels), ${g.expeditionsReturned} expeditions back.`;
     },
   });
   reg.register({
@@ -143,7 +144,7 @@ export function registerHearthCommands<C extends HearthEnv>(reg: CommandRegistry
       adventureOnly(c.session);
       goToHearth(c.session);
       c.session.markEdited();
-      return 'At the Hearth.';
+      return ['At the Hearth.', debugHearthLine(c.session.state)];
     },
   });
 }

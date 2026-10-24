@@ -163,3 +163,8 @@ export function nextPlotLevel(level: number): number | null {
   for (let l = Math.max(1, level) + 1; l <= 60; l++) if (gardenPlots(l) > have) return l;
   return null;
 }
+
+/** "2 Fuse parts, 3 currency, 45 Embers": what an expedition brings back. */
+export function rewardText(r: { parts: number; currency: number; embers: number }): string {
+  return `${r.parts} Fuse part${r.parts === 1 ? '' : 's'}, ${r.currency} currency, ${fmtNum(r.embers)} Embers`;
+}

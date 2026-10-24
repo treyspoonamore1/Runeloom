@@ -13,6 +13,7 @@ import {
   HEARTH_TABS,
   nextPlotLevel,
   offlineLines,
+  rewardText,
   sendOptions,
   tabAttention,
   tabForStation,
@@ -166,5 +167,12 @@ describe('the offline summary', () => {
     const l = offlineLines({ seconds: 99, scrap: 1, runeXp: 40, runeLevels: 1, expeditionsReturned: 1 });
     expect(l[1]).toContain('1 level gained');
     expect(l[2]).toContain('1 expedition came back: collect it');
+  });
+});
+
+describe('expedition rewards', () => {
+  it('reads as a list', () => {
+    expect(rewardText({ parts: 1, currency: 2, embers: 1450 })).toBe('1 Fuse part, 2 currency, 1,450 Embers');
+    expect(rewardText({ parts: 3, currency: 1, embers: 45 })).toBe('3 Fuse parts, 1 currency, 45 Embers');
   });
 });

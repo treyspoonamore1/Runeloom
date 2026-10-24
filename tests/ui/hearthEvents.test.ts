@@ -95,6 +95,21 @@ describe('Hearth toasts and banners', () => {
     expect(toastsFor(ev, names)).toEqual([]);
   });
 
+  it('skips the item toast for what the Salvage Loom took, but not other pickups of the same base', () => {
+    const item = (base: string, rarity: string) => ({
+      type: 'lootPicked',
+      content: { kind: 'item', item: { base, rarity } },
+    });
+    const ev: LooseEvent[] = [
+      { type: 'autoSalvaged', base: 'wool_hood', rarity: 'normal', scrap: 2, x: 0, y: 0 },
+      item('wool_hood', 'normal'),
+      item('wool_hood', 'normal'),
+      item('wool_hood', 'magic'),
+    ];
+    const t = toastsFor(ev, names);
+    expect(t.map((x) => x.kind)).toEqual(['salvage', 'item', 'item']);
+  });
+
   it('still toasts Thread Scrap pickups', () => {
     const t = toastsFor([{ type: 'lootPicked', content: { kind: 'scrap', amount: 3 } }], names);
     expect(t.map((x) => x.title)).toEqual(['+3 Thread Scrap']);

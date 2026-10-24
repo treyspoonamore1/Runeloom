@@ -26,7 +26,14 @@ import { fixtureHero } from './store';
 export function fixtureHearthSession(): Session {
   const hero = fixtureHero();
   return {
-    state: { hero, room: { id: hearthRoom }, world: { rift: null }, events: [], mode: 'adventure' },
+    state: {
+      hero,
+      room: { id: hearthRoom },
+      world: { rift: null },
+      weaves: { slots: [] },
+      events: [],
+      mode: 'adventure',
+    },
   } as unknown as Session;
 }
 

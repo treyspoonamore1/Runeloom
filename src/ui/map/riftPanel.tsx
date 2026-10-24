@@ -7,6 +7,7 @@ import type { Session } from '../../app/session';
 import { heroOf, sendEdit } from '../heroAdapter';
 import { note } from '../menus/frame';
 import { riftSummary, sigilViews, type ModLine } from './riftModel';
+import { maxRiftTier } from '../../sim/meta/view';
 import { freeSigilError } from '../../sim/world/rift/run';
 
 function Mods(p: { mods: readonly ModLine[] }) {
@@ -42,7 +43,7 @@ export function RiftPanel(p: { session: Session; standing: boolean; onOpened(): 
         </p>
       </section>
     );
-  const views = sigilViews(hero.sigils, hero.riftTier, p.standing, false);
+  const views = sigilViews(hero.sigils, hero.riftTier, p.standing, false, maxRiftTier(hero));
   const takeFree = () => {
     const why = sendEdit(p.session, { kind: 'freeSigil' });
     if (why) note(why);
@@ -57,7 +58,7 @@ export function RiftPanel(p: { session: Session; standing: boolean; onOpened(): 
       <h3 class="mp-sub">Rift Sigils</h3>
       <p class="mn-muted">
         {hero.riftTier > 0
-          ? `Best rift completed: tier ${hero.riftTier}. Sigils up to tier ${Math.min(16, hero.riftTier + 1)} open.`
+          ? `Best rift completed: tier ${hero.riftTier}. Sigils up to tier ${Math.min(maxRiftTier(hero), hero.riftTier + 1)} open${hero.riftTier + 1 > maxRiftTier(hero) ? ' (Rekindle to go higher)' : ''}.`
           : 'Complete a rift to climb the tiers. Tier 1 sigils open now.'}
       </p>
       {views.length === 0 ? (

@@ -19,7 +19,8 @@ const HOUR = 3600_000;
 const T0 = 1_700_000_000_000;
 
 function session(lit = true, events: unknown[] = []): Session {
-  return { state: { hero: { hearth: { lit } }, events } } as unknown as Session;
+  // Recording the edit moves the sim's events to the session's pending ones.
+  return { pendingEvents: events, state: { hero: { hearth: { lit } }, events: [] } } as unknown as Session;
 }
 
 beforeEach(() => {
