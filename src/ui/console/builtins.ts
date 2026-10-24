@@ -6,6 +6,7 @@ import { CommandError, numArg, type CommandRegistry } from './commands';
 import { registerM1Commands } from './m1';
 import { registerM2Commands } from './m2';
 import { registerHeroCommands } from './hero';
+import { registerHearthCommands } from './hearth';
 import { registerLabCommands } from './lab';
 
 /** Context for console commands: the debug context plus actions owned by the UI layer. */
@@ -109,6 +110,7 @@ export function registerBuiltins(reg: CommandRegistry<ConsoleEnv>): void {
   registerM2Commands(reg);
   registerLabCommands(reg);
   registerHeroCommands(reg);
+  registerHearthCommands(reg);
   for (const [name, usage, ms] of STUBS)
     reg.register({ name, usage, summary: `(${ms})`, run: () => `"${name}" is available in ${ms}.` });
 }
