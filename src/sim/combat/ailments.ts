@@ -11,7 +11,7 @@ import type { DamagePacket, HitResult } from './damage';
 import { OWNER } from '../../../data/materials';
 import { PLAYER_ID } from '../actors/enemies';
 import { isWet } from '../actors/terrainState';
-import { ailmentScale } from '../hero/effectsCombat';
+import { ailmentScale, kindredTargets } from '../hero/effectsCombat';
 
 /**
  * Entity ailments (DESIGN §6.4): Ignite, Chill, Freeze and Shock on enemies and the player.
@@ -242,6 +242,10 @@ export function applyHitAilments(
  *
  * `refresh` (terrain fire, rule 16 "refreshed while standing in it"): an ignite of the same
  * strength has its time topped up to `duration` (no event); a stronger one is left alone.
+ *
+ * Kindred Flame (M7 mutation): when the player's fire newly ignites an enemy, Oiled or Ignited
+ * enemies beside it (hero/effectsCombat.ts kindredTargets) are ignited too, for the same time and
+ * the same strength before fire resistance. One hop: those don't spread further.
  */
 export function applyIgnite(
   state: GameState,
@@ -251,6 +255,24 @@ export function applyIgnite(
   sourceId: number,
   owner = teamOfSource(sourceId),
   refresh = false,
+): boolean {
+  if (!igniteOnce(state, t, dps, duration, sourceId, owner, refresh)) return false;
+  const e = owner === OWNER.player ? asEnemy(t) : null;
+  if (e === null || e.resist.fire >= 1) return true;
+  const raw = dps / (1 - e.resist.fire);
+  for (const n of kindredTargets(state, e))
+    igniteOnce(state, n, raw * (1 - n.resist.fire), duration, sourceId, owner, false);
+  return true;
+}
+
+function igniteOnce(
+  state: GameState,
+  t: AilmentTarget,
+  dps: number,
+  duration: number,
+  sourceId: number,
+  owner: number,
+  refresh: boolean,
 ): boolean {
   if (dps <= 0 || duration <= 0 || isImmune(t, 'ignite') || igniteBlocked(t)) return false;
   if (igniteImmune(state, t)) return false; // Kiln-Heart Cloak (hero/uniques.ts).

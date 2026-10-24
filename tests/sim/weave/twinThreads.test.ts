@@ -28,6 +28,7 @@ import {
 import { slotOfRune } from '../../../src/sim/hero/runes';
 import { addEnemy, arena, ofType, tick, ticks, weaveArena } from './runtimeHelpers';
 import { adventure, giveRune, OPEN_ROOM } from '../hero/helpers';
+import { hub, ok } from '../meta/helpers';
 
 const R = Button.Cast5;
 
@@ -142,6 +143,19 @@ function load(save: SaveData): GameState {
     }),
   );
 }
+
+describe('buying Twin Threads at the Hearth', () => {
+  it("opens R at once (HearthEdit 'mutationBuy' refreshes the hero)", () => {
+    const s = hub();
+    for (const r of ['cast', 'bolt', 'fire'] as const) giveRune(s, r);
+    expect(setSlotWeave(s, 4, 'Cast > Bolt[Fire]').applied).toBe(false);
+    s.hero.hearth.ash += 10;
+    ok(s, { kind: 'mutationBuy', mutation: 'twin_threads' });
+    expect(openSlotCount(s)).toBe(5);
+    expect(setSlotWeave(s, 4, 'Cast > Bolt[Fire]').applied).toBe(true);
+    expect(s.weaves.slots[4]!.program).not.toBeNull();
+  });
+});
 
 describe('Twin Threads in saves and replays', () => {
   it('a save keeps five slots and the fifth weave round-trips', () => {

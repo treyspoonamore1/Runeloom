@@ -86,6 +86,7 @@ export const EFFECT_KEYS = [
   'oiled_on_hit',
   'projectile_speed_inc',
   'ice_conducts',
+  'kindred_flame',
 ] as const;
 export type EffectKey = (typeof EFFECT_KEYS)[number];
 
