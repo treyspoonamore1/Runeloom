@@ -17,6 +17,8 @@ interface ShotSetup {
   expeditions: number[];
   /** The station to stand south of (its prompt shows), or null for the Loom Stone. */
   standAt: string | null;
+  /** Ember drops on the floor beside the player (their loot look), next to a Thread Scrap for contrast. */
+  embers?: number;
 }
 
 const SETUPS: Record<HearthShotId, ShotSetup> = {
@@ -27,6 +29,7 @@ const SETUPS: Record<HearthShotId, ShotSetup> = {
     garden: ['fire', 'bolt'],
     expeditions: [300],
     standAt: 'spindlewright',
+    embers: 6,
   },
   max: {
     lit: true,
@@ -49,6 +52,7 @@ export async function showHearth(page: Page, id: HearthShotId, view: 'fit' | 'pl
       const S = await load<typeof import('../../src/sim')>('/src/sim/index.ts');
       const items = await load<typeof import('../../src/sim/items/items')>('/src/sim/items/items.ts');
       const H = await load<typeof import('../../data/hearth')>('/data/hearth.ts');
+      const L = await load<typeof import('../../src/sim/items/loot')>('/src/sim/items/loot.ts');
       R.loop.stop();
       const st = S.createAdventure({ seed: 1, rooms: rooms.roomTexts, startRoomId: H.hearthRoom, tuning: R.session.state.tuning });
       const h = st.hero.hearth;
@@ -66,6 +70,12 @@ export async function showHearth(page: Page, id: HearthShotId, view: 'fit' | 'pl
         const tx = Math.min(...tiles.filter((o) => o.ty === ty).map((o) => o.tx));
         st.player.x = st.player.prevX = (tx + 0.5) * S.TILE_CELLS;
         st.player.y = st.player.prevY = (ty + 1.5) * S.TILE_CELLS - 0.5;
+      }
+      if (setup.embers) {
+        const x = st.player.x + 10;
+        const y = st.player.y + 2;
+        for (let i = 0; i < setup.embers; i++) L.dropLoot(st, x, y, { kind: 'embers', amount: 2 }, i).age = 9;
+        L.dropLoot(st, x + 7, y, { kind: 'scrap', amount: 3 }).age = 9;
       }
       const w = st.room.tilesW * S.TILE_CELLS * S.CELL_PX;
       const hh = st.room.tilesH * S.TILE_CELLS * S.CELL_PX;
