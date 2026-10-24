@@ -9,6 +9,7 @@ import {
   makeSave,
   parseSave,
   PLAYER_ID,
+  SAVE_VERSION,
   type GameState,
   type InputFrame,
 } from '../../../src/sim';
@@ -240,7 +241,7 @@ describe('save version 2 (M6.5 affix tiers)', () => {
       { id: 'capacity', tier: 1, value: 1 },
     ];
     const back = parseSave(JSON.stringify(old));
-    expect(back.version).toBe(2);
+    expect(back.version).toBe(SAVE_VERSION);
     expect(back.hero.items[0]!.affixes).toEqual([
       { id: 'fire_damage', tier: 4, value: 20 },
       { id: 'capacity', tier: 1, value: 1 },
