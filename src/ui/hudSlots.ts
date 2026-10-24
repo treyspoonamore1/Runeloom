@@ -1,6 +1,6 @@
 /**
- * The HUD's four spell slots, read from the loadout contract (getLoadout + slotTimers) and the
- * player's cast state. Pure, so it runs in Node tests; values are quantized so the HUD only
+ * The HUD's spell slots (four, or five with Twin Threads), read from the loadout contract
+ * (getLoadout + slotTimers) and the player's cast state. Pure, so it runs in Node tests; values are quantized so the HUD only
  * re-renders when something visible changes.
  */
 import type { LoadoutView, SlotTimers } from '../app/loadout';

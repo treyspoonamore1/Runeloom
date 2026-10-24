@@ -43,6 +43,7 @@ describe('new-game hero (CONTENT §9.1)', () => {
       'Cast > Strike[]',
       null,
       null,
+      null,
     ]);
     expect(state.weaves.slots[0]!.program).not.toBeNull();
     expect(state.weaves.slots[1]!.program).not.toBeNull();

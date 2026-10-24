@@ -11,6 +11,7 @@ import {
   RUNTIME_SHIPS,
   setLoadoutSpindle,
   setSlotWeave,
+  openSlotCount,
   type CompileResult,
   type GameState,
 } from '../sim';
@@ -23,8 +24,8 @@ import type { HeroState } from '../sim/hero/types';
 import type { RuneItem } from '../sim/hero/types';
 import type { Session } from './session';
 
-/** Button label per slot, in slot order. */
-export const SLOT_LABELS = ['LMB', 'RMB', 'Q', 'E'] as const;
+/** Button label per slot, in slot order. R is Twin Threads' fifth slot, open only with the mutation. */
+export const SLOT_LABELS = ['LMB', 'RMB', 'Q', 'E', 'R'] as const;
 
 /** Spindles the sandbox lets the player pick (DECISIONS: M2 sandbox loadout; Loomsteel from M5). */
 export const SANDBOX_SPINDLES: readonly SpindleId[] = [
@@ -54,6 +55,10 @@ export interface LoadoutView {
   spindleId: SpindleId;
   /** Capacity of the current spindle (plus Loom Shards from M4). */
   capacity: number;
+  /**
+   * The open slots, in slot order (`slots[i].slot === i`): four, or five with the Twin Threads
+   * mutation (R). The HUD and the Loom show exactly these.
+   */
   slots: SlotView[];
 }
 
@@ -95,7 +100,7 @@ export function getLoadout(session: Session): LoadoutView {
   return {
     spindleId: w.spindleId,
     capacity: (w.capacity ?? spindles[w.spindleId].capacity) + session.state.heroMods.capacityAdd,
-    slots: w.slots.map((_, i) => slotView(session.state, i)),
+    slots: w.slots.slice(0, openSlotCount(session.state)).map((_, i) => slotView(session.state, i)),
   };
 }
 

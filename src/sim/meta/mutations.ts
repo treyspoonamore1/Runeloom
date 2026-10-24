@@ -30,6 +30,9 @@ export function addMutationMods(hero: Readonly<HeroState>, mods: HeroMods): void
   if (hasMutation(hero, 'deeper_weave')) mods.maxDepth = Math.max(mods.maxDepth, mutationEffects.deeperDepth);
   // ---- Stormglass Memory (meta agent): ice conducts your Storm (the keystone's conduction only) ----
   if (hasMutation(hero, 'stormglass_memory')) mods.effects[ICE_CONDUCTS] = 1;
+  // ---- Kindred Flame (threads agent): your new Ignites spread to Oiled or Ignited neighbours ----
+  // The value is the reach in cells, edge to edge (combat/ailments.ts applyIgnite, hero/effectsCombat.ts).
+  if (hasMutation(hero, 'kindred_flame')) mods.effects.kindred_flame = mutationEffects.kindredFlame.reach;
 }
 
 /** HeroMods.effects key for "ice conducts the player's Storm" without Stormglass's damage (hero/effectsTerrain.ts iceConducts). */

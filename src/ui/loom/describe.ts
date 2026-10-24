@@ -6,11 +6,11 @@ import type { CompileResult, SpellProgram, SpellSpec } from '../../sim/weave';
 import { getRune, runes, type RuneDef, type RuneKind } from '../../../data/runes';
 import { SLOT_LABELS } from '../../app/loadout';
 
-/** "1".."4" or LMB/RMB/Q/E (any case) → slot index; null otherwise. */
+/** "1".."5" or LMB/RMB/Q/E/R (any case) → slot index; null otherwise. Slot 5 (R) may be locked (Twin Threads). */
 export function parseSlot(word: string | undefined): number | null {
   if (word === undefined) return null;
   const w = word.trim().toUpperCase();
-  if (/^[1-4]$/.test(w)) return Number(w) - 1;
+  if (/^[1-5]$/.test(w)) return Number(w) - 1;
   const i = (SLOT_LABELS as readonly string[]).indexOf(w);
   return i >= 0 ? i : null;
 }

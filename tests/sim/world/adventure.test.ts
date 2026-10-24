@@ -33,6 +33,7 @@ describe('createAdventure', () => {
       'Cast > Strike[]',
       null,
       null,
+      null,
     ]);
     run(s, 1);
     expect(s.world.respawn).toEqual({ roomId: 'test/world_a', key: 'loom_stone@3,2' });

@@ -9,7 +9,7 @@
  *   Done within `tolerance` cells (default 0.6). The point itself must be reachable.
  * - `{ do: 'face', x, y }`: aim at the point from now on (takes no tick).
  * - `{ do: 'cast', slot, at: { x, y }, timeout? }`: aim at `at`, wait until no cast is in progress,
- *   then press and hold weave slot `slot` (0 = LMB, 1 = RMB, 2 = Q, 3 = E) until that cast
+ *   then press and hold weave slot `slot` (0 = LMB, 1 = RMB, 2 = Q, 3 = E, 4 = R) until that cast
  *   releases its spell, then let go. Waits for mana while holding.
  * - `{ do: 'dodge', dirX, dirY }`: dodge that way; done when the dodge ends.
  * - `{ do: 'walk', dirX, dirY, s, until? }`: hold that move direction for `s` seconds (pushing a
@@ -28,6 +28,7 @@
  *   expect(r.error).toBeUndefined();
  */
 import { Button, type InputFrame } from '../core/input';
+import { SLOT_BUTTONS } from '../weave/runtime/channel';
 import { DT, SIM_HZ } from '../core/constants';
 import type { GameState } from '../state';
 import { step } from '../step';
@@ -56,7 +57,6 @@ export interface ScriptResult {
 }
 
 const DEFAULT_TIMEOUT = 20;
-const SLOT_BUTTONS = [Button.Cast1, Button.Cast2, Button.Cast3, Button.Cast4];
 /** Waypoints count as reached within this many cells. */
 const WAYPOINT_REACH = 1;
 /** Within this many cells of the final point, the move input scales down so the player stops on it. */

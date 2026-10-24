@@ -6,6 +6,8 @@ export const Button = {
   Cast4: 1 << 3, // E
   Dodge: 1 << 4, // Space
   Interact: 1 << 5, // F
+  /** The fifth weave slot, open only with the Twin Threads mutation (weave/runtime/loadout.ts). */
+  Cast5: 1 << 6, // R
 } as const;
 
 export type ButtonName = keyof typeof Button;

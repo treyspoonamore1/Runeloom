@@ -4,6 +4,7 @@ export const CONTROLS: ReadonlyArray<{ keys: string[]; label: string }> = [
   { keys: ['Mouse'], label: 'Aim' },
   { keys: ['LMB', 'RMB'], label: 'Weave slots 1–2' },
   { keys: ['Q', 'E'], label: 'Weave slots 3–4' },
+  { keys: ['R'], label: 'Weave slot 5 (Twin Threads)' },
   { keys: ['Tab'], label: 'Loom (spell editor)' },
   { keys: ['Space'], label: 'Dodge' },
   { keys: ['F'], label: 'Interact' },

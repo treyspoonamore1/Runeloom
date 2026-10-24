@@ -235,4 +235,9 @@ export const mutationEffects = {
   deeperDepth: 4,
   /** Shatterpoint: runes that join rune discovery (data/progression.ts runeDiscovery), by the area level they start at. */
   shatterpointRunes: { shatter: 1 } as Readonly<Partial<Record<RuneId, number>>>,
+  /**
+   * Kindred Flame (threads agent): when the player's fire newly Ignites an enemy, other enemies
+   * whose bodies are within `reach` cells of it (edge to edge) and are Oiled or Ignited catch it.
+   */
+  kindredFlame: { reach: 1 },
 };

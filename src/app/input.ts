@@ -3,6 +3,8 @@ import { Button, type InputFrame } from '../sim';
 const KEY_BUTTONS: Record<string, number> = {
   KeyQ: Button.Cast3,
   KeyE: Button.Cast4,
+  // Twin Threads' fifth slot; a no-op while it is locked (the lab's R reset is its own handler).
+  KeyR: Button.Cast5,
   Space: Button.Dodge,
   KeyF: Button.Interact,
 };

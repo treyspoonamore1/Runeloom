@@ -1,11 +1,15 @@
 /**
- * The player's four weave slots and spindle, in sim state (`GameState.weaves`). Only notation
+ * The player's weave slots and spindle, in sim state (`GameState.weaves`). Only notation
  * strings, the spindle and trigger timers are real state (hashed); compiled programs are derived
  * from notation + spindle and rebuilt whenever either changes.
  *
  * Edits happen between ticks: the app records them (src/app/loadout.ts) and replays apply them
  * at the same tick (applyLoadoutEdit). An invalid weave never replaces a working one; a spindle
  * switch keeps weaves that no longer fit, which then don't fire until they fit (DECISIONS).
+ *
+ * Twin Threads (M7, CONTENT §11): the loadout always has five slots, but the fifth (R) is locked
+ * unless the hero owns the mutation. A locked slot takes no weave (setSlotWeave refuses one with
+ * LOCKED_SLOT_MESSAGE), and a weave still in it (only a debug edit can leave one) doesn't fire.
  */
 import { shipsThrough, weaveLimits, type TriggerEvent } from '../../../../data/runes';
 import { spells, type SpellId } from '../../../../data/spells';
@@ -20,9 +24,9 @@ import type { WeaveTree } from '../tree';
 import { NO_RULES, sameRules, type CompileRules } from '../rules';
 import { cancelCast } from './castState';
 import { assignRunes, runeLevelMap, runeQualityMap, usesRuneItems } from '../../hero/runes';
+import { LOADOUT_SLOTS, LOCKED_SLOT_MESSAGE, slotOpen } from './slots';
 
-/** Number of weave slots (LMB, RMB, Q, E). */
-export const LOADOUT_SLOTS = 4;
+export { BASE_SLOTS, LOADOUT_SLOTS, LOCKED_SLOT_MESSAGE, openSlotCount, slotOpen } from './slots';
 
 /** Button for each slot, in slot order. */
 export { SLOT_BUTTONS } from './channel';
@@ -34,7 +38,7 @@ export const RUNTIME_SHIPS = shipsThrough('M5');
 export const DEFAULT_LOADOUT: LoadoutSpec = {
   spindleId: 'twig',
   capacity: null,
-  notations: ['Cast > Bolt[Fire]', 'Cast > Strike[]', null, null],
+  notations: ['Cast > Bolt[Fire]', 'Cast > Strike[]', null, null, null],
 };
 
 export interface WeaveSlot {
@@ -231,11 +235,16 @@ function compileSlot(w: WeaveLoadout, tuning: Tuning, slot: WeaveSlot): void {
 
 /**
  * Recomputes a slot's derived fields for the state's spindle, character and socketed rune
- * levels. In adventure mode a weave without socketed runes doesn't fire.
+ * levels. In adventure mode a weave without socketed runes doesn't fire, and nothing in a locked
+ * slot does.
  */
-function compileStateSlot(state: GameState, slot: WeaveSlot): void {
+function compileStateSlot(state: GameState, slot: WeaveSlot, index: number): void {
   slot.program = slot.compiled = slot.error = null;
   if (slot.notation === null) return;
+  if (!slotOpen(state, index)) {
+    slot.error = LOCKED_SLOT_MESSAGE;
+    return;
+  }
   const parsed = parseWeave(slot.notation);
   if (!parsed.ok) {
     slot.error = parsed.error.message;
@@ -252,7 +261,7 @@ function compileStateSlot(state: GameState, slot: WeaveSlot): void {
 export function recompileWeaves(state: GameState, slots?: readonly number[]): void {
   const w = state.weaves;
   for (let i = 0; i < w.slots.length; i++)
-    if (!slots || slots.includes(i)) compileStateSlot(state, w.slots[i]!);
+    if (!slots || slots.includes(i)) compileStateSlot(state, w.slots[i]!, i);
   state.loadout = legacyLoadout(w);
 }
 
@@ -323,12 +332,19 @@ export interface SetWeaveOutcome {
   preview: WeavePreview;
 }
 
+/** The refusal setSlotWeave gives for a weave in a locked slot, shaped like a compile error. */
+function lockedPreview(): WeavePreview {
+  return { compiled: { ok: false, error: { message: LOCKED_SLOT_MESSAGE, path: [] } } };
+}
+
 /**
  * Puts a weave in a slot if it parses and compiles on the current spindle (null empties it).
  * Resets the slot's trigger timers and cancels a cast from that slot. Otherwise changes nothing.
+ * A locked slot (Twin Threads) refuses every weave with LOCKED_SLOT_MESSAGE; emptying it works.
  */
 export function setSlotWeave(state: GameState, slot: number, notation: string | null): SetWeaveOutcome {
   if (!Number.isInteger(slot) || slot < 0 || slot >= LOADOUT_SLOTS) throw new Error(`No weave slot ${slot}`);
+  if (notation !== null && !slotOpen(state, slot)) return { applied: false, preview: lockedPreview() };
   const plan: WeavePlan = notation === null ? { preview: {}, runes: null } : planWeave(state, slot, notation);
   const preview = plan.preview;
   if (notation !== null && (preview.parseError || !preview.compiled!.ok)) return { applied: false, preview };
@@ -336,7 +352,7 @@ export function setSlotWeave(state: GameState, slot: number, notation: string | 
   const s = state.weaves.slots[slot]!;
   s.notation = preview.compiled?.ok ? preview.compiled.program.notation : null;
   s.runes = plan.runes;
-  compileStateSlot(state, s);
+  compileStateSlot(state, s, slot);
   resetTimers(s);
   state.loadout = legacyLoadout(state.weaves);
   return { applied: true, preview };

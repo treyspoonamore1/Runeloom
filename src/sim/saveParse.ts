@@ -27,7 +27,8 @@ import { makeSigil } from './items/sigils';
 import { kindOfBase, slotsForKind, socketCount } from './items/items';
 import { createWorldState, type RoomFlags, type WorldState } from './world/worldState';
 import { parseWeave } from './weave/notation';
-import { LOADOUT_SLOTS } from './weave/runtime/loadout';
+import { BASE_SLOTS, LOADOUT_SLOTS } from './weave/runtime/slots';
+import { hasMutation } from './meta/mutations';
 import { runeOrder } from './hero/runes';
 import { migrateHearth, parseHearth } from './meta/saveHearth';
 import {
@@ -289,7 +290,10 @@ export function parseWorld(v: unknown): WorldState {
   return w;
 }
 
-/** Weaves, emptying any slot whose socketed runes don't match its notation or are used twice. */
+/**
+ * Weaves, emptying any slot whose socketed runes don't match its notation or are used twice, and
+ * the fifth slot without Twin Threads. Saves from before M7 have four slots; the fifth loads empty.
+ */
 function parseWeaves(v: unknown, hero: HeroState): SavedWeaves {
   const o = obj(v, 'weaves');
   const spindleId = str(o.spindleId, 'weaves.spindleId');
@@ -310,7 +314,10 @@ function parseWeaves(v: unknown, hero: HeroState): SavedWeaves {
         : arr(runes[i], `weaves.runes[${i}]`).map((u, j) => int(u, `weaves.runes[${i}][${j}]`, 1));
     const parsed = n === null ? null : parseWeave(n);
     const order = parsed?.ok ? runeOrder(parsed.tree) : null;
+    // Twin Threads' slot holds nothing without the mutation (its runes return to the pouch).
+    const open = i < BASE_SLOTS || hasMutation(hero, 'twin_threads');
     const ok =
+      open &&
       order !== null &&
       r !== null &&
       r.length === order.length &&

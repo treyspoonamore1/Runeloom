@@ -13,6 +13,7 @@
  *   the ailments the player inflicts (ailment/ignite/freeze duration, ignite/chill/shock effect,
  *   chill build-up, flat freeze seconds).
  * - arcReach (combat/arcs.ts): Bog Gill's arc range and extra targets for the player's arcs.
+ * - kindredTargets (combat/ailments.ts applyIgnite): Kindred Flame's neighbours (M7 mutation).
  */
 import { OWNER } from '../../../data/materials';
 import type { DamageAmounts } from '../../../data/combatTypes';
@@ -174,4 +175,23 @@ export function arcReach(state: GameState, owner: number): { range: number; maxT
     range: T.range * (1 + (fx.arc_range_inc ?? 0)),
     maxTargets: T.maxTargets + Math.round(fx.arc_targets_add ?? 0),
   };
+}
+
+/**
+ * Kindred Flame (M7 mutation, mods.effects.kindred_flame = reach in cells): the live enemies
+ * other than `e` whose bodies are within reach of its body (edge to edge) and that are Oiled or
+ * Ignited, in enemy order. Empty without the mutation.
+ */
+export function kindredTargets(state: GameState, e: Enemy): Enemy[] {
+  const reach = state.heroMods.effects.kindred_flame ?? 0;
+  if (reach <= 0) return [];
+  const out: Enemy[] = [];
+  for (const n of state.enemies) {
+    if (n === e || n.dead || (!isOiled(n) && n.ailments.ignite.timeLeft <= 0)) continue;
+    const r = e.radius + n.radius + reach;
+    const dx = n.x - e.x;
+    const dy = n.y - e.y;
+    if (dx * dx + dy * dy <= r * r) out.push(n);
+  }
+  return out;
 }
