@@ -19,6 +19,7 @@ import {
 } from '../../../src/sim';
 import { applyHeroEdit } from '../../../src/sim/hero/edits';
 import { makeSigil } from '../../../src/sim/items/sigils';
+import { lightHearth } from '../../../src/sim/meta/hearth';
 import { travelToLoomStone } from '../../../src/sim/world/adventure';
 import { isStationKind, stationHere } from '../../../src/sim/world/hub';
 import { travelDestinations } from '../../../src/sim/world/regionMap';
@@ -135,7 +136,8 @@ describe('getting to the hub', () => {
   function region(): GameState {
     const s = createAdventure({ seed: 1, rooms: ROOMS, startRoomId: startRoom });
     run(s, 1);
-    s.world.loomStones.push(HUB_STONE);
+    lightHearth(s);
+    expect(s.world.loomStones).toContain(HUB_STONE);
     return s;
   }
 

@@ -6,6 +6,7 @@
  */
 import type { SfxDef } from './sfx';
 import { sfxM4Fights } from './sfxM4Fights';
+import { sfxHearth } from './sfxHearth';
 
 const NOTE = (semitonesFromA4: number): number => 440 * 2 ** (semitonesFromA4 / 12);
 const C4 = NOTE(-9);
@@ -315,7 +316,7 @@ const sfxM4World = {
   },
 } satisfies Record<string, SfxDef>;
 
-/** Every M4 preset: objects and loot here, fights and moments in sfxM4Fights.ts. */
-export const sfxM4 = { ...sfxM4World, ...sfxM4Fights };
+/** Every M4 preset: objects and loot here, fights and moments in sfxM4Fights.ts, the Hearth (M7) in sfxHearth.ts. */
+export const sfxM4 = { ...sfxM4World, ...sfxM4Fights, ...sfxHearth };
 
 export type M4SfxId = keyof typeof sfxM4;
