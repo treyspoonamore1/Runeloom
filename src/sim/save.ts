@@ -39,7 +39,7 @@ export type SavedRng = (typeof SAVED_RNGS)[number];
 
 export interface SavedWeaves {
   spindleId: SpindleId;
-  /** One per slot (LMB, RMB, Q, E); null for an empty slot. */
+  /** One per slot (LMB, RMB, Q, E, R); null for an empty slot. Saves before M7 hold four. */
   notations: (string | null)[];
   /** Socketed rune uids per slot in rune order (hero/runes.ts), null for an empty slot. */
   runes: (number[] | null)[];

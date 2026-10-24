@@ -54,7 +54,7 @@ Regions:
 
 - Top-down orthographic 2D. The camera follows the player with look-ahead toward the cursor (up to 15% of screen size, smoothed).
 - 1 cell = 8 px at the reference resolution 1280×720, so the default view is about 160×90 cells. The view scales with resolution.
-- Keyboard and mouse: WASD move, mouse aims, LMB / RMB / Q / E cast the 4 weave slots, Space dodges, Tab opens the Loom, I inventory, P passive tree, F interact. Gamepad arrives in M8.
+- Keyboard and mouse: WASD move, mouse aims, LMB / RMB / Q / E cast the 4 weave slots (R casts a fifth with the Twin Threads mutation, §11), Space dodges, Tab opens the Loom, I inventory, P passive tree, F interact. Gamepad arrives in M8.
 - Casting while moving is allowed. Beam and Channel slow movement by 40% while active.
 
 Feel defaults. All live in `data/tuning.ts` and are exposed in the F2 tuning panel.
@@ -74,7 +74,7 @@ Feel defaults. All live in `data/tuning.ts` and are exposed in the F2 tuning pan
 ### 5.1 Concepts
 
 - **Rune**: an item that is one node of a spell. Kinds: trigger, form, element, modifier, branch. Runes drop as loot, level 1 to 20 from XP earned while socketed, and have quality 0 to 20%. Each rune item sits in one place at a time; duplicates drop.
-- **Weave**: a tree of runes that makes one spell. The player has 4 weave slots, bound to LMB, RMB, Q, E. A weave with an automatic trigger (Pulse, On Dodge, ...) still uses a slot; its button does nothing.
+- **Weave**: a tree of runes that makes one spell. The player has 4 weave slots, bound to LMB, RMB, Q, E; the Twin Threads mutation (§11, CONTENT §11) adds a fifth on R. A weave with an automatic trigger (Pulse, On Dodge, ...) still uses a slot; its button does nothing.
 - **Spindle**: the weapon. It provides Capacity (the complexity budget per weave), cast speed, an implicit modifier, and 1 or 2 Fuse sockets.
 
 ### 5.2 Structure

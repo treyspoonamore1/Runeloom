@@ -10,6 +10,10 @@ export type {
 } from './types';
 export {
   LOADOUT_SLOTS,
+  BASE_SLOTS,
+  LOCKED_SLOT_MESSAGE,
+  slotOpen,
+  openSlotCount,
   SLOT_BUTTONS,
   RUNTIME_SHIPS,
   DEFAULT_LOADOUT,

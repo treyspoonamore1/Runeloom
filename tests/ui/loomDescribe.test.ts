@@ -25,10 +25,10 @@ function program(notation: string, spindle: keyof typeof spindles = 'heartwood')
 }
 
 describe('parseSlot', () => {
-  it('reads 1-4 and LMB/RMB/Q/E in any case', () => {
-    expect(['1', '2', '3', '4'].map(parseSlot)).toEqual([0, 1, 2, 3]);
-    expect(['lmb', 'RMB', 'q', 'E'].map(parseSlot)).toEqual([0, 1, 2, 3]);
-    expect(['0', '5', 'x', '', undefined].map(parseSlot)).toEqual([null, null, null, null, null]);
+  it('reads 1-5 and LMB/RMB/Q/E/R in any case (5 and R: Twin Threads)', () => {
+    expect(['1', '2', '3', '4', '5'].map(parseSlot)).toEqual([0, 1, 2, 3, 4]);
+    expect(['lmb', 'RMB', 'q', 'E', 'r'].map(parseSlot)).toEqual([0, 1, 2, 3, 4]);
+    expect(['0', '6', 'x', '', undefined].map(parseSlot)).toEqual([null, null, null, null, null]);
   });
 });
 

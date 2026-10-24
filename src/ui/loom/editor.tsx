@@ -22,9 +22,11 @@ export function SlotTabs({ st }: { st: LoomState }) {
   const cur = st.slot.value;
   const statuses = st.statuses.value;
   const drafts = st.drafts.value;
+  // The open slots only: R appears with the Twin Threads mutation.
+  const labels = st.loadout.value.slots.map((s) => s.label);
   return (
-    <div class="lm-tabs" role="tablist" aria-label="Weave slots">
-      {SLOT_LABELS.map((label, i) => {
+    <div class={`lm-tabs${labels.length > 4 ? ' five' : ''}`} role="tablist" aria-label="Weave slots">
+      {labels.map((label, i) => {
         const warn =
           i === cur && st.parseError.value
             ? 'Not applied: the notation has an error'
@@ -48,7 +50,7 @@ export function SlotTabs({ st }: { st: LoomState }) {
             onKeyDown={(e) => {
               if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
                 e.preventDefault();
-                const n = (i + (e.key === 'ArrowRight' ? 1 : SLOT_LABELS.length - 1)) % SLOT_LABELS.length;
+                const n = (i + (e.key === 'ArrowRight' ? 1 : labels.length - 1)) % labels.length;
                 st.selectSlot(n);
                 document.getElementById(`lm-tab-${n}`)?.focus();
               }

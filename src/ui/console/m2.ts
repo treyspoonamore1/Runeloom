@@ -5,12 +5,14 @@ import { spindles, type SpindleId } from '../../../data/spindles';
 import { compiledLine, parseSlot } from '../loom/describe';
 import { applySpindle, applyWeave } from '../loom/loadoutStore';
 import { CommandError, type CommandRegistry } from './commands';
+import { LOCKED_SLOT_MESSAGE } from '../../sim/weave/runtime/slots';
 
 export interface M2Env {
   session: Session;
 }
 
-const WEAVE_USAGE = 'weave <slot> <notation>  (slot 1-4 or LMB/RMB/Q/E; "weave <slot> clear" empties it)';
+const WEAVE_USAGE =
+  'weave <slot> <notation>  (slot 1-4 or LMB/RMB/Q/E, 5 or R with Twin Threads; "weave <slot> clear" empties it)';
 
 /** Resolves a sandbox spindle from its id, a unique prefix, or its name ("ash", "Heartwood"). */
 export function resolveSpindle(word: string): SpindleId {
@@ -39,12 +41,15 @@ export function registerM2Commands<C extends M2Env>(reg: CommandRegistry<C>): vo
   reg.register({
     name: 'weave',
     usage: 'weave <slot> <notation>',
-    summary: 'Put a weave in slot 1-4 (or LMB/RMB/Q/E), e.g. weave 3 Cast > Lob[Fire]. "clear" empties it.',
+    summary:
+      'Put a weave in slot 1-4 (or LMB/RMB/Q/E; 5 or R with Twin Threads), e.g. weave 3 Cast > Lob[Fire]. "clear" empties it.',
     run: (args, c) => {
       const slot = parseSlot(args[0]);
       if (slot === null) throw new CommandError(`Usage: ${WEAVE_USAGE}`);
       const label = SLOT_LABELS[slot]!;
       const text = args.slice(1).join(' ').trim();
+      const open = getLoadout(c.session).slots.length;
+      if (slot >= open) throw new CommandError(`${label} is locked: ${LOCKED_SLOT_MESSAGE}.`);
       if (text === '') {
         const s = getLoadout(c.session).slots[slot]!;
         return `${label}: ${s.notation ?? '(empty)'}  [${compiledLine(s.compiled)}]`;
@@ -70,7 +75,7 @@ export function registerM2Commands<C extends M2Env>(reg: CommandRegistry<C>): vo
 
   reg.register({
     name: 'weaves',
-    summary: 'List the four weave slots and the spindle.',
+    summary: 'List the weave slots (four, five with Twin Threads) and the spindle.',
     run: (_a, c) => slotLines(c.session),
   });
 

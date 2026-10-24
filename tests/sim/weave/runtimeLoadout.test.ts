@@ -25,9 +25,10 @@ describe('weave slots in the sim', () => {
       'Cast > Strike[]',
       null,
       null,
+      null,
     ]);
     expect(s.weaves.slots[0]!.program!.mana).toBeCloseTo(6.6, 12);
-    expect(s.loadout).toEqual(['fire_bolt', 'strike', null, null]);
+    expect(s.loadout).toEqual(['fire_bolt', 'strike', null, null, null]);
     expect(DEFAULT_LOADOUT.spindleId).toBe('twig');
   });
 
@@ -51,7 +52,7 @@ describe('weave slots in the sim', () => {
     }
     expect(setSlotWeave(s, 2, null).applied).toBe(true);
     expect(s.weaves.slots[2]!.notation).toBeNull();
-    expect(() => setSlotWeave(s, 4, null)).toThrow();
+    expect(() => setSlotWeave(s, 5, null)).toThrow();
   });
 
   it('a spindle switch keeps weaves that no longer fit, with their error, and they come back when they fit', () => {

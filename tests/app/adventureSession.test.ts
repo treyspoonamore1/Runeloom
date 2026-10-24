@@ -48,7 +48,7 @@ describe('the adventure scene', () => {
     const h = s.state.hero;
     expect(h.items.find((i) => i.uid === h.equipped.spindle)?.base).toBe(newGame.spindle);
     expect(s.state.weaves.slots.map((w) => w.notation)).toEqual(
-      newGame.weaves.map((n, i) => n ?? s.state.weaves.slots[i]!.notation),
+      s.state.weaves.slots.map((w, i) => newGame.weaves[i] ?? w.notation),
     );
     expect(s.startSave).not.toBeNull();
   });

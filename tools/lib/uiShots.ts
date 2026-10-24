@@ -26,6 +26,8 @@ export const uiShotIds = [
   'rift_wires',
   'rift_boss',
   'rift_wires_warn',
+  'hud_twin',
+  'loom_twin',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -34,6 +36,7 @@ const ADV = 'scene=adventure&fixture=1&paused=1&seed=1';
 export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'title' || id === 'title_load') return `${base}/?fixture=1&seed=1`;
   if (id === 'hud') return `${base}/?${ADV}&ui=play&boss=cinder_warden`;
+  if (id === 'hud_twin' || id === 'loom_twin') return `${base}/?${ADV}&ui=play`;
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
   if (id === 'pause') return `${base}/?${ADV}&ui=pause`;
   // The bench crafts with the real sim, so it runs on a real hero (fixture bases aren't real items).
@@ -273,6 +276,22 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
       w.ui!.open('play');
     }, id);
     await page.waitForTimeout(id === 'rift_wires' ? 120 : id === 'rift_wires_warn' ? 450 : 400);
+  } else if (id === 'hud_twin' || id === 'loom_twin') {
+    // The hero with the Twin Threads mutation: the fifth slot (R) shows in the HUD and the Loom,
+    // holding a Pulse Nova made from three runes given here.
+    await page.evaluate(async (shot) => {
+      const { refreshHero } = await import('/src/sim/hero/hero.ts' as string);
+      const { applyWeave } = await import('/src/ui/loom/loadoutStore.ts' as string);
+      const w = window.__runeloom!;
+      const s = w.session.state;
+      const { makeRune } = await import('/src/sim/items/items.ts' as string);
+      s.hero.hearth.mutations.twin_threads = 1;
+      for (const r of ['pulse', 'nova', 'fire']) s.hero.runes.push(makeRune(s.hero, r, 2));
+      refreshHero(s);
+      applyWeave(w.session, 4, 'Pulse > Nova[Fire]');
+      w.ui!.open(shot === 'loom_twin' ? 'loom' : 'play');
+    }, id);
+    await page.waitForTimeout(300);
   } else if (id === 'loom') {
     // Strike's only copy sits in RMB: arming it shows why it can't go anywhere.
     await page.click('.lm-pouch .lm-chip.r-strike');

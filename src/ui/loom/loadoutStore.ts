@@ -61,7 +61,8 @@ export function restoreLoadout(session: Session): { restored: boolean; failed: s
   if (now.spindleId !== saved.spindleId) setSpindle(session, saved.spindleId);
   const failed: string[] = [];
   saved.slots.forEach((notation, i) => {
-    if (i >= SLOT_LABELS.length || now.slots[i]?.notation === notation) return;
+    // now.slots: the open slots (the sandbox never opens Twin Threads' fifth).
+    if (i >= now.slots.length || now.slots[i]?.notation === notation) return;
     if (!setWeave(session, i, notation).applied) failed.push(SLOT_LABELS[i]!);
   });
   loadoutRev.value++;

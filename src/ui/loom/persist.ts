@@ -1,9 +1,10 @@
 /**
- * Remembers the player's four weaves and spindle in localStorage and restores them at boot
+ * Remembers the sandbox player's four weaves and spindle in localStorage and restores them at boot
  * through the loadout contract (setSpindle, then setWeave per slot). Storage can be missing or
  * blocked (private windows, sandboxed frames), so every access is guarded.
  */
-import { SANDBOX_SPINDLES, SLOT_LABELS } from '../../app/loadout';
+import { SANDBOX_SPINDLES } from '../../app/loadout';
+import { BASE_SLOTS } from '../../sim/weave/runtime/slots';
 import type { SpindleId } from '../../../data/spindles';
 
 export const LOADOUT_KEY = 'runeloom.loadout.v1';
@@ -42,7 +43,8 @@ export function parseSaved(raw: string | null): SavedLoadout | null {
   if (typeof d.spindleId !== 'string' || !(SANDBOX_SPINDLES as readonly string[]).includes(d.spindleId))
     return null;
   if (!Array.isArray(d.slots)) return null;
-  const slots = SLOT_LABELS.map((_, i) => {
+  // The sandbox has the four base slots only (Twin Threads' fifth needs a hero with the mutation).
+  const slots = Array.from({ length: BASE_SLOTS }, (_, i) => {
     const v: unknown = (d.slots as unknown[])[i];
     return typeof v === 'string' && v.length <= 2000 ? v : null;
   });

@@ -48,8 +48,6 @@ export interface Anchor {
   h: number;
 }
 
-const SLOTS = 4;
-
 function treeOf(notation: string | null): WeaveTree {
   if (notation === null) return emptyTree();
   const p = parseWeave(notation);
@@ -119,7 +117,9 @@ export class LoomState {
     const l = getLoadout(this.session);
     const drafts = this.drafts.peek().slice();
     const statuses = this.statuses.peek().slice();
-    for (let i = 0; i < SLOTS; i++) {
+    // The open slots: four, or five with Twin Threads (getLoadout).
+    drafts.length = statuses.length = l.slots.length;
+    for (let i = 0; i < l.slots.length; i++) {
       const live = l.slots[i]?.notation ?? null;
       if (force || (!this.held[i] && this.synced[i] !== live) || drafts[i] === undefined) {
         drafts[i] = treeOf(live);
@@ -128,6 +128,7 @@ export class LoomState {
       }
     }
     batch(() => {
+      if (this.slot.peek() >= l.slots.length) this.slot.value = 0;
       this.loadout.value = l;
       this.drafts.value = drafts;
       drafts.forEach((t, i) => (statuses[i] = this.evaluate(i, t, l)));

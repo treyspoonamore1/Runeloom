@@ -5,8 +5,14 @@
 import { Button, isHeld } from '../../core/input';
 import type { GameState } from '../../state';
 
-/** Weave slot buttons in slot order (LMB, RMB, Q, E); loadout.ts re-exports it. */
-export const SLOT_BUTTONS: readonly number[] = [Button.Cast1, Button.Cast2, Button.Cast3, Button.Cast4];
+/** Weave slot buttons in slot order (LMB, RMB, Q, E, and R for Twin Threads); loadout.ts re-exports it. */
+export const SLOT_BUTTONS: readonly number[] = [
+  Button.Cast1,
+  Button.Cast2,
+  Button.Cast3,
+  Button.Cast4,
+  Button.Cast5,
+];
 
 /**
  * Multiplier on walking speed from held Channel slots (1 − their trigger's moveSlow; the
