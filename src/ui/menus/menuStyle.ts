@@ -61,7 +61,7 @@ export const menuCss = `
   .mn-card { margin: 6px; }
   .mn-body { grid-template-columns: 1fr !important; overflow: auto; }
   .mn-body > .mn-panel { min-height: auto; }
-  .mn-tabs { margin-left: 0; }
+  .mn-tabs { margin-left: 0; flex-wrap: wrap; }
 }
 `;
 

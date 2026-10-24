@@ -1,6 +1,6 @@
 /**
  * Opening and closing the adventure menus (I inventory, P passive tree, M region map, C crafting
- * bench, L loot filter): like the Loom, the sim pauses and player input is off while one is open.
+ * bench, L loot filter, H Hearth): like the Loom, the sim pauses and player input is off while one is open.
  */
 import type { Session } from '../../app/session';
 import { CraftScreen } from '../craft/craftScreen';
@@ -9,12 +9,17 @@ import { InventoryScreen } from '../inventory/inventory';
 import { invDialog } from '../inventory/slots';
 import { MapScreen } from '../map/mapScreen';
 import { TreeScreen } from '../tree/treeScreen';
+import { HearthScreen } from '../hearth/hearthScreen';
+import { hearthUnlocked } from '../hearth/hearthSignals';
 import { escapeInMenu, menuTip, MENUS, type MenuId } from './frame';
 
 export const isMenu = (s: string): s is MenuId => MENUS.some((m) => m.id === s);
 
 /** The menu a key code opens, if any. */
-export const menuForKey = (code: string): MenuId | undefined => MENUS.find((m) => m.code === code)?.id;
+export const menuForKey = (code: string): MenuId | undefined => {
+  const id = MENUS.find((m) => m.code === code)?.id;
+  return id === 'hearth' && !hearthUnlocked.peek() ? undefined : id;
+};
 
 export function MenuScreens(p: {
   screen: string;
@@ -28,6 +33,7 @@ export function MenuScreens(p: {
   if (p.screen === 'map') return <MapScreen session={p.session} onTab={p.onTab} onClose={p.onClose} />;
   if (p.screen === 'craft') return <CraftScreen session={p.session} onTab={p.onTab} onClose={p.onClose} />;
   if (p.screen === 'filter') return <FilterScreen session={p.session} onTab={p.onTab} onClose={p.onClose} />;
+  if (p.screen === 'hearth') return <HearthScreen session={p.session} onTab={p.onTab} onClose={p.onClose} />;
   return null;
 }
 

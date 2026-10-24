@@ -33,6 +33,8 @@ import {
   type ToastKind,
 } from './hudEvents';
 import { injectAdventureHudStyle } from './advStyle';
+import { CountUp } from '../hearth/countUp';
+import { injectHearthStyle } from '../hearth/hearthStyle';
 
 export interface AdventureHud {
   handleEvents(events: readonly SimEvent[]): void;
@@ -54,6 +56,8 @@ const TOAST_ICON: Record<ToastKind, IconKind> = {
   level: 'level',
   stone: 'stone',
   door: 'key',
+  hearth: 'ember',
+  salvage: 'scrap',
 };
 
 const toasts = signal<LiveToast[]>([]);
@@ -74,6 +78,8 @@ const sameSnap = (a: AdventureSnap, b: AdventureSnap): boolean =>
   a.heartSeeds === b.heartSeeds &&
   a.loomShards === b.loomShards &&
   JSON.stringify(a.rift) === JSON.stringify(b.rift) &&
+  JSON.stringify(a.hearth) === JSON.stringify(b.hearth) &&
+  a.station?.id === b.station?.id &&
   (a.boss === b.boss ||
     (!!a.boss &&
       !!b.boss &&
@@ -88,6 +94,7 @@ export function createAdventureHud(opts: {
   onLoomStone?(): void;
 }): AdventureHud {
   injectAdventureHudStyle();
+  injectHearthStyle();
   const { session } = opts;
   const snap = signal(readAdventure(session));
   const names = {
@@ -124,6 +131,7 @@ export function createAdventureHud(opts: {
           seconds: uiTuning.toastSeconds,
           levelSeconds: uiTuning.levelToastSeconds,
           mergeWindow: uiTuning.toastMergeSeconds,
+          salvageWindow: uiTuning.salvageMergeSeconds,
           max: uiTuning.maxToasts,
           nextId: () => ++nextToast,
         });
@@ -145,6 +153,25 @@ function Counter(p: { kind: IconKind; n: number; label: string }) {
       <Icon kind={p.kind} />
       <b>{p.n}</b>
     </span>
+  );
+}
+
+/** Embers (rolling), Ash when held, and a glowing badge for returned expeditions. */
+function HearthCounters({ h }: { h: NonNullable<AdventureSnap['hearth']> }) {
+  return (
+    <>
+      <span class="ad-count ad-embers" title="Embers" aria-label={`Embers: ${h.embers}`}>
+        <Icon kind="ember" />
+        <CountUp value={h.embers} compact />
+      </span>
+      {h.ash > 0 ? <Counter kind="ash" n={h.ash} label="Ash" /> : null}
+      {h.ready > 0 ? (
+        <span class="ad-count ad-ready" title="Expeditions are back: press H" aria-label={`${h.ready} expeditions ready`}>
+          <Icon kind="weaver" />
+          <b>{h.ready}</b>
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -175,6 +202,7 @@ export function AdventureHudView({ snap }: { snap: { value: AdventureSnap } }) {
             {s.bigKey ? <Counter kind="bigKey" n={1} label="Big key" /> : null}
             <Counter kind="heart" n={s.heartSeeds} label="Heart Seeds" />
             <Counter kind="shard" n={s.loomShards} label="Loom Shards" />
+            {s.hearth ? <HearthCounters h={s.hearth} /> : null}
           </div>
           {s.rift ? (
             <div class="ad-rift" aria-label="Rift">
@@ -208,6 +236,11 @@ export function AdventureHudView({ snap }: { snap: { value: AdventureSnap } }) {
               <b key={m} class={s.boss!.lifeFrac < m ? 'past' : ''} style={`left:${m * 100}%`} />
             ))}
           </div>
+        </div>
+      ) : null}
+      {uiTuning.stationPrompt && s.station ? (
+        <div class="ad-prompt" role="status">
+          <kbd>F</kbd> {s.station.name}
         </div>
       ) : null}
       <div class="ad-toasts" aria-live="polite">

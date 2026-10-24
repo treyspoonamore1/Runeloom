@@ -52,6 +52,8 @@ export function sigilViews(
   best: number,
   standing: boolean,
   riftOpen: boolean,
+  /** The highest tier that opens before the next Rekindle (hero.hearth.rekindles); default: no cap. */
+  cap = Infinity,
 ): SigilView[] {
   return [...sigils]
     .sort((a, b) => a.tier - b.tier || a.uid - b.uid)
@@ -64,11 +66,13 @@ export function sigilViews(
       bonus: bonusLine(g.mods),
       blocked: riftOpen
         ? 'A rift is already open'
-        : g.tier > best + 1
-          ? `Complete a tier ${g.tier - 1} rift first`
-          : !standing
-            ? 'Stand at a Loom Stone to open it'
-            : null,
+        : g.tier > cap
+          ? `Rekindle to open tiers above ${cap}`
+          : g.tier > best + 1
+            ? `Complete a tier ${g.tier - 1} rift first`
+            : !standing
+              ? 'Stand at a Loom Stone to open it'
+              : null,
     }));
 }
 

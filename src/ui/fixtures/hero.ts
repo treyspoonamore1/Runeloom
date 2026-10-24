@@ -5,6 +5,7 @@
  */
 import type { RuneId } from '../../../data/runes';
 import { createHero } from '../../sim/hero/hero';
+import { litFixtureHearth } from './hearth';
 import type { AffixRoll, FusePart, HeroState, Item, ItemRarity, RuneItem } from '../../sim/hero/types';
 
 function builder() {
@@ -98,6 +99,7 @@ export function demoHero(): HeroState {
   hero.loomShards = 1;
   hero.threadScrap = 7;
   hero.unlockedRunes.sort();
+  litFixtureHearth(hero);
   return hero;
 }
 

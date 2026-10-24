@@ -9,6 +9,7 @@ import { currencies } from '../../../data/currency';
 import type { LootContent } from '../../sim/items/loot';
 import { sigilModLine, sigilName } from '../../sim/items/sigils';
 import type { ItemRarity } from '../../sim/hero/types';
+import { hearthBanner, hearthToast } from '../hearth/hearthEvents';
 
 export const HUD_EVENT = {
   // ---- Rifts (M6, WorldEvent) ----
@@ -72,7 +73,11 @@ export type ToastKind =
   | 'shard'
   | 'level'
   | 'stone'
-  | 'door';
+  | 'door'
+  /** Hearth building and expedition news (M7). */
+  | 'hearth'
+  /** The Salvage Loom's Thread Scrap: quiet, merges over a longer window. */
+  | 'salvage';
 
 export interface ToastSpec {
   kind: ToastKind;
@@ -130,6 +135,14 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
   // rune makes none (the item-get panel, src/ui/itemGet, is its moment).
   const rewarded = new Set<string>();
   const moments = new Set<string>();
+  // The Salvage Loom's 'autoSalvaged' comes before the same item's 'lootPicked': that pickup
+  // makes no item toast, only the merged Thread Scrap one.
+  const salvaged = new Map<string, number>();
+  for (const e of events)
+    if (e.type === 'autoSalvaged') {
+      const k = `${String(e.base)}|${String(e.rarity)}`;
+      salvaged.set(k, (salvaged.get(k) ?? 0) + 1);
+    }
   for (const e of events) {
     const c = e.content as LootContent | undefined;
     if (e.type === HUD_EVENT.rewardGranted && c?.kind === 'rune') rewarded.add(c.rune.rune);
@@ -139,7 +152,17 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
     switch (e.type) {
       case HUD_EVENT.lootPicked: {
         const c = e.content as LootContent | undefined;
-        if (c && !names.hidden?.(c)) out.push(contentToast(c, names, 'Rune · into your pouch'));
+        // Embers are counted by the HUD, not announced pickup by pickup (M7).
+        if (c?.kind === 'item') {
+          const k = `${c.item.base}|${c.item.rarity}`;
+          const n = salvaged.get(k) ?? 0;
+          if (n > 0) {
+            salvaged.set(k, n - 1);
+            break;
+          }
+        }
+        if (c && c.kind !== 'embers' && !names.hidden?.(c))
+          out.push(contentToast(c, names, 'Rune · into your pouch'));
         break;
       }
       case HUD_EVENT.rewardGranted: {
@@ -153,7 +176,7 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
               'In your pouch · weave it in the Loom (Tab)',
             ),
           );
-        else if (c) out.push(contentToast(c, names, ''));
+        else if (c && c.kind !== 'embers') out.push(contentToast(c, names, ''));
         break;
       }
       case HUD_EVENT.runeUnlocked:
@@ -196,6 +219,10 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
       case HUD_EVENT.levelUp:
         out.push(toast('level', `Level ${Number(e.level)}`, 'Passive point available · press P'));
         break;
+      default: {
+        const h = hearthToast(e);
+        if (h) out.push(h);
+      }
     }
   }
   return out;
@@ -211,7 +238,9 @@ export function bannersFor(
 ): { title: string; sub: string }[] {
   const out: { title: string; sub: string }[] = [];
   for (const e of events) {
-    if (e.type === HUD_EVENT.note) out.push({ title: String(e.text ?? ''), sub: '' });
+    const hb = hearthBanner(e);
+    if (hb) out.push(hb);
+    else if (e.type === HUD_EVENT.note) out.push({ title: String(e.text ?? ''), sub: '' });
     else if (e.type === HUD_EVENT.bossDefeated)
       out.push({ title: `${bossName(String(e.kind))} defeated`, sub: '' });
     else if (e.type === HUD_EVENT.riftCompleted)
@@ -244,13 +273,26 @@ export function pushToasts(
   live: readonly LiveToast[],
   incoming: readonly ToastSpec[],
   now: number,
-  opts: { seconds: number; levelSeconds: number; mergeWindow: number; max: number; nextId: () => number },
+  opts: {
+    seconds: number;
+    levelSeconds: number;
+    mergeWindow: number;
+    /** Salvage Loom toasts merge over this window (default: mergeWindow). */
+    salvageWindow?: number;
+    max: number;
+    nextId: () => number;
+  },
 ): LiveToast[] {
   let list = live.filter((t) => t.until > now);
   for (const t of incoming) {
     const last = list[list.length - 1];
     const life = t.kind === 'level' ? opts.levelSeconds : opts.seconds;
-    if (t.kind === 'scrap' && last?.kind === 'scrap' && last.until - opts.seconds + opts.mergeWindow > now) {
+    const window = t.kind === 'salvage' ? (opts.salvageWindow ?? opts.mergeWindow) : opts.mergeWindow;
+    if (
+      (t.kind === 'scrap' || t.kind === 'salvage') &&
+      last?.kind === t.kind &&
+      last.until - opts.seconds + window > now
+    ) {
       const amount = last.amount + t.amount;
       list = [...list.slice(0, -1), { ...last, amount, title: `+${amount} Thread Scrap`, until: now + life }];
       continue;

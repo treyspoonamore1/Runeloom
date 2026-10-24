@@ -11,6 +11,7 @@ import { adventureFromSave, makeSave, newAdventure, parseSave, type SaveData } f
 import { openSaveStore, SaveStore, type ManualSlot, type SaveRecord, type SaveSlot } from './saveStore';
 import { saveFileName } from './saveFiles';
 import { saveFile, sendToClaude } from './handoff';
+import { applyOfflineGains, type OfflineGains } from './hearth';
 
 /** An exported save: offered as a file and, in a claude.ai Artifact, sent to Claude too. */
 function exportText(name: string, text: string, where: string): void {
@@ -29,6 +30,11 @@ export interface AdventureFlow {
   readonly slots: Signal<SaveRecord[]>;
   /** False when saves only last for this page (IndexedDB blocked). */
   readonly persistent: Signal<boolean>;
+  /**
+   * What offline progress gave on the last load of a save slot (M7), for the "While you were away"
+   * summary; set to null to dismiss it. Imports and new games never set it.
+   */
+  readonly offline: Signal<OfflineGains | null>;
   refresh(): Promise<void>;
   newGame(): void;
   /** Loads a slot; returns why not, or null. */
@@ -47,11 +53,14 @@ export interface AdventureFlow {
 
 export function createAdventureFlow(
   session: Session,
-  opts: { store?: Promise<SaveStore>; seed?: () => number } = {},
+  opts: { store?: Promise<SaveStore>; seed?: () => number; now?: () => number } = {},
 ): AdventureFlow {
   const store = opts.store ?? openSaveStore();
   const slots = signal<SaveRecord[]>([]);
   const persistent = signal(true);
+  const offline = signal<OfflineGains | null>(null);
+  /** Wall-clock time, for offline progress only (CLAUDE.md rule 7: never inside src/sim). */
+  const now = opts.now ?? Date.now;
   const seed = opts.seed ?? (() => (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0);
   const inAdventure = () => session.state.mode === 'adventure';
 
@@ -71,6 +80,7 @@ export function createAdventureFlow(
     }
   };
   const start = (save: SaveData) => {
+    offline.value = null;
     session.adopt(adventureFromSave(save, session.state.tuning), 'adventure');
     heroRev.value++;
   };
@@ -96,8 +106,10 @@ export function createAdventureFlow(
   return {
     slots,
     persistent,
+    offline,
     refresh,
     newGame() {
+      offline.value = null;
       session.adopt(newAdventure(seed(), session.state.tuning), 'adventure');
       heroRev.value++;
       autosave();
@@ -106,6 +118,8 @@ export function createAdventureFlow(
       const r = await (await store).read(slot);
       if (!r.ok) return r.error;
       start(r.save);
+      // The wall-clock gap since this slot was written: the Hearth worked while the game was closed.
+      offline.value = applyOfflineGains(session, r.rec.savedAt, now());
       return null;
     },
     async importText(text) {

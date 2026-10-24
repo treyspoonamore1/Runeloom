@@ -1,13 +1,14 @@
 /**
- * Shared parts of the adventure menus: the full-screen frame with the I / P / M / C / L tabs, a floating
+ * Shared parts of the adventure menus: the full-screen frame with the I / P / M / C / L / H tabs, a floating
  * tooltip kept inside the viewport, a modal dialog, and a short note for refused actions.
  */
 import { signal } from '@preact/signals';
 import type { ComponentChildren, JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
+import { hearthUnlocked } from '../hearth/hearthSignals';
 import { injectMenuStyle, menuCss } from './menuStyle';
 
-export type MenuId = 'inventory' | 'tree' | 'map' | 'craft' | 'filter';
+export type MenuId = 'inventory' | 'tree' | 'map' | 'craft' | 'filter' | 'hearth';
 
 export const MENUS: ReadonlyArray<{ id: MenuId; label: string; key: string; code: string }> = [
   { id: 'inventory', label: 'Character', key: 'I', code: 'KeyI' },
@@ -15,7 +16,12 @@ export const MENUS: ReadonlyArray<{ id: MenuId; label: string; key: string; code
   { id: 'map', label: 'Map', key: 'M', code: 'KeyM' },
   { id: 'craft', label: 'Craft', key: 'C', code: 'KeyC' },
   { id: 'filter', label: 'Filter', key: 'L', code: 'KeyL' },
+  /** Exists once the Hearth is lit (hearthUnlocked). */
+  { id: 'hearth', label: 'Hearth', key: 'H', code: 'KeyH' },
 ];
+
+/** The menus the player can open now: the Hearth's tab appears when it is lit. */
+export const availableMenus = (): typeof MENUS => MENUS.filter((m) => m.id !== 'hearth' || hearthUnlocked.value);
 
 export interface Anchor {
   x: number;
@@ -47,6 +53,8 @@ export function MenuFrame(p: {
   onTab(id: MenuId): void;
   onClose(): void;
   bodyClass: string;
+  /** Extra class on the menu's root (a screen's own style hooks). */
+  rootClass?: string;
   extra?: ComponentChildren;
   children: ComponentChildren;
 }) {
@@ -58,13 +66,13 @@ export function MenuFrame(p: {
   }, [p.id]);
   const n = menuNote.value;
   return (
-    <div class="mn-root" ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={p.title}>
+    <div class={`mn-root${p.rootClass ? ` ${p.rootClass}` : ''}`} ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={p.title}>
       <div class="mn-card">
         <header class="mn-head">
           <h2>{p.title}</h2>
           {p.extra}
           <div class="mn-tabs" role="tablist" aria-label="Menus">
-            {MENUS.map((m) => (
+            {availableMenus().map((m) => (
               <button
                 key={m.id}
                 type="button"

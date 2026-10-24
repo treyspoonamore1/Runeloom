@@ -22,6 +22,14 @@ describe('rift views', () => {
     expect(sigilViews(sigils, 9, true, true)[0]!.blocked).toBe('A rift is already open');
   });
 
+  it('say why a sigil above the Rekindle cap cannot open, before the ladder rule', () => {
+    const high = [{ uid: 7, tier: 12, mods: [] }];
+    expect(sigilViews(high, 11, true, false, 10)[0]!.blocked).toBe('Rekindle to open tiers above 10');
+    expect(sigilViews(high, 4, true, false, 10)[0]!.blocked).toBe('Rekindle to open tiers above 10');
+    expect(sigilViews(high, 11, true, false, 12)[0]!.blocked).toBeNull();
+    expect(sigilViews(high, 11, true, false)[0]!.blocked).toBeNull();
+  });
+
   it('sum the bonuses in one line', () => {
     expect(bonusLine(['brutal', 'drought'])).toBe('+15% item quantity · +20% item rarity');
     expect(bonusLine([])).toBe('');

@@ -8,7 +8,7 @@ export const CONTROLS: ReadonlyArray<{ keys: string[]; label: string }> = [
   { keys: ['Space'], label: 'Dodge' },
   { keys: ['F'], label: 'Interact' },
   { keys: ['I', 'P', 'M'], label: 'Gear, tree, map' },
-  { keys: ['C', 'L'], label: 'Craft, loot filter' },
+  { keys: ['C', 'L', 'H'], label: 'Craft, loot filter, Hearth' },
   { keys: ['Esc'], label: 'Pause' },
   { keys: ['`'], label: 'Dev console' },
   { keys: ['F1', 'F2', 'F3'], label: 'Debug' },

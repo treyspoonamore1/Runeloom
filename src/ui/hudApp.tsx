@@ -11,6 +11,7 @@ import { StartScreen } from './startScreen';
 import { TitleScreen } from './title/titleScreen';
 import { ItemGetPanel } from './itemGet/itemGetPanel';
 import type { ItemGetView } from './itemGet/itemGetModel';
+import { OfflineModal } from './hearth/offlineModal';
 
 export interface HudAppProps {
   s: Sigs;
@@ -19,6 +20,8 @@ export interface HudAppProps {
   pause: PauseActions;
   loom: LoomController;
   closeLoom(): void;
+  /** Closes the "While you were away" summary. */
+  dismissOffline(): void;
   /** The new-element panel's view and its close (true: on into the Loom). */
   itemGet: { view: { value: ItemGetView | null }; close(toLoom: boolean): void };
   adv: AdventureHud;
@@ -81,6 +84,9 @@ export function HudApp(p: HudAppProps) {
           onLoom={() => p.itemGet.close(true)}
           onContinue={() => p.itemGet.close(false)}
         />
+      ) : null}
+      {p.flow?.offline.value && screen === 'play' ? (
+        <OfflineModal gains={p.flow.offline.value} onClose={p.dismissOffline} />
       ) : null}
       {isMenu(screen) ? (
         <MenuScreens

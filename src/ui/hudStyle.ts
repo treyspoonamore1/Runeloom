@@ -10,6 +10,7 @@ export const hudCss = `
   --ink: #2a1c1f; --gold: #f2c35b; --gold-hi: #ffe9a8; --gold-lo: #a8782a;
   --indigo-1: #2b2557; --indigo-2: #1a1638; --indigo-3: #3d3580;
   --sand: #f1dbab; --cream: #fff4d6; --terra: #c4623a; --danger: #ff5a4a;
+  --ember: #ff8a3a; --ember-hi: #ffd75a; --ash: #c9c0e6;
   --life-1: #ff8a62; --life-2: #d23a2c; --life-3: #7d1a22;
   --mana-1: #9ab8ff; --mana-2: #4e63e6; --mana-3: #241d78;
   position: fixed; inset: 0; pointer-events: none !important; overflow: hidden;

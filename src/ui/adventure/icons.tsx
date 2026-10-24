@@ -36,7 +36,10 @@ export type IconKind =
   | 'stone'
   | 'rune'
   | 'sigil'
-  | 'level';
+  | 'level'
+  | 'ember'
+  | 'ash'
+  | 'weaver';
 
 const SHAPES: Record<IconKind, () => JSX.Element> = {
   spindle: () => (
@@ -149,6 +152,25 @@ const SHAPES: Record<IconKind, () => JSX.Element> = {
         fill="none"
         stroke-linecap="round"
       />
+    </>
+  ),
+  ember: () => (
+    <>
+      <path d="M16 3c1 5 8 8 8 15a8 8 0 0 1-16 0c0-4 2-5 3-8 2 2 2 4 3 4 1-4 0-7 2-11z" fill="#ff7a2f" {...S} />
+      <path d="M16 15c0 3 4 4 4 8a4 4 0 0 1-8 0c0-3 4-5 4-8z" fill="#ffd75a" {...S} stroke-width={1.4} />
+    </>
+  ),
+  ash: () => (
+    <>
+      <path d="M6 22c0-6 5-8 5-12 3 2 5 4 4 8 3-1 4-3 4-6 4 3 7 6 7 11 0 5-5 7-10 7S6 27 6 22z" fill="#a59cc8" {...S} />
+      <path d="M13 24c0-3 3-4 3-7 2 1 4 3 4 6s-2 4-4 4-3-1-3-3z" fill="#e9dfc6" {...S} stroke-width={1.4} />
+    </>
+  ),
+  weaver: () => (
+    <>
+      <circle cx="16" cy="9" r="5" fill="#f1dbab" {...S} />
+      <path d="M6 28c0-8 4-12 10-12s10 4 10 12z" fill="#5d7ad9" {...S} />
+      <path d="M12 20l4 4 4-4" stroke="#f2c35b" stroke-width={2} fill="none" stroke-linecap="round" />
     </>
   ),
   level: () => (

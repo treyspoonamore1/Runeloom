@@ -25,6 +25,9 @@ import { isMenu, menuForKey, menuKey } from './menus/menuHost';
 import { titleView, type TitleView } from './title/titleScreen';
 import { createItemGet, itemGetActions } from './itemGet/itemGetFlow';
 import { itemGetKey } from './itemGet/itemGetPanel';
+import { stationTabFor } from './hearth/hearthEvents';
+import { hearthTab, hearthUnlocked } from './hearth/hearthSignals';
+import { readHearthSummary } from './hearth/adapter';
 
 export interface HudContext {
   session: Session;
@@ -194,6 +197,19 @@ export function createHud(ctx: HudContext): Hud {
     fanfare: () => ctx.audio.play('elementFanfare'),
     holdRune: (rune) => ctx.renderer?.holdRune?.(rune),
   });
+  /**
+   * The Hearth menu keeps the sim running while the player stands in the hub (nothing hostile is
+   * there), so its counters and timers move live; every other menu pauses it, as does the Hearth
+   * menu away from the hub. A loop that was paused before the menu stays paused.
+   */
+  const settlePause = (id: MenuId): void => {
+    const live =
+      id === 'hearth' &&
+      !pausedBefore &&
+      !ctx.session.state.player.dead &&
+      readHearthSummary(ctx.session).inHearth;
+    ctx.loop.paused = !live;
+  };
   /** Opens a menu (from play, or switching from another), or closes it with null. */
   const menu = (id: MenuId | null): void => {
     const cur = s.screen.value;
@@ -202,10 +218,20 @@ export function createHud(ctx: HudContext): Hud {
     } else if (cur === 'play') {
       if (ctx.session.state.mode !== 'adventure') return;
       enterModal(id);
+      settlePause(id);
     } else if (isMenu(cur) && cur !== id) {
       s.screen.value = id;
+      settlePause(id);
       ctx.audio.play('uiClick');
     }
+  };
+  /** The "While you were away" summary: the game waits behind it. */
+  const dismissOffline = (): void => {
+    if (!flow?.offline.peek()) return;
+    flow.offline.value = null;
+    ctx.loop.paused = false;
+    ctx.input.enabled = true;
+    focusGame();
   };
 
   if (s.screen.value === 'start' || s.screen.value === 'title') ctx.loop.paused = true;
@@ -230,6 +256,12 @@ export function createHud(ctx: HudContext): Hud {
     (e) => {
       const screen = s.screen.value;
       if (consoleOpen.value) return;
+      if (flow?.offline.peek() && screen === 'play') {
+        if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Escape' || e.code === 'Space')
+          dismissOffline();
+        e.preventDefault();
+        return;
+      }
       if (screen === 'itemGet') {
         itemGetKey(e, closeItemGet);
         return;
@@ -302,6 +334,7 @@ export function createHud(ctx: HudContext): Hud {
       },
       loom,
       closeLoom,
+      dismissOffline,
       itemGet: { view: itemGet.view, close: closeItemGet },
       adv,
       flow,
@@ -310,6 +343,11 @@ export function createHud(ctx: HudContext): Hud {
         ctx.audio.unlock();
         ctx.audio.play('uiStart');
         toPlay();
+        // Offline progress was applied on load: show it before the game runs.
+        if (flow?.offline.peek()) {
+          ctx.loop.paused = true;
+          ctx.input.enabled = false;
+        }
       },
       scenes: ctx.devScenes ? sandboxScenes() : null,
       onScene: goTo,
@@ -332,6 +370,12 @@ export function createHud(ctx: HudContext): Hud {
         else if (e.type === 'hit' && e.target === 'player') s.hurt.value = s.hurt.peek() + 1;
       }
       adv.handleEvents(events);
+      // A hub station's Interact opens its Hearth screen (M7).
+      const tab = stationTabFor(events as unknown as LooseEvent[]);
+      if (tab && s.screen.peek() === 'play' && ctx.session.state.mode === 'adventure') {
+        hearthTab.value = tab;
+        menu('hearth');
+      }
       itemGet.handleEvents(events);
       flow?.handleEvents(events);
     },
@@ -355,6 +399,7 @@ export function createHud(ctx: HudContext): Hud {
       );
       if (!snapEqual(s.snap.peek(), next)) s.snap.value = next;
       adv.frame();
+      hearthUnlocked.value = !!adv.snap.value.hearth && state.mode === 'adventure';
       const w = watcher.update(readArena(state));
       if (w.transition === 'cleared') showBanner(`Wave ${w.wave} cleared`, 'Catch your breath');
       else if (w.transition === 'started') showBanner(`Wave ${w.wave}`, 'Incoming');

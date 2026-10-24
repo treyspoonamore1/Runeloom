@@ -85,7 +85,7 @@ Available in dev builds from M0 onward. The designer relies on them for feedback
 
 | Key or command | Does |
 |---|---|
-| `` ` `` | Dev console: `spawn <enemy> [n]`, `give <rune>`, `weave <slot> <notation>`, `level <n>`, `seed <n>`, `room <id>`, `god`, `timescale <x>`, `killall` |
+| `` ` `` | Dev console: `spawn <enemy> [n]`, `give <rune>`, `weave <slot> <notation>`, `level <n>`, `seed <n>`, `room <id>`, `god`, `timescale <x>`, `killall`, Hearth: `embers <n>`, `ash <n>`, `building <id> <level>`, `rifttier <n>`, `offline <hours>`, `hearth` (go to the hub) |
 | F1 | Overlays: material, fire, charge, wet, owner, AI targets, hitboxes |
 | F2 | Tuning panel with a Copy JSON button |
 | F9 | Save a replay (seed plus input log) to a file. `npm run sim -- --replay <file>` reproduces it |
