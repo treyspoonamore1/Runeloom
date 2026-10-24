@@ -4,6 +4,8 @@
  *   npm run shots -- --lab [--station 3,7]   Chemistry Lab station storyboards into shots/lab/
  *   npm run shots -- --set creature [--milestone m3]   entities on the chemistry grid (wet, oiled, falls, arcs...)
  *   npm run shots -- --set rooms [--room e1,k7] [--port 5197]   every region room: whole-room fit and play zoom
+ *   npm run shots -- --set hearth [--shot unlit,mid,max] [--viewport 390x844]   the Hearth's hub (M7):
+ *       empty plots, mid and max buildings, fit and play zoom
  *   npm run shots -- --set onload [--region kiln] [--milestone m4]   every room on load, as an adventure game,
  *       into shots/rooms/<milestone>_<region>_<room>.png (--ticks N steps idle first)
  *   npm run shots -- --set ui [--milestone m4] [--shot inventory,tree] [--viewport 390x844]   M4 menus and HUD with fixture data
@@ -35,6 +37,7 @@ import { runUiShot, uiShotIds, uiShotUrl, type UiShotId } from './lib/uiShots';
 import { galleryShots } from './lib/galleryShots';
 import { itemShotIds, itemShotUrl, runItemShot, type ItemShotId } from './lib/itemShots';
 import { showFight } from './lib/fightShots';
+import { hearthShotIds, showHearth, type HearthShotId } from './lib/hearthShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -62,7 +65,7 @@ runCli(async () => {
     station: { kind: 'string' },
     set: {
       kind: 'string',
-      help: "'creature': entities on the chemistry grid (lab stations); 'rooms': region rooms (fit and play zoom); 'onload': every room on load as an adventure game; 'ui': M4 menus and HUD; 'gallery': M4 art; 'item': the K6 shrine and new-element panels",
+      help: "'creature': entities on the chemistry grid (lab stations); 'rooms': region rooms (fit and play zoom); 'hearth': the Hearth's hub (M7); 'onload': every room on load as an adventure game; 'ui': M4 menus and HUD; 'gallery': M4 art; 'item': the K6 shrine and new-element panels",
     },
     room: { kind: 'string', help: 'with --set rooms: comma-separated short ids (e1,k7)' },
     region: { kind: 'string', help: "--set onload: only rooms whose id starts with this, e.g. 'kiln'" },
@@ -140,6 +143,23 @@ runCli(async () => {
           await page.screenshot({ path: file, timeout: 120_000 });
           written.push(file);
           if (errors.length) console.warn(`warning: page errors in room ${s}: ${errors.join('; ')}`);
+        }
+      }
+    } else if (a.set === 'hearth') {
+      const only = (a.shot?.split(',') ?? [...hearthShotIds]) as HearthShotId[];
+      const vp = `${viewport.width}x${viewport.height}`;
+      for (const id of only) {
+        if (!hearthShotIds.includes(id))
+          throw new ArgError(`Unknown hearth shot "${id}". Available: ${hearthShotIds.join(', ')}`);
+        for (const view of ['fit', 'play'] as const) {
+          errors.length = 0;
+          await page.goto(`http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`);
+          await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+          await showHearth(page, id, view);
+          const file = join(SHOTS_DIR, `${milestone}_hearth_${id}_${view}_${vp}.png`);
+          await page.screenshot({ path: file, timeout: 120_000 });
+          written.push(file);
+          if (errors.length) console.warn(`warning: page errors in hearth shot ${id}: ${errors.join('; ')}`);
         }
       }
     } else if (a.set === 'onload') {
@@ -259,7 +279,7 @@ runCli(async () => {
       if (errors.length) console.warn(`warning: page errors in scenario ${sc.id}: ${errors.join('; ')}`);
     } else if (a.set !== undefined)
       throw new ArgError(
-        `Unknown --set "${a.set}". Available: creature, rooms, onload, ui, gallery, item, fight`,
+        `Unknown --set "${a.set}". Available: creature, rooms, hearth, onload, ui, gallery, item, fight`,
       );
     for (const scene of a.set === undefined && a.scenario === undefined ? selected : []) {
       errors.length = 0;
