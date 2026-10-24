@@ -16,11 +16,16 @@ const HOUR = 3600_000;
 const T0 = 1_700_000_000_000;
 const GAINS = { seconds: 3 * 3600, scrap: 50, runeXp: 900, runeLevels: 1, expeditionsReturned: 1 };
 
+function memoryClaims() {
+  const m = new Map<string, string>();
+  return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+}
+
 function setup(now: () => number) {
   const scene = findScene('adventure')!;
   const session = new Session({ seed: 3, roomId: scene.roomId, sceneId: scene.id, mode: scene.mode });
   const store = new SaveStore(memoryBackend(), true, () => T0);
-  const flow = createAdventureFlow(session, { store: Promise.resolve(store), now });
+  const flow = createAdventureFlow(session, { store: Promise.resolve(store), now, claims: memoryClaims() });
   return { session, store, flow };
 }
 
@@ -29,6 +34,18 @@ beforeEach(() => {
 });
 
 describe('offline progress on loading a slot', () => {
+  it('reloading an older slot of the same game pays only the time since the last payment', async () => {
+    apply.mockReturnValue(GAINS);
+    let t = T0 + 3 * HOUR;
+    const { session, store, flow } = setup(() => t);
+    await store.write('slot1', makeSave(session.state), 'Room');
+    await flow.load('slot1');
+    t = T0 + 4 * HOUR;
+    await flow.load('slot1');
+    expect(apply).toHaveBeenNthCalledWith(1, session, T0, T0 + 3 * HOUR);
+    expect(apply).toHaveBeenNthCalledWith(2, session, T0 + 3 * HOUR, T0 + 4 * HOUR);
+  });
+
   it("hands the slot's savedAt and the current time to applyOfflineGains and keeps the summary", async () => {
     apply.mockReturnValue(GAINS);
     const { session, store, flow } = setup(() => T0 + 3 * HOUR);
