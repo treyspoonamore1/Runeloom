@@ -26,6 +26,16 @@ export const uiShotIds = [
   'rift_wires',
   'rift_boss',
   'rift_wires_warn',
+  'hearth_buildings',
+  'hearth_garden',
+  'hearth_expeditions',
+  'hearth_salvage',
+  'hearth_spindlewright',
+  'hearth_rekindle',
+  'hearth_confirm',
+  'hearth_cartographer',
+  'hearth_hud',
+  'hearth_away',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -36,6 +46,10 @@ export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'hud') return `${base}/?${ADV}&ui=play&boss=cinder_warden`;
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
   if (id === 'pause') return `${base}/?${ADV}&ui=pause`;
+  // The Hearth (M7) with a fixture lit Hearth: every tab, the Rekindle confirmation, the HUD with
+  // its counters and toasts, and the offline modal.
+  if (id === 'hearth_hud' || id === 'hearth_away') return `${base}/?${ADV}&ui=play`;
+  if (id.startsWith('hearth_')) return `${base}/?${ADV}&ui=hearth`;
   // The bench crafts with the real sim, so it runs on a real hero (fixture bases aren't real items).
   if (
     id === 'craft' ||
@@ -66,6 +80,48 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
       await ui.flow.refresh();
       ui.open(load ? 'title:load' : 'title');
     }, id === 'title_load');
+  } else if (id.startsWith('hearth_') && id !== 'hearth_hud' && id !== 'hearth_away') {
+    const tab: Record<string, string> = {
+      hearth_garden: 'Rune Garden',
+      hearth_expeditions: 'Expeditions',
+      hearth_salvage: 'Salvage Loom',
+      hearth_spindlewright: 'Spindlewright',
+      hearth_rekindle: 'Rekindle',
+      hearth_confirm: 'Rekindle',
+      hearth_cartographer: 'Cartographer',
+    };
+    const name = tab[id];
+    if (name) await page.click(`.hx-tab >> text=${name}`);
+    if (id === 'hearth_confirm') await page.click('.hx-card >> text=Rekindle…');
+    if (id === 'hearth_buildings') await page.click('.hx-card .mn-btn.gold >> nth=0');
+    if (id === 'hearth_expeditions') {
+      // Collect the returned expedition (a Weaver frees up), then send it out again on tier 4.
+      await page.click('.hx-card .mn-btn.gold >> text=Collect');
+      await page.click('.hx-chip >> text=Tier 4');
+    }
+    await page.waitForTimeout(id === 'hearth_buildings' ? 250 : 150);
+  } else if (id === 'hearth_hud') {
+    await page.evaluate(() => {
+      const ui = window.__runeloom!.ui!;
+      ui.hold(true);
+      ui.events([
+        { type: 'buildingUpgraded', building: 'kindling_pit', level: 7 },
+        { type: 'expeditionReturned', uid: 1, tier: 2 },
+        { type: 'autoSalvaged', base: 'wool_hood', rarity: 'normal', scrap: 2, x: 0, y: 0 },
+        { type: 'autoSalvaged', base: 'wool_hood', rarity: 'magic', scrap: 3, x: 0, y: 0 },
+        { type: 'mutationBought', mutation: 'bright_hearth', count: 3 },
+        { type: 'lootPicked', content: { kind: 'embers', amount: 8 } },
+        { type: 'hearthLit', embers: 150 },
+      ]);
+    });
+    await page.waitForTimeout(500);
+  } else if (id === 'hearth_away') {
+    await page.evaluate(() => {
+      const ui = window.__runeloom!.ui!;
+      ui.flow.offline.value = { seconds: 8 * 3600, scrap: 214, runeXp: 5120, runeLevels: 3, expeditionsReturned: 2 };
+      window.__runeloom!.loop.paused = true;
+    });
+    await page.waitForTimeout(500);
   } else if (id === 'inventory') {
     await page.hover('.inv-grid .inv-card >> nth=2');
   } else if (id === 'fuse') {

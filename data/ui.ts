@@ -11,6 +11,10 @@ export const uiTuning = {
   maxToasts: 5,
   /** Same-kind pickups within this many seconds merge into one toast ("+3 Thread Scrap"). */
   toastMergeSeconds: 1.2,
+  /** Show the HUD's small "F  Station" prompt at a hub station (turn off if the world draws its own). */
+  stationPrompt: true,
+  /** Salvage Loom toasts ("+3 Thread Scrap") merge over this longer window: it fires on every pickup. */
+  salvageMergeSeconds: 2.5,
   /**
    * The item-get panel for a new element rune: sim seconds to wait after a boss drops it (the
    * Cinder Warden's Storm), so his death plays first. A shrine's rune shows at once.

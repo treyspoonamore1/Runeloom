@@ -16,6 +16,8 @@ import { fixtureProgress } from '../fixtures/regionMap';
 import { quantize } from '../hudModel';
 import { regionLayout } from '../map/adapter';
 import { riftSummary } from '../map/riftModel';
+import { readHearthSummary, stationNow } from '../hearth/adapter';
+import { stations, type StationId } from '../../../data/hearth';
 
 /** Regions that are dungeons with small keys. */
 export const DUNGEONS: readonly string[] = ['kiln'];
@@ -55,6 +57,17 @@ export interface AdventureSnap {
   loomShards: number;
   boss: BossSnap | null;
   rift: RiftSnap | null;
+  /** The lit Hearth's counters (M7); null until it is lit. */
+  hearth: HearthSnap | null;
+  /** The hub station the player stands at (Interact opens it), for the small prompt. */
+  station: { id: StationId; name: string } | null;
+}
+
+/** Embers, Ash and returned expeditions on the HUD. */
+export interface HearthSnap {
+  embers: number;
+  ash: number;
+  ready: number;
 }
 
 /** The open rift on the HUD (M6). */
@@ -114,7 +127,19 @@ export function readAdventure(session: Session): AdventureSnap {
     loomShards: hero.loomShards,
     boss: fixtureBoss ?? bossOf(session),
     rift: riftOf(session),
+    hearth: hearthOf(session),
+    station: stationOf(session),
   };
+}
+
+function hearthOf(session: Session): HearthSnap | null {
+  const h = readHearthSummary(session);
+  return h.lit ? { embers: h.embers, ash: h.ash, ready: h.expeditionsReady } : null;
+}
+
+function stationOf(session: Session): AdventureSnap['station'] {
+  const id = stationNow(session);
+  return id ? { id, name: stations[id].name } : null;
 }
 
 function bossOf(session: Session): BossSnap | null {
