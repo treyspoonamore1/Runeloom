@@ -11,8 +11,8 @@ export const uiTuning = {
   maxToasts: 5,
   /** Same-kind pickups within this many seconds merge into one toast ("+3 Thread Scrap"). */
   toastMergeSeconds: 1.2,
-  /** Show the HUD's small "F  Station" prompt at a hub station (turn off if the world draws its own). */
-  stationPrompt: true,
+  /** Show the HUD's small "F  Station" prompt at a hub station. Off: the hub draws its own world-space prompt (render/hub). */
+  stationPrompt: false,
   /** Salvage Loom toasts ("+3 Thread Scrap") merge over this longer window: it fires on every pickup. */
   salvageMergeSeconds: 2.5,
   /**
