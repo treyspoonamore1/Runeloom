@@ -354,6 +354,8 @@ export const defaultTuning = {
     pickupRadius: 2.5,
     /** Cells from a Loom Stone's tile center within which the player can rest or fast travel. */
     loomStoneRange: 4,
+    /** Cells from a Hearth station tile's center within which Interact (F) uses it (M7, about 1.5 tiles). */
+    stationReach: 6,
     /** An exit triggers when the player's center is within radius + this many cells of the room edge, facing out. */
     exitSlack: 0.3,
   },

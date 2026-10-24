@@ -8,7 +8,7 @@
  */
 import type { Session } from '../../app/session';
 import { getLoomStoneHere, getRegionMap } from '../../app/hero';
-import type { RegionMap } from '../../sim/world/regionMap';
+import { travelDestinations, type RegionMap } from '../../sim/world/regionMap';
 import { uiTuning } from '../../../data/ui';
 import { fixturesOn } from '../fixtures/mode';
 import { fixtureLayout, fixtureProgress } from '../fixtures/regionMap';
@@ -20,6 +20,8 @@ export interface MapProgress {
   activated: readonly string[];
   /** The activated Loom Stone the player stands at, or null. */
   standing: { roomId: string; key: string } | null;
+  /** Room names of every travel destination (the Hearth's hub isn't on the map), id → name. */
+  names: ReadonlyMap<string, string>;
 }
 
 const REGION_NAMES: Record<string, string> = {
@@ -27,6 +29,7 @@ const REGION_NAMES: Record<string, string> = {
   kiln: 'The Sunken Kiln',
   test: 'Test grounds',
   rift: 'Rift',
+  hearth: 'The Hearth',
 };
 
 /**
@@ -85,9 +88,18 @@ export function mapProgress(session: Session): MapProgress {
       visited: new Set(fixtureProgress.visited),
       activated: fixtureProgress.activated,
       standing: fixtureProgress.standing,
+      names: new Map(),
     };
   const w = session.state.world;
   const visited = new Set(Object.keys(w.flags).filter((id) => w.flags[id]!.visited));
   visited.add(w.roomId);
-  return { current: w.roomId, visited, activated: w.loomStones, standing: getLoomStoneHere(session) };
+  // The Hearth (M7) first in the travel list: it is reached only by fast travel.
+  const dests = travelDestinations(session.state);
+  return {
+    current: w.roomId,
+    visited,
+    activated: dests.map((d) => `${d.roomId}#${d.key}`),
+    standing: getLoomStoneHere(session),
+    names: new Map(dests.map((d) => [d.roomId, d.name])),
+  };
 }

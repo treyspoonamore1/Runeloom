@@ -11,6 +11,7 @@
  * start room) and may be negative; `bounds` gives the extent. In a rift (M6) the map is the rift's
  * rooms only, from its entry.
  */
+import { hearthRoom } from '../../../data/hearth';
 import { startRoom } from '../../../data/progression';
 import type { GameState } from '../state';
 import { parseRoom, type RoomData } from './room';
@@ -196,4 +197,31 @@ export function buildRegionMap(state: GameState): RegionMap {
     });
   }
   return { nodes, bounds };
+}
+
+/** A fast-travel destination: an activated Loom Stone and its room's name. */
+export interface TravelDestination {
+  roomId: string;
+  key: string;
+  name: string;
+  /** The Hearth's hub (M7): no exits join it to the region, so the map lists it on its own. */
+  hub: boolean;
+}
+
+/**
+ * Every activated Loom Stone with its room's display name, the Hearth first, then in activation
+ * order. The map's travel list reads names from here because the hub (reached only by fast
+ * travel) is never in the region map's rooms, and in the hub the region's rooms aren't either.
+ */
+export function travelDestinations(state: GameState): TravelDestination[] {
+  const out: TravelDestination[] = [];
+  for (const id of state.world.loomStones) {
+    const i = id.indexOf('#');
+    const roomId = id.slice(0, i);
+    const text = state.rooms[roomId];
+    if (text === undefined) continue;
+    const d = parseCached(text);
+    out.push({ roomId, key: id.slice(i + 1), name: d?.header.name || roomId, hub: roomId === hearthRoom });
+  }
+  return [...out.filter((d) => d.hub), ...out.filter((d) => !d.hub)];
 }

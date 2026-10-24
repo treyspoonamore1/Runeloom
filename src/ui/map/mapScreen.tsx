@@ -89,7 +89,7 @@ export function MapScreen(p: { session: Session; onTab(id: MenuId): void; onClos
   const layout = regionLayout(p.session);
   const prog = mapProgress(p.session);
   const placed = placeMap(layout, prog.visited, prog.current, VW, VH, uiTuning.mapPadding);
-  const targets = travelTargets(layout, prog.activated, prog.standing);
+  const targets = travelTargets(layout, prog.activated, prog.standing, prog.names);
   const here = layout.rooms.find((r) => r.id === prog.current);
   const travel = (roomId: string, key: string) => {
     const why = sendEdit(p.session, { kind: 'travel', roomId, key });

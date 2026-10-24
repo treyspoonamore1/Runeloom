@@ -29,10 +29,15 @@
  * - rune_shrine (`R`, objectTouch.ts): an altar holding the room's dungeon item. Touching it pays
  *   the room's guaranteed runes (data/progression.ts) instead of the first clear doing it; it
  *   pays once (RoomFlags.taken and rewardsPaid) and is empty afterwards (`on` = taken).
+ * - Hearth stations (`s` `r` `C` `F` `p` `y` `E` `V`, M7, hub.ts): the hub's NPCs, the Hearth fire
+ *   and the four building plots, one kind per StationId. Solid and inert (material `object`); a
+ *   station that covers several tiles is one object per tile. Interact (F) next to one sends
+ *   'stationUse'. Their looks read hero.hearth; `on` stays false.
  * Blocking kinds (blocks, closed doors, chests, shrines, braziers, switches) are solid grid cells
  * (material `object` or `brazier`); opening a door or moving a block rewrites its cells with
  * setGround, which keeps room.solid in sync and bumps grid.walkVersion for the flow field.
  */
+import type { StationId } from '../../../data/hearth';
 import type { Hasher } from '../core/hash';
 import type { InputFrame } from '../core/input';
 import { TILE_CELLS } from '../core/constants';
@@ -54,7 +59,9 @@ export type ObjectKind =
   | 'heart_seed'
   | 'loom_shard'
   | 'loom_stone'
-  | 'rune_shrine';
+  | 'rune_shrine'
+  /** The Hearth's stations (M7, world/hub.ts): one kind per data/hearth.ts StationId. */
+  | StationId;
 
 export interface WorldObject {
   /** Stable within a room file: `${kind}@${tx},${ty}` of its tile in the file. RoomFlags use it. */
@@ -107,6 +114,14 @@ export const OBJECT_KIND_BY_CHAR: Readonly<Record<string, ObjectKind>> = {
   L: 'loom_shard',
   x: 'loom_stone',
   R: 'rune_shrine',
+  s: 'spindlewright',
+  r: 'runekeeper',
+  C: 'cartographer',
+  F: 'hearth_fire',
+  p: 'kindling_pit',
+  y: 'rune_garden',
+  E: 'expedition_board',
+  V: 'salvage_loom',
 };
 
 /** The legend character of an object kind (the inverse of OBJECT_KIND_BY_CHAR). */

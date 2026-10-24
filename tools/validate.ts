@@ -32,6 +32,7 @@ import { fuseEffectErrors, passiveTreeErrors } from './lib/passiveChecks';
 import { checkRooms } from './lib/roomChecks';
 import { checkRifts } from './lib/riftChecks';
 import { listRoomIds, loadRoomText } from './lib/rooms';
+import { checkHub } from './lib/hubChecks';
 import { checkItemData } from './lib/itemChecks';
 
 const errors: string[] = [];
@@ -80,6 +81,8 @@ const roomCheck = checkRooms(new Map([...parsed].filter(([id]) => !isRiftRoomTem
 });
 errors.push(...roomCheck.errors);
 warnings.push(...roomCheck.warnings);
+// The Hearth's hub (M7): its Loom Stone matches data/hearth.ts, every station, a safe room.
+errors.push(...checkHub(parsed));
 for (const [id, data] of parsed)
   for (const sp of data.header.spawns)
     if (sp.rarity && sp.kind === 'enemy' && isEnemyKind(sp.id) && enemyDef(sp.id).isBoss)
