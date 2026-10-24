@@ -5,6 +5,7 @@
  * HUD_EVENT names the events the HUD listens for: the world's (src/sim/world/worldEvents.ts)
  * and the hero's (src/sim/hero/events.ts). The fields each one reads are listed with it.
  */
+import { hearthRoom } from '../../../data/hearth';
 import { currencies } from '../../../data/currency';
 import type { LootContent } from '../../sim/items/loot';
 import { sigilModLine, sigilName } from '../../sim/items/sigils';
@@ -214,7 +215,8 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
         out.push(toast('door', 'A door opened'));
         break;
       case HUD_EVENT.roomCleared:
-        if (e.first) out.push(toast('level', 'Room cleared'));
+        // The hub has no enemies: "cleared" on arrival means nothing there.
+        if (e.first && e.id !== hearthRoom) out.push(toast('level', 'Room cleared'));
         break;
       case HUD_EVENT.levelUp:
         out.push(toast('level', `Level ${Number(e.level)}`, 'Passive point available · press P'));

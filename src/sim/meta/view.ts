@@ -124,7 +124,7 @@ export function buildingEffect(hero: Readonly<HeroState>, id: BuildingId, level:
     case 'kindling_pit':
       return `${(scrapPerMinute(level) * mult).toFixed(1)} Thread Scrap a minute`;
     case 'rune_garden':
-      return `${gardenPlots(level)} plots, ${Math.round(gardenXpPerMinute(level) * mult)} rune XP a minute each`;
+      return `${gardenPlots(level)} plot${gardenPlots(level) === 1 ? '' : 's'}, ${Math.round(gardenXpPerMinute(level) * mult)} rune XP a minute each`;
     case 'expedition_board':
       return `${weavers(level)} Weaver${weavers(level) === 1 ? '' : 's'}`;
     case 'salvage_loom': {

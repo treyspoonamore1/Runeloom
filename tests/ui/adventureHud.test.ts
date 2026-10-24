@@ -65,6 +65,7 @@ describe('adventure HUD events', () => {
       { type: HUD_EVENT.keyUsed, dungeon: 'kiln', big: false, left: 2 },
       { type: HUD_EVENT.rested, roomId: 'emberwood/e1_glade', key: 'loom_stone@5,11' },
       { type: HUD_EVENT.roomCleared, id: 'emberwood/e2_thicket', first: true },
+      { type: HUD_EVENT.roomCleared, id: 'hearth/hearth', first: true }, // the hub: no toast
       { type: HUD_EVENT.runeLevelUp, uid: 2, rune: 'bolt', level: 2, slot: 0 },
       { type: HUD_EVENT.note, key: 'loom_stone@1,1', text: "The Fen isn't woven yet." },
       { type: HUD_EVENT.bossDefeated, kind: 'cinder_warden', roomId: 'kiln/k10_wardens_hearth' },
