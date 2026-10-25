@@ -11,6 +11,11 @@ const titleCss = `
 .tt-menu .tt-main { font-size: calc(var(--u) * 3.4); padding: calc(var(--u) * 1.4) calc(var(--u) * 3); }
 .tt-main small { font-size: calc(var(--u) * 1.7); font-weight: 400; letter-spacing: 0.02em; color: #5a3a1c; }
 .tt-dev { opacity: 0.8; }
+.tt-playtest { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 1.2); margin: 0 calc(var(--u) * -16); margin-top: calc(var(--u) * 1); padding-top: calc(var(--u) * 1.6); border-top: calc(var(--u) * 0.2) solid rgba(242, 195, 91, 0.3); }
+.tt-playtest h2 { grid-column: 1 / -1; margin: 0; text-align: center; font-size: calc(var(--u) * 2); letter-spacing: 0.14em; text-transform: uppercase; color: var(--sand); }
+.tt-menu .tt-start { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 0.3); opacity: 0.85; }
+.tt-menu .tt-start { font-size: calc(var(--u) * 2.1); padding: calc(var(--u) * 0.8) calc(var(--u) * 1.6); }
+.tt-start small { font-size: calc(var(--u) * 1.6); font-weight: 400; letter-spacing: 0.02em; color: var(--sand); }
 .tt-panel { width: calc(var(--u) * 72); max-width: 92vw; text-align: left; padding: calc(var(--u) * 2.4) calc(var(--u) * 3.2); border-radius: calc(var(--u) * 2.2);
   background: linear-gradient(180deg, rgba(43, 37, 87, 0.97), rgba(26, 22, 56, 0.98));
   box-shadow: 0 0 0 calc(var(--u) * 0.5) var(--ink), 0 0 0 calc(var(--u) * 1) var(--gold-lo), 0 0 0 calc(var(--u) * 1.5) var(--ink), 0 calc(var(--u) * 2) calc(var(--u) * 4) rgba(0, 0, 0, 0.5); }
@@ -34,7 +39,7 @@ const titleCss = `
 .tt-scenes .rl-btn { text-align: left; }
 .tt-panel.rl-pause { width: calc(var(--u) * 60); }
 .tt-msg { min-height: calc(var(--u) * 3); margin: calc(var(--u) * 1.6) 0 0; font-size: calc(var(--u) * 2); color: #ffb4a6; }
-@media (max-width: 760px) { .tt-root { --u: 4.4px; } .tt-slots li { flex-direction: column; align-items: stretch; } }
+@media (max-width: 760px) { .tt-root { --u: 4.4px; } .tt-playtest { grid-template-columns: 1fr; margin: 0; margin-top: calc(var(--u) * 1); } .tt-slots li { flex-direction: column; align-items: stretch; } }
 `;
 
 export function injectTitleStyle(): void {
