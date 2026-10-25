@@ -19,6 +19,10 @@
  *       M6: the rift bot's clear rate per tier and reference build (tools/lib/riftCli.ts).
  *   npm run sim -- --rift-ladder [--seed 1] [--seeds 3] [--target 8] [--verbose] [--json]
  *       M6.5: a new game to the Warden, then the rift ladder with found gear (tools/lib/riftCli.ts).
+ *   npm run sim -- --progression [--seed 1] [--seeds 3] [--rekindles 1] [--variants play,offline,nohearth]
+ *                  [--sessions 1.5,16] [--rekindle-stall 3] [--rekindle-after 9] [--max-hours 40] [--no-hearth] [--verbose] [--json]
+ *       M7: a new game to the Warden, then rifts with a model player who uses the Hearth, through
+ *       Rekindles (tools/lib/progressionCli.ts). Supersedes --rift-ladder for tiers past the cap.
  *   npm run sim -- --list
  */
 import {
@@ -40,6 +44,12 @@ import { runCampaignCli, runEncountersCli } from './lib/campaign';
 import { runRiftBotCli, runRiftCli, runRiftLadderCli } from './lib/riftCli';
 import { riftBuilds, type RiftBuild } from '../src/sim/bots/riftBot';
 import { RIFT_TIERS } from '../data/rift';
+import {
+  parseSessions,
+  PROGRESSION_VARIANTS,
+  runProgressionCli,
+  type ProgressionVariant,
+} from './lib/progressionCli';
 
 runCli(() => {
   const a = parseArgs(process.argv.slice(2), {
@@ -77,7 +87,46 @@ runCli(() => {
       help: '--rifts: rifts per tier (default 1000); --rift-bot: runs per tier and build (default 5)',
     },
     tier: { kind: 'number' },
+    progression: { kind: 'boolean' },
+    rekindles: { kind: 'number', default: 1, help: '--progression: Rekindles to play through' },
+    variants: { kind: 'string', help: '--progression: play,offline,nohearth (default play,offline)' },
+    sessions: { kind: 'string', default: '1.5,16', help: '--progression: <play hours>,<break hours>' },
+    'rekindle-stall': {
+      kind: 'number',
+      default: 3,
+      help: '--progression: Rekindle once unlocked after this many failed rifts in a row (0: only at the cap)',
+    },
+    'rekindle-after': {
+      kind: 'number',
+      default: 9,
+      help: '--progression: Rekindle once unlocked after this many rifts without a new best tier (0: never)',
+    },
+    'max-hours': { kind: 'number', default: 40, help: '--progression: stop after this many hours of play' },
+    'no-hearth': { kind: 'boolean', help: '--progression: only the player who never uses the Hearth' },
   });
+
+  if (a.progression) {
+    const variants = (
+      a['no-hearth'] ? ['nohearth'] : (a.variants?.split(',') ?? ['play', 'offline'])
+    ) as ProgressionVariant[];
+    const bad = variants.filter((v) => !(PROGRESSION_VARIANTS as readonly string[]).includes(v));
+    if (bad.length)
+      throw new Error(`Unknown --variants ${bad.join(', ')}. Available: ${PROGRESSION_VARIANTS.join(', ')}`);
+    const stall = requireInt('rekindle-stall', a['rekindle-stall'], 0);
+    runProgressionCli({
+      seed: requireInt('seed', a.seed, 0),
+      seeds: requireInt('seeds', a.seeds, 1),
+      rekindles: requireInt('rekindles', a.rekindles, 0),
+      variants,
+      sessions: parseSessions(a.sessions!),
+      stallFailures: stall === 0 ? null : stall,
+      stallRifts: a['rekindle-after'] === 0 ? null : requireInt('rekindle-after', a['rekindle-after'], 1),
+      maxHours: a['max-hours']!,
+      verbose: a.verbose,
+      json: a.json,
+    });
+    return;
+  }
 
   if (a['rift-ladder']) {
     runRiftLadderCli({

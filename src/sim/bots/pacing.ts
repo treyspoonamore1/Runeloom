@@ -30,8 +30,12 @@ export const roomOverhead: Readonly<Record<RoomKey, number>> = {
 /** Human fights run slower than the bot's. */
 export const humanFightFactor = 1.5;
 
-/** Rifts: seconds per room (no puzzles: walking in and looting) and per rift (map, gear, crafting). */
-export const riftOverhead = { perRoom: 25, perRift: 60 };
+/**
+ * Rifts: seconds per room (no puzzles: walking in and looting) and per rift (map, gear, crafting).
+ * M7: a Hearth visit between rifts (collecting expeditions, upgrades, the garden, the
+ * Spindlewright) adds hearthVisit.
+ */
+export const riftOverhead = { perRoom: 25, perRift: 60, hearthVisit: 30 };
 
 export function pacingMinutes(r: CampaignResult): number {
   let s = 0;

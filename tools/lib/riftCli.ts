@@ -143,6 +143,7 @@ export function runRiftBotCli(o: RiftBotCliOptions): void {
  * `npm run sim -- --rift-ladder [--seed 1] [--seeds 3] [--target 8] [--verbose] [--json]` (M6.5):
  * a new game played to the Warden, then the same character climbs the rift ladder with what it
  * finds (src/sim/bots/riftLadder.ts). Prints hours to each tier's first clear and every rift.
+ * M7: it never Rekindles, so it stops at the tier cap (10); `--progression` supersedes it.
  */
 export function runRiftLadderCli(o: {
   seed: number;
