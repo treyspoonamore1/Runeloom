@@ -65,6 +65,8 @@ export interface Item {
   name?: string;
   /** Unique items: the key into data/uniques.ts. Its fixed stats replace affixes. */
   unique?: string;
+  /** Marked "keep" (M7.5 'lock' edit): salvage refuses it. Absent when not locked, never false. */
+  locked?: boolean;
 }
 
 /** A Rift Sigil (DESIGN §10.4, M6): opens a rift of its tier with its modifiers at a Loom Stone. */

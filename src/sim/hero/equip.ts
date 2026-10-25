@@ -1,5 +1,5 @@
 /**
- * Equipment edits (DESIGN §8): equip, unequip, salvage for Thread Scrap, fuse and unfuse. Each
+ * Equipment edits (DESIGN §8): equip, unequip, lock, salvage for Thread Scrap, fuse and unfuse. Each
  * returns why it can't apply, or null after applying it. The caller (applyHeroEdit) refreshes
  * the hero after a success.
  */
@@ -56,6 +56,7 @@ export function salvage(state: GameState, uid: number): string | null {
   const i = hero.items.findIndex((it) => it.uid === uid);
   if (i >= 0) {
     const item = hero.items[i]!;
+    if (item.locked) return 'Unlock it first';
     if (equippedSlotOf(hero, uid) !== null) return 'Unequip it first';
     if (item.fused.some((p) => p !== null)) return 'Remove its fused parts first';
     hero.items.splice(i, 1);
@@ -70,6 +71,16 @@ export function salvage(state: GameState, uid: number): string | null {
     return null;
   }
   return "You don't have that item";
+}
+
+/** Marks an item "keep" (or clears it): salvage refuses a locked item. Parts can't be locked. */
+export function setLocked(state: GameState, uid: number, locked: boolean): string | null {
+  if (typeof locked !== 'boolean') return 'Lock or unlock, nothing else';
+  const item = findItem(state.hero, uid);
+  if (!item) return "You don't have that item";
+  if (locked) item.locked = true;
+  else delete item.locked;
+  return null;
 }
 
 export function fuse(state: GameState, partUid: number, spindleUid: number, socket: number): string | null {

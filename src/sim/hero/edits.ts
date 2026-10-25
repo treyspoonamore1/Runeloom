@@ -10,7 +10,7 @@
 import type { EquipSlot } from './types';
 import type { GameState } from '../state';
 import { applyPassiveEdit } from './passives';
-import { equip, fuse, salvage, unequip, unfuse } from './equip';
+import { equip, fuse, salvage, setLocked, unequip, unfuse } from './equip';
 import { refreshHero } from './hero';
 import { applyCraft } from '../items/craft';
 import { restAtLoomStone, travelToLoomStone } from '../world/adventure';
@@ -20,6 +20,8 @@ import { applyHearthEdit, isHearthEdit, type HearthEdit } from '../meta/edits';
 export type HeroEdit =
   | { kind: 'equip'; uid: number; slot: EquipSlot }
   | { kind: 'unequip'; slot: EquipSlot }
+  /** Marks an item "keep" (or not): a locked item can't be salvaged (M7.5). */
+  | { kind: 'lock'; uid: number; locked: boolean }
   /** Destroys an unequipped item or an unfused part for Thread Scrap. */
   | { kind: 'salvage'; uid: number }
   | { kind: 'fuse'; partUid: number; spindleUid: number; socket: number }
@@ -84,6 +86,8 @@ function applyEquipmentEdit(state: GameState, edit: EquipmentEdit): string | nul
       return equip(state, edit.uid, edit.slot);
     case 'unequip':
       return unequip(state, edit.slot);
+    case 'lock':
+      return setLocked(state, edit.uid, edit.locked);
     case 'salvage':
       return salvage(state, edit.uid);
     case 'fuse':

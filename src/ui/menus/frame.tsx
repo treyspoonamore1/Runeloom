@@ -36,7 +36,15 @@ export const anchorOf = (el: Element): Anchor => {
 };
 
 /** The open menu's tooltip: what to show and next to what. */
-export const menuTip = signal<{ at: Anchor; rarity?: string; body: () => JSX.Element } | null>(null);
+export const menuTip = signal<{
+  at: Anchor;
+  rarity?: string;
+  body: () => JSX.Element;
+  /** The body draws its own cards (the inventory's side-by-side compare): no box around it. */
+  bare?: boolean;
+  /** Keep the tooltip over this area (a panel), below or above the anchor, so other panels stay visible. */
+  within?: Anchor;
+} | null>(null);
 
 /** A short message for refused actions ("A spindle is always equipped"), cleared after a moment. */
 export const menuNote = signal<{ text: string; ok: boolean; n: number } | null>(null);
@@ -118,28 +126,56 @@ export function placeBox(
   return { x: Math.max(gap, x), y: Math.max(gap, y) };
 }
 
+/**
+ * Keeps a w×h box over the `within` area: starting at the anchor's left edge, below it if that
+ * fits the viewport, else above it. For tooltips that must leave the neighboring panels visible.
+ */
+export function placeWithin(
+  at: Anchor,
+  w: number,
+  h: number,
+  vw: number,
+  vh: number,
+  within: Anchor,
+  gap = 10,
+): { x: number; y: number } {
+  const minX = Math.max(gap, within.x);
+  const maxX = Math.max(minX, Math.min(vw - gap, within.x + within.w) - w);
+  const x = Math.min(Math.max(at.x, minX), maxX);
+  let y = at.y + at.h + gap;
+  if (y + h > vh - gap) y = at.y - h - gap;
+  if (y < gap) y = Math.max(gap, vh - h - gap);
+  return { x, y };
+}
+
 function MenuTooltip() {
   const t = menuTip.value;
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el || !t) return;
-    const pos = placeBox(t.at, el.offsetWidth, el.offsetHeight, window.innerWidth, window.innerHeight);
+    const [w, h, vw, vh] = [el.offsetWidth, el.offsetHeight, window.innerWidth, window.innerHeight];
+    const pos = t.within ? placeWithin(t.at, w, h, vw, vh, t.within) : placeBox(t.at, w, h, vw, vh);
     el.style.left = `${pos.x}px`;
     el.style.top = `${pos.y}px`;
     el.style.visibility = 'visible';
   });
   if (!t) return null;
   return (
-    <div class={`mn-tip r-${t.rarity ?? 'normal'}`} ref={ref} role="tooltip" style="visibility:hidden">
+    <div
+      class={`mn-tip r-${t.rarity ?? 'normal'}${t.bare ? ' bare' : ''}`}
+      ref={ref}
+      role="tooltip"
+      style="visibility:hidden"
+    >
       {t.body()}
     </div>
   );
 }
 
 /** Hover and focus handlers that show a tooltip for an element. */
-export function tipFor(rarity: string | undefined, body: () => JSX.Element) {
-  const show = (e: Event) => (menuTip.value = { at: anchorOf(e.currentTarget as Element), rarity, body });
+export function tipFor(rarity: string | undefined, body: () => JSX.Element, bare = false) {
+  const show = (e: Event) => (menuTip.value = { at: anchorOf(e.currentTarget as Element), rarity, body, bare });
   const hide = () => (menuTip.value = null);
   return { onMouseEnter: show, onMouseLeave: hide, onFocus: show, onBlur: hide };
 }
