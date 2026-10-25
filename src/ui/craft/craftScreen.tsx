@@ -7,7 +7,6 @@ import { signal } from '@preact/signals';
 import type { Session } from '../../app/session';
 import { currencies, type CurrencyId } from '../../../data/currency';
 import { getRune } from '../../../data/runes';
-import { LOOT } from '../../render/world/worldPalette';
 import type { HeroState, Item, RuneItem } from '../../sim/hero/types';
 import { Icon } from '../adventure/icons';
 import { heroOf, heroRev, sendEdit } from '../heroAdapter';
@@ -18,25 +17,14 @@ import { iconOf } from '../inventory/slots';
 import { ItemTip } from '../inventory/tips';
 import { newLines, targetsFor, wallet, type CraftTarget } from './craftModel';
 import { injectCraftStyle } from './craftStyle';
+import { CurrencyGlyph } from '../items/currencyGlyph';
 
 export const craftCurrency = signal<CurrencyId>('weavers_knot');
 export const craftTarget = signal<number | null>(null);
 /** The last craft: its target and the lines it had before, to mark what changed. */
 const lastCraft = signal<{ uid: number; before: string[] } | null>(null);
 
-const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
-
-export function CurrencyGlyph({ id }: { id: CurrencyId }) {
-  const c = hex(LOOT.currency[id]);
-  return (
-    <svg class="ad-ico" viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="16" cy="16" r="11" fill="#3a3040" stroke="#1c1426" stroke-width="2" />
-      <ellipse cx="16" cy="16" rx="8.5" ry="3.6" stroke={c} stroke-width="2.2" fill="none" />
-      <ellipse cx="16" cy="16" rx="3.6" ry="8.5" stroke={c} stroke-width="2.2" fill="none" />
-      <circle cx="16" cy="16" r="2.8" fill={c} />
-    </svg>
-  );
-}
+export { CurrencyGlyph };
 
 function Wallet({ hero }: { hero: Readonly<HeroState>; rev: number }) {
   const cur = craftCurrency.value;
