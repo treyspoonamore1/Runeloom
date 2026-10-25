@@ -1,8 +1,0 @@
-| Date | Question | Decision | Reason |
-|---|---|---|---|
-| 2026-10-25 | What size is an ItemArt/CurrencyArt/PartArt with no `size`? (The placeholder defaulted to `ia-md`.) | No size class: the frame fills its container (width 100%, square). `size` gives sm/md/lg in `--u`. | The contract says the art fills its container when no size is given. |
-| 2026-10-25 | How should rims and pips scale when the frame fills an unknown box? | The frame is a CSS size container, and its ink line, rim, glow and tier pips use `cqw` units with 1 px minimums. | Outline weight stays in proportion from 24 px toasts to large tooltips without per-size rules. |
-| 2026-10-25 | Unknown item bases | Use the data's kind when it has one. Otherwise guess the kind from the id ("wool_cloak" is a cloak) and draw that kind's shape in grey-violet. With no kind at all, draw a wrapped bundle with a "?". Unknown parts get a plain bone shard, and unknown currencies get the old crossed-loops glyph. | Fixtures and old saves use bases the data doesn't have, and none of these may throw. |
-| 2026-10-25 | Part tier marker: pips or numeral? | 1 to 3 diamond pips on the bottom rim, colored bronze, silver and gold by tier. | Easier to read than a numeral at 24 px. |
-| 2026-10-25 | Expedition rewards and the item-get panel | Unchanged. | Expedition rewards are text counts with no ids, and the item-get panel only shows element runes, so neither shows an item, currency or part to draw. |
-| 2026-10-25 | The `hud` ui shot | Its fixture cloak now uses the real `travelers_cloak` base, and the item, part and currency pickups come last, with a Chaos Skein pickup added. | Only the newest 5 toasts show, so the art toasts were cut off before. |
