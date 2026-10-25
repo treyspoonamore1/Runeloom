@@ -6,7 +6,7 @@
  * and the hero's (src/sim/hero/events.ts). The fields each one reads are listed with it.
  */
 import { hearthRoom } from '../../../data/hearth';
-import { currencies } from '../../../data/currency';
+import { currencies, type CurrencyId } from '../../../data/currency';
 import type { LootContent } from '../../sim/items/loot';
 import { sigilModLine, sigilName } from '../../sim/items/sigils';
 import type { ItemRarity } from '../../sim/hero/types';
@@ -87,7 +87,15 @@ export interface ToastSpec {
   rarity: ItemRarity | null;
   /** For merging repeated pickups ("+5 Thread Scrap"). */
   amount: number;
+  /** Items, currencies and parts: what the toast's picture shows (src/ui/items/itemArt.tsx). */
+  art?: ToastArt;
 }
+
+/** The picture of an item, currency or part toast. */
+export type ToastArt =
+  | { kind: 'item'; base: string; rarity: ItemRarity; unique?: string }
+  | { kind: 'currency'; currency: CurrencyId }
+  | { kind: 'part'; part: string; tier: 1 | 2 | 3 };
 
 export interface ToastNames {
   /** The loot filter hides this drop (no pickup toast). Missing: nothing is hidden. */
@@ -115,15 +123,24 @@ function contentToast(c: LootContent, names: ToastNames, runeSub: string): Toast
   if (c.kind === 'rune') return toast('rune', names.rune(c.rune.rune), runeSub);
   if (c.kind === 'item') {
     const d = names.item(c.item);
-    return toast('item', d.name, `${cap(d.rarity)} item`, d.rarity);
+    const art: ToastArt = { kind: 'item', base: c.item.base, rarity: d.rarity };
+    if (c.item.unique) art.unique = c.item.unique;
+    return { ...toast('item', d.name, `${cap(d.rarity)} item`, d.rarity), art };
   }
-  if (c.kind === 'part') return toast('part', names.part(c.part), 'Fuse part');
+  if (c.kind === 'part')
+    return {
+      ...toast('part', names.part(c.part), 'Fuse part'),
+      art: { kind: 'part', part: c.part.part, tier: c.part.tier },
+    };
   if (c.kind === 'currency')
-    return toast(
-      'currency',
-      `${c.amount > 1 ? `${c.amount}× ` : ''}${currencies[c.currency].name}`,
-      'Currency',
-    );
+    return {
+      ...toast(
+        'currency',
+        `${c.amount > 1 ? `${c.amount}× ` : ''}${currencies[c.currency].name}`,
+        'Currency',
+      ),
+      art: { kind: 'currency', currency: c.currency },
+    };
   if (c.kind === 'sigil')
     return toast('sigil', sigilName(c.sigil), `${sigilModLine(c.sigil.mods)} · open it at a Loom Stone (M)`);
   return toast('scrap', `+${c.amount} Thread Scrap`, '', null, c.amount);

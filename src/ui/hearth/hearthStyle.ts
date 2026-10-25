@@ -70,6 +70,7 @@ const hearthCss = `
 .hx-row { display: flex; align-items: center; gap: calc(var(--u) * 1); flex-wrap: wrap; }
 .hx-row.between { justify-content: space-between; }
 .hx-row .grow { flex: 1; min-width: 0; }
+.hx-ware-name { flex-wrap: nowrap; min-width: 0; }
 .hx-btn { justify-content: center; }
 .hx-chips { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 0.8); }
 .hx-chip { font: inherit; cursor: pointer; border: 0; display: inline-flex; flex-direction: column; align-items: center; min-width: calc(var(--u) * 8); padding: calc(var(--u) * 0.6) calc(var(--u) * 1.2); border-radius: calc(var(--u) * 1); color: var(--cream); font-size: calc(var(--u) * 1.8); font-weight: 700; background: linear-gradient(180deg, var(--indigo-3), var(--indigo-1)); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink), 0 0 0 calc(var(--u) * 0.5) var(--gold-lo); }
