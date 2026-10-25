@@ -89,6 +89,15 @@ describe('DPS readout (DESIGN §5.5)', () => {
       runs: 1,
     });
     expect(lance.notes[0]).toMatch(/On Kill can't fire/);
+    // Shatter isn't forced either: dummies never die, so nothing shatters.
+    expect(ok({ ...base, notation: 'Shatter > Nova[Frost]', runs: 1 })).toMatchObject({
+      dps: 0,
+      firesPerSecond: 0,
+      notes: [
+        "Shatter can't fire against dummies, so its damage isn't included.",
+        expect.stringMatching(/^Close range/),
+      ],
+    });
     const dodge = ok({ ...base, notation: 'OnDodge > Nova[Frost, Saturate]', runs: 2 });
     expect(dodge.notes[0]).toBe('On Dodge assumes its event happens once per second, limited by its ICD.');
     expect(dodge.firesPerSecond).toBeCloseTo(1, 9);

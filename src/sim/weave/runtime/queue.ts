@@ -31,6 +31,14 @@ export function noteKill(state: GameState, id: number, x: number, y: number): vo
   push(state, 'kill', id, x, y, 0, 0, 0);
 }
 
+/**
+ * The player shattered enemy `id` at (x, y): their damage (a hit or their Ignite) killed it while
+ * it was Frozen (rule 20). Credited exactly like noteKill; the Shatter trigger listens for it.
+ */
+export function noteShatter(state: GameState, id: number, x: number, y: number): void {
+  push(state, 'shatter', id, x, y, 0, 0, 0);
+}
+
 /** A player hit crit enemy `id` at (x, y), travelling along unit (dirX, dirY). */
 export function noteCrit(
   state: GameState,

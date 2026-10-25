@@ -11,7 +11,7 @@ import type { GameState } from '../state';
 import { applyHitAilments, isFrozen, teamOfSource, type AilmentTarget } from './ailments';
 import { arcShock } from './arcs';
 import { deathTerrain, enemyTakenMult } from '../actors/chemistry';
-import { noteHurt, noteKill } from '../weave/runtime/queue';
+import { noteHurt, noteKill, noteShatter } from '../weave/runtime/queue';
 import { resolveHit, zeroAmounts, type DamagePacket, type DamageTarget, type HitResult } from './damage';
 import { afterPlayerHit, hasHitRules, playerHitPacket } from '../hero/effectsCombat';
 import type { FormId } from '../../../data/runes';
@@ -147,7 +147,10 @@ export function killEnemy(state: GameState, e: Enemy, killerId: number, cause: D
   e.dead = true;
   e.vx = e.vy = e.kbX = e.kbY = 0;
   emit(state, { type: 'death', id: e.id, kind: e.kind, x: e.x, y: e.y, killerId, cause, shattered });
-  if (killerId === PLAYER_ID) noteKill(state, e.id, e.x, e.y);
+  if (killerId === PLAYER_ID) {
+    noteKill(state, e.id, e.x, e.y);
+    if (shattered) noteShatter(state, e.id, e.x, e.y);
+  }
   if (shattered && cause === 'hit') addHitstop(state, state.tuning.feel.hitstopShatter);
   if (cause !== 'console') {
     deathTerrain(state, e, killerId, shattered);

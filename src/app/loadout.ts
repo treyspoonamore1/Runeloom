@@ -37,7 +37,7 @@ export const SANDBOX_SPINDLES: readonly SpindleId[] = [
   'loomsteel',
 ];
 
-/** Runes the build offers (CONTENT §1 "Ships": M2 and M5); the sim compiles with the same set. */
+/** Runes the build offers (CONTENT §1 "Ships": M2, M5 and M7); the sim compiles with the same set. */
 export const ALLOWED_SHIPS = RUNTIME_SHIPS;
 
 export interface SlotView {

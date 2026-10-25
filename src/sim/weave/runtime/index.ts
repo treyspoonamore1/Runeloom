@@ -39,7 +39,7 @@ export {
   type Loadout,
 } from './loadout';
 export { cancelCast, slotSpellName } from './castState';
-export { noteDodge, noteKill, noteCrit, noteHurt } from './queue';
+export { noteDodge, noteKill, noteShatter, noteCrit, noteHurt } from './queue';
 export { stepWeaves, fireProgram, payMana } from './triggers';
 export { stepSpells, compactSpells, holdSpells } from './step';
 export { spawnSpell, openCast, endSpell, buildPacket, boltKind } from './spawn';
