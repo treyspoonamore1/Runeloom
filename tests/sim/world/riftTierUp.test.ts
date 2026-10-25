@@ -16,6 +16,14 @@ describe('next-tier sigil chance (riftDrops.bossTierUp)', () => {
     expect(riftBossTierUpChance(5, 10_000)).toBe(1);
   });
 
+  it('M7 re-climb: below the best tier ever the next tier comes at reclimbTierUp; at or above it, the slow formula', () => {
+    expect(riftBossTierUpChance(3, 0, 10)).toBe(riftDrops.reclimbTierUp);
+    expect(riftBossTierUpChance(9, 50, 10)).toBe(riftDrops.reclimbTierUp);
+    expect(riftBossTierUpChance(10, 2, 10)).toBeCloseTo(riftBossTierUpChance(10, 2));
+    expect(riftBossTierUpChance(11, 0, 10)).toBeCloseTo(riftBossTierUpChance(11));
+    expect(riftDrops.reclimbTierUp).toBeGreaterThan(riftBossTierUpChance(1));
+  });
+
   it('keeps the early tiers quicker than the late ones', () => {
     for (let t = 1; t < 16; t++)
       expect(riftBossTierUpChance(t)).toBeGreaterThanOrEqual(riftBossTierUpChance(t + 1));

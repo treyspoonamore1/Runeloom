@@ -371,7 +371,7 @@ Reward: the Storm rune, a Pattern Seed, a Cinder Heart part, and loot.
 - Opened with Rift Sigils: items with tier 1 to 16 and 0 to 4 modifiers. Each modifier adds item quantity and rarity.
 - Many modifiers change chemistry. Examples in CONTENT §10.
 - MVP endgame is a tier ladder. A hex-map "atlas" with adjacent-node bonuses comes in M8.
-- The ladder (M7): completing a rift's boss drops a sigil of its tier, or of the next tier with a chance that falls with the tier and grows with every completion of your best tier, so each rift brings the next tier closer. Higher tiers also give monsters more life and damage than their area level alone (CONTENT §10, Tiers).
+- The ladder (M7): completing a rift's boss drops a sigil of its tier, or of the next tier with a chance that falls with the tier and grows with every completion of your best tier, so each rift brings the next tier closer. Below the highest tier you have ever completed (kept through Rekindles) the next tier comes fast, so a new cycle climbs back quickly and only new territory is slow. Higher tiers also give monsters more life and damage than their area level alone (CONTENT §10, Tiers).
 
 ## 11. Meta progression: the Hearth (M7)
 
@@ -388,7 +388,7 @@ The Hearth is the hub. NPCs: the Spindlewright (crafting bench), the Runekeeper 
 
 Offline progress is capped at 8 hours.
 
-**Rekindle** (prestige) unlocks after clearing a tier 8 rift. It resets rift progress and Hearth buildings, never the character or items, and grants Ash based on highest tier cleared and Embers spent. Ash buys permanent Mutations (CONTENT §11). Each Rekindle raises the maximum rift tier by 2.
+**Rekindle** (prestige) unlocks after clearing a tier 8 rift. It resets rift progress and Hearth buildings, never the character or items (nor the record of the highest tier ever completed), and grants Ash based on highest tier cleared and Embers spent. Ash buys permanent Mutations (CONTENT §11). Each Rekindle raises the maximum rift tier by 2.
 
 ## 12. Technology and performance
 

@@ -12,6 +12,7 @@ import {
 } from '../../../src/sim';
 import { makeSigil } from '../../../src/sim/items/sigils';
 import { loomStoneId } from '../../../src/sim/world/worldState';
+import { maxRiftTierFor, rekindlesForTier } from '../../../src/sim/meta/view';
 import { build, HUB_ROOM, hub, plant } from './helpers';
 
 function load(save: SaveData): GameState {
@@ -42,10 +43,11 @@ function busyHearth(): GameState {
   plant(s, ['nova', 'wide'], 6, 10);
   s.hero.unlockedRunes.sort();
   h.expeditions.push(
-    { uid: s.hero.nextUid++, tier: 3, left: 0, duration: 960 },
-    { uid: s.hero.nextUid++, tier: 2, left: 300.5, duration: 840 },
+    { uid: s.hero.nextUid++, tier: 3, left: 0, duration: 960, cycle: 0 },
+    { uid: s.hero.nextUid++, tier: 2, left: 300.5, duration: 840, cycle: 0 },
   );
   s.hero.riftTier = 6;
+  h.bestEverTier = 6; // at least the ladder (migrateHearth keeps it so)
   s.hero.sigils.push(makeSigil(s.hero, 7, []));
   return s;
 }
@@ -115,5 +117,68 @@ describe('the Hearth in saves', () => {
     bad((h) => (h.salvage = 'unique'), /hero\.hearth\.salvage/);
     bad((h) => (h.embers = -1), /hero\.hearth\.embers/);
     bad((h) => (h.lit = 'yes'), /hero\.hearth\.lit/);
+    // Review fixes (M7 balance): keys of Object.prototype, zero durations, expedition uids, cycles.
+    bad((h) => (h.mutations.constructor = 1), /mutations\.constructor is not a mutation/);
+    bad((h) => (h.mutations.toString = 1), /mutations\.toString is not a mutation/);
+    bad((h) => (h.expeditions[0].duration = 0), /expeditions\[0\]\.duration must be more than 0/);
+    bad((h) => (h.expeditions[0].uid = 999999), /expeditions\[0\]\.uid is not below nextUid/);
+    bad((h) => (h.expeditions[0].cycle = 3), /expeditions\[0\]\.cycle is after the last Rekindle/);
+    bad((h) => (h.bestEverTier = 17), /hero\.hearth\.bestEverTier/);
+  });
+
+  it("rejects an expedition uid that is also a rune's, item's, part's or sigil's", () => {
+    const save = raw(busyHearth());
+    save.hero.hearth.expeditions[0].uid = save.hero.sigils[0].uid;
+    expect(() => parseSave(save)).toThrow(/expeditions\[0\]\.uid is also a rune, item, part or sigil/);
+  });
+
+  it('garden runes beyond the Rune Garden plots go back to the pouch (first planted stay)', () => {
+    const s = busyHearth(); // Rune Garden 9: 3 plots, 2 planted
+    const extra = plant(s, ['bolt', 'pierce'], 2).map((r) => r.uid);
+    const save = raw(s);
+    const parsed = parseSave(save);
+    expect(parsed.hero.hearth.garden).toEqual(save.hero.hearth.garden.slice(0, 3));
+    expect(parsed.hero.hearth.garden).not.toContain(extra[1]);
+    expect(parsed.hero.runes.map((r) => r.uid)).toContain(extra[1]);
+  });
+
+  it('expeditions saved without a cycle belong to the current one', () => {
+    const save = raw(busyHearth());
+    for (const e of save.hero.hearth.expeditions) delete e.cycle;
+    expect(parseSave(save).hero.hearth.expeditions.map((e) => e.cycle)).toEqual([2, 2]);
+  });
+
+  it('bestEverTier round-trips; a save without it takes its rift ladder', () => {
+    const s = busyHearth();
+    s.hero.hearth.bestEverTier = 9;
+    expect(parseSave(JSON.stringify(makeSave(s))).hero.hearth.bestEverTier).toBe(9);
+    const old = raw(busyHearth());
+    delete old.hero.hearth.bestEverTier;
+    old.hero.riftTier = 6;
+    expect(parseSave(old).hero.hearth.bestEverTier).toBe(6);
+  });
+
+  it('a v2 save past tier 10 gets the Rekindles its ladder needs (no Ash), and keeps its sigils', () => {
+    const s = hub({ lit: false });
+    s.hero.riftTier = 14;
+    s.hero.sigils.push(makeSigil(s.hero, 15, []));
+    const v2 = raw(s);
+    v2.version = 2;
+    delete v2.hero.hearth;
+    v2.world.bossesDefeated = ['tar_matriarch', 'cinder_warden'];
+    const h = parseSave(v2).hero.hearth;
+    expect(h.rekindles).toBe(rekindlesForTier(15));
+    expect(maxRiftTierFor(h.rekindles)).toBeGreaterThanOrEqual(15);
+    expect(h.ash).toBe(0);
+    expect(h.bestEverTier).toBe(14);
+    const low = raw(hub({ lit: false }));
+    low.version = 2;
+    delete low.hero.hearth;
+    low.hero.riftTier = 6;
+    expect(parseSave(low).hero.hearth.rekindles).toBe(0);
+    // A v3 save keeps its own count.
+    const v3 = raw(busyHearth());
+    v3.hero.riftTier = 14;
+    expect(parseSave(v3).hero.hearth.rekindles).toBe(2);
   });
 });

@@ -76,7 +76,7 @@ export function fixtureHearthApply(edit: HearthEdit): string | null {
       if (h.expeditions.length >= weavers(h.buildings.expedition_board)) return 'No free Weaver';
       if (edit.tier < 1 || edit.tier > maxExpeditionTier(hero)) return 'That tier is too high';
       const s = expeditionSeconds(hero, edit.tier);
-      h.expeditions.push({ uid: hero.nextUid++, tier: edit.tier, left: s, duration: s });
+      h.expeditions.push({ uid: hero.nextUid++, tier: edit.tier, left: s, duration: s, cycle: h.rekindles });
       return null;
     }
     case 'expeditionCollect': {

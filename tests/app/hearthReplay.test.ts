@@ -126,6 +126,12 @@ describe('the app Hearth views', () => {
     const board = getExpeditionBoard(session);
     expect(board.free).toBe(1);
     expect(board.rewards(1).embers).toBeGreaterThan(0);
+    // M7 review: an expedition from before the last Rekindle previews no Rift Sigil.
+    expect(board.rewards(1).sigils).toBe(1);
+    expect(board.rewards(1, session.state.hero.hearth.rekindles).sigils).toBe(1);
+    session.state.hero.hearth.rekindles = 1;
+    expect(getExpeditionBoard(session).rewards(1, 0).sigils).toBe(0);
+    session.state.hero.hearth.rekindles = 0;
     expect(getRekindle(session).blocker).toMatch(/tier 8/);
     session.state.hero.riftTier = 8;
     expect(getRekindle(session).blocker).toBeNull();

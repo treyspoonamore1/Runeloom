@@ -262,6 +262,12 @@ export const riftDrops = {
    * perClear keeps every rift a step toward the next tier.
    */
   bossTierUp: { base: 0.1, perTier: 0.012, min: 0.01, perClear: 0.009 },
+  /**
+   * M7 re-climb: below the highest tier ever completed (hero.hearth.bestEverTier, kept through
+   * Rekindles) the next tier's sigil comes with this chance instead, so a new cycle climbs back
+   * fast and only new territory is slow.
+   */
+  reclimbTierUp: 0.75,
   /** The first sigil: the Cinder Warden drops a tier-1 sigil the first time he dies. */
   wardenSigilTier: 1,
   /** With no sigils left (after the Warden), the map offers a free one of this tier (M6.5). */
@@ -277,10 +283,12 @@ export const riftDrops = {
 export const riftTierScaling = { lifeMorePerTier: 0.06, damageMorePerTier: 0.04 };
 
 /**
- * The chance a rift boss of `tier` drops the next tier's sigil (riftDrops.bossTierUp), after
+ * The chance a rift boss of `tier` drops the next tier's sigil: riftDrops.reclimbTierUp below
+ * `bestEverTier` (the highest tier ever completed, M7 re-climb), else riftDrops.bossTierUp after
  * `bestClears` earlier completions of it as the best tier (0 below the best).
  */
-export function riftBossTierUpChance(tier: number, bestClears = 0): number {
+export function riftBossTierUpChance(tier: number, bestClears = 0, bestEverTier = 0): number {
+  if (tier < bestEverTier) return riftDrops.reclimbTierUp;
   const b = riftDrops.bossTierUp;
   return Math.min(1, Math.max(b.min, b.base - b.perTier * (tier - 1)) + b.perClear * Math.max(0, bestClears));
 }

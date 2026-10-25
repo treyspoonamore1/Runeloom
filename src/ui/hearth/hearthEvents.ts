@@ -75,7 +75,8 @@ export function hearthToast(e: LooseEvent): ToastSpec | null {
         'Expedition collected',
         `${plural(Number(e.parts), 'Fuse part')}, ${Number(e.currency)} currency, ` +
           (Number(e.sigils) > 0 ? `${plural(Number(e.sigils), 'Rift Sigil')}, ` : '') +
-          `${Number(e.embers)} Embers`,
+          `${Number(e.embers)} Embers` +
+          (e.beforeRekindle === true ? ' (sent before your Rekindle: no Rift Sigil)' : ''),
       );
     case HEARTH_EVENT.autoSalvaged: {
       const n = Number(e.scrap);

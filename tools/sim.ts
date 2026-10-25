@@ -20,7 +20,7 @@
  *   npm run sim -- --rift-ladder [--seed 1] [--seeds 3] [--target 8] [--verbose] [--json]
  *       M6.5: a new game to the Warden, then the rift ladder with found gear (tools/lib/riftCli.ts).
  *   npm run sim -- --progression [--seed 1] [--seeds 3] [--rekindles 1] [--variants play,offline,nohearth]
- *                  [--sessions 1.5,16] [--rekindle-stall 3] [--rekindle-after 9] [--max-hours 40] [--no-hearth] [--verbose] [--json]
+ *                  [--sessions 1.5,16] [--rekindle-stall 3] [--rekindle-after 9] [--max-hours 40] [--out dir] [--no-hearth] [--verbose] [--json]
  *       M7: a new game to the Warden, then rifts with a model player who uses the Hearth, through
  *       Rekindles (tools/lib/progressionCli.ts). Supersedes --rift-ladder for tiers past the cap.
  *   npm run sim -- --list
@@ -102,6 +102,7 @@ runCli(() => {
       help: '--progression: Rekindle once unlocked after this many rifts without a new best tier (0: never)',
     },
     'max-hours': { kind: 'number', default: 40, help: '--progression: stop after this many hours of play' },
+    out: { kind: 'string', help: '--progression: folder for the CSV and JSON (default shots/progression)' },
     'no-hearth': { kind: 'boolean', help: '--progression: only the player who never uses the Hearth' },
   });
 
@@ -122,6 +123,7 @@ runCli(() => {
       stallFailures: stall === 0 ? null : stall,
       stallRifts: a['rekindle-after'] === 0 ? null : requireInt('rekindle-after', a['rekindle-after'], 1),
       maxHours: a['max-hours']!,
+      outDir: a.out,
       verbose: a.verbose,
       json: a.json,
     });

@@ -12,6 +12,7 @@ import {
   nextUpgrade,
   salvagePlan,
   scrapReserve,
+  rekindleReason,
   shouldRekindle,
   upgradeWeights,
 } from '../../../src/sim/bots/hearthPolicy';
@@ -133,6 +134,11 @@ describe('Rekindle and Mutations', () => {
     expect(shouldRekindle(hero, climb(0, 10), { stallFailures: null, stallRifts: 10 })).toBe(true);
     hero.riftTier = rekindle.baseMaxTier;
     expect(shouldRekindle(hero, climb(0), never)).toBe(true);
+    expect(rekindleReason(hero, climb(0), never)).toBe('cap');
+    hero.riftTier = rekindle.unlockTier;
+    expect(rekindleReason(hero, climb(3, 9))).toBe('failures');
+    expect(rekindleReason(hero, climb(0, 9))).toBe('stall');
+    expect(rekindleReason(hero, climb(0, 0))).toBeNull();
   });
 
   it('saves for the mutations in order, Bright Hearth as often as listed', () => {

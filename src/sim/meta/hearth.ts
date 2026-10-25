@@ -35,6 +35,7 @@ export function createHearth(): HearthState {
     expeditions: [],
     salvage: 'off',
     rekindles: 0,
+    bestEverTier: 0,
     ash: 0,
     mutations: {},
     playSeconds: 0,
@@ -48,8 +49,8 @@ export function hashHearth(h: Hasher, s: HearthState): void {
   h.num(s.scrapCarry).u32(s.garden.length);
   for (const u of s.garden) h.u32(u);
   h.u32(s.expeditions.length);
-  for (const e of s.expeditions) h.u32(e.uid).u32(e.tier).num(e.left).num(e.duration);
-  h.string(s.salvage).byte(0).u32(s.rekindles).u32(s.ash);
+  for (const e of s.expeditions) h.u32(e.uid).u32(e.tier).num(e.left).num(e.duration).u32(e.cycle);
+  h.string(s.salvage).byte(0).u32(s.rekindles).u32(s.bestEverTier).u32(s.ash);
   const ids = Object.keys(s.mutations).sort();
   h.u32(ids.length);
   for (const id of ids)

@@ -167,7 +167,8 @@ export interface ExpeditionBoardView {
   /** Seconds an expedition of `tier` takes. */
   seconds(tier: number): number;
   /** What an expedition of `tier` brings back: Fuse parts, crafting currencies, Embers. */
-  rewards(tier: number): { parts: number; currency: number; embers: number; sigils: number };
+  /** Reward counts for a tier; `cycle` (an expedition's) before the last Rekindle brings no sigil. */
+  rewards(tier: number, cycle?: number): { parts: number; currency: number; embers: number; sigils: number };
 }
 
 export function getExpeditionBoard(session: Session): ExpeditionBoardView {
@@ -180,7 +181,7 @@ export function getExpeditionBoard(session: Session): ExpeditionBoardView {
     maxTier: maxExpeditionTier(hero),
     expeditions: h.expeditions,
     seconds: (tier) => expeditionSeconds(hero, tier),
-    rewards: (tier) => expeditionRewardCounts(tier),
+    rewards: (tier, cycle) => expeditionRewardCounts(tier, cycle === undefined || cycle === h.rekindles),
   };
 }
 

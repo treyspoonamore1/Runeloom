@@ -1,6 +1,6 @@
 /**
  * `npm run sim -- --progression [--seed 1] [--seeds 3] [--rekindles 1] [--variants play,offline]
- *   [--sessions 1.5,16] [--rekindle-stall 3] [--rekindle-after 9] [--max-hours 40] [--no-hearth]
+ *   [--sessions 1.5,16] [--rekindle-stall 3] [--rekindle-after 9] [--max-hours 40] [--out dir] [--no-hearth]
  *   [--verbose] [--json]`
  * (M7 acceptance: the progression sim, src/sim/bots/progression.ts). Per seed and variant:
  *
@@ -31,6 +31,8 @@ export interface ProgressionCliOptions {
   stallFailures: number | null;
   stallRifts: number | null;
   maxHours: number;
+  /** Where the CSV and JSON go (default shots/progression). */
+  outDir?: string;
   verbose?: boolean;
   json?: boolean;
 }
@@ -77,7 +79,7 @@ function describe(r: ProgressionResult, variant: ProgressionVariant): string[] {
     );
   for (const [i, k] of r.rekindles.entries())
     out.push(
-      `  Rekindle ${i + 1} at ${k.hours.toFixed(2)} h after ${k.rifts} rifts: level ${k.level}, ${k.ash} Ash; ` +
+      `  Rekindle ${i + 1} at ${k.hours.toFixed(2)} h after ${k.rifts} rifts (T${k.bestTier}, ${k.reason}): level ${k.level}, ${k.ash} Ash; ` +
         BUILDING_IDS.map((b) => `${SHORT[b]} ${k.buildings[b]}`).join(', ') +
         `; bought ${k.mutations.join(', ') || 'nothing'}`,
     );
@@ -153,11 +155,17 @@ function csv(r: ProgressionResult, variant: string): string {
   return [head.join(','), ...rows, ''].join('\n');
 }
 
-/** The summary row of one run: hours to tiers 1, 4, 8, 10, the first Rekindle, then 10 and 12 after it. */
+/**
+ * The summary row of one run: hours to tiers 1, 4, 8, 10, the first Rekindle (its tier and why),
+ * the re-climb to that tier after it (hours, and as a share of the first climb from the Warden),
+ * the new tiers 11 and 12, and the second Rekindle.
+ */
 export function curveRow(r: ProgressionResult) {
   const c0 = r.firstClear[0] ?? {};
   const c1 = r.firstClear[1] ?? {};
   const r1 = r.rekindles[0];
+  const back = r1 && c1[r1.bestTier] !== undefined ? c1[r1.bestTier]! - r1.hours : undefined;
+  const first = r1 ? c0[r1.bestTier]! - r.campaignHours : undefined;
   return {
     seed: r.seed,
     t1: c0[1],
@@ -165,11 +173,17 @@ export function curveRow(r: ProgressionResult) {
     t8: c0[8],
     t10: c0[10],
     rekindle: r1?.hours,
+    rekindleTier: r1?.bestTier,
+    reason: r1?.reason,
     ash: r1?.ash,
     level: r1?.level ?? r.finalLevel,
     buildings: r1?.buildings,
-    after10: c1[10],
+    reclimb: back,
+    reclimbShare: back !== undefined && first ? back / first : undefined,
+    after11: c1[11],
     after12: c1[12],
+    rekindle2: r.rekindles[1]?.hours,
+    reasons: r.rekindles.map((k) => k.reason),
     rifts: r1?.rifts ?? r.rifts.length,
     failed: r.rifts.filter((x) => !x.completed && (!r1 || x.cycle === 0)).length,
   };
@@ -177,7 +191,8 @@ export function curveRow(r: ProgressionResult) {
 
 export function runProgressionCli(o: ProgressionCliOptions): void {
   const rooms = loadAllRooms();
-  mkdirSync(OUT_DIR, { recursive: true });
+  const outDir = o.outDir ?? OUT_DIR;
+  mkdirSync(outDir, { recursive: true });
   const t0 = performance.now();
   const summary: { variant: ProgressionVariant; rows: ReturnType<typeof curveRow>[] }[] = [];
   for (const variant of o.variants) {
@@ -192,8 +207,8 @@ export function runProgressionCli(o: ProgressionCliOptions): void {
         rekindlePolicy: { stallFailures: o.stallFailures, stallRifts: o.stallRifts },
         maxHours: o.maxHours,
       });
-      writeFileSync(join(OUT_DIR, `${variant}-seed${r.seed}.csv`), csv(r, variant));
-      writeFileSync(join(OUT_DIR, `${variant}-seed${r.seed}.json`), JSON.stringify(r, null, 1));
+      writeFileSync(join(outDir, `${variant}-seed${r.seed}.csv`), csv(r, variant));
+      writeFileSync(join(outDir, `${variant}-seed${r.seed}.json`), JSON.stringify(r, null, 1));
       rows.push(curveRow(r));
       if (!o.json) {
         for (const line of describe(r, variant)) console.log(line);
@@ -202,24 +217,37 @@ export function runProgressionCli(o: ProgressionCliOptions): void {
     }
     summary.push({ variant, rows });
   }
-  writeFileSync(join(OUT_DIR, 'summary.json'), JSON.stringify(summary, null, 1));
+  writeFileSync(join(outDir, 'summary.json'), JSON.stringify(summary, null, 1));
   if (o.json) {
     console.log(JSON.stringify(summary));
     return;
   }
   console.log('');
   console.log(
-    "variant   seed   T1    T4    T8    T10   Rekindle Ash  level  T10'  T12'  rifts fails  buildings at Rekindle",
+    "variant   seed   T1    T4    T8    T10   Rekindle (tier, why)  Ash level  back   %    T11'  T12'  Rekindle2 rifts fails  buildings at Rekindle",
   );
-  for (const { variant, rows } of summary)
+  for (const { variant, rows } of summary) {
     for (const x of rows)
       console.log(
-        `${variant.padEnd(9)} ${String(x.seed).padStart(4)}  ${f2(x.t1)} ${f2(x.t4)} ${f2(x.t8)} ${f2(x.t10)}  ${f2(x.rekindle)}  ` +
-          `${String(x.ash ?? '-').padStart(3)}  ${String(x.level).padStart(5)}  ${f2(x.after10)} ${f2(x.after12)}  ` +
+        `${variant.padEnd(9)} ${String(x.seed).padStart(4)}  ${f2(x.t1)} ${f2(x.t4)} ${f2(x.t8)} ${f2(x.t10)}  ${f2(x.rekindle)} ` +
+          `${(x.rekindle === undefined ? '' : `(T${x.rekindleTier}, ${x.reason})`).padEnd(14)} ` +
+          `${String(x.ash ?? '-').padStart(3)} ${String(x.level).padStart(5)}  ${f2(x.reclimb)} ` +
+          `${x.reclimbShare === undefined ? '  - ' : `${Math.round(x.reclimbShare * 100)}%`.padStart(4)} ` +
+          `${f2(x.after11)} ${f2(x.after12)}  ${f2(x.rekindle2)}    ` +
           `${String(x.rifts).padStart(5)} ${String(x.failed).padStart(5)}  ` +
           (x.buildings ? BUILDING_IDS.map((b) => `${SHORT[b]} ${x.buildings![b]}`).join(', ') : '-'),
       );
+    const reasons = rows.flatMap((x) => x.reasons);
+    if (reasons.length)
+      console.log(
+        `  ${variant}: Rekindles by reason: ` +
+          (['cap', 'stall', 'failures'] as const)
+            .map((k) => `${k} ${reasons.filter((r) => r === k).length}`)
+            .join(', '),
+      );
+  }
   console.log(
-    `(hours of play; T10' and T12' are after the first Rekindle) ${((performance.now() - t0) / 1000).toFixed(0)} s; CSV and JSON in shots/progression/`,
+    "(hours of play; back: hours from the first Rekindle to its tier again, %: of the first climb from the Warden to it; T11' and T12' after the first Rekindle)",
   );
+  console.log(`${((performance.now() - t0) / 1000).toFixed(0)} s; CSV and JSON in ${outDir}`);
 }

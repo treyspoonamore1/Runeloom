@@ -24,6 +24,11 @@ export interface Expedition {
   left: number;
   /** Its full duration when sent, for progress bars. */
   duration: number;
+  /**
+   * hearth.rekindles when it was sent. One sent before a Rekindle still returns, but brings no
+   * Rift Sigil and counts no completion: sigils are rift progress, which Rekindle resets.
+   */
+  cycle: number;
 }
 
 /** The Salvage Loom's setting: salvage picked-up gear up to this rarity ('off': none). Never uniques. */
@@ -47,6 +52,11 @@ export interface HearthState {
   salvage: SalvageSetting;
   /** Times Rekindled. */
   rekindles: number;
+  /**
+   * The highest rift tier ever completed, over every cycle (M7 re-climb): never reset by Rekindle.
+   * Below it the next tier's sigil comes fast (data/rift.ts riftDrops.reclimbTierUp).
+   */
+  bestEverTier: number;
   /** Ash held. */
   ash: number;
   /** Mutations bought, by id (Bright Hearth up to 10); missing means 0. */

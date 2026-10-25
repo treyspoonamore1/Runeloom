@@ -32,7 +32,13 @@ import type { GameState } from '../state';
 import type { RoomSource } from '../world/worldState';
 import { runCampaign } from './campaign';
 import { applyReferenceBuild } from './campaignPlan';
-import { defaultRekindlePolicy, nextMutation, shouldRekindle, type RekindlePolicy } from './hearthPolicy';
+import {
+  defaultRekindlePolicy,
+  nextMutation,
+  rekindleReason,
+  type RekindlePolicy,
+  type RekindleReason,
+} from './hearthPolicy';
 import { emptyTally, visitHearth, type HearthTally } from './hearthVisit';
 import { humanFightFactor, pacingMinutes, riftOverhead } from './pacing';
 import { clearOpenRift } from './riftBot';
@@ -97,6 +103,8 @@ export interface ProgressionRekindle {
   rifts: number;
   bestTier: number;
   ash: number;
+  /** Why the model player Rekindled (bots/hearthPolicy.ts rekindleReason). */
+  reason: RekindleReason;
   embersSpent: number;
   level: number;
   buildings: Record<BuildingId, number>;
@@ -193,7 +201,8 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
     restAtStone(state);
     if (useHearth) {
       visitHearth(state, res.tally);
-      if (h.rekindles < targetRekindles && shouldRekindle(hero, climb, policy)) {
+      const reason = h.rekindles < targetRekindles ? rekindleReason(hero, climb, policy) : null;
+      if (reason !== null) {
         const ash = ashForRekindle(hero);
         const rec: ProgressionRekindle = {
           hours: play / 3600,
@@ -201,6 +210,7 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
           rifts: res.rifts.length,
           bestTier: hero.riftTier,
           ash,
+          reason,
           embersSpent: h.embersSpent,
           level: hero.level,
           buildings: { ...h.buildings },
@@ -252,16 +262,18 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
     sessionPlay += human;
     const embers = h.embers - before.embers;
     res.riftEmbers += embers;
-    climb.failuresInARow = log.completed ? 0 : climb.failuresInARow + 1;
+    // The game's ladder is the truth: a boss killed just before a death still completes the rift.
+    const completed = log.completed || hero.riftTier > before.best;
+    climb.failuresInARow = completed ? 0 : climb.failuresInARow + 1;
     climb.riftsSinceBest = hero.riftTier > before.best ? 0 : climb.riftsSinceBest + 1;
     const hours = play / 3600;
     const fc = (res.firstClear[before.cycle] ??= {});
-    if (log.completed && fc[log.tier] === undefined) fc[log.tier] = hours;
+    if (completed && fc[log.tier] === undefined) fc[log.tier] = hours;
     res.rifts.push({
       cycle: before.cycle,
       tier: log.tier,
       mods: log.mods,
-      completed: log.completed,
+      completed,
       died: log.died,
       timedOut: log.timedOut,
       hours,

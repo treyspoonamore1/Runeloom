@@ -4,8 +4,9 @@
  * - The Cinder Warden's first death drops the first Rift Sigil (data/rift.ts riftDrops.wardenSigilTier).
  * - A rift boss's death completes the rift: hero.riftTier rises to its tier (the ladder), and
  *   it drops a sigil, one tier higher with riftBossTierUpChance (M7: more likely with each
- *   completion of the best tier, hero.riftBestClears) else its own tier, at most the Rekindle
- *   cap, some crafting currency
+ *   completion of the best tier, hero.riftBestClears; fast below the best tier ever,
+ *   hero.hearth.bestEverTier, which it raises) else its own tier, at most the Rekindle cap, some
+ *   crafting currency
  *   (riftRewards) and, once the Hearth is lit, Embers (meta/embers.ts), around its body.
  * - The Cinder Warden's first death also lights the Hearth (M7, meta/hearth.ts lightHearth).
  * Called by world/roomClear.ts when a boss dies, after the death is recorded.
@@ -49,8 +50,11 @@ export function onBossDefeated(state: GameState, kind: string, x: number, y: num
     // M7: the next tier's sigil with a chance that grows with each completion of the best tier,
     // else this tier's; never above the Rekindle cap.
     const atBest = tier === hero.riftTier;
-    const up = state.lootRng.chance(riftBossTierUpChance(tier, atBest ? hero.riftBestClears : 0)) ? 1 : 0;
+    // Below the best tier ever (an earlier cycle's), the fast re-climb chance.
+    const chance = riftBossTierUpChance(tier, atBest ? hero.riftBestClears : 0, hero.hearth.bestEverTier);
+    const up = state.lootRng.chance(chance) ? 1 : 0;
     if (atBest) hero.riftBestClears++;
+    hero.hearth.bestEverTier = Math.max(hero.hearth.bestEverTier, tier);
     out.push({
       kind: 'sigil',
       sigil: rollSigil(state.hero, state.lootRng, Math.min(maxRiftTier(state.hero), tier + up)),

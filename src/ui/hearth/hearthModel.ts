@@ -103,6 +103,8 @@ export interface ExpeditionRow {
   frac: number;
   /** "9m 30s left", or "Back". */
   text: string;
+  /** The cycle it was sent in (Rekindles then): one from before the last Rekindle brings no sigil. */
+  cycle: number;
 }
 
 /** Expeditions as rows: ready ones first (they wait on the player), then the soonest back. */
@@ -117,6 +119,7 @@ export function expeditionRows(list: readonly Expedition[]): ExpeditionRow[] {
         ready,
         frac,
         text: ready ? 'Back: ready to collect' : `${fmtDuration(e.left)} left`,
+        cycle: e.cycle,
       };
     })
     .sort((a, b) => Number(b.ready) - Number(a.ready) || b.frac - a.frac);

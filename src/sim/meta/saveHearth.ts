@@ -6,12 +6,13 @@
  * max, garden uids are pouch runes, expedition uids unique, mutation counts within their max),
  * throwing an Error that names the field, like src/sim/saveParse.ts.
  */
-import { BUILDING_IDS, buildings, mutations, type MutationId } from '../../../data/hearth';
+import { BUILDING_IDS, buildings, mutations, MUTATION_IDS, type MutationId } from '../../../data/hearth';
 import { RIFT_TIERS } from '../../../data/rift';
 import type { HeroState } from '../hero/types';
 import type { WorldState } from '../world/worldState';
 import { createHearth, lightHearthState } from './hearth';
 import { SALVAGE_ORDER } from './salvage';
+import { gardenPlots, rekindlesForTier } from './view';
 import type { Expedition, HearthState, SalvageSetting } from './types';
 
 type Obj = Record<string, unknown>;
@@ -51,11 +52,14 @@ function opt<T>(o: Obj, key: string, read: (v: unknown, path: string) => T, d: T
 function expedition(v: unknown, path: string): Expedition {
   const o = obj(v, path);
   const duration = num(o.duration, `${path}.duration`);
+  if (!(duration > 0)) fail(`${path}.duration`, 'must be more than 0');
   return {
     uid: int(o.uid, `${path}.uid`, 1),
     tier: int(o.tier, `${path}.tier`, 1, RIFT_TIERS),
     left: num(o.left, `${path}.left`, 0, duration),
     duration,
+    // Saves from before the field: -1 until parseHearth sets this cycle (the Hearth's rekindles).
+    cycle: o.cycle === undefined ? -1 : int(o.cycle, `${path}.cycle`),
   };
 }
 
@@ -99,10 +103,17 @@ export function parseHearth(v: unknown): HearthState {
   const m = opt(o, 'mutations', obj, {} as Obj);
   const muts: HearthState['mutations'] = {};
   for (const [id, n] of Object.entries(m)) {
-    if (!(id in mutations)) fail(`${P}.mutations.${id}`, 'is not a mutation');
+    if (!(MUTATION_IDS as readonly string[]).includes(id)) fail(`${P}.mutations.${id}`, 'is not a mutation');
     const count = int(n, `${P}.mutations.${id}`, 0, mutations[id as MutationId].max);
     if (count > 0) muts[id as MutationId] = count;
   }
+  const rekindles = opt(o, 'rekindles', int, d.rekindles);
+  expeditions.forEach((e, i) => {
+    if (e.cycle < 0)
+      e.cycle = rekindles; // saved before expeditions recorded their cycle
+    else if (e.cycle > rekindles)
+      fail(`${P}.expeditions[${i}].cycle`, `is after the last Rekindle (${rekindles})`);
+  });
   return {
     lit,
     embers: opt(o, 'embers', int, d.embers),
@@ -112,7 +123,8 @@ export function parseHearth(v: unknown): HearthState {
     garden,
     expeditions,
     salvage,
-    rekindles: opt(o, 'rekindles', int, d.rekindles),
+    rekindles,
+    bestEverTier: opt(o, 'bestEverTier', (x, p) => int(x, p, 0, RIFT_TIERS), d.bestEverTier),
     ash: opt(o, 'ash', int, d.ash),
     mutations: muts,
     playSeconds: opt(o, 'playSeconds', num, d.playSeconds),
@@ -123,8 +135,11 @@ export function parseHearth(v: unknown): HearthState {
 /**
  * After parsing: a save from before M7 (`hadHearth` false) whose world shows the Cinder Warden
  * dead gets a lit Hearth, as lightHearth gives (onLit Embers, the Hearth's Loom Stone in
- * world.loomStones). Garden uids must be the hero's runes (else it throws); garden runes that a
- * weave socketed (`socketed`) go back to the pouch.
+ * world.loomStones), and the Rekindles its rift progress needs: the tier cap must cover the next
+ * tier of its ladder and every sigil it holds (no Ash for them). Garden uids must be the hero's
+ * runes (else it throws); garden runes that a weave socketed (`socketed`), and runes beyond the
+ * Rune Garden's plots, go back to the pouch. Expedition uids must be below nextUid and no rune's,
+ * item's, part's or sigil's (else it throws).
  */
 export function migrateHearth(
   hero: HeroState,
@@ -133,11 +148,29 @@ export function migrateHearth(
   socketed: ReadonlySet<number> = new Set(),
 ): void {
   const h = hero.hearth;
+  // M7 re-climb: the best tier ever is at least this cycle's (saves from before it: the ladder).
+  h.bestEverTier = Math.max(h.bestEverTier, hero.riftTier);
   if (!hadHearth && !h.lit && world.bossesDefeated.includes('cinder_warden'))
     lightHearthState(hero, world.loomStones);
+  if (!hadHearth) {
+    // M6 saves climbed past tier 10 without Rekindles: grant the cap their ladder already reached.
+    const top = hero.sigils.reduce((m, g) => Math.max(m, g.tier), hero.riftTier + 1);
+    h.rekindles = Math.max(h.rekindles, rekindlesForTier(top));
+  }
   const runes = new Set(hero.runes.map((r) => r.uid));
   h.garden.forEach((u, i) => {
     if (!runes.has(u)) fail(`${P}.garden[${i}]`, `is not one of the hero's runes (${u})`);
   });
-  h.garden = h.garden.filter((u) => !socketed.has(u));
+  h.garden = h.garden.filter((u) => !socketed.has(u)).slice(0, gardenPlots(h.buildings.rune_garden));
+  const taken = new Set<number>([
+    ...hero.runes.map((r) => r.uid),
+    ...hero.items.map((it) => it.uid),
+    ...hero.parts.map((p) => p.uid),
+    ...hero.sigils.map((g) => g.uid),
+  ]);
+  h.expeditions.forEach((e, i) => {
+    if (e.uid >= hero.nextUid) fail(`${P}.expeditions[${i}].uid`, `is not below nextUid (${hero.nextUid})`);
+    if (taken.has(e.uid))
+      fail(`${P}.expeditions[${i}].uid`, `is also a rune, item, part or sigil (${e.uid})`);
+  });
 }
