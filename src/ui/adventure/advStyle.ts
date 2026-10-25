@@ -39,6 +39,7 @@ const advCss = `
 .ad-toast.k-hearth { --rar: #ff8a3a; } .ad-toast.k-salvage { --rar: #8a82ad; } .ad-toast.k-salvage .ad-toast-txt b { color: var(--sand); font-size: calc(var(--u) * 1.8); }
 .ad-toast.k-heart { --rar: #ff6a5a; } .ad-toast.k-shard { --rar: #bfaeff; } .ad-toast.k-rune { --rar: #72dcc8; }
 .ad-toast-ico { flex: none; width: calc(var(--u) * 4.2); height: calc(var(--u) * 4.2); padding: calc(var(--u) * 0.35); border-radius: 50%; background: radial-gradient(circle at 40% 35%, #3d3580, #1a1638); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink); }
+.ad-toast-ico.art { width: calc(var(--u) * 4.8); height: calc(var(--u) * 4.8); padding: 0; border-radius: 0; background: none; box-shadow: none; }
 .ad-toast-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .ad-toast-txt b { font-size: calc(var(--u) * 2.1); color: var(--rar); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ad-toast.k-scrap b, .ad-toast.k-key b { color: var(--cream); }

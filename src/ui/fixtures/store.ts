@@ -60,9 +60,17 @@ export function fixtureApply(edit: HeroEdit): string | null {
       if (h.equipped[edit.slot] === null) return 'Nothing equipped there';
       h.equipped[edit.slot] = null;
       return null;
+    case 'lock': {
+      const it = h.items.find((i) => i.uid === edit.uid);
+      if (!it) return 'No such item';
+      if (edit.locked) it.locked = true;
+      else delete it.locked;
+      return null;
+    }
     case 'salvage': {
       const it = h.items.find((i) => i.uid === edit.uid);
       if (it) {
+        if (it.locked) return 'Unlock it first';
         if (equippedSlot(h, it.uid)) return 'Unequip it first';
         h.items = h.items.filter((i) => i !== it);
         h.threadScrap += fixtureSalvageValue(it);

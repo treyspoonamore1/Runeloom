@@ -47,6 +47,7 @@ export async function runCraftShot(page: Page, id: CraftShotId): Promise<void> {
       base: 'leather_boots',
       rarity: 'rare',
       name: 'Gloam Tread',
+      locked: true,
       itemLevel: 9,
       affixes: [
         { id: 'move_speed', tier: 5, value: 8 },

@@ -1,24 +1,15 @@
 /** The equipment slots (click or drag to equip and unequip) and the Fuse sockets of the spindle. */
 import type { JSX } from 'preact';
-import { UNFUSE_KEEP_COST } from '../../app/hero';
 import type { Session } from '../../app/session';
 import { EQUIP_SLOTS, type EquipSlot, type HeroState } from '../../sim/hero/types';
 import { Icon } from '../adventure/icons';
-import { menuTip, tipFor } from '../menus/frame';
-import { itemDescription, partName, slotsFor, socketsOf } from './adapter';
-import {
-  askUnfuse,
-  dragging,
-  DRAG_MIME,
-  equip,
-  fuse,
-  SLOT_ICON,
-  SLOT_NAMES,
-  unequip,
-  type DragPayload,
-} from './slots';
+import { ItemArt } from '../items/itemArt';
+import { menuTip } from '../menus/frame';
+import { itemDescription, slotsFor } from './adapter';
+import { Padlock } from './badges';
+import { dragging, DRAG_MIME, equip, SLOT_ICON, SLOT_NAMES, unequip, type DragPayload } from './slots';
 import { equippedItem } from './stats';
-import { ItemTip, PartTip } from './tips';
+import { itemTipProps } from './tips';
 
 export function readDrag(e: DragEvent): DragPayload | null {
   const raw = e.dataTransfer?.getData(DRAG_MIME);
@@ -92,15 +83,31 @@ function SlotButton({
           if (item) equip(session, item, slot);
         },
       )}
-      {...(it ? tipFor(it.rarity, () => <ItemTip session={session} item={it} equipped />) : {})}
+      {...(it ? itemTipProps(session, it, true) : {})}
     >
-      <span class="inv-ico">
-        <Icon kind={SLOT_ICON[slot]} />
+      <span class="inv-art sm">
+        {it ? (
+          <ItemArt item={it} size="sm" />
+        ) : (
+          <span class="inv-ghost">
+            <Icon kind={SLOT_ICON[slot]} />
+          </span>
+        )}
       </span>
       <span class="inv-slot-txt">
         <small>{SLOT_NAMES[slot]}</small>
         <b>{d ? d.name : 'Empty'}</b>
+        {it ? (
+          <em>
+            {d!.name !== d!.base ? `${d!.base} · ` : ''}ilvl {it.itemLevel}
+          </em>
+        ) : null}
       </span>
+      {it?.locked ? (
+        <span class="inv-kept" title="Kept: salvage skips it">
+          <Padlock locked />
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -119,68 +126,6 @@ export function Equipment({
       {EQUIP_SLOTS.map((s) => (
         <SlotButton key={s} session={session} hero={hero} rev={rev} slot={s} />
       ))}
-    </div>
-  );
-}
-
-/** The equipped spindle's sockets: drop a part to fuse it; a fused part offers Unfuse. */
-export function FusePanel({ session, hero }: { session: Session; hero: Readonly<HeroState>; rev: number }) {
-  const sp = equippedItem(hero, 'spindle');
-  const n = sp ? socketsOf(sp) : 0;
-  const drag = dragging.value;
-  return (
-    <div class="inv-fuse" aria-label="Fuse">
-      <h3>
-        Fuse <small>{sp ? itemDescription(sp).name : 'No spindle'}</small>
-      </h3>
-      {n === 0 ? <p class="mn-muted">This spindle has no Fuse socket.</p> : null}
-      <div class="inv-sockets">
-        {Array.from({ length: n }, (_, i) => {
-          const part = sp!.fused[i] ?? null;
-          if (part)
-            return (
-              <button
-                key={i}
-                type="button"
-                class="inv-socket full"
-                aria-label={`Socket ${i + 1}: ${partName(part)}. Click to unfuse`}
-                onClick={() => askUnfuse(sp!.uid, i, part)}
-                {...tipFor('magic', () => <PartTip part={part} fused />)}
-              >
-                <span class="inv-ico">
-                  <Icon kind="part" />
-                </span>
-                <span class="inv-slot-txt">
-                  <small>Socket {i + 1}</small>
-                  <b>{partName(part)}</b>
-                </span>
-                <span class="inv-unfuse">Unfuse</span>
-              </button>
-            );
-          return (
-            <div
-              key={i}
-              class={`inv-socket empty${drag?.kind === 'part' ? ' lit' : ''}`}
-              {...dropTarget(
-                (p) => p.kind === 'part',
-                (p) => {
-                  const pt = hero.parts.find((x) => x.uid === p.uid);
-                  if (pt) fuse(session, pt, i);
-                },
-              )}
-            >
-              <span class="inv-ring" />
-              <span class="inv-slot-txt">
-                <small>Socket {i + 1}</small>
-                <b>Drop a part here</b>
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <p class="mn-help">
-        Unfusing destroys the part, unless you pay {UNFUSE_KEEP_COST} Thread Scrap to keep it.
-      </p>
     </div>
   );
 }

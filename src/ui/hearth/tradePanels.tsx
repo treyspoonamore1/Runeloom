@@ -2,6 +2,7 @@
 import { currencies } from '../../../data/currency';
 import type { SalvageSetting } from '../../sim/meta/types';
 import { Icon } from '../adventure/icons';
+import { CurrencyArt } from '../items/itemArt';
 import { CountUp } from './countUp';
 import { fmtNum } from './hearthModel';
 import { BuildingUpgrade } from './buildingsPanel';
@@ -82,9 +83,12 @@ export function SpindlewrightPanel(p: PanelProps & { onBench(): void }) {
           const poor = p.snap.scrap < t.price;
           return (
             <div class="hx-ware" key={t.currency}>
-              <span>
-                <b>{t.name}</b>
-                <small>{currencies[t.currency].text}</small>
+              <span class="hx-row hx-ware-name">
+                <CurrencyArt currency={t.currency} size="md" />
+                <span class="grow">
+                  <b>{t.name}</b>
+                  <small>{currencies[t.currency].text}</small>
+                </span>
               </span>
               <span class="hx-owned">
                 Owned <b class="hx-num">{fmtNum(t.owned)}</b>

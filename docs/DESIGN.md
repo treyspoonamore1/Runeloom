@@ -47,8 +47,12 @@ Regions:
 | # | Region | Teaches | Dungeon | Dungeon item | Status |
 |---|---|---|---|---|---|
 | 1 | Emberwood: grassy forest, rivers, wooden bridges | Fire, water, oil | The Sunken Kiln | Frost rune | MVP (M4) |
-| 2 | Glasswater Fen: marsh, metal ruins | Storm, conduction | The Drowned Foundry | Tide rune | M8 |
-| 3 | Galeback Cliffs: wind, ledges | Gale, wind fields | TBD | Gale rune | Later |
+| 2 | Glasswater Fen: marsh, metal ruins, glassy water, rusted pylons, fog and fireflies | Storm, conduction | The Drowned Foundry | Tide rune | M8 phase 1 (CONTENT §13) |
+| 3 | Galeback Cliffs: wind, ledges | Gale, wind fields | TBD | TBD | Later |
+
+Each region's boss gives the element the next region teaches: the Cinder Warden drops Storm (the Fen), the Glasswater Coil drops Gale (the Cliffs). The dungeon item is the region's own new element.
+
+The Fen comes after the first rifts: it is reached through K10's storm door, which wakes once a tier 6 rift is completed; it sits at area levels 18–24 with tier 8 rift scaling, and its boss gates rift tiers above 8 (§10.4).
 
 ## 4. Camera, controls, feel
 
@@ -162,15 +166,20 @@ Readout assumptions, shown as a note under the numbers:
 |---|---|---|
 | `ground` | u8 | Material enum (§6.2) |
 | `surface` | u8 | None or Oil |
-| `air` | u8 | None, Smoke, Steam |
+| `air` | u8 | None, Smoke, Steam, Fog (M8) |
 | `fire` | u8 | Burn intensity 0 to 255 |
 | `fuel` | u16 | Remaining burn time in grid ticks |
 | `charge` | u8 | Remaining electrified ticks |
 | `airTimer` | u8 | Remaining smoke/steam ticks |
 | `timer` | u16 | Material timer: thaw, crack, dry, temporary terrain |
-| `wet` | u8 | Remaining ticks a non-water cell stays wet (Tide, Hydromancer). Wet cells can't ignite |
+| `wet` | u16 (M8; u8 before) | Remaining ticks a non-water cell stays wet (Tide, Hydromancer). Wet cells can't ignite. Widened so a Lingering Tide's 15 s fits |
 | `under` | u8 | Material the cell becomes when its current material burns away or its timer ends: pit under a wooden floor, deep water under a bridge, the original ground under temporary water or ice. Freezing or melting temporary terrain keeps `under` |
+| `borrowed` | u8 (M8) | 1 while the cell's terrain is temporary: Tide or Hydromancer water, a Tide-filled pit, ice or an ice bridge frozen from them, a doused furnace vent. When its `timer` ends it returns to `under` (rule 27) |
+| `gustDir` | u8 (M8) | Gust direction: 0 none, 1–8 the way it blows (E, NE, N, NW, W, SW, S, SE) |
+| `gustTimer` | u8 (M8) | Remaining gust grid ticks |
 | `owner` | u8 | Team that created the current effect: world, player, enemy |
+
+Room-wide (M8): `wind`, 0 or a direction 1–8, from the `@wind` header or the rift suffix "of the Gale" (§6.6); and `fogMask`, one bit per cell, from `@fog` headers (CONTENT §6.2).
 
 - The grid updates at 20 Hz (every 3rd 60 Hz sim tick). Only cells in an active set update, so quiet terrain costs nothing.
 - Entities read the cell under their center.
@@ -196,7 +205,9 @@ Readout assumptions, shown as a note under the numbers:
 | Metal pylon | no | no | yes, no falloff | |
 | Ash | yes | no | no | Inert |
 | Wall | no | no | no | Blocks everything |
-| Pit | no | no | no | Projectiles pass over |
+| Pit | no | no | no | Projectiles pass over. Tide fills it with deep water for 10 s (M8) |
+| Furnace vent, lit (M8) | no | no (it is fire) | no | Solid flame on a metal grate: blocks movement, not projectiles. Ignites entities touching it. Tide douses it (rule 30) |
+| Furnace vent, doused (M8) | yes | no | yes, no falloff | The bare grate, for 10 s; conducts like metal floor. Then it relights |
 
 Surface layer:
 
@@ -210,6 +221,7 @@ Air layer:
 |---|---|
 | Smoke | From burning grass, bramble, wood. Lasts 4 s. Blocks enemy sight (Blind). Only lightly tints the player's view |
 | Steam | From fire on water. Lasts 3 s. Same sight rules as smoke |
+| Fog (M8) | Placed by a room's `@fog` headers; permanent. Hides the ground from the player beyond a 10-cell lantern radius (render only). Doesn't Blind enemies. Fire burns it off for 8 s, a gust for 10 s, then it rolls back in (rule 29). Smoke and steam replace it while they last. Never drifts |
 
 ### 6.3 The chemistry table
 
@@ -237,12 +249,18 @@ Each row is one rule and gets one unit test named after its number (`rule 07: fr
 | 18 | Oiled entity is ignited | | Ignite damage ×2 and the entity leaves burning cells behind it while ignited |
 | 19 | Shock lands on a Wet entity | | Arcs to up to 5 other Wet entities within 6 cells, applying the same Shock and 30% of the hit's damage. One generation of arcs only |
 | 20 | A Frozen enemy is killed | | Shatter: no corpse, frost burst in a 4-cell radius that applies rules 7 and 8, no damage |
-| 21 | Wind blows over fire (M8, Gale) | | Spread chance ×2 downwind, ×0.25 upwind. Smoke and steam drift with the wind |
+| 21 | Wind blows over a burning cell (M8: Gale gusts, Bellows Toad croaks, `@wind` rooms, the rift suffix "of the Gale") | | Rule 2's wind factor toward each 4-neighbor: ×2 downwind, ×0.25 upwind, ×1 across (§6.6). Smoke and steam drift downwind: 5 cells/s in a gust, 2.5 cells/s in room wind. Wind has no owner: fire keeps its own |
 | 22 | An Ignited entity moves over a flammable cell | | That cell ignites, owned by the team that ignited the entity. Entities that are always burning (Tinderlings) light enemy-owned cells |
 | 23 | Fire burns on mud for 1 s | | Mud dries to dirt |
-| 24 | Tide (M8) hits terrain | | Fire goes out, dirt becomes mud, stone becomes shallow water for 10 s, grass is unburnable for 10 s |
-| 25 | An ice bridge breaks under an entity | | Entity falls: 10% max life damage, then returns to its last safe cell |
+| 24 | Tide (M8) hits terrain | | Per cell, by material (full table §6.5): fire goes out (fuel kept) and the cell is wet for 10 s; stone and ash become borrowed shallow water for 10 s; a pit becomes borrowed deep water for 10 s; dirt becomes mud (permanent); grass, bramble, wood, crates and barricades are wet for 10 s (unburnable); a lit furnace vent is doused (rule 30); borrowed water's timer goes back to 10 s. Other water, ice, mud and metal don't change |
+| 25 | The ground under an entity stops being walkable (an ice bridge breaks, a bridge burns, a Tide-filled pit drains, M8) | Not a swimmer (rule 31) | Entity falls: 10% max life damage, then returns to its last safe cell |
 | 26 | Fire is placed on a walkable non-flammable cell (spell footprint, death burst, explosion, rule 18 trail) | Not water (rule 4), not ice (rule 5) | Placed fire at intensity 128 for 1.0 s (Lingering applies). It spreads into flammable neighbors by rule 2 and damages by rule 16, then goes out leaving the ground unchanged (except mud, rule 23) |
+| 27 | A borrowed cell's timer ends (M8) | | It returns to `under` and stops being borrowed, whatever it became meanwhile: Tide water, a filled pit, ice or an ice bridge frozen from them, a doused vent. Charge on it ends if `under` doesn't conduct. Fire on borrowed ice returns the cell to `under` at once, with steam (rule 4) |
+| 28 | A Tide footprint covers a push block or ice block (M8) | The tile beyond is free | Washed one tile, like a push (CONTENT §6.1): along the spell's direction, or for Nova, Lob and Orb away from the footprint's center. An ice block that lands on ice or an ice bridge slides on. Once per block per spell instance |
+| 29 | A gust or Fire reaches fog (M8) | | Fog in those cells clears for 10 s (gust) or 8 s (Fire), then rolls back in. Lingering doesn't lengthen it |
+| 30 | A lit furnace vent (M8) | | Entities touching it (within 0.5 cells of its tile) are Ignited as by rule 16 (world-owned; Wet protects). Tide douses it: a borrowed, walkable grate for 10 s that conducts like metal floor, then it relights (rule 27). Collision pushes anyone standing on it off as it relights; they aren't ignited by the relight. Fire on a doused vent relights it at once. Frost and Storm don't change a lit vent |
+| 31 | A swimmer's cell stops being water (M8; Bog Lurker, Glasspike, Glasswater Coil) | Not ice (ice traps it, CONTENT §5) | Stranded: it can't attack (the Coil can thrash) and takes 50% more damage. After 2 s (the Coil: 5 s) it crawls at 4 cells/s toward the nearest water within 16 cells and ends Stranded on reaching it. With no water in reach it dries out, losing 5% of max life per second (never bosses) |
+| 32 | Tide hits an entity (M8) | | Wet for 3 s (Lingering +30%), the same Wet as rule 15: it puts out Ignite and lit fuses (Tar Hulk, Tar Matriarch) and quenches Hot enemies (CONTENT §5 Slagshell). Tide never Wets its caster |
 
 **Hazard ownership.** Every terrain effect records its owner team. Hazards damage the other team and never their owner team. World-owned hazards (ambient fires, a Tar Hulk explosion) hurt everyone. Fire that spreads keeps the owner of the cell it spread from. A new effect on a cell takes the new owner. Exception: fire on the Tar Matriarch's tar (CONTENT §5) is always world-owned, whoever lit it.
 
@@ -255,11 +273,68 @@ Each row is one rule and gets one unit test named after its number (`rule 07: fr
 | Freeze | At 100 chill: frozen for 1.2 s (can't act) |
 | Boss chill | Bosses use their own rule: each Frost hit adds a flat 12 chill (×1.5 if Wet), whatever its damage. Chill decays 10/s, slow max 15%. Freeze lasts 0.8 s, then 6 s of freeze immunity |
 | Shock | Increased damage taken = clamp(hit ÷ max life × 100, 5, 50)%, for 4 s. The strongest one applies |
-| Wet | Rule 15. Extinguishes and prevents Ignite. Chill gain ×1.5. Makes the entity conductive (rule 19) |
+| Wet | Rules 15 and 32 (Tide hits). Extinguishes and prevents Ignite. Chill gain ×1.5. Makes the entity conductive (rule 19) |
+| Stranded (M8) | Rule 31. Swimmers only. Can't attack, 50% more damage taken |
 | Oiled | Rules 17 and 18 |
 | Blind | An enemy inside smoke or steam, or whose target is inside it, can't acquire targets beyond 4 cells |
 
 The player suffers the same ailments from enemy and world hazards, with player-side limits: freeze at most 0.6 s, shock at most 30%.
+
+### 6.5 Tide (M8)
+
+Tide is the Drowned Foundry's dungeon item. It lends the world water for a while: everything it makes that isn't mud is **borrowed** and goes back (rule 27). It deals Physical damage and Wets what it hits (rule 32). Code: `tideCell` in `src/sim/grid/elements.ts`, called from `paintElement` (`src/sim/grid/paint.ts`); borrowed water generalizes `src/sim/grid/tempWater.ts`. Numbers in `data/tuning.ts` `tide`.
+
+Rule 24 per cell. A burning cell (any material, oil too) first goes out: fuel is kept, as rule 9, but the cell is wet for 10 s, so it can't relight until then. Then its material decides:
+
+| Cell | Result | Borrowed |
+|---|---|---|
+| Stone, ash | Shallow water for 10 s | yes, `under` = the ground |
+| Pit | Deep water for 10 s. Frost on it makes an ice bridge, so Tide then Frost crosses a gap | yes, `under` = pit |
+| Dirt | Mud. Permanent: it dries by rule 23 and Frost turns it to dirt (rule 10) | no |
+| Grass, bramble, wood, crate, barricade, oil barrel | Wet for 10 s (can't ignite, rule 1) | no |
+| Lit furnace vent | Doused for 10 s (rule 30) | yes, `under` = lit vent |
+| Borrowed water | Its timer goes back to 10 s | stays |
+| A lit brazier | Goes out, unless its group already opened its door (those stay lit, CONTENT §6.2) | — |
+| Shallow or deep water, ice, ice bridge, mud, rime, metal floor, pylons, walls, other objects | No change | — |
+
+- **Durations.** 10 s (`tide.floodSeconds`, `tide.wetSeconds`, `tide.ventSeconds`), × Lingering (15 s) and × "terrain effect duration" stats like any terrain effect. The last 1.5 s of borrowed terrain flickers, so the player can read when it will go.
+- **Oil.** Oil floats on borrowed water and stays on the ground when the water goes. Burning oil goes out and stays unlit while wet.
+- **Charge.** Borrowed water conducts like any shallow water (rule 11). Charge already on the grid doesn't spread into water made after its event; the next Storm hit covers it. When borrowed water returns to stone, its charge ends (`setGround` clears charge on non-conductors).
+- **Ice.** Frost on borrowed water makes ice (15 s) or an ice bridge (8 s plus 1.5 s cracking) that stays borrowed: when it thaws or breaks the cell returns to `under`, not to water. Tide then Frost on stone is a 15 s ice path that ice blocks slide on. Fire on borrowed ice returns the cell to `under` at once.
+- **Entities on it.** Walkers on borrowed water are Wet (rule 15) and slowed 20%. A Tide-filled pit that drains under an entity drops it (rule 25). Swimmers follow borrowed water like any water and strand when it goes (rule 31): this is how the Glasswater Coil is beaten (§10.5).
+- **Slot order** (§5.3) holds: `[Tide, Fire]` on stone makes water, then steam; `[Fire, Tide]` places fire and puts it out; `[Tide, Frost]` makes the ice path.
+- **Owners.** Water is not a hazard, so borrowed terrain has no owner. Charge on it takes the owner of the Storm that charged it.
+- **Hydromancer** water (CONTENT §7) and enemy puddles (Spark Heron, Glasswater Coil) are borrowed too. This fixes `tempWater.ts`'s known limit (water that froze and thawed stayed for good).
+
+### 6.6 Wind (M8)
+
+Wind changes rule 2 and moves smoke, steam and fog. It comes from Gale gusts (the player's, CONTENT §1.3), Bellows Toad croaks (enemy gusts, same rule) and room wind (`@wind`, the rift suffix "of the Gale"). Code: a new `src/sim/grid/wind.ts`; the hot loop in `src/sim/grid/tick.ts` replaces its constant `windFactor` read. Numbers in `data/tuning.ts` `wind`.
+
+**Representation: one room wind direction plus transient gust cells.** The grid stores the room's `wind` (0 or one of 8 directions) and two per-cell fields, `gustDir` and `gustTimer` (§6.1). A cell's wind is its gust while `gustTimer` > 0, else the room wind. Why this and not a per-cell or per-tile vector field:
+
+- Rule 21 needs only a direction per spread roll, and rule 2 spreads to 4 neighbors. With 8 directions the factor is a fixed table `WIND[dir][neighbor]` built at load, so the hot loop reads one more byte per burning cell and one table entry per roll. No trig, no floats.
+- A gust is written like any terrain footprint (`rasterize`, an `arc` shape), and its cells join the active set while their timer runs, like charge. Quiet terrain still costs nothing.
+- A vector field needs decay or advection over every windy cell each grid tick and a lookup with interpolation; nothing in phase 1 needs varying strength or curl. Galeback Cliffs can add a coarse field on top if updrafts need one.
+- Cost: 2 bytes per cell (128 KB at 256×256) and at most `wind.maxGusts` = 8 live gusts per team (the oldest ends early).
+
+Wind factor (rule 21): for a 4-neighbor step `s` and wind direction `w`, with d = s · w (unit vectors): d > 0.5 gives ×2 (`wind.downwindMult`), d < −0.5 gives ×0.25 (`wind.upwindMult`), otherwise ×1. A diagonal wind has two downwind and two upwind neighbors. The factor multiplies the existing spread terms (Drought, Kindler, Wildheart).
+
+Gust shapes, written when a Gale spell paints its footprint:
+
+| Form | Gust cells | Direction |
+|---|---|---|
+| Bolt | 60° cone, radius 12, from the impact or expiry point | The bolt's direction |
+| Beam, Strike, Swath | 60° cone, radius 12, from the caster | The aim |
+| Nova, Lob, Orb | The footprint | Away from its center, quantized to 8 directions |
+
+- A gust lasts 2 s (`wind.gustSeconds`) × Lingering. Saturate doubles its area. A new gust overwrites an older one cell by cell.
+- **Drift.** A smoke or steam cell under wind moves one cell downwind every 4 grid ticks in a gust (5 cells/s) or every 8 in room wind (2.5 cells/s). Diagonal winds alternate x and y steps. Moves are collected during the visit and applied after it, all sources cleared first, so nothing moves twice in a tick and order doesn't matter. Shot-blocking cells stop drift. A drifting cloud carries its Blind (§6.4) with it: blow smoke onto archers.
+- **Fog.** Gusts clear it (rule 29); room wind doesn't move it.
+- **Wind vanes** (`Y`, CONTENT §6.1) spin while wind touches their tile.
+- **Not affected** in phase 1: projectiles, entities, oil, water, charge, ice. Gale's own hits knock back ×2; that is the rune, not the wind.
+- **Readability.** Gusts draw as `#E8F4F0` streaks along their direction; room wind as faint drifting streaks. F1 gets a wind overlay.
+
+Budget: the grid bench (§12) runs with room wind on, 8 live gusts and smoke on 30% of the active cells, and must stay within the Node budget.
 
 ## 7. Combat formulas
 
@@ -328,7 +403,7 @@ Monsters drop Parts. Each spindle has 1 or 2 Fuse sockets. Fusing a part adds it
 - A region is a hand-authored graph of rooms written in the ASCII room format (CONTENT §6). Rooms connect at edge exits and doors, like Zelda screens, but rooms can be larger than one screen and the camera scrolls.
 - Loom Stones are waypoints and respawn points.
 - Enemy packs come from spawn markers that reference pack tables.
-- Exploration rewards: **Heart Seeds** (+8 max life each) and **Loom Shards** (+1 Capacity), hidden behind chemistry puzzles. Emberwood and the Kiln hold 4 Heart Seeds and 3 Loom Shards.
+- Exploration rewards: **Heart Seeds** (+8 max life each) and **Loom Shards** (+1 Capacity), hidden behind chemistry puzzles. Emberwood and the Kiln hold 4 Heart Seeds and 3 Loom Shards; so do Glasswater Fen and the Drowned Foundry (CONTENT §13).
 
 ### 10.2 Dungeons
 
@@ -350,8 +425,22 @@ Puzzle verbs for the MVP:
 | Melt | Ice blocks into water, revealing what's under them |
 | Extinguish | Wet a burning path to walk it |
 | Push | Stone blocks onto pressure plates; ice blocks slide on ice until they hit something |
-| Conduct | Storm through water and metal to a conduit switch (after the boss) |
+| Conduct | Storm through water and metal to a conduit switch. The Fen's verb: hand-offs between water and metal (rule 13), sealed switches that only charge reaches (`Q`), timed switches (`timer:N:switch:S`), charge glowing through fog to show which pool reaches which pylon |
+| Isolate | Stand on ice or stone while the water around you is charged (ice doesn't conduct) |
 | Time | Cross before the ice bridge breaks |
+
+Verbs added in M8:
+
+| Verb | Element | Example |
+|---|---|---|
+| Flood | Tide | Paint a 10 s water path over stone to a sealed switch, then Storm it. Fill a pit for 10 s and freeze it into a bridge. Tide then Frost on stone makes an ice path for ice blocks |
+| Douse | Tide | Furnace vents and fire walls go out for 10 s (rule 30); burning ground stays unburnable for 10 s |
+| Wash | Tide | Push a block or ice block one tile from range (rule 28) |
+| Mire | Tide | Dirt into mud: chargers bog down in it (CONTENT §5 Mirebull) |
+| Strand | Tide | Lure a swimmer into borrowed water, then let it go (rule 31) |
+| Blow | Gale (after the Fen's boss; optional in the Fen, for Galeback later) | Spin wind vanes, clear fog, push smoke onto enemies, fan fire downwind |
+
+Rust is not a verb: it would make Tide undo Storm on the very metal the Fen teaches (DECISIONS 2026-10-25).
 
 ### 10.3 Boss: the Cinder Warden
 
@@ -370,8 +459,53 @@ Reward: the Storm rune, a Pattern Seed, a Cinder Heart part, and loot.
 - Procedural regions assembled from room-chunk templates with sockets: 6 to 10 rooms plus a rift boss.
 - Opened with Rift Sigils: items with tier 1 to 16 and 0 to 4 modifiers. Each modifier adds item quantity and rarity.
 - Many modifiers change chemistry. Examples in CONTENT §10.
-- MVP endgame is a tier ladder. A hex-map "atlas" with adjacent-node bonuses comes in M8.
+- MVP endgame is a tier ladder. A hex-map "atlas" with adjacent-node bonuses comes in M8 phase 2.
+- **The deep rifts (M8).** Tiers above 8 open only once the Glasswater Coil is dead (`WorldState.bossesDefeated` includes `glasswater_coil`; Rekindle never resets it). The cap becomes min(the Rekindle cap, 8 until the Coil dies). Sigils of tier 9 and up still drop and stack as before; they just can't be opened yet.
+  - The Cartographer's list and the map's sigil list show those sigils greyed, with an eel-coil lock badge and the line: "The deep rifts are flooded. Calm the Glasswater Coil in the Drowned Foundry to open tier 9 and above." Pressing Open on one shows the same line; the sim refuses with reason `coil` (`src/sim/world/rift/run.ts`).
+  - The storm door wakes once a tier 6 rift has been completed (designer, DECISIONS 2026-10-25). The first time that happens (and on loading a save already past it), a one-time toast: "The storm door in Warden's Hearth hums. Something stirs in the Fen."
+  - When the Coil dies: the Gale "item get" panel (CONTENT §9.1), then the toast "The deep rifts drain. Tiers 9 and up are open."
+  - Saves already past tier 8 keep their ladder and sigils; their tier 9+ sigils wait for the Coil like anyone's (DECISIONS 2026-10-25).
+- **Fen content in rifts (M8).** From tier 9, Fen chunks, packs and two Fen rift bosses join the pools (CONTENT §10.1), and the suffix "of the Gale" can roll.
 - The ladder (M7): completing a rift's boss drops a sigil of its tier, or of the next tier with a chance that falls with the tier and grows with every completion of your best tier, so each rift brings the next tier closer. Below the highest tier you have ever completed (kept through Rekindles) the next tier comes fast, so a new cycle climbs back quickly and only new territory is slow. Higher tiers also give monsters more life and damage than their area level alone (CONTENT §10, Tiers).
+
+### 10.5 Boss: the Glasswater Coil (M8)
+
+A huge electric eel, glass-clear except for the lightning that runs down its spine. It lives in the Glass Eye, the Foundry's flooded casting pool. It is safe in deep water and electrifies it; the fight is about bringing it out. Tide is the star, as Frost was for the Warden: Tide lends it water to chase you through, then takes the water away.
+
+Arena (F10, map in CONTENT §13.3): 128×96 cells.
+
+| Feature | Cells | Notes |
+|---|---|---|
+| The Eye | Deep water 48×40 in the middle, with a 4-cell shallow rim | The Coil's home |
+| Two sluice channels | Deep water, 8 cells wide, from the Eye's west and east sides to 12 cells short of the walls | They reach toward the sides; the stone ring stays connected around their ends |
+| Stone ring | Everything else, 16–24 cells wide | The player's ground and Tide's canvas |
+| Four pylons | A metal pylon on a 12×12 metal pad at each corner of the Eye, the pad touching the rim | Phase 3's pylon storm |
+| Four glass flats | Shallow pools 24×8, two north and two south, not connected to the Eye | Isolated, so the Eye's pulses don't reach them, unless Tide joins them to it |
+| Loom Stone | By the south entrance | Sleeps until the Coil dies (respawn point; rifts open there) |
+| North door | Sealed, with a wind vane | After the fight a Gale gust spins the vane: "The wind tugs north. The Cliffs aren't woven yet." |
+
+Its states (`src/sim/ai/bosses/coil.ts`, flags on `BossState`):
+
+| State | When | Damage taken |
+|---|---|---|
+| Submerged | Center on deep water and not attacking | 75% less in phase 1, 90% less in phases 2–3 (`bosses.coilSubmergedTaken`) |
+| Surfaced | Winding up, attacking or recovering in deep water | Normal |
+| Exposed | Center on shallow water (any: rim, flats, borrowed) | Normal. It can't dive |
+| Stranded | Rule 31: its water went away under it | 50% more. Only Tail thrash. After 5 s it crawls back to water at 6 cells/s |
+| Iced | The cell under its center froze | Normal. Can't move or attack. After 2.5 s it breaks out: ice within 6 cells of it returns to water. Then 10 s in which freezing doesn't hold it (ice it touches breaks) |
+| Overloaded | Phase 3: player charge reached its water during a Body pulse windup | Normal. Pulse cancelled, stunned 2 s, then 6 s before the next Body pulse |
+
+It is always Wet and uses the boss chill rule (§6.4). It swims any water: shallow, deep, rim, flats, borrowed. Its hits use its head circle (radius 5); its trailing body is drawn, not hit.
+
+| Phase | Life | What happens | What it teaches |
+|---|---|---|---|
+| 1 | 100–66% | It circles the Eye and the channels, Submerged. It surfaces to Lunge at a player within reach of its water and to Spit at one farther off. The Eye pulse electrifies all of its water every 7 s, after a 1.2 s glow | Deep water is its home and a conductor; stand on stone. Hit it while it surfaces. Its Spit puddles Wet you |
+| 2 | 66–33% | Dives deeper: Submerged now takes 90% less. It lunges only at a player within 8 cells of its water, spits in volleys of 3, and the Eye pulse comes every 5 s. It chases the player through any water it can reach, so borrowed water lures it out: Exposed in the shallows, Stranded when Tide's 10 s run out. Frost is the backup: freeze the water under it for a short Iced window | Use Tide, the dungeon item: paint a water path from the Eye toward you, step back onto stone, wait for it to follow, and burst it while Stranded |
+| 3 | 33–0% | Calls the pylons. Every 6 s they glow 1.2 s, then electrify their pads and the rim (rules 12–13). The Eye pulse stops; instead a Body pulse every 4 s electrifies the water within 20 cells of it, after a 1.0 s glow. Your lure water now carries its pulses: don't stand in it or on anything joined to it | Combine everything: Tide to strand, Frost to cut a lure off from you (ice doesn't conduct), Storm to Overload it. Its own element can't hurt it much (75% Storm resistance), but your charge in its water during the glow chokes the pulse |
+
+Pacing target: the campaign bot's tier-8 reference build kills it in 120 to 180 s.
+
+Reward: the Gale rune (an "item get" panel about 2 s after it dies, as the Warden's Storm), a Pattern Seed, the Coil Dynamo part (CONTENT §4), loot, and on the first kill a tier 9 Rift Sigil and the opening of tiers 9 and up (§10.4).
 
 ## 11. Meta progression: the Hearth (M7)
 
@@ -408,6 +542,7 @@ Performance budgets. Reference machine: a mid-range laptop with integrated graph
 | Entity sim step | ≤ 4 ms average |
 | Grid tick | ≤ 3 ms at 256×256 with 20% active |
 | Node benchmark | Entity step ≤ 2.7 ms and grid tick ≤ 2.0 ms on the dev machine: the budgets above ÷ 1.5, leaving headroom for slower machines |
+| Wind (M8) | The same grid tick budget with room wind on, 8 live gusts and smoke on 30% of the active cells (§6.6) |
 
 ## 13. Audio
 
@@ -432,7 +567,9 @@ Performance budgets. Reference machine: a mid-range laptop with integrated graph
 | Gale | `#E8F4F0` streaks |
 | Oil | `#3A2A4A` with a sheen |
 
-- Status icons above enemies: Ignite, chill meter, Freeze, Shock %, Wet, Oiled.
+- Status icons above enemies: Ignite, chill meter, Freeze, Shock %, Wet, Oiled; in M8 also Stranded, Charged (Copperback), Hot or Cracked (Slagshell) and Rung (Bellshell, Bellwether).
+- Fog (M8) never hides threats: telegraphs, hazard edges, enemy outlines, charge, fire and lit braziers draw above it. Fireflies (render only) drift over water and gather around metal in fog, a gentle hint where pylons are.
+- Borrowed terrain (M8) flickers in its last 1.5 s.
 - Accessibility (M8): each element also gets a pattern (fire flicker, frost crystal, storm zigzag), screen shake off, reduced flashing.
 
 ## 15. Art direction

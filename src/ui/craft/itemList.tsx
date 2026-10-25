@@ -7,6 +7,7 @@ import type { Session } from '../../app/session';
 import { currencies } from '../../../data/currency';
 import type { HeroState } from '../../sim/hero/types';
 import { ItemArt } from '../items/itemArt';
+import { Padlock } from '../inventory/badges';
 import { RuneMedal } from './runeMedal';
 import { tipFor } from '../menus/frame';
 import {
@@ -46,6 +47,11 @@ function Card({ session, hero, e, armed }: { session: Session; hero: Readonly<He
       <span class="cr-text">
         <span class="cr-nameline">
           <b>{e.name}</b>
+          {e.kind === 'item' && e.item.locked ? (
+            <span class="cr-lock" title="Kept: salvage skips it. You can still craft on it">
+              <Padlock locked />
+            </span>
+          ) : null}
           {e.kind === 'item' && e.equipped ? <span class="cr-eq">Equipped</span> : null}
         </span>
         {armed && e.reason ? (

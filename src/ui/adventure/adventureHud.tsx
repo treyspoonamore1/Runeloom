@@ -12,6 +12,7 @@ import type { SimEvent } from '../../sim';
 import type { Session } from '../../app/session';
 import { heroRev } from '../heroAdapter';
 import { itemDescription, partName } from '../inventory/adapter';
+import { CurrencyArt, ItemArt, PartArt } from '../items/itemArt';
 import { Icon, type IconKind } from './icons';
 import {
   BOSS_INFO,
@@ -30,6 +31,7 @@ import {
   toastsFor,
   type LiveToast,
   type LooseEvent,
+  type ToastArt,
   type ToastKind,
 } from './hudEvents';
 import { injectAdventureHudStyle } from './advStyle';
@@ -147,6 +149,13 @@ export function createAdventureHud(opts: {
   };
 }
 
+/** An item, currency or part toast's picture: its menu art (src/ui/items/itemArt.tsx). */
+function ToastPicture({ art }: { art: ToastArt }) {
+  if (art.kind === 'item') return <ItemArt item={art} />;
+  if (art.kind === 'currency') return <CurrencyArt currency={art.currency} />;
+  return <PartArt part={art.part} tier={art.tier} />;
+}
+
 function Counter(p: { kind: IconKind; n: number; label: string }) {
   return (
     <span class="ad-count" title={p.label} aria-label={`${p.label}: ${p.n}`}>
@@ -250,9 +259,15 @@ export function AdventureHudView({ snap }: { snap: { value: AdventureSnap } }) {
             class={`ad-toast k-${t.kind}${t.rarity ? ` r-${t.rarity}` : ''}`}
             style={`--out:${Math.max(0, (t.kind === 'level' ? uiTuning.levelToastSeconds : uiTuning.toastSeconds) - 0.5)}s`}
           >
-            <span class="ad-toast-ico">
-              <Icon kind={TOAST_ICON[t.kind]} />
-            </span>
+            {t.art ? (
+              <span class="ad-toast-ico art">
+                <ToastPicture art={t.art} />
+              </span>
+            ) : (
+              <span class="ad-toast-ico">
+                <Icon kind={TOAST_ICON[t.kind]} />
+              </span>
+            )}
             <span class="ad-toast-txt">
               <b>{t.title}</b>
               {t.sub ? <small>{t.sub}</small> : null}

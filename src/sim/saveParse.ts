@@ -146,6 +146,7 @@ function item(v: unknown, path: string): Item {
     if (!isUniqueId(u)) fail(`${path}.unique`, `is not a unique ("${u}")`);
     out.unique = u;
   }
+  if (o.locked !== undefined && bool(o.locked, `${path}.locked`)) out.locked = true;
   return out;
 }
 

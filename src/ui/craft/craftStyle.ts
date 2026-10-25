@@ -62,6 +62,8 @@ const craftCss = `
 .cr-nameline { display: flex; align-items: center; gap: calc(var(--u) * 0.6); min-width: 0; }
 .cr-nameline b { min-width: 0; }
 .cr-item .cr-text small { white-space: normal; }
+.cr-lock { flex: none; display: inline-flex; }
+.cr-lock .inv-padlock { width: calc(var(--u) * 1.8); height: calc(var(--u) * 1.8); fill: var(--gold-hi); }
 .cr-eq { flex: none; display: inline-block; padding: 0 calc(var(--u) * 0.6); border-radius: 999px; font-size: calc(var(--u) * 1.55); font-weight: 700; color: var(--ink); background: #72dcc8; }
 .cr-empty { margin: calc(var(--u) * 1); text-align: center; }
 .cr-empty .mn-btn { margin-top: calc(var(--u) * 0.8); }

@@ -5,6 +5,7 @@
  */
 import type { Page } from '@playwright/test';
 import { craftShotIds, runCraftShot, type CraftShotId } from './craftShots';
+import { invShotIds, isInvShot, runInvShot } from './invShots';
 
 export const uiShotIds = [
   'title',
@@ -44,6 +45,8 @@ export const uiShotIds = [
   'hearth_away',
   'hud_twin',
   'loom_twin',
+  'item_art',
+  ...invShotIds,
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -54,6 +57,9 @@ export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'hud') return `${base}/?${ADV}&ui=play&boss=cinder_warden`;
   if (id === 'hud_twin' || id === 'loom_twin') return `${base}/?${ADV}&ui=play`;
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
+  if (id === 'item_art') return `${base}/?${ADV}`;
+  // The inventory shots (invShots.ts) run on a real game with a rolled bag.
+  if (isInvShot(id)) return `${base}/?scene=adventure&paused=1&seed=1&ui=play`;
   if (id === 'pause') return `${base}/?${ADV}&ui=pause`;
   // The Hearth (M7) with a fixture lit Hearth: every tab, the Rekindle confirmation, the HUD with
   // its counters and toasts, and the offline modal.
@@ -79,6 +85,7 @@ const settle = (page: Page) =>
 export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
   await page.evaluate('window.__name = (f) => f');
   await settle(page);
+  if (isInvShot(id)) return runInvShot(page, id);
   if (id === 'title' || id === 'title_load') {
     // Two saves, so Continue and the slot list have something to show.
     await page.evaluate(async (load) => {
@@ -132,7 +139,7 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
     });
     await page.waitForTimeout(500);
   } else if (id === 'inventory') {
-    await page.hover('.inv-grid .inv-card >> nth=2');
+    await page.hover('.inv-tile >> nth=2');
   } else if (id === 'fuse') {
     await page.click('.inv-socket.full');
   } else if (id === 'tree') {
@@ -145,7 +152,7 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
       ui.hold(true);
       const item = {
         uid: 900,
-        base: 'wool_cloak',
+        base: 'travelers_cloak',
         rarity: 'magic',
         itemLevel: 6,
         affixes: [{ id: 'life', tier: 1, value: 30 }],
@@ -157,15 +164,25 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
           type: 'lootPicked',
           content: { kind: 'rune', rune: { uid: 901, rune: 'lob', level: 1, xp: 0, quality: 0 } },
         },
-        { type: 'lootPicked', content: { kind: 'item', item } },
-        { type: 'lootPicked', content: { kind: 'part', part: { uid: 902, part: 'ember_feather', tier: 2 } } },
         { type: 'lootPicked', content: { kind: 'scrap', amount: 3 } },
         { type: 'chestOpened', dungeon: 'kiln', big: false, count: 1 },
         { type: 'pickup', kind: 'heart_seed', total: 1 },
         { type: 'levelUp', level: 7 },
+        // Last, so the newest five toasts show the item, part and currency art.
+        { type: 'lootPicked', content: { kind: 'item', item } },
+        { type: 'lootPicked', content: { kind: 'part', part: { uid: 902, part: 'ember_feather', tier: 2 } } },
+        { type: 'lootPicked', content: { kind: 'currency', currency: 'chaos_skein', amount: 2 } },
       ]);
     });
     await page.waitForTimeout(500);
+  } else if (id === 'item_art') {
+    // The M7.5 item art gallery (src/ui/fixtures/itemArtGallery.tsx), mounted over the scene.
+    await page.evaluate(async () => {
+      const url = '/src/ui/fixtures/itemArtGallery.tsx';
+      const m = (await import(/* @vite-ignore */ url)) as { mountItemArtGallery(): void };
+      m.mountItemArtGallery();
+    });
+    await page.waitForTimeout(200);
   } else if (id === 'death') {
     await page.evaluate(() => {
       const s = window.__runeloom!.session;

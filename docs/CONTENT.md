@@ -54,8 +54,8 @@ Validation:
 | Fire | 1 | 1.10 | Fire damage, Ignite. Terrain rules 1–6 and 26 | M2 (terrain in M3) |
 | Frost | 1 | 1.10 | Frost damage, Chill and Freeze. Terrain rules 7–10 | M2 (terrain in M3) |
 | Storm | 1 | 1.15 | Storm damage, Shock, +2% crit. Terrain rules 11–14 | M2 (terrain in M3) |
-| Tide | 1 | 1.00 | Physical damage, applies Wet for 3 s. Terrain rule 24 | M8 |
-| Gale | 1 | 1.00 | Physical damage, knockback ×2, a 2 s wind gust in a cone (rule 21) | M8 |
+| Tide | 1 | 1.00 | Physical damage, applies Wet for 3 s (rule 32). Terrain rules 24, 27, 28 and 30 (DESIGN §6.5): borrowed water for 10 s, mud, doused vents, washed blocks | M8 phase 1 (F6 shrine) |
+| Gale | 1 | 1.00 | Physical damage, knockback ×2. Its footprint makes a 2 s gust (rule 21, DESIGN §6.6): fans fire downwind, drifts smoke and steam, clears fog (rule 29), spins wind vanes | M8 phase 1 (the Glasswater Coil) |
 
 ### 1.4 Modifiers
 
@@ -116,6 +116,10 @@ Tests compile weaves against a dev-only `test_spindle` whose Capacity the test s
 | 12 | Echo Strike | `Cast > Strike[Storm, Echo, Keen]` | 6 | All | Second strike 0.35 s later with 20% less damage |
 | 13 | Twin Fates | `Cast > Bolt[Storm] { OnHit > Nova[Storm]; OnExpire > Lob[Fire] }` | 11 | Heartwood, Loomsteel | Both branches fire, On Hit first (the bolt stops on the enemy, which ends it) |
 | 14 | Recursion Stress | `Cast > Bolt[Storm, Split] > OnHit > Bolt[Split] > OnHit > Bolt[Split] > OnHit > Bolt[Split]` | 22 | None | Fails validation: "Needs 22 Capacity". With a 22-Capacity `test_spindle` in `dummy_grid`, it can spawn up to 120 instances, so it hits the 64-per-cast cap and the debug counter shows the dropped spawns |
+| 15 | Floodline (M8) | `Cast > Swath[Tide, Lingering]` | 3 | All | On stone, the 14×3 strip becomes borrowed shallow water for 15 s, then stone again (rules 24, 27). A Storm hit on one end charges the whole strip |
+| 16 | Glaze (M8) | `Cast > Swath[Tide, Frost]` | 3 | All | On stone, the strip becomes water and then ice (slot order); the ice lasts 15 s and returns to stone, not water (rule 27). An ice block washed onto it slides |
+| 17 | Fan the Flames (M8) | `Cast > Strike[Fire, Gale]` | 3 | All | On a grass field, fire downwind of the gust cone covers about twice the cells in 2 s that the same strike without Gale does (seeded, ranges). Knockback 6 cells |
+| 18 | Downpour (M8) | `Pulse > Lob[Tide, Saturate]` | 6 | All | Burning grass in the burst goes out and doesn't relight for 10 s (rule 24); enemies hit are Wet; a burning Tar Hulk's fuse goes out (rule 32) |
 
 Weaves that must fail validation, with their messages:
 
@@ -170,6 +174,16 @@ Tier II and III multiply numeric values by 1.5 and 2. Parts without a number ins
 | Kiln Chitin | Kiln Mite | Dodge recharges 15% faster | M4 |
 | Matriarch's Sac | Tar Matriarch | Your hits apply Oiled for 2 s | M4 |
 | Cinder Heart | Cinder Warden | Grants `Harvest > Nova[Fire]` as an extra weave that uses no slot and no Capacity | M4 |
+| Pike Scale | Glasspike | You aren't slowed by shallow water or mud | M8 |
+| Copper Carapace | Copperback | Take 30% less damage from charged water and metal | M8 |
+| Heron Plume | Spark Heron | 25% more damage with charge you create (rules 11–12) | M8 |
+| Slag Core | Slagshell | Your Fire hits on Wet enemies deal 30% more damage | M8 |
+| Sparkfly Lantern | Sparkfly | Enemies you kill while they stand in water release your charge into it (rule 11, 50% of the killing hit) | M8 |
+| Mire Horn | Mirebull | Enemies on mud or in shallow water take 15% more damage from you | M8 |
+| Toad Bellows | Bellows Toad | Your gusts last 1 s longer and cover 30% more area | M8 |
+| Bell Bronze | Bellshell | Shocked enemies take 15% more Physical damage (Tide and Gale hits) | M8 |
+| Bellwether's Clapper | Old Bellwether | Charge you create reaches 30% farther (water distance and both cell caps) | M8 |
+| Coil Dynamo | Glasswater Coil | When charge you created on water or metal ends, it pulses once more for 50% of its damage (each entity can be hit again) | M8 |
 
 ---
 
@@ -188,6 +202,19 @@ Life is at area level 1 and scales per DESIGN §7. Speed is in cells per second.
 | `stormcaller` | Stormcaller | 50 | 14 | 0 / 0 / 50 | Keeps 15–25 cells away. Lightning strike for 18 with a 1.0 s circle telegraph | Prefers to target water or metal within 8 cells of the player, electrifying it | M4 |
 | `kiln_mite` | Kiln Mite | 10 | 26 | 0 / 0 / 0 | Tiny swarmer. Nip for 3 | Spawned by Brood Kilns: objects with 200 life that spawn 3 mites every 5 s. A Frozen kiln stops spawning | M4 |
 
+Glasswater Fen enemies (M8). Fen and Foundry rooms also apply the tier 8 rift scaling to their monsters (life ×1.50, hit damage ×1.32, CONTENT §10 Tiers; `data/progression.ts` `regionDifficulty`), so the Fen starts about as hard as a tier 8 rift and ends about as hard as tier 10. The "Extends" note says which existing code each one builds on.
+
+| Id | Name | Life | Speed | Resist | Behavior | Chemistry | Ships |
+|---|---|---|---|---|---|---|---|
+| `glasspike` | Glasspike | 45 | 18 swim | 0 / 0 / −30 | Hides under glassy water; a faint glint is its only sign. When the player is within 16 cells of its water and in sight, it flashes for 0.8 s and a 3-cell landing circle appears, then it leaps in a 0.5 s arc to the circle: the water cell nearest the player within 4 cells, else the player's spot. Bite 16 on landing. Back in water it submerges | Always Wet. Landing on dry ground or ice strands it (rule 31). Freezing its water traps it like a Bog Lurker. Borrowed water lets it go farther and strands it when it ends. Extends `ai/lurker.ts` (new behavior `leaper`) | M8 |
+| `copperback` | Copperback | 110 | 12 | 0 / −25 / 75 | A rusty copper crab that sidles at the player in groups. Pinch for 12 after a 0.5 s claw raise, 3-cell reach | Its shell conducts. Charge of any team that hits it (rules 11–12) makes it **Charged** for 3 s, its antenna sparking: its pinch adds 12 Storm, and once a second it re-electrifies the water or metal under it as enemy charge (12 Storm). Freezing it ends the charge. Teaches: charge walks. Extends `swarm`; new chemistry `conductorBody` | M8 |
+| `spark_heron` | Spark Heron | 55 | 15, wades | 0 / 0 / 50 | A tall heron of rusted pylon metal. Kites at 18–28 cells. Lightning beak for 18 Storm after 1.0 s (beak glow and a ring on the target water). Every 5 s, a puddle spit for 6, lobbed, with a 0.8 s landing marker | Strikes the water nearest the player within 10 cells (the Stormcaller's rule), electrifying the connected body. Its spit leaves borrowed water of radius 3 for 6 s on dry ground, so a player who stays dry gets a puddle to be struck through. Shallow water doesn't slow it. Extends `kite` plus a new attack terrain `water` | M8 |
+| `slagshell` | Slagshell | 180 | 9 | 75 / −25 / 0 | A Foundry bruiser in a glowing slag crust. Slag slam for 24 Fire in a 5-cell circle after a 0.9 s telegraph, leaving placed fire (rule 26) | **Hot**: takes 70% less damage and can't be chilled. Getting Wet (Tide, or standing in water) quenches it in a puff of steam: **Cracked** for 6 s, no reduction, 25% more damage taken, 30% slower, chill works. Dry, it heats again after 6 s. Avoids water while Hot. Extends `swarm`; new chemistry `hotShell` (the Warden's Superheat, generalized) | M8 |
+| `sparkfly` | Sparkfly | 8 | 24, floats | −25 / 0 / 75 | Firefly-bright swarmers in clouds of 8–12. Zap for 3 Storm on contact after a 0.25 s flicker | Drawn to light: a lit brazier or burning cell within 12 cells pulls it to circle there for 3 s instead of the player. Dying over water it pops: enemy charge in its water within 8 cells for 0.5 s (6 Storm), so one Storm hit pops a cloud over water in a chain. Extends `swarm` and `float`; new chemistry `deathCharge`, `lightLure` (`ai/target.ts`) | M8 |
+| `mire_bull` | Mirebull | 140 | 11, charge 38 | 0 / 0 / 0 | A shaggy marsh ox. Charges a player 10–36 cells away: 0.9 s line telegraph, a run of up to 36 cells, 22 on contact, knockback 5. Gores for 14 after 0.5 s up close | Hitting a wall stuns it 1.5 s. Entering mud ends its charge: **bogged** for 2.5 s, 50% more damage taken. On ice its charge runs 50% farther. Tide turns dirt to mud ahead of it. New behavior `charger` (`ai/charger.ts`, the Warden's `planDash`) | M8 |
+| `bellows_toad` | Bellows Toad | 70 | 10 | −25 / 0 / 0 | Keeps 10–16 cells away. Inflates for 1.0 s, visibly swelling, with a 14-cell 60° cone telegraph, then croaks for 10 and knockback 6 | The croak is a 2 s enemy gust (rule 21): it blows smoke, steam and fog away and fans fire downwind, toward you. Hit with Fire while inflating, its marsh gas lights: a 4-cell world-owned fire puff for 20 that hurts everyone, the toad loses 15% of its max life and is stunned 1.5 s. Wet, its gas won't light. Extends `kite`; new attack terrain `gust`, chemistry `gasbag` | M8 |
+| `bellshell` | Bellshell | 150 | 8 | 25 / 25 / 50 | A brass-shelled turtle ambling through fords. **Shelled**: 90% less damage taken. Opens to bite for 16 after 0.7 s | **Rings**: charge of another team or the world (rules 11–12) hitting it stuns it 2.5 s and opens its shell for 5 s (25% more damage taken), then it can't ring for 6 s. Direct Storm hits don't ring it: hit the water or metal it stands in. Teaches conduction as a key. Extends `swarm`; new chemistry `bell` (shared with the Bellwether) | M8 |
+
 Objects and bosses. Bosses and the Brood Kiln are placed with `@spawn <digit> enemy:<id>`. Boss numbers are absolute, at their area level.
 
 | Id | Name | Area level | Life | Resist | Notes |
@@ -195,6 +222,8 @@ Objects and bosses. Bosses and the Brood Kiln are placed with `@spawn <digit> en
 | `brood_kiln` | Brood Kiln | Room level | 200 | 50 / 0 / 0 | Stationary object. Spawns 3 Kiln Mites every 5 s. Stops while Frozen. Legend character `&` (§6.1) |
 | `tar_matriarch` | Tar Matriarch (mini-boss) | 8 | 5,000 | −30 / 0 / 0 | Tar Hulk elite. Her globs and her rush leave **tar**: oil whose fire is world-owned whoever lights it, so it hurts everyone (other oil keeps DESIGN §6.3 ownership). Lit while Oiled she **flares** after the Hulk's 1.5 s fuse: a 6-cell world-owned fire burst that hits everyone else and burns her too, then can't flare again for 10 s (getting Wet puts the fuse out). At 50% life she calls her **tar crew**, 2 Tar Hulks beside her and 4 Tinderlings on her tar (which they light), and phase 2 begins: she walks 35% faster, her cooldowns are 25% shorter and she adds the tar rush. Teaches oil plus fire, and the explosion risk |
 | `cinder_warden` | Cinder Warden | 10 | 5,000 | 75 / −25 / 25 | Three phases, DESIGN §10.3. Uses the boss chill rule (DESIGN §6.4) |
+| `bellwether` | Old Bellwether (mini-boss, M8) | 22 | 20,000 | 25 / 25 / 50 | The Foundry's old shift bell, grown into a colossal brass turtle. **Shelled**: 80% less damage. Charge of another team or the world (rules 11–12) **rings** it: stunned 1.5 s, then open for 5 s (25% more damage taken), then 8 s before it can ring again; its own charge never rings it. It can't be rung while rolling. At 50% life it **tolls the Foundry** (phase 2): every 7 s it rings itself and sends enemy charge into the water and metal under it, and it calls one `sparkfly_cloud`. Uses the boss chill rule. Teaches: conduction opens it; read whose charge is in the water. `src/sim/ai/bosses/bellwether.ts` |
+| `glasswater_coil` | Glasswater Coil (M8) | 24 | 32,000 | 0 / 0 / 75 | Three phases, DESIGN §10.5. Swims any water. Always Wet. Uses the boss chill rule. `src/sim/ai/bosses/coil.ts` |
 
 Boss attacks:
 
@@ -208,6 +237,16 @@ Boss attacks:
 | Cinder Warden | Fire slam | 40 | 0.8 s, 6-cell circle | Placed fire in the circle |
 | Cinder Warden | Fire breath (phases 2–3) | 18 + Ignite | 0.6 s, 12-cell cone | Makes steam on water |
 | Cinder Warden | Brazier storm (phase 3) | 35 Storm | Braziers glow 1.2 s | Electrifies connected water and metal (rules 11–13) every 5 s |
+| Old Bellwether | Snap | 110 | 0.8 s, 9-cell 70° cone | Knockback 3 |
+| Old Bellwether | Toll ring | 90 | 1.2 s: shell glows, ring marker out to 18 cells | A ring wave that expands from it to 18 cells over 0.4 s. Dodge through it or stand outside |
+| Old Bellwether | Shell roll | 120 on contact | 0.9 s line | At a player at least 10 cells away: tucks in and rolls at 40 cells/s up to 36 cells, stopping at walls (stunned 1 s if it hits one). Knockback 5. On ice the roll runs 50% farther |
+| Old Bellwether | Self-toll (phase 2) | 90 Storm | 1.2 s, shell glows violet | Enemy charge in the water and metal under it (rules 11–13), every 7 s. It doesn't ring itself open |
+| Glasswater Coil | Lunge | 150 on contact | 1.0 s ripple line | From water, at a player within 14 cells of its water (phases 2–3: 8 cells): a dash at 44 cells/s, up to 22 cells, stopping at the water's edge. Knockback 4 |
+| Glasswater Coil | Glass spit | 70 Storm | 0.6 s: mouth glow and aim line | Projectile, 50 cells/s, at a player more than 14 cells from its water. Where it lands, borrowed water of radius 2 for 6 s. Phases 2–3: volleys of 3, 0.3 s apart |
+| Glasswater Coil | Eye pulse (phases 1–2) | 120 Storm | 1.2 s: all its water brightens | Electrifies the water body it is in (rule 11 with reach 80 and up to 4,000 cells, `bosses.coilPulse`). Every 7 s in phase 1, 5 s in phase 2 |
+| Glasswater Coil | Tail thrash (Stranded) | 100 | 0.7 s, 7-cell circle | Its only attack while Stranded. Knockback 5 |
+| Glasswater Coil | Pylon storm (phase 3) | 90 Storm | Pylons glow 1.2 s | Electrifies the pylons' pads and the water touching them (rules 12–13) every 6 s |
+| Glasswater Coil | Body pulse (phase 3) | 110 Storm | 1.0 s: its body glows, ring on its water out to 20 cells | Electrifies its water within 20 cells (rule 11 reach 20). Every 4 s while it is in water. Player charge reaching its water during the glow Overloads it (DESIGN §10.5) |
 
 Pack tables:
 
@@ -219,8 +258,15 @@ Pack tables:
 | `bog_nest` | 2–3 Bog Lurkers (spawn markers in water only) |
 | `wisp_flight` | 2 Frost Wisps and 3 Kiln Mites |
 | `caller_guard` | 1 Stormcaller and 2 Shieldbearers |
+| `pike_shoal` (M8) | 2–3 Glasspikes (spawn markers in water only) |
+| `crab_cast` (M8) | 3 Copperbacks and 1 Spark Heron |
+| `heron_wade` (M8) | 2 Spark Herons and 1 Bellshell |
+| `sparkfly_cloud` (M8) | 8–12 Sparkflies |
+| `mire_herd` (M8) | 2 Mirebulls and 2 Bellows Toads |
+| `foundry_crew` (M8) | 1 Slagshell, 2 Copperbacks and 4 Sparkflies |
+| `toad_chorus` (M8) | 3 Bellows Toads and 6 Sparkflies |
 
-Monster rarity: Magic packs (blue) have 1–2 mods and ×1.7 life. Rares (yellow) have 2–4 mods, ×4 life and 2 minions. Mods ship in M5; M4 needs only Hasted, Incendiary and Thick-skinned for the first Rares. Rooms request rarity on the `@spawn` line (§6.2). Pack leaders and minion kinds: tinderling_swarm tinderling / tinderling, archer_line shieldbearer / ember_archer, tar_crew tar_hulk / tinderling, bog_nest bog_lurker / bog_lurker, wisp_flight frost_wisp / kiln_mite, caller_guard stormcaller / shieldbearer.
+Monster rarity: Magic packs (blue) have 1–2 mods and ×1.7 life. Rares (yellow) have 2–4 mods, ×4 life and 2 minions. Mods ship in M5; M4 needs only Hasted, Incendiary and Thick-skinned for the first Rares. Rooms request rarity on the `@spawn` line (§6.2). Pack leaders and minion kinds: tinderling_swarm tinderling / tinderling, archer_line shieldbearer / ember_archer, tar_crew tar_hulk / tinderling, bog_nest bog_lurker / bog_lurker, wisp_flight frost_wisp / kiln_mite, caller_guard stormcaller / shieldbearer; M8: pike_shoal glasspike / glasspike, crab_cast spark_heron / copperback, heron_wade bellshell / spark_heron, sparkfly_cloud sparkfly / sparkfly, mire_herd mire_bull / bellows_toad, foundry_crew slagshell / copperback, toad_chorus bellows_toad / sparkfly. M8 adds no monster mods: Waterlogged and Grounded already bend the Fen's chemistry.
 
 | Mod | Effect |
 |---|---|
@@ -267,6 +313,9 @@ Rooms are text files in `data/rooms/<region>/<room>.txt`. Lines starting with `@
 | `P` | Pushable stone block |
 | `I` | Pushable ice block: slides on ice until blocked; Fire melts it into shallow water |
 | `S` | Conduit switch |
+| `Q` | Sealed conduit switch (M8): in a glass case, so spell hits never power it, only charge on a cell touching its tile (water or metal). Counts for `switch:S` with the `S` switches |
+| `f` | Furnace vent, lit (M8): solid flame over a metal grate; Tide douses it for 10 s (DESIGN rule 30). Its `under` is itself |
+| `Y` | Wind vane (M8): solid. Spins while wind (a gust or room wind) covers a cell touching its tile for 0.5 s, then stays spun (latched, like a switch). Counts for `vanes:all` |
 | `T` | Pressure plate |
 | `D` | Door, opened by its `@link` condition |
 | `K` | Locked door, needs a small key |
@@ -285,7 +334,7 @@ Rooms are text files in `data/rooms/<region>/<room>.txt`. Lines starting with `@
 
 Hearth stations are solid and inert, and Interact (F) beside one opens its screen. A station that covers several tiles repeats its character in one rectangle (the hub draws 3×2 buildings and a 3×3 Hearth fire).
 
-A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `R`, `S`, `T`, `x`, `c`, `\|`, `b`, `&`, `P`) sits on the most common ground among its 4 neighbors. Ties go to stone. This is how the Heart Seed in the example below ends up floating on deep water.
+A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `R`, `S`, `Q`, `Y`, `T`, `x`, `c`, `\|`, `b`, `&`, `P`) sits on the most common ground among its 4 neighbors. Ties go to stone. This is how the Heart Seed in the example below ends up floating on deep water.
 
 ### 6.2 Headers
 
@@ -299,9 +348,21 @@ A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `R`, `S`, `T`, `x`, `c
 @link <door char> <condition>
 @note <object char> <text>
 @clear exit <w|e|n|s>
+@fog <tx0> <ty0> <tx1> <ty1>
+@wind <n|ne|e|se|s|sw|w|nw>
+@pulse <seconds>
 ```
 
-Link conditions: `braziers:all`, `switch:S`, `plates:all`, `cleared` (all enemies dead), `timer:<seconds>:braziers:all` (all braziers lit within the time), `sealed` (never opens: a door that stays shut on purpose, like the K10 storm door). Several `@link` lines for one door must all hold.
+Link conditions: `braziers:all`, `switch:S`, `plates:all`, `cleared` (all enemies dead), `timer:<seconds>:braziers:all` (all braziers lit within the time), `sealed` (never opens: a door that stays shut on purpose, like the K10 storm door). Several `@link` lines for one door must all hold. M8 adds:
+
+- `timer:<seconds>:switch:S`: every switch (`S` and `Q`) powered within the time. Each one unlatches that many seconds after it was powered unless the group completes first, as timed braziers go out (`src/sim/world/objectLinks.ts`).
+- `vanes:all`: every wind vane spun.
+
+M8 headers (`src/sim/world/room.ts`):
+
+- `@fog`: fog over a rectangle of tiles, corners inclusive. Several lines add up. Fog is the air layer's Fog (DESIGN §6.2).
+- `@wind`: room wind, the way it blows (`@wind e` blows from the west toward the east). Fen rooms have none; it exists for the rift suffix and Galeback later.
+- `@pulse`: every metal pylon (`M`) in the room pulses world-owned charge every that many seconds, as the rift suffix of Live Wires does (`src/sim/world/rift/pulse.ts`, now also outside rifts). Pylons glow for `tuning.world.pulseGlowSeconds` = 0.8 s first.
 
 Rarity (M4): a trailing `magic` makes every spawned enemy Magic with the same 1–2 mods. A trailing `rare` makes a pack's leader Rare with 2 normal minions of the pack's minion kind, or makes each enemy of an `enemy:` line Rare with 2 minions of its own kind. Bosses ignore rarity.
 
@@ -444,6 +505,8 @@ Spindles drop by item level (area level). Ashwood can drop from E4 on, Ironbark 
 
 After the boss, a sealed door with a storm mark leads toward Glasswater Fen. Hitting its metal pylon with Storm powers it and shows "The Fen isn't woven yet." Region 2 arrives in M8.
 
+M8: the storm door opens. K10 becomes `@link D cleared` plus `@link D switch:S`, gains `@exit n fen/g1_storm_landing`, and its note becomes `@note S The storm door hums open. Glasswater Fen lies beyond.` It opens when the player powers it once a tier 6 rift has been completed (best tier ever ≥ 6, so a Rekindle never closes it again); before that, powering it shows `The Fen isn't woven yet.` as today (designer, DECISIONS 2026-10-25). The region map shows the Fen's area levels, and G1's intro card reads "Glasswater Fen. Area level 18 to 24."
+
 ---
 
 ## 10. Rift modifiers (M6)
@@ -468,7 +531,7 @@ Suffixes change the chemistry:
 | of Permafrost | Water starts frozen. Ice from any source lasts twice as long | +15% item quantity |
 | of the Tinderbox | Floors become grass. All monsters are Oiled | +25% item rarity |
 | of Choking Smoke | Smoke lasts twice as long. Monsters aren't Blinded by smoke | +20% item quantity |
-| of the Gale (M8) | Constant wind from the west | +15% item quantity |
+| of the Gale (M8) | Constant wind from the west: room wind blowing east in every rift room (DESIGN §6.6). Fire spreads ×2 eastward and ×0.25 westward; smoke and steam drift east at 2.5 cells/s. Rolls from tier 9 | +15% item quantity |
 
 ### Tiers (M7 balance)
 
@@ -478,6 +541,37 @@ Source: `data/rift.ts` (`riftTierScaling`, `riftDrops`); tuned by the M7 progres
 - **Rift Sigil supply**: completing a rift, its boss drops a sigil of the next tier with chance max(0.01, 0.10 − 0.012 × (tier − 1)) + 0.009 × (earlier completions of the best tier), else one of its own tier (never above the Rekindle cap). The extra chance counts only when the rift is your best tier completed, starts again at 0 on a new best, and survives failed rifts. Tier 1: 10%, tier 5: 5.2%, tier 8: 1.6%, tier 9 and up: 1%, each plus 0.9% a completion. An Expedition (§12) of the best tier rolls the same way and counts as a completion.
 - **Re-climb**: below the highest tier ever completed (`hearth.bestEverTier`, every cycle; Rekindle keeps it), a boss's or an expedition's next-tier chance is a flat 75% (`riftDrops.reclimbTierUp`) instead. At or above it the formula above applies.
 - **Kill sigils**: a drop roll in a rift gives a sigil with 0.6% (× item quantity), of the rift's tier, or the next with 5%.
+- **The deep rifts (M8)**: tiers 9 and up need the Glasswater Coil dead (DESIGN §10.4). Sigil drops don't change; a tier 9+ sigil waits, locked, until then.
+
+### 10.1 The Fen in rifts (M8)
+
+From tier 9, so only after the Coil (`data/rift.ts`; the generator in `src/sim/world/rift/generate.ts` already filters spawns by `fromTier`; chunks, bosses and modifiers gain the same field).
+
+Chunks (`data/rooms/rift/chunks/<id>.txt`, sockets on every edge, no puzzles, no fog):
+
+| Chunk | From tier | Layout |
+|---|---|---|
+| `reedmarsh` | 9 | Reeds (grass), shallow pools joined by channels, dirt and mud islands, one deep pool |
+| `pylon_flats` | 9 | Broken metal walkways and 4 pylons over a shallow lake, stone causeways |
+| `sluiceworks` | 9 | Metal floor halls, a deep sluice, furnace vents only in side alcoves (never on a socket path: the connectivity validator treats lit vents as walls) |
+
+Spawns (`riftSpawns`), all `fromTier: 9`:
+
+| Entry | Weight | Not in |
+|---|---|---|
+| `pike_shoal` | 50 | Chunks without water markers (water-only, as `bog_nest`) |
+| `crab_cast` | 60 | |
+| `heron_wade` | 60 | |
+| `sparkfly_cloud` | 70 | `oilworks`, `thicket` (they swarm fire) |
+| `mire_herd` | 50 | |
+| `foundry_crew` | 50 | `oilworks`, `thicket` |
+| `toad_chorus` | 40 | |
+| 2 `slagshell` | 30 (from tier 10) | |
+| 2 `bellshell` | 30 | |
+
+Bosses (`riftBosses` gains `fromTier`): `rift_bellwether` in the arena `belfry` and `rift_coil` in the arena `glass_eye`, both from tier 9, both `lookAs` their region originals (as `rift_warden` does) and separate kinds, so a rift kill never counts as the region's boss kill. They scale with `riftBossScale` from their own levels (22 and 24). At tier 9 and up the four rift bosses are equally likely.
+
+Runes: Tide and Gale join random rune drops once unlocked, like every rune (§9.1). The Fen adds no rune discovery entries.
 
 ---
 
@@ -551,3 +645,127 @@ The app sends the wall-clock gap since the save as one recorded edit: ignored un
 - Saves from before M7 (version 2) that climbed past tier 10 get the Rekindles their ladder and sigils need for the cap to cover them (no Ash), and their best tier as the highest ever.
 - Sigil Cache: after each Rekindle, five plain tier 3 sigils, and the ladder starts as if tier 2 were completed so they open.
 - Mutation effects: Bright Hearth +10% Kindling Pit Scrap and Rune Garden XP per purchase; Swift Expeditions ÷ 1.5 duration for expeditions sent after buying it; Deeper Weave depth 4 (The First Thread still caps at 2); Stormglass Memory: ice conducts your Storm like water (not the keystone's extra damage); Shatterpoint: the Shatter trigger joins rune discovery (Rares and bosses) at any area level.
+
+---
+
+## 13. Glasswater Fen and the Drowned Foundry (M8)
+
+A drowned marsh of glassy water, rusted pylons, fog and fireflies, reached through K10's storm door (§9.1). It teaches Storm and conduction; its dungeon item is Tide; its boss drops Gale. About an hour of play for a character that has just reached rift tier 8 (level about 30). Rooms live in `data/rooms/fen/` (G1–G8) and `data/rooms/foundry/` (F1–F10), listed in `data/progression.ts` `regionRooms`; `regionBossKinds` gains `bellwether` and `glasswater_coil`. The renderer draws Fen grass as reeds, metal as rusted teal and water as glass, by region.
+
+What the player has: Fire, Frost, Storm and every M2–M5 rune (a tier 8 character has them all). Puzzles use only those until F6 gives Tide. Gale comes from the Coil, so in the Fen it opens only the optional Windward Cache in G7.
+
+"Needs" lists the elements a room's puzzle requires. A test proves the room can't be solved without the first one listed (BUILD_PLAN M8 phase 1). "—" is a fight room with no gate.
+
+### Overworld
+
+| Room | Area level | Content and puzzle | Needs | Enemies |
+|---|---|---|---|---|
+| G1 Storm Landing | 18 | Arrival from K10's storm door, and a Loom Stone. A boardwalk over glassy shallows. A conduit switch stands on a post 20 cells out in the water: Storm the water anywhere and the charge reaches it, opening the east door (`switch:S`). A fog bank lies over the north reeds, a first look at fog | Storm | `sparkfly_cloud` |
+| G2 Glass Reeds | 18 | Reed beds, shallow pools, dirt and mud islands. Glasspikes leap at you from the pools: stand well back from the water and they strand themselves on the bank. Mirebulls charge along the dirt and bog in the natural mud. Burning the reeds doesn't touch the pikes, and can catch you | — | `pike_shoal` ×2, `mire_herd` |
+| G3 Pylon Field | 19 | Rusted walkways and pylons in a lake. Three sealed switches (`Q`) sit on three metal networks joined by water; the door wants all three (`switch:S`). One Storm hit in the right pool reaches two of them through water↔metal hand-offs (rule 13). The third network's pool is cut off by an ice-block plug in a channel: melt it with Fire and the meltwater joins the pools. The door opens a vault with a Loom Shard | Storm, Fire | `crab_cast` |
+| G4 Heron Lake | 19 | A wide glassy lake with two world pylons that pulse every 2 s (`@pulse 2`, glowing 0.8 s first). The way north crosses 60 cells of it: freeze a path and walk on ice, which doesn't conduct. Wading through costs about 6 pulses. A Heart Seed sits on an islet ringed by deep water: ice bridge to it | Frost | `heron_wade` |
+| G5 Fogbank | 20 | Fog over a maze of deep channels (`@fog` over most of the room). Three sealed switches stand on pylon islets, each touching its own pool, and the east door wants all three within 12 s (`timer:12:switch:S`). Storm a pool and its charge glows through the fog up to the pylon it reaches; fireflies gather at the pylons; Fire burns the fog away for 8 s. Bellows Toads' croaks blow the fog off in cones, a friendly tell. A Loom Shard waits in a fog-hidden alcove behind bramble: burn it. North exit to G7 | Storm, Fire | `toad_chorus`, `sparkfly_cloud` |
+| G6 Drowned Causeway | 20 | The big fight, as E5 was: a sunken stone road with three fords. Bellshells amble in the fords (ring them through the water), Spark Herons kite from the islets, Mirebulls charge down the dirt road. The Fen's first Rare | — | `heron_wade` ×2, `mire_herd` rare, 2 `bellshell` |
+| G7 Lantern Grotto (side) | 20 | A dark grotto under fog, north of G5. Light 4 braziers within 15 s (`timer:15:braziers:all`); two stand on islets across deep water (Lob over, or ice bridges). Sparkflies swarm to every lit brazier, which helps and hurts. The door opens on a Heart Seed. After the Coil: a wind-vane door at the back (`Y`, `vanes:all`) opens on the Windward Cache, a chest with a Pattern Seed | Fire (the cache: Gale) | `sparkfly_cloud` ×2 |
+| G8 Foundry Steps | 21 | Loom Stone, mixed packs and the Foundry's sluice gate. The gate's two switches sit at the ends of a metal bridge whose middle span has fallen into shallow water; charge crosses the gap through the water (rule 13) | Storm | Mixed, 1 Rare |
+
+### The Drowned Foundry
+
+| Room | Area level | Content and puzzle | Needs | Enemies |
+|---|---|---|---|---|
+| F1 Sluice Gate | 21 | A metal hall over a deep moat. A switch on each bank touches the moat: one Storm hit in it powers both and opens the door. A wall of lit furnace vents (`f`) seals an east alcove with a chest (a Fuse part and currency): come back with Tide | Storm (the alcove: Tide) | `crab_cast`, `sparkfly_cloud` |
+| F2 Pump Hall | 21 | Three sealed switches on three separate metal networks around the hall; the door wants all three within 3 s (`timer:3:switch:S`). Build a weave that reaches them: split or chained Storm bolts, Echo, a Storm Sigil, or Saturate on the pool that touches two | Storm | `heron_wade` |
+| F3 Cooling Pools | 22 | Freeze a cooling pool and slide 2 ice blocks onto 2 plates (`plates:all`) to reach the small-key chest. Bellshells wade in the pools: electrify the pool to ring them | Frost | 2 `bellshell`, `sparkfly_cloud` |
+| F4 Slag Run | 22 | An oil channel runs from this side of a pit to a wooden barricade on the far side. Lob Fire onto the channel: the fire runs along it and burns the barricade, opening the Heart Seed vault. Slagshells guard the hall; two quench pools crack them if you lure them in, Tide's lesson ahead of time. The locked door (F3's key) leads to F5 | Fire, small key | `foundry_crew` |
+| F5 Bellwether's Belfry | 22 | Mini-boss: `bellwether` (§13.2) | Storm (to fight it well) | — |
+| F6 Tide Shrine | 22 | Dungeon item: Tide, on a rune shrine (`R`). Touching it opens the "new element" panel. Short tutorial: a 2-tile wall of vents blocks the exit; douse it with Tide and walk through before it relights. Loom Stone | Tide | — |
+| F7 Furnace Row | 23 | A long hall crossed by three fire walls of furnace vents, 20 cells apart. Douse each with Tide and go before it relights. Slagshells patrol between them, and Tide cracks them too | Tide | `foundry_crew`, 2 `slagshell` |
+| F8 Dry Conduit | 23 | The Foundry's hub: F7 to the west, F9 to the east, the big-key door to F10 to the north. The east door wants a sealed switch on a metal plinth 28 cells across bare stone from the nearest pool: paint a Tide path from the pool to the plinth and Storm the pool within 10 s (Floodline, §2 #15). A side vault holds a Loom Shard behind a second sealed switch at the end of a row of lit vents: douse the row and the grates conduct like metal, then Storm one end | Tide, Storm | `crab_cast`, `sparkfly_cloud` |
+| F9 Flood Lock | 24 | A pit chasm 12 cells wide splits the room; the big-key chest is beyond it. Tide fills a stretch of pit with deep water for 10 s and Frost turns it into an ice bridge (8 s plus 1.5 s cracking): cross. Mirebulls charge along the far dirt ledge, and Tide's mud bogs them. Heart Seed vault (`plates:all`): the plate lies 24 cells down a stone lane. Glaze the lane (§2 #16), wash the ice block onto it with Tide (rule 28), and it slides onto the plate | Tide, Frost | `mire_herd` ×2 |
+| F10 The Glass Eye | 24 | Boss: `glasswater_coil` (DESIGN §10.5, map in §13.3). A Loom Stone by the entrance sleeps until it dies, then wakes (respawn point; open rifts there) | Tide (to fight it well) | — |
+
+Totals: 4 Heart Seeds (G4, G7, F4, F9) and 3 Loom Shards (G3, G5, F8). Loom Stones in G1, G8, F6 and F10 (asleep until the Coil dies). The Windward Cache's Pattern Seed (G7, after the Coil) is a bonus on top.
+
+Paths:
+
+- Overworld: K10 → G1 → G2 → G3 → G4 → G5 → G6 → G8, with G7 north of G5.
+- First half: G8 → F1 → F2 → F3 (small key) → F4 (locked door) → F5 → F6.
+- Second half: F6 → F7 → F8 → F9 (big key) → back to F8 → big-key door → F10.
+
+Pacing: about 25 minutes in the overworld and 35 in the Foundry, the Bellwether in 60–100 s, the Coil in 120–180 s.
+
+### 13.1 Guaranteed runes (as §9.1)
+
+A tier 8 character already owns every rune the Fen could teach, so the Fen pays **copies** of the runes its puzzles and fights reward putting in a second weave, each at rune level 10 (`data/progression.ts` `fenRuneLevel`), on first clear (the shrine on touch, bosses on death). Tide and Gale also arrive at level 10. No new runes in phase 1 besides Tide and Gale (about 45 runes is M8 phase 2).
+
+| Room | Guaranteed runes |
+|---|---|
+| G1 | Storm |
+| G3 | Chain |
+| G4 | Frost |
+| G5 | Sigil |
+| G6 | Saturate |
+| G7 | Lingering |
+| G8 | Pulse |
+| F2 | Split |
+| F4 | Fire |
+| F5 (Old Bellwether) | On Hit, Infuse |
+| F6 | Tide (dungeon item) |
+| F7 | Swath |
+| F8 | Tide (a second copy, for two Tide weaves) |
+| F9 | Lob |
+| F10 (Glasswater Coil) | Gale, Nova |
+
+The first Tide is an "item get" moment at the F6 shrine, like Frost at K6; the first Gale comes about 2 s after the Coil dies, so its death plays first.
+
+### 13.2 The Old Bellwether (F5)
+
+The Belfry: 104×80 cells. A stone center 32 cells across (the bell's old mount), a metal-floor ring 12 cells wide around it, four shallow pools on the ring at the diagonals, stone islands outside the ring, two pylons on the ring. On the stone center it can't be rung; it walks back onto the ring to roll and toll.
+
+| Phase | Life | What happens | What it teaches |
+|---|---|---|---|
+| 1 | 100–50% | Shelled, it Snaps up close, Tolls a ring wave and Rolls at a far player. Storm the ring or a pool while it stands on them: rung, stunned, open for 5 s | Conduction is the key: hit what it stands on, not the shell |
+| 2 | 50–0% | It tolls the Foundry: every 7 s it rings itself and its own charge floods the ring and pools under it. It calls one `sparkfly_cloud` (they pop over the pools). Its own charge never opens it | Isolation: stand on stone between its tolls, ring it with yours in the gaps |
+
+Reward: On Hit, Infuse, the Bellwether's Clapper part (§4) and loot.
+
+### 13.3 Example: the Glass Eye, room F10
+
+The Eye in the middle (deep water with a shallow rim), its two sluice channels, four pylons on metal pads at its corners, four isolated glass flats, the Loom Stone by the south door and the sealed north door with its wind vane.
+
+```
+@id foundry/f10_glass_eye
+@name The Glass Eye
+@level 24
+@exit s foundry/f8_dry_conduit
+@spawn 1 enemy:glasswater_coil
+@note x The Eye goes still. The Loom Stone wakes.
+@note Y The wind tugs north. The Cliffs aren't woven yet.
+@link D sealed
+##############YD################
+#..............................#
+#...~~~~~~............~~~~~~...#
+#...~~~~~~............~~~~~~...#
+#..............................#
+#.....mmm..............mmm.....#
+#.....mMm~~~~~~~~~~~~~~mMm.....#
+#.....mmm~wwwwwwwwwwww~mmm.....#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#...wwwwwwwwwww1wwwwwwwwwwww...#
+#...wwwwwwwwwwwwwwwwwwwwwwww...#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#.....mmm~wwwwwwwwwwww~mmm.....#
+#.....mMm~~~~~~~~~~~~~~mMm.....#
+#.....mmm..............mmm.....#
+#..............................#
+#...~~~~~~............~~~~~~...#
+#...~~~~~~............~~~~~~...#
+#..........x...................#
+###############v################
+```
+
+A typical Stranding: the player stands on the north stone at row 2, paints `Swath[Tide, Lingering]` south toward the rim, and steps back east onto dry stone. The Coil follows the new water toward them and is Exposed in it; when the water returns to stone it is Stranded for 5 s at 50% more damage taken. In phase 3, the same strip carries its Body pulse, so the player must not stand in it.
