@@ -251,13 +251,13 @@ export function getCurrencies(session: Session): Currencies {
 
 /**
  * Thread Scrap that salvaging an item or part would give, or null if it can't be salvaged
- * (equipped, has fused parts, not owned).
+ * (equipped, locked, has fused parts, not owned).
  */
 export function salvageValue(session: Session, uid: number): number | null {
   const h = session.state.hero;
   const item = findItem(h, uid);
   if (item) {
-    if (equippedSlotOf(h, uid) !== null || item.fused.some((p) => p !== null)) return null;
+    if (item.locked || equippedSlotOf(h, uid) !== null || item.fused.some((p) => p !== null)) return null;
     return scrapValues.item[item.rarity];
   }
   const part = h.parts.find((p) => p.uid === uid);

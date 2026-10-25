@@ -109,6 +109,8 @@ export function hashItem(h: Hasher, it: Item): void {
     .byte(0)
     .string(it.unique ?? '')
     .byte(0);
+  // Only when set, so saves and replays from before locking keep their hashes.
+  if (it.locked) h.string('locked').byte(0);
 }
 
 export function hashHero(h: Hasher, hero: HeroState): void {
