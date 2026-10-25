@@ -52,7 +52,7 @@ Regions:
 
 Each region's boss gives the element the next region teaches: the Cinder Warden drops Storm (the Fen), the Glasswater Coil drops Gale (the Cliffs). The dungeon item is the region's own new element.
 
-The Fen comes after the first rifts: it is reached through K10's storm door, sits at area levels 18–24, and its boss gates rift tiers above 8 (§10.4).
+The Fen comes after the first rifts: it is reached through K10's storm door, which wakes once a tier 6 rift is completed; it sits at area levels 18–24 with tier 8 rift scaling, and its boss gates rift tiers above 8 (§10.4).
 
 ## 4. Camera, controls, feel
 
@@ -462,7 +462,7 @@ Reward: the Storm rune, a Pattern Seed, a Cinder Heart part, and loot.
 - MVP endgame is a tier ladder. A hex-map "atlas" with adjacent-node bonuses comes in M8 phase 2.
 - **The deep rifts (M8).** Tiers above 8 open only once the Glasswater Coil is dead (`WorldState.bossesDefeated` includes `glasswater_coil`; Rekindle never resets it). The cap becomes min(the Rekindle cap, 8 until the Coil dies). Sigils of tier 9 and up still drop and stack as before; they just can't be opened yet.
   - The Cartographer's list and the map's sigil list show those sigils greyed, with an eel-coil lock badge and the line: "The deep rifts are flooded. Calm the Glasswater Coil in the Drowned Foundry to open tier 9 and above." Pressing Open on one shows the same line; the sim refuses with reason `coil` (`src/sim/world/rift/run.ts`).
-  - The first time a tier 8 rift is completed (and on loading a save already past it), a one-time toast: "The storm door in Warden's Hearth hums. Something stirs in the Fen."
+  - The storm door wakes once a tier 6 rift has been completed (designer, DECISIONS 2026-10-25). The first time that happens (and on loading a save already past it), a one-time toast: "The storm door in Warden's Hearth hums. Something stirs in the Fen."
   - When the Coil dies: the Gale "item get" panel (CONTENT §9.1), then the toast "The deep rifts drain. Tiers 9 and up are open."
   - Saves already past tier 8 keep their ladder and sigils; their tier 9+ sigils wait for the Coil like anyone's (DECISIONS 2026-10-25).
 - **Fen content in rifts (M8).** From tier 9, Fen chunks, packs and two Fen rift bosses join the pools (CONTENT §10.1), and the suffix "of the Gale" can roll.

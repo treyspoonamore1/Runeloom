@@ -505,7 +505,7 @@ Spindles drop by item level (area level). Ashwood can drop from E4 on, Ironbark 
 
 After the boss, a sealed door with a storm mark leads toward Glasswater Fen. Hitting its metal pylon with Storm powers it and shows "The Fen isn't woven yet." Region 2 arrives in M8.
 
-M8: the storm door opens. K10 becomes `@link D cleared` plus `@link D switch:S`, gains `@exit n fen/g1_storm_landing`, and its note becomes `@note S The storm door hums open. Glasswater Fen lies beyond.` It opens whenever the player powers it after the Warden; nothing else gates it (DECISIONS 2026-10-25). The region map shows the Fen's area levels, and G1's intro card reads "Glasswater Fen. Area level 18 to 24."
+M8: the storm door opens. K10 becomes `@link D cleared` plus `@link D switch:S`, gains `@exit n fen/g1_storm_landing`, and its note becomes `@note S The storm door hums open. Glasswater Fen lies beyond.` It opens when the player powers it once a tier 6 rift has been completed (best tier ever ≥ 6, so a Rekindle never closes it again); before that, powering it shows `The Fen isn't woven yet.` as today (designer, DECISIONS 2026-10-25). The region map shows the Fen's area levels, and G1's intro card reads "Glasswater Fen. Area level 18 to 24."
 
 ---
 
