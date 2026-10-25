@@ -200,6 +200,8 @@ export interface ClearOptions {
   seed: number;
   maxRoomSeconds?: number;
   stallSeconds?: number;
+  /** Called after every step (the progression sim counts events with it). */
+  onStep?: (state: GameState) => void;
 }
 
 /**
@@ -244,6 +246,7 @@ export function clearOpenRift(state: GameState, rooms: RoomSource, opts: ClearOp
       for (const e of state.enemies)
         if (!seen.has(e.id)) seen.set(e.id, e.mods.length ? `${e.kind}(${e.mods.join(' ')})` : e.kind);
       step(state, nav.input(state));
+      opts.onStep?.(state);
       for (const e of state.events) {
         if ((e.type === 'hit' || e.type === 'dot') && e.target === 'player') {
           const src = sourceName(seen, e.sourceId, e.type);

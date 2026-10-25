@@ -174,5 +174,8 @@ describe('expedition rewards', () => {
   it('reads as a list', () => {
     expect(rewardText({ parts: 1, currency: 2, embers: 1450 })).toBe('1 Fuse part, 2 currency, 1,450 Embers');
     expect(rewardText({ parts: 3, currency: 1, embers: 45 })).toBe('3 Fuse parts, 1 currency, 45 Embers');
+    expect(rewardText({ parts: 1, currency: 1, embers: 15, sigils: 1 })).toBe(
+      '1 Fuse part, 1 currency, 1 Rift Sigil, 15 Embers',
+    );
   });
 });

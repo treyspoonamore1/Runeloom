@@ -143,18 +143,22 @@ describe('saves and rifts', () => {
   it('sigils and the tier ladder round-trip; a pre-M6 save past the Warden gets a tier-1 sigil', () => {
     const { s } = atStone(2);
     s.hero.riftTier = 1;
+    s.hero.riftBestClears = 5;
     const back = parseSave(JSON.stringify(makeSave(s)));
     expect(back.hero.sigils).toEqual(s.hero.sigils);
     expect(back.hero.riftTier).toBe(1);
+    expect(back.hero.riftBestClears).toBe(5);
     const old = makeSave(s) as unknown as {
       hero: Record<string, unknown>;
       world: { bossesDefeated: string[] };
     };
     delete old.hero.sigils;
     delete old.hero.riftTier;
+    delete old.hero.riftBestClears;
     old.world.bossesDefeated = ['tar_matriarch', 'cinder_warden'];
     const migrated = parseSave(JSON.stringify(old));
     expect(migrated.hero.sigils.map((g) => [g.tier, g.mods])).toEqual([[1, []]]);
+    expect(migrated.hero.riftBestClears).toBe(0); // M7: saves before the count start at 0
   });
 });
 
@@ -180,23 +184,40 @@ describe('rift bosses and rewards', () => {
     expect(high.maxLife).toBeGreaterThan(low.maxLife * 5);
   });
 
-  it('completing a rift raises the ladder and drops a next-tier sigil and currency', () => {
+  const bossSigilTiers = (s: GameState) =>
+    s.loot.flatMap((d) => (d.content.kind === 'sigil' ? [d.content.sigil.tier] : []));
+
+  it('completing a rift raises the ladder and drops a sigil of its tier or the next, and currency', () => {
     const s = inArena(4);
+    s.hero.riftBestClears = 7; // a new best starts the count again
     killEnemy(s, bossOf(s), PLAYER_ID, 'hit');
     const seen = runUntil(s, () => false, 2);
     expect(seen).toContainEqual({ type: 'riftCompleted', tier: 4, newBest: true });
     expect(s.hero.riftTier).toBe(4);
-    const sigils = s.loot.filter((d) => d.content.kind === 'sigil');
-    expect(sigils.map((d) => (d.content.kind === 'sigil' ? d.content.sigil.tier : 0))).toContain(5);
+    expect(s.hero.riftBestClears).toBe(1);
+    const tiers = bossSigilTiers(s);
+    expect(tiers.some((t) => t === 4 || t === 5)).toBe(true);
     expect(s.loot.filter((d) => d.content.kind === 'currency').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('a lower tier completed later leaves the ladder where it is', () => {
+  it('M7: each completion of the best tier makes the next tier more likely, up to certain', () => {
+    const s = inArena(4);
+    s.hero.riftTier = 4;
+    s.hero.riftBestClears = 1000; // chance capped at 1
+    killEnemy(s, bossOf(s), PLAYER_ID, 'hit');
+    runUntil(s, () => false, 2);
+    expect(s.hero.riftBestClears).toBe(1001);
+    expect(bossSigilTiers(s)).toContain(5);
+  });
+
+  it('a lower tier completed later leaves the ladder (and the best-tier count) where it is', () => {
     const s = inArena(2);
     s.hero.riftTier = 6;
+    s.hero.riftBestClears = 3;
     killEnemy(s, bossOf(s), PLAYER_ID, 'hit');
     run(s, 2);
     expect(s.hero.riftTier).toBe(6);
+    expect(s.hero.riftBestClears).toBe(3);
   });
 
   it("the Cinder Warden's first death drops the first Rift Sigil", () => {

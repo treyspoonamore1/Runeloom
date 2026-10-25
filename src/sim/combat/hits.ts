@@ -202,9 +202,11 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
   const less = info.projectile ? state.heroMods.projectileDamageTakenLess : 0;
   if (less !== 0) side.takenMult = (side.takenMult ?? 1) * (1 - less);
   // Rift Brutal (M6): monsters' hits deal more; world hazards are nobody's.
-  const brutal = riftRules(state).monsterDamageMore;
-  if (brutal !== 0 && info.sourceId > PLAYER_ID && info.owner !== OWNER.world)
-    side.takenMult = (side.takenMult ?? 1) * (1 + brutal);
+  // M7: and the tier's damage growth (data/rift.ts riftTierScaling).
+  const rr = riftRules(state);
+  const more = (1 + rr.monsterDamageMore) * rr.tierDamageMult;
+  if (more !== 1 && info.sourceId > PLAYER_ID && info.owner !== OWNER.world)
+    side.takenMult = (side.takenMult ?? 1) * more;
   const res = resolveHit(packet, side, state.combatRng);
   // Pyre Hood: more Fire damage taken. Ailments divide it out (fireTakenMult), like Shock.
   const fireMult = playerFireTakenMult(state, p);

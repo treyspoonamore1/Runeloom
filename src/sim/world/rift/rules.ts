@@ -8,12 +8,14 @@
  *   pack members and enemy-line enemies (Teeming).
  * - Monster damage (combat/hits.ts): hits on the player from monsters deal more (Brutal). World
  *   hazards (barrels, pylons, world fire) don't count.
+ * - The tier (M7): monster life and hit damage grow per tier on top of the area level
+ *   (data/rift.ts riftTierScaling), so climbing needs the power the Hearth and gear give.
  * - Chemistry (grid/tick.ts, grid/elements.ts, actors/terrain.ts): fire spread chance (Drought),
  *   ice duration (Permafrost), smoke duration and monsters not Blinded by smoke (Choking Smoke),
  *   monsters always Oiled (Tinderbox), pylon pulses (Live Wires, pulse.ts).
  * - Loot (items/drops.ts): item quantity and rarity, the sum over the modifiers.
  */
-import { riftMods, type RiftModDef } from '../../../../data/rift';
+import { riftMods, riftTierScaling, type RiftModDef } from '../../../../data/rift';
 import type { GameState } from '../../state';
 import type { RiftSpec } from './types';
 import { isRiftRoomId } from './types';
@@ -25,6 +27,9 @@ export interface RiftRules {
   monsterLifeMore: number;
   monsterResistAdd: number;
   monsterSpeedMore: number;
+  /** Monster life and hit damage × these for the rift's tier (M7, data/rift.ts riftTierScaling). */
+  tierLifeMult: number;
+  tierDamageMult: number;
   fireSpreadMult: number;
   iceDurationMult: number;
   smokeDurationMult: number;
@@ -42,6 +47,8 @@ export const NEUTRAL_RIFT_RULES: Readonly<RiftRules> = Object.freeze({
   monsterLifeMore: 0,
   monsterResistAdd: 0,
   monsterSpeedMore: 0,
+  tierLifeMult: 1,
+  tierDamageMult: 1,
   fireSpreadMult: 1,
   iceDurationMult: 1,
   smokeDurationMult: 1,
@@ -52,9 +59,21 @@ export const NEUTRAL_RIFT_RULES: Readonly<RiftRules> = Object.freeze({
   rarity: 0,
 });
 
-/** Rules of a modifier list: "more" and "add" values sum, multipliers multiply. */
-export function rulesOf(mods: RiftSpec['mods']): RiftRules {
+/** Monster life and hit damage multipliers of a rift tier (M7): × (1 + perTier)^(tier − 1). */
+export function tierScaling(tier: number): { life: number; damage: number } {
+  const n = Math.max(0, tier - 1);
+  return {
+    life: Math.pow(1 + riftTierScaling.lifeMorePerTier, n),
+    damage: Math.pow(1 + riftTierScaling.damageMorePerTier, n),
+  };
+}
+
+/** Rules of a modifier list at a tier: "more" and "add" values sum, multipliers multiply. */
+export function rulesOf(mods: RiftSpec['mods'], tier = 1): RiftRules {
   const r: RiftRules = { ...NEUTRAL_RIFT_RULES };
+  const ts = tierScaling(tier);
+  r.tierLifeMult = ts.life;
+  r.tierDamageMult = ts.damage;
   for (const id of mods) {
     const m: RiftModDef = riftMods[id];
     r.monsterDamageMore += m.monsterDamageMore ?? 0;
@@ -83,7 +102,7 @@ export function riftRules(state: GameState): Readonly<RiftRules> {
   if (!rift || !isRiftRoomId(state.room.id)) return NEUTRAL_RIFT_RULES;
   let r = cache.get(rift.spec);
   if (!r) {
-    r = rulesOf(rift.spec.mods);
+    r = rulesOf(rift.spec.mods, rift.spec.tier);
     cache.set(rift.spec, r);
   }
   return r;

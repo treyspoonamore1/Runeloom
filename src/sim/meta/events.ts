@@ -17,7 +17,16 @@ export type HearthEvent =
   /** An expedition came back and waits to be collected. */
   | { type: 'expeditionReturned'; uid: number; tier: number }
   /** An expedition's rewards went into the bag: counts for the toast. */
-  | { type: 'expeditionCollected'; uid: number; tier: number; parts: number; currency: number; embers: number }
+  | {
+      type: 'expeditionCollected';
+      uid: number;
+      tier: number;
+      parts: number;
+      currency: number;
+      embers: number;
+      /** Rift Sigils it brought (M7 balance). */
+      sigils: number;
+    }
   /** The Salvage Loom turned a picked-up item into Thread Scrap. */
   | { type: 'autoSalvaged'; base: string; rarity: string; scrap: number; x: number; y: number }
   /** Offline progress applied: what it gave, for the "While you were away" summary. */

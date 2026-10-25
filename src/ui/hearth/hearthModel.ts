@@ -165,6 +165,7 @@ export function nextPlotLevel(level: number): number | null {
 }
 
 /** "2 Fuse parts, 3 currency, 45 Embers": what an expedition brings back. */
-export function rewardText(r: { parts: number; currency: number; embers: number }): string {
-  return `${r.parts} Fuse part${r.parts === 1 ? '' : 's'}, ${r.currency} currency, ${fmtNum(r.embers)} Embers`;
+export function rewardText(r: { parts: number; currency: number; embers: number; sigils?: number }): string {
+  const sigils = r.sigils ? `, ${r.sigils} Rift Sigil${r.sigils === 1 ? '' : 's'}` : '';
+  return `${r.parts} Fuse part${r.parts === 1 ? '' : 's'}, ${r.currency} currency${sigils}, ${fmtNum(r.embers)} Embers`;
 }

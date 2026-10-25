@@ -104,6 +104,12 @@ export interface HeroState {
   sigils: RiftSigil[];
   /** Highest rift tier completed, 0 for none: sigils up to one tier above it can be opened (M6 tier ladder). */
   riftTier: number;
+  /**
+   * Completions of the best tier (riftTier) since it became the best (M7): each raises the chance
+   * its boss drops the next tier's sigil (data/rift.ts riftBossTierUpChance). Rift progress: a
+   * Rekindle resets it.
+   */
+  riftBestClears: number;
   /** The Hearth (M7, meta/types.ts): Embers, buildings, garden, expeditions, Rekindles, Ash, Mutations. */
   hearth: HearthState;
   /** Next uid for runes, items, parts, sigils and expeditions (one id space). */

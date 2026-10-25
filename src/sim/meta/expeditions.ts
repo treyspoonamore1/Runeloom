@@ -3,19 +3,22 @@
  * Weaver (view.ts weavers), tier 1 up to the best tier completed this cycle (at least 1); it takes
  * expeditionSeconds (Swift Expeditions: ÷ 1.5, for expeditions sent after the purchase) and, on
  * collect, rolls its rewards with the loot RNG: Fuse parts (no boss parts) with a tier by the
- * rift tier's area level, crafting currencies by dropWeight, and Embers. Rewards go through
+ * rift tier's area level, crafting currencies by dropWeight, Rift Sigils (M7 balance: rolled like
+ * a rift boss's, its tier or the next; one of the best tier counts as a completion of it) and
+ * Embers. Rewards go through
  * grantContent, so gear would meet the Salvage Loom. data/hearth.ts expeditionBoard.
  */
 import { expeditionBoard } from '../../../data/hearth';
 import { fuseParts, type FusePartId } from '../../../data/fuseParts';
 import { bossKinds } from '../../../data/progression';
-import { riftAreaLevel } from '../../../data/rift';
+import { riftAreaLevel, riftBossTierUpChance } from '../../../data/rift';
 import { emit } from '../events';
 import { makePart, nextUid } from '../items/items';
 import { grantContent, type LootContent } from '../items/loot';
 import { partTierFor, rollCurrency } from '../items/drops';
 import type { GameState } from '../state';
-import { expeditionSeconds, maxExpeditionTier, weavers } from './view';
+import { rollSigil } from '../items/sigils';
+import { expeditionSeconds, maxExpeditionTier, maxRiftTier, weavers } from './view';
 
 /** Fuse parts an expedition can bring back: every part a non-boss enemy drops, in data order. */
 export const EXPEDITION_PARTS: readonly FusePartId[] = (Object.keys(fuseParts) as FusePartId[]).filter(
@@ -23,12 +26,18 @@ export const EXPEDITION_PARTS: readonly FusePartId[] = (Object.keys(fuseParts) a
 );
 
 /** Reward counts for an expedition of `tier`. */
-export function expeditionRewardCounts(tier: number): { parts: number; currency: number; embers: number } {
+export function expeditionRewardCounts(tier: number): {
+  parts: number;
+  currency: number;
+  embers: number;
+  sigils: number;
+} {
   const r = expeditionBoard.rewards;
   return {
     parts: r.parts.min + Math.floor(tier / r.parts.perTier),
     currency: r.currency.min + Math.floor(tier / r.currency.perTier),
     embers: r.embersPerTier * tier,
+    sigils: r.sigils.count,
   };
 }
 
@@ -64,6 +73,15 @@ export function rollExpeditionRewards(state: GameState, tier: number): LootConte
     out.push({ kind: 'part', part: makePart(state.hero, id, partTier) });
   }
   for (let i = 0; i < n.currency; i++) out.push({ kind: 'currency', currency: rollCurrency(rng), amount: 1 });
+  // M7 balance: Rift Sigils rolled like a rift boss's: an expedition of the best tier counts as
+  // a completion of it toward the next tier's sigil. Never above the Rekindle cap.
+  const hero = state.hero;
+  for (let i = 0; i < n.sigils; i++) {
+    const atBest = tier === hero.riftTier;
+    const up = rng.chance(riftBossTierUpChance(tier, atBest ? hero.riftBestClears : 0)) ? 1 : 0;
+    if (atBest) hero.riftBestClears++;
+    out.push({ kind: 'sigil', sigil: rollSigil(hero, rng, Math.min(maxRiftTier(hero), tier + up)) });
+  }
   if (n.embers > 0) out.push({ kind: 'embers', amount: n.embers });
   return out;
 }
@@ -79,12 +97,14 @@ export function collectExpedition(state: GameState, uid: number): string | null 
   let parts = 0;
   let currency = 0;
   let embers = 0;
+  let sigils = 0;
   for (const c of rewards) {
     grantContent(state, c);
     if (c.kind === 'part') parts++;
     else if (c.kind === 'currency') currency += c.amount;
     else if (c.kind === 'embers') embers += c.amount;
+    else if (c.kind === 'sigil') sigils++;
   }
-  emit(state, { type: 'expeditionCollected', uid, tier: e.tier, parts, currency, embers });
+  emit(state, { type: 'expeditionCollected', uid, tier: e.tier, parts, currency, embers, sigils });
   return null;
 }

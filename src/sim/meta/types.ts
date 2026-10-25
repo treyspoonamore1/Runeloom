@@ -7,7 +7,7 @@
  * src/app/hearth.ts and changes it only with HearthEdits (meta/edits.ts) sent through
  * sendHeroEdit. Rekindle (meta/rekindle.ts) resets exactly: Embers, Embers spent, building levels
  * and their carries, the garden (its runes go back to the pouch), the Salvage Loom setting, and
- * the hero's rift progress (riftTier, sigils). Nothing else.
+ * the hero's rift progress (riftTier, riftBestClears, sigils). Nothing else.
  */
 import type { BuildingId, MutationId } from '../../../data/hearth';
 import type { ItemRarity } from '../hero/types';

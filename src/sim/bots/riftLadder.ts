@@ -11,6 +11,11 @@
  *
  * Play time (bots/pacing.ts): the campaign's pacing estimate, then per rift its fight seconds ×
  * humanFightFactor plus riftOverhead per room entered and per rift.
+ *
+ * M7: superseded by the progression sim (bots/progression.ts, `--progression`), which plays the
+ * same ladder with the Hearth and Rekindles. This one never visits the Hearth and never
+ * Rekindles, so it stops at the first cycle's tier cap (10) whatever `targetTier` asks; it is the
+ * progression sim's `nohearth` player without the Hearth's bookkeeping.
  */
 import { regionRooms } from '../../../data/progression';
 import { riftMods } from '../../../data/rift';
@@ -27,6 +32,7 @@ import { applyReferenceBuild } from './campaignPlan';
 import { clearOpenRift, type RiftRunLog } from './riftBot';
 import { itemScore } from './campaignPlan';
 import { findItem } from '../items/items';
+import { maxRiftTier } from '../meta/view';
 
 export interface LadderOptions {
   seed: number;
@@ -56,7 +62,8 @@ export interface LadderResult {
   finalLevel: number;
 }
 
-function gearScore(state: GameState): number {
+/** The equipped gear's summed item score (bots/campaignPlan.ts itemScore). */
+export function gearScore(state: GameState): number {
   let n = 0;
   for (const uid of Object.values(state.hero.equipped)) {
     if (uid === null) continue;
@@ -76,7 +83,7 @@ export function pickSigil(sigils: readonly RiftSigil[], best: number): RiftSigil
 }
 
 /** Stands the player on the room's Loom Stone (K10's, the bot's rift home) and rests. */
-function restAtStone(state: GameState): void {
+export function restAtStone(state: GameState): void {
   const stone = state.objects.find((o) => o.kind === 'loom_stone' && o.on);
   if (!stone) throw new Error(`riftLadder: no active Loom Stone in ${state.room.id}`);
   const p = state.player;
@@ -86,7 +93,7 @@ function restAtStone(state: GameState): void {
 }
 
 /** Walks home from a finished rift: the boss arena's way home, as the game does (closes it). */
-function goHome(state: GameState): void {
+export function goHome(state: GameState): void {
   const r = state.world.rift;
   if (r)
     state.world.pending = {
@@ -108,10 +115,12 @@ export function runRiftLadder(opts: LadderOptions): LadderResult {
   if (!state) throw new Error('riftLadder: the campaign gave no game');
   if (state.room.id !== regionRooms.k10)
     throw new Error(`riftLadder: the campaign ended in ${state.room.id}`);
+  // M7: without Rekindles the ladder stops at the first cycle's cap.
+  const cap = Math.min(target, maxRiftTier(state.hero));
   const rifts: LadderRift[] = [];
   const firstClear: Record<number, number> = {};
   const max = opts.maxRifts ?? 150;
-  while (rifts.length < max && state.hero.riftTier < target) {
+  while (rifts.length < max && state.hero.riftTier < cap) {
     restAtStone(state);
     applyReferenceBuild(state, { craft: true });
     if (state.hero.sigils.length === 0) applyHeroEdit(state, { kind: 'freeSigil' });
