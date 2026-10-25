@@ -78,6 +78,16 @@ describe('readSnap', () => {
     expect(s.wave).toBeNull();
   });
 
+  it('never shows more life than the max (a fractional max at full life)', () => {
+    const g = game();
+    g.player.maxLife = 749.4;
+    g.player.life = 749.4;
+    const s = readSnap(g);
+    expect([s.life, s.maxLife]).toEqual([749, 749]);
+    g.player.life = 0.2; // a sliver still reads 1
+    expect(readSnap(g).life).toBe(1);
+  });
+
   it('flags death', () => {
     const g = game();
     g.player.dead = true;

@@ -87,7 +87,8 @@ export function readSnap(state: GameState, slots: SlotSnap[] = []): HudSnap {
   const p = state.player;
   const a = readArena(state);
   return {
-    life: fmtVital(p.life, 'ceil'),
+    // Life rounds up so a sliver reads 1, but never past the shown max (749.4 of 749.4 reads 749 / 749).
+    life: Math.min(fmtVital(p.life, 'ceil'), Math.round(p.maxLife)),
     maxLife: Math.round(p.maxLife),
     lifeFrac: quantize(p.maxLife > 0 ? p.life / p.maxLife : 0, 100),
     mana: fmtVital(p.mana, 'floor'),
