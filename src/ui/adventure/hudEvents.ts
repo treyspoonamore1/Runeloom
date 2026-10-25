@@ -10,6 +10,7 @@ import { currencies, type CurrencyId } from '../../../data/currency';
 import type { LootContent } from '../../sim/items/loot';
 import { sigilModLine, sigilName } from '../../sim/items/sigils';
 import type { ItemRarity } from '../../sim/hero/types';
+import { riftGate } from '../../../data/riftGate';
 import { hearthBanner, hearthToast } from '../hearth/hearthEvents';
 
 export const HUD_EVENT = {
@@ -37,6 +38,8 @@ export const HUD_EVENT = {
   note: 'note',
   /** { roomId, key }: rested at a Loom Stone. */
   rested: 'rested',
+  /** {}: best tier ever reached the storm door's tier (once per save). */
+  stormDoorWoke: 'stormDoorWoke',
   /** { kind, roomId }: a boss died. */
   bossDefeated: 'bossDefeated',
   // ---- Hero (HeroEvent) ----
@@ -234,6 +237,12 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
       case HUD_EVENT.roomCleared:
         // The hub has no enemies: "cleared" on arrival means nothing there.
         if (e.first && e.id !== hearthRoom) out.push(toast('level', 'Room cleared'));
+        break;
+      case HUD_EVENT.stormDoorWoke:
+        out.push(toast('door', riftGate.stormDoorToast));
+        break;
+      case HUD_EVENT.bossDefeated:
+        if (e.kind === riftGate.boss) out.push(toast('door', riftGate.openedToast));
         break;
       case HUD_EVENT.levelUp:
         out.push(toast('level', `Level ${Number(e.level)}`, 'Passive point available · press P'));

@@ -2,6 +2,7 @@
  * Rift views (M6), pure: the sigils the map screen offers at a Loom Stone and the open rift's
  * summary for the HUD and the map. Names and texts come from data/rift.ts and items/sigils.ts.
  */
+import { riftGate } from '../../../data/riftGate';
 import { riftAreaLevel, riftMods, type RiftModId } from '../../../data/rift';
 import type { RiftSigil } from '../../sim/hero/types';
 import { sigilBonus, sigilName } from '../../sim/items/sigils';
@@ -24,6 +25,8 @@ export interface SigilView {
   bonus: string;
   /** Null when it can be opened here now, else why not. */
   blocked: string | null;
+  /** Tier 9+ before the Glasswater Coil: shown greyed with a lock badge (M8). */
+  locked: boolean;
 }
 
 export function modLines(mods: readonly RiftModId[]): ModLine[] {
@@ -54,26 +57,34 @@ export function sigilViews(
   riftOpen: boolean,
   /** The highest tier that opens before the next Rekindle (hero.hearth.rekindles); default: no cap. */
   cap = Infinity,
+  /** The Glasswater Coil is dead (sim/meta/view.ts deepRiftsOpen); default: open. */
+  deepOpen = true,
 ): SigilView[] {
   return [...sigils]
     .sort((a, b) => a.tier - b.tier || a.uid - b.uid)
-    .map((g) => ({
-      uid: g.uid,
-      name: sigilName(g),
-      tier: g.tier,
-      areaLevel: riftAreaLevel(g.tier),
-      mods: modLines(g.mods),
-      bonus: bonusLine(g.mods),
-      blocked: riftOpen
-        ? 'A rift is already open'
-        : g.tier > cap
-          ? `Rekindle to open tiers above ${cap}`
-          : g.tier > best + 1
-            ? `Complete a tier ${g.tier - 1} rift first`
-            : !standing
-              ? 'Stand at a Loom Stone to open it'
-              : null,
-    }));
+    .map((g) => {
+      const locked = !deepOpen && g.tier > riftGate.openTier;
+      return {
+        uid: g.uid,
+        name: sigilName(g),
+        tier: g.tier,
+        areaLevel: riftAreaLevel(g.tier),
+        mods: modLines(g.mods),
+        bonus: bonusLine(g.mods),
+        locked,
+        blocked: riftOpen
+          ? 'A rift is already open'
+          : locked
+            ? riftGate.lockedText
+            : g.tier > cap
+              ? `Rekindle to open tiers above ${cap}`
+              : g.tier > best + 1
+                ? `Complete a tier ${g.tier - 1} rift first`
+                : !standing
+                  ? 'Stand at a Loom Stone to open it'
+                  : null,
+      };
+    });
 }
 
 export interface RiftSummary {

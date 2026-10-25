@@ -28,6 +28,7 @@ export const uiShotIds = [
   'pause',
   'volatile',
   'rifts',
+  'rifts_locked',
   'rift_hud',
   'rift_map',
   'rift_wires',
@@ -272,6 +273,17 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
       const wires = add(4, ['hardened', 'live_wires', 'floodplain']);
       add(2, []);
       add(6, ['brutal', 'teeming', 'drought', 'choking_smoke']);
+      if (shot === 'rifts_locked') {
+        // M8: best tier 8, one Rekindle (cap 12), the Coil alive: the tier 9 and 10 sigils are locked.
+        h.riftTier = 8;
+        h.hearth.rekindles = 1;
+        h.sigils.length = 0; // only the locked ones and one open tier 8, so the list fits the panel
+        add(8, ['hardened']);
+        add(9, ['hardened', 'floodplain']);
+        add(10, []);
+        w.ui!.open('map');
+        return;
+      }
       if (shot === 'rifts') {
         w.ui!.open('map');
         return;
