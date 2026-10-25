@@ -137,6 +137,9 @@ function notesFor(input: ReadoutInput, program: SpellProgram, distance: number):
   const notes: string[] = [];
   if (program.trigger.event === 'kill' || hasOnKill(program.root))
     notes.push("Harvest and On Kill can't fire against dummies, so their damage isn't included.");
+  // Not forced either: dummies never die, so nothing shatters (DECISIONS: Shatter in the readout).
+  if (program.trigger.event === 'shatter')
+    notes.push("Shatter can't fire against dummies, so its damage isn't included.");
   if (FORCED_EVENTS.includes(program.trigger.event))
     notes.push(
       `${triggers[program.trigger.id].name} assumes its event happens once per second, limited by its ICD.`,

@@ -31,8 +31,11 @@ export { BASE_SLOTS, LOADOUT_SLOTS, LOCKED_SLOT_MESSAGE, openSlotCount, slotOpen
 /** Button for each slot, in slot order. */
 export { SLOT_BUTTONS } from './channel';
 
-/** Runes the sim accepts (CONTENT §1 "Ships"): M2 and M5 (no M3 or M4 runes exist). */
-export const RUNTIME_SHIPS = shipsThrough('M5');
+/**
+ * Runes the sim accepts (CONTENT §1 "Ships"): M2, M5 and M7 (no M3, M4 or M6 runes exist; the
+ * only M7 rune is the Shatter trigger). M8's Tide and Gale stay refused.
+ */
+export const RUNTIME_SHIPS = shipsThrough('M7');
 
 /** The starting loadout: Fire Bolt on LMB, Strike on RMB, Twig Spindle (CONTENT §9.1). */
 export const DEFAULT_LOADOUT: LoadoutSpec = {

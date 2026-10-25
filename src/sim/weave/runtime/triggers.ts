@@ -1,6 +1,6 @@
 /**
  * The trigger phase of a tick (CONTENT §1.1): the Cast wind-up flow, Pulse, and the event
- * triggers (On Dodge, Harvest, On Crit, On Hurt) fed by the trigger queue. Every automatic
+ * triggers (On Dodge, Harvest, On Crit, On Hurt, Shatter) fed by the trigger queue. Every automatic
  * trigger pays its weave's mana when it fires and skips when short; each has its ICD. Nothing
  * fires while the player is dead or frozen (queued events are dropped).
  *

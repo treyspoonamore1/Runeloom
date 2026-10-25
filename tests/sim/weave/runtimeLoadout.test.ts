@@ -40,7 +40,7 @@ describe('weave slots in the sim', () => {
       'Cast > Bolt[Storm',
       'Cast > Nova[Fire, Pierce]',
       'Cast > Lob[Fire] > OnExpire > Nova[Fire, Wide] > OnHit > Bolt[]',
-      'Shatter > Bolt[Fire]', // M7
+      'Cast > Bolt[Tide]', // M8
     ]) {
       const r = setSlotWeave(s, 2, bad);
       expect(r.applied, bad).toBe(false);
