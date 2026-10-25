@@ -271,6 +271,7 @@ export function parseWorld(v: unknown): WorldState {
     w.respawn = { roomId: str(r.roomId, 'world.respawn.roomId'), key: str(r.key, 'world.respawn.key') };
   }
   w.riftCount = opt(o, 'riftCount', int, 0, P);
+  w.stormDoorHinted = opt(o, 'stormDoorHinted', bool, false, P);
   if (o.rift !== null && o.rift !== undefined) {
     const r = obj(o.rift, 'world.rift');
     const s = obj(r.spec, 'world.rift.spec');

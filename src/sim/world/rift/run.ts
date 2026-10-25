@@ -21,15 +21,17 @@ import { findSigil, makeSigil } from '../../items/sigils';
 import { riftDrops } from '../../../../data/rift';
 import { installRiftRooms } from './rooms';
 import { riftRoomPrefix, type RiftSpec } from './types';
-import { inHearth, maxRiftTier } from '../../meta/view';
+import { deepRiftsOpen, inHearth, maxRiftTier, riftOpenCap } from '../../meta/view';
+import { riftGate } from '../../../../data/riftGate';
 import { hearthStone } from '../../../../data/hearth';
 
 /**
  * The highest sigil tier the hero may open: one above the best completed (the tier ladder), and
- * never above the Rekindle cap (M7, meta/view.ts maxRiftTier: 10, +2 per Rekindle, up to 16).
+ * never above the Rekindle cap (M7, meta/view.ts maxRiftTier: 10, +2 per Rekindle, up to 16), and
+ * not above 8 until the Glasswater Coil is dead (M8, riftOpenCap).
  */
 export function maxOpenTier(state: GameState): number {
-  return Math.min(state.hero.riftTier + 1, maxRiftTier(state.hero));
+  return Math.min(state.hero.riftTier + 1, riftOpenCap(state.hero, state.world));
 }
 
 /**
@@ -50,6 +52,8 @@ export function openRiftError(state: GameState, uid: number): string | null {
   if (state.world.rift) return 'A rift is already open';
   const sigil = findSigil(state.hero, uid);
   if (!sigil) return `No Rift Sigil ${uid}`;
+  // M8: the deep rifts wait for the Coil (sigils above 8 still drop and stack).
+  if (sigil.tier > riftGate.openTier && !deepRiftsOpen(state.world)) return riftGate.lockedText;
   const cap = maxRiftTier(state.hero);
   if (sigil.tier > cap) return `Rekindle to open tiers above ${cap}`;
   if (sigil.tier > maxOpenTier(state)) return `Complete a tier ${sigil.tier - 1} rift first`;

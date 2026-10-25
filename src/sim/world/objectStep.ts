@@ -15,6 +15,7 @@ import { stepSwitches } from './objectHits';
 import { stepLinks } from './objectLinks';
 import { stepPlates, stepTouches } from './objectTouch';
 import { stepRoomClear } from './roomClear';
+import { stepStormDoorHint } from './riftTierLink';
 import { stepExits } from './exits';
 import { stepHub } from './hub';
 
@@ -34,6 +35,7 @@ function stepBraziers(state: GameState): void {
 
 export function stepObjectSystems(state: GameState, input: InputFrame | undefined): void {
   stepRoomClear(state);
+  stepStormDoorHint(state);
   stepSwitches(state);
   stepBraziers(state);
   stepPlates(state);
