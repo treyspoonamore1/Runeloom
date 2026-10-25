@@ -34,3 +34,64 @@ export const uiTuning = {
    */
   mapCell: { w: 3, h: 2, tilesPerW: 48, tilesPerH: 24 },
 } as const;
+
+/**
+ * The inventory (M7.5 menu pass). Presentation only, like the rest of this file.
+ *
+ * Upgrade markers: an unequipped item gets a green up arrow when swapping it into its slot raises
+ * `score` by at least `minGain`. `score` adds up the rows of the character sheet (the numbers
+ * src/ui/inventory/stats.ts statRows shows, from HeroMods) times these weights, so a stat counts
+ * only as far as the sheet shows it: resistances stop at the cap. Weights are points per sheet
+ * unit: `perUnit` rows use the row's own number (1 life, 1 Capacity, 1 mana per second), `perPoint`
+ * rows use a fraction of 1 as whole percentage points (0.12 is 12). A row with no weight is worth 0.
+ * Rough scale: 10 life = 1 point, 1% damage or resistance = 0.25 to 0.3, +1 Capacity = 6, a Dodge
+ * charge = 4. Rows the sheet doesn't show can't count. For charms the swap goes into the empty
+ * charm slot, else the weaker one (the better score once swapped in).
+ */
+export const inventoryUi = {
+  /** localStorage key for the bag's sort, filters and "upgrades only" toggle. */
+  prefsKey: 'runeloom.inventory.v1',
+  upgrade: {
+    /** Smallest score gain that shows the green arrow (and the smallest loss for the red one). */
+    minGain: 0.5,
+    /** Weights by sheet row key; points per sheet unit. */
+    perUnit: {
+      life: 0.1,
+      mana: 0.05,
+      regen: 0.5,
+      strikeFlat: 0.4,
+      capacity: 6,
+      dodges: 4,
+    } as Record<string, number>,
+    /** Weights by sheet row key; points per percentage point (the row value × 100). */
+    perPoint: {
+      fireInc: 0.25,
+      frostInc: 0.25,
+      stormInc: 0.25,
+      physInc: 0.25,
+      branchInc: 0.15,
+      crit: 0.6,
+      castSpeed: 0.4,
+      manaCost: 0.3,
+      fireRes: 0.3,
+      frostRes: 0.3,
+      stormRes: 0.3,
+      move: 0.3,
+      dodgeRecharge: 0.1,
+      projLess: 0.4,
+      ailDur: 0.1,
+      igniteEff: 0.1,
+      chillGain: 0.1,
+      freezeDur: 0.1,
+      terrainDur: 0.08,
+      spread: 0.08,
+    } as Record<string, number>,
+  },
+  /** Bulk salvage's "all Normal" etc.: the rarities each preset takes (unique items never). */
+  bulkSalvage: {
+    normal: ['normal'],
+    normalMagic: ['normal', 'magic'],
+  } as Record<string, readonly string[]>,
+  /** Rarities that ask for confirmation on shift-click salvage. */
+  confirmSalvageRarities: ['rare', 'unique'] as readonly string[],
+} as const;

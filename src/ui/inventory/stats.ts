@@ -29,8 +29,16 @@ export function equippedItem(hero: Readonly<HeroState>, slot: EquipSlot): Item |
   return uid === null ? null : (hero.items.find((i) => i.uid === uid) ?? null);
 }
 
-/** Every row of the character sheet, in display order. Rows that are 0 and optional are left out. */
-export function statRows(hero: Readonly<HeroState>, m: Readonly<HeroMods>, t: Tuning): StatRow[] {
+/**
+ * Every row of the character sheet, in display order. Rows that are 0 and optional are left out
+ * unless `all` (the sheet's hover preview uses it to place rows that appear when an item is swapped in).
+ */
+export function statRows(
+  hero: Readonly<HeroState>,
+  m: Readonly<HeroMods>,
+  t: Tuning,
+  all = false,
+): StatRow[] {
   const c = t.combat;
   const sp = equippedItem(hero, 'spindle');
   const base = sp && isSpindleId(sp.base) ? spindles[sp.base] : null;
@@ -48,7 +56,7 @@ export function statRows(hero: Readonly<HeroState>, m: Readonly<HeroMods>, t: Tu
     opt = false,
     higherIsBetter = true,
   ) => {
-    if (opt && value === 0) return;
+    if (opt && value === 0 && !all) return;
     rows.push({ key, group, label, value, text, higherIsBetter });
   };
   row('life', 'Vitals', 'Maximum life', Math.round(life), String(Math.round(life)));
@@ -141,7 +149,12 @@ export function statRows(hero: Readonly<HeroState>, m: Readonly<HeroMods>, t: Tu
 }
 
 export interface StatDelta {
+  /** The sheet row's key (StatRow.key). */
+  key: string;
   label: string;
+  /** The row's text before and after ("174", "12%"); "–" when the row is absent on that side. */
+  from: string;
+  to: string;
   /** "+12", "−8%", "×1.06 → ×1.12". */
   text: string;
   good: boolean;
@@ -167,7 +180,14 @@ export function diffStats(before: readonly StatRow[], after: readonly StatRow[])
         ? Math.abs(d).toFixed(2)
         : num(Math.abs(d));
     if (mag === '0%' || mag === '0') continue;
-    out.push({ label: ref.label, text: `${d > 0 ? '+' : '−'}${mag}`, good: d > 0 === ref.higherIsBetter });
+    out.push({
+      key: k,
+      label: ref.label,
+      from: x?.text ?? '–',
+      to: y?.text ?? '–',
+      text: `${d > 0 ? '+' : '−'}${mag}`,
+      good: d > 0 === ref.higherIsBetter,
+    });
   }
   return out;
 }
@@ -200,11 +220,47 @@ export function compareItem(
   slots: readonly EquipSlot[],
   modsFor: (h: Readonly<HeroState>) => HeroMods,
   t: Tuning,
+  /** The slot to compare in (the better swap for charms, upgrade.ts bestSlot); default: targetSlot. */
+  into?: EquipSlot | null,
 ): Comparison | null {
   if (slots.some((s) => hero.equipped[s] === item.uid)) return null;
-  const slot = targetSlot(hero, slots);
+  const slot = into ?? targetSlot(hero, slots);
   if (!slot) return null;
   const after = withEquipped(hero, item, slot);
   const deltas = diffStats(statRows(hero, modsFor(hero), t), statRows(after, modsFor(after), t));
   return { slot, current: equippedItem(hero, slot), deltas };
+}
+
+/** A sheet row while an item is hovered: its change if equipped, and whether the row only exists after. */
+export interface SheetRow extends StatRow {
+  delta?: StatDelta;
+  /** The row is absent now and appears when the item is equipped (its text shows "–"). */
+  ghost?: boolean;
+}
+
+/**
+ * The character sheet's rows, with each stat's change when `preview` (a hypothetical hero with the
+ * hovered item swapped in) is given. Rows that only exist on one side are kept, in sheet order.
+ */
+export function sheetRows(
+  hero: Readonly<HeroState>,
+  mods: Readonly<HeroMods>,
+  t: Tuning,
+  preview?: { hero: Readonly<HeroState>; mods: Readonly<HeroMods> } | null,
+): SheetRow[] {
+  const now = statRows(hero, mods, t);
+  if (!preview) return now;
+  const then = statRows(preview.hero, preview.mods, t);
+  const deltas = new Map(diffStats(now, then).map((d) => [d.key, d]));
+  const a = new Map(now.map((r) => [r.key, r]));
+  const b = new Map(then.map((r) => [r.key, r]));
+  const out: SheetRow[] = [];
+  for (const { key } of statRows(hero, mods, t, true)) {
+    const cur = a.get(key);
+    const nxt = b.get(key);
+    if (!cur && !nxt) continue;
+    const delta = deltas.get(key);
+    out.push(cur ? { ...cur, delta } : { ...nxt!, text: '–', value: 0, ghost: true, delta });
+  }
+  return out;
 }

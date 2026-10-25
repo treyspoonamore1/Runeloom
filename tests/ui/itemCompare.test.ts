@@ -76,7 +76,11 @@ describe('item comparison', () => {
     const a = [
       { key: 'x', group: 'Offense' as const, label: 'X', value: 0.1, text: '10%', higherIsBetter: true },
     ];
-    expect(diffStats(a, [])).toEqual([{ label: 'X', text: '−10%', good: false }]);
-    expect(diffStats([], a)).toEqual([{ label: 'X', text: '+10%', good: true }]);
+    expect(diffStats(a, [])).toEqual([
+      { key: 'x', label: 'X', from: '10%', to: '–', text: '−10%', good: false },
+    ]);
+    expect(diffStats([], a)).toEqual([
+      { key: 'x', label: 'X', from: '–', to: '10%', text: '+10%', good: true },
+    ]);
   });
 });
