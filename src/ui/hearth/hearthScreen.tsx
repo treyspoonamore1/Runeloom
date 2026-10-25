@@ -11,6 +11,7 @@ import { fixturesOn } from '../fixtures/mode';
 import { Icon } from '../adventure/icons';
 import { MenuFrame, note, type MenuId } from '../menus/frame';
 import { injectMapStyle } from '../map/mapStyle';
+import { canOpenRiftHere } from '../../app/hero';
 import { RiftPanel } from '../map/riftPanel';
 import { readHearth, sendHearth } from './adapter';
 import { BuildingsPanel } from './buildingsPanel';
@@ -155,7 +156,7 @@ function TabBody(p: { tab: HearthTab; p: PanelProps; onBench(): void; onClose():
     case 'cartographer':
       return (
         <div class="hx-rifts">
-          <RiftPanel session={p.p.session} standing={p.p.snap.summary.inHearth} onOpened={p.onClose} />
+          <RiftPanel session={p.p.session} standing={canOpenRiftHere(p.p.session)} onOpened={p.onClose} />
         </div>
       );
   }

@@ -260,6 +260,8 @@ export function createHud(ctx: HudContext): Hud {
         if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Escape' || e.code === 'Space')
           dismissOffline();
         e.preventDefault();
+        // The key that closes the summary must not also reach the game's input (Space would dodge).
+        e.stopImmediatePropagation();
         return;
       }
       if (screen === 'itemGet') {

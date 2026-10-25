@@ -55,3 +55,13 @@ describe('InputSampler taps', () => {
     expect(sample()).toBe(0);
   });
 });
+
+describe('InputSampler dropTaps', () => {
+  it('forgets taps made while the sim was paused', () => {
+    const { input, key, sample } = setup();
+    key('keydown', 'KeyQ');
+    key('keyup', 'KeyQ');
+    input.dropTaps();
+    expect(sample() & Button.Cast3).toBe(0);
+  });
+});

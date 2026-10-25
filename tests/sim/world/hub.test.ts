@@ -177,6 +177,17 @@ describe('getting to the hub', () => {
     expect(s.room.id).toBe(hearthRoom);
     expect(s.world.rift).toBeNull();
   });
+
+  it('with the Hearth lit, a rift opens anywhere in the hub (the Cartographer) and returns to its stone', () => {
+    const s = hub();
+    const g = makeSigil(s.hero, 1, []);
+    s.hero.sigils.push(g);
+    standAt(s, 'expedition_board'); // far from the Loom Stone
+    expect(applyHeroEdit(s, { kind: 'openRift', uid: g.uid })).toMatch(/Loom Stone/); // unlit
+    lightHearth(s);
+    expect(applyHeroEdit(s, { kind: 'openRift', uid: g.uid })).toBeNull();
+    expect(s.world.rift!.spec.home).toEqual({ roomId: hearthRoom, key: hearthStone.key });
+  });
 });
 
 it('every station kind has a legend character', () => {

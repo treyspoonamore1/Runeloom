@@ -53,6 +53,14 @@ export class InputSampler {
     surface.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
+  /**
+   * Forgets taps not yet sampled. The app calls it on every frame the sim is paused, so a key
+   * pressed in the pause menu or the title screen doesn't fire when play resumes.
+   */
+  dropTaps(): void {
+    this.tapped = 0;
+  }
+
   /** Mouse position in CSS pixels relative to the game surface. */
   get mouse(): { x: number; y: number } {
     return { x: this.mouseX, y: this.mouseY };

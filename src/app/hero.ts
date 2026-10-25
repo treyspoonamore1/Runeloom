@@ -44,6 +44,7 @@ import {
 } from '../sim/hero/passives';
 import { buildRegionMap, type RegionMap } from '../sim/world/regionMap';
 import { loomStoneHere } from '../sim/world/adventure';
+import { riftHomeHere } from '../sim/world/rift/run';
 
 export type { HeroEdit, Description };
 
@@ -271,6 +272,11 @@ export const UNFUSE_KEEP_COST = scrapValues.unfuseKeepCost;
 /** The map screen's data: the rooms connected to the current one, laid out from their exits. */
 export function getRegionMap(session: Session): RegionMap {
   return buildRegionMap(session.state);
+}
+
+/** Whether a rift can be opened where the player is: at an activated Loom Stone, or anywhere in the Hearth's hub (M7). */
+export function canOpenRiftHere(session: Session): boolean {
+  return riftHomeHere(session.state) !== null;
 }
 
 /** The activated Loom Stone the living player stands at (rest and travel work there), or null. */

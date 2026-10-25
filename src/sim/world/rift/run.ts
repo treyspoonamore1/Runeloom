@@ -21,7 +21,8 @@ import { findSigil, makeSigil } from '../../items/sigils';
 import { riftDrops } from '../../../../data/rift';
 import { installRiftRooms } from './rooms';
 import { riftRoomPrefix, type RiftSpec } from './types';
-import { maxRiftTier } from '../../meta/view';
+import { inHearth, maxRiftTier } from '../../meta/view';
+import { hearthStone } from '../../../../data/hearth';
 
 /**
  * The highest sigil tier the hero may open: one above the best completed (the tier ladder), and
@@ -29,6 +30,18 @@ import { maxRiftTier } from '../../meta/view';
  */
 export function maxOpenTier(state: GameState): number {
   return Math.min(state.hero.riftTier + 1, maxRiftTier(state.hero));
+}
+
+/**
+ * Where a rift opened here would return to: the activated Loom Stone the player stands at, or,
+ * anywhere in the Hearth's hub (the Cartographer opens rifts there, M7), the hub's Loom Stone.
+ * Null when neither.
+ */
+export function riftHomeHere(state: GameState): { roomId: string; key: string } | null {
+  const stone = loomStoneHere(state);
+  if (stone) return { roomId: state.room.id, key: stone.key };
+  if (state.hero.hearth.lit && inHearth(state)) return { roomId: hearthStone.roomId, key: hearthStone.key };
+  return null;
 }
 
 /** Why the sigil `uid` can't be opened here now, or null. */
@@ -40,7 +53,7 @@ export function openRiftError(state: GameState, uid: number): string | null {
   const cap = maxRiftTier(state.hero);
   if (sigil.tier > cap) return `Rekindle to open tiers above ${cap}`;
   if (sigil.tier > maxOpenTier(state)) return `Complete a tier ${sigil.tier - 1} rift first`;
-  if (!loomStoneHere(state)) return 'Stand at an activated Loom Stone';
+  if (!riftHomeHere(state)) return 'Stand at an activated Loom Stone, or open it from the Hearth';
   return null;
 }
 
@@ -50,7 +63,7 @@ export function openRift(state: GameState, uid: number): string | null {
   if (err) return err;
   const hero = state.hero;
   const sigil = findSigil(hero, uid)!;
-  const stone = loomStoneHere(state)!;
+  const home = riftHomeHere(state)!;
   hero.sigils.splice(hero.sigils.indexOf(sigil), 1);
   const w = state.world;
   const spec: RiftSpec = {
@@ -58,7 +71,7 @@ export function openRift(state: GameState, uid: number): string | null {
     seed: state.lootRng.nextU32(),
     tier: sigil.tier,
     mods: [...sigil.mods],
-    home: { roomId: state.room.id, key: stone.key },
+    home,
   };
   w.rift = { spec, bossDead: false };
   w.respawn = { roomId: spec.home.roomId, key: spec.home.key };

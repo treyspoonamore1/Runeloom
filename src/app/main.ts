@@ -43,6 +43,8 @@ async function boot(): Promise<void> {
     sampleInput: () => input.sample((sx, sy) => renderer.screenToWorld(sx, sy)),
     step: (f) => session.step(f),
     render: (alpha, dt) => {
+      // A paused sim samples no input: taps made meanwhile (pause menu, title) are dropped.
+      if (loop.paused) input.dropTaps();
       // Every sim event since the last frame goes to render, audio and HUD exactly once.
       const events = session.drainEvents();
       renderer.handleEvents(events);

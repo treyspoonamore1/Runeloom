@@ -10,6 +10,7 @@ import { MenuFrame, note, type MenuId } from '../menus/frame';
 import { mapProgress, regionLayout } from './adapter';
 import { placeMap, travelTargets, type PlacedRoom } from './mapModel';
 import { injectMapStyle } from './mapStyle';
+import { canOpenRiftHere } from '../../app/hero';
 import { RiftPanel } from './riftPanel';
 
 /** The SVG's virtual size; it scales to the panel with preserveAspectRatio. */
@@ -176,7 +177,7 @@ export function MapScreen(p: { session: Session; onTab(id: MenuId): void; onClos
         ) : p.session.state.world.rift ? null : (
           <p class="mn-muted">Stand at a Loom Stone to rest or travel between the ones you have touched.</p>
         )}
-        <RiftPanel session={p.session} standing={!!prog.standing} onOpened={p.onClose} />
+        <RiftPanel session={p.session} standing={!!prog.standing || canOpenRiftHere(p.session)} onOpened={p.onClose} />
         <div class="mp-legend" aria-hidden="true">
           <span class="current">
             <i /> You are here

@@ -65,6 +65,9 @@ export function goToHearth(session: Session): void {
   const s = session.state;
   if (s.rooms[hearthRoom] === undefined)
     throw new CommandError(`The hub room "${hearthRoom}" isn't built yet.`);
+  // Jumping out of a rift without closing it would leave it open in the hub (it closes only
+  // when the player walks out or dies).
+  if (s.world.rift) throw new CommandError('Leave the rift first: walk out of it, or finish it.');
   debugSetEmbers(s, s.hero.hearth.embers);
   s.world.respawn = { roomId: hearthRoom, key: hearthStone.key };
   enterRoom(s, hearthRoom, { kind: 'loomStone', key: hearthStone.key });

@@ -37,7 +37,7 @@ function fake(opts: { mode?: string; lit?: boolean; rooms?: string[] } = {}) {
     mode: opts.mode ?? 'adventure',
     hero: { hearth: { lit: opts.lit ?? true, embers: 12 } },
     rooms: Object.fromEntries((opts.rooms ?? [hearthRoom]).map((r) => [r, 'room text'])),
-    world: { respawn: null as unknown },
+    world: { respawn: null as unknown, rift: null as unknown },
   };
   const env = {
     session: { state, markEdited: () => void edited++, syncRoom: () => void synced++ },
@@ -183,6 +183,16 @@ describe('Hearth console commands', () => {
     expect(r.ok).toBe(false);
     expect(r.lines[0]).toMatch(/isn't built/);
     expect(() => goToHearth(f.env.session)).toThrow();
+    expect(calls).toEqual([]);
+    expect(f.edits()).toBe(0);
+  });
+
+  it('hearth refuses inside a rift (it would leave the rift open in the hub)', () => {
+    const f = fake();
+    f.state.world.rift = { spec: { index: 0 }, bossDead: false };
+    const r = f.reg.execute('hearth', f.env);
+    expect(r.ok).toBe(false);
+    expect(r.lines[0]).toMatch(/Leave the rift/);
     expect(calls).toEqual([]);
     expect(f.edits()).toBe(0);
   });
