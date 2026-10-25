@@ -38,6 +38,7 @@ export const uiShotIds = [
   'hearth_away',
   'hud_twin',
   'loom_twin',
+  'item_art',
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -48,6 +49,7 @@ export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'hud') return `${base}/?${ADV}&ui=play&boss=cinder_warden`;
   if (id === 'hud_twin' || id === 'loom_twin') return `${base}/?${ADV}&ui=play`;
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
+  if (id === 'item_art') return `${base}/?${ADV}`;
   if (id === 'pause') return `${base}/?${ADV}&ui=pause`;
   // The Hearth (M7) with a fixture lit Hearth: every tab, the Rekindle confirmation, the HUD with
   // its counters and toasts, and the offline modal.
@@ -139,7 +141,7 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
       ui.hold(true);
       const item = {
         uid: 900,
-        base: 'wool_cloak',
+        base: 'travelers_cloak',
         rarity: 'magic',
         itemLevel: 6,
         affixes: [{ id: 'life', tier: 1, value: 30 }],
@@ -151,15 +153,25 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
           type: 'lootPicked',
           content: { kind: 'rune', rune: { uid: 901, rune: 'lob', level: 1, xp: 0, quality: 0 } },
         },
-        { type: 'lootPicked', content: { kind: 'item', item } },
-        { type: 'lootPicked', content: { kind: 'part', part: { uid: 902, part: 'ember_feather', tier: 2 } } },
         { type: 'lootPicked', content: { kind: 'scrap', amount: 3 } },
         { type: 'chestOpened', dungeon: 'kiln', big: false, count: 1 },
         { type: 'pickup', kind: 'heart_seed', total: 1 },
         { type: 'levelUp', level: 7 },
+        // Last, so the newest five toasts show the item, part and currency art.
+        { type: 'lootPicked', content: { kind: 'item', item } },
+        { type: 'lootPicked', content: { kind: 'part', part: { uid: 902, part: 'ember_feather', tier: 2 } } },
+        { type: 'lootPicked', content: { kind: 'currency', currency: 'chaos_skein', amount: 2 } },
       ]);
     });
     await page.waitForTimeout(500);
+  } else if (id === 'item_art') {
+    // The M7.5 item art gallery (src/ui/fixtures/itemArtGallery.tsx), mounted over the scene.
+    await page.evaluate(async () => {
+      const url = '/src/ui/fixtures/itemArtGallery.tsx';
+      const m = (await import(/* @vite-ignore */ url)) as { mountItemArtGallery(): void };
+      m.mountItemArtGallery();
+    });
+    await page.waitForTimeout(200);
   } else if (id === 'death') {
     await page.evaluate(() => {
       const s = window.__runeloom!.session;

@@ -3,17 +3,16 @@
  * Fuse part, inside a frame colored by rarity. Every menu that shows an item, a currency or a
  * part (bag, equipment, Fuse, crafting bench, Spindlewright, toasts) draws it with these.
  *
- * CONTRACT (M7.5), owned by the art agent: these three components, their props, and the
- * `.ia-*` class names stay as they are; the art agent replaces the placeholder pictures
- * (today the slot-kind icons and the currency glyph) with per-base SVG art and rarity frames.
+ * CONTRACT (M7.5): these three components, their props, and the `.ia-*` class names stay as
+ * they are. The pictures live in ./art (one file per family); the frames in itemArtStyle.ts.
  * Callers size them with their container (the art fills it) or with `size`.
  */
 import type { JSX } from 'preact';
 import type { CurrencyId } from '../../../data/currency';
+import { LOOT } from '../../render/world/worldPalette';
 import type { ItemRarity } from '../../sim/hero/types';
-import { kindOfBase } from '../../sim/items/items';
-import { Icon, type IconKind } from '../adventure/icons';
-import { CurrencyGlyph } from './currencyGlyph';
+import { resolveCurrencyArt, resolveItemArt, resolvePartArt } from './art/resolve';
+import { injectItemArtStyle } from './itemArtStyle';
 
 export type ArtSize = 'sm' | 'md' | 'lg';
 
@@ -25,39 +24,57 @@ export interface ItemArtSource {
   unique?: string;
 }
 
-function Frame(p: { rarity?: ItemRarity | 'currency' | 'part'; size?: ArtSize; children: JSX.Element }) {
+function Frame(p: {
+  rarity?: ItemRarity | 'currency' | 'part';
+  size?: ArtSize;
+  children: JSX.Element;
+  tier?: 1 | 2 | 3;
+}) {
+  injectItemArtStyle();
+  const size = p.size ? ` ia-${p.size}` : '';
   return (
-    <span class={`ia-frame ia-${p.size ?? 'md'} r-${p.rarity ?? 'normal'}`} aria-hidden="true">
-      {p.children}
+    <span class={`ia-frame${size} r-${p.rarity ?? 'normal'}`} aria-hidden="true">
+      <svg class="ia-art" viewBox="0 0 32 32">
+        {p.children}
+      </svg>
+      {p.tier ? (
+        <span class={`ia-tier t-${p.tier}`}>
+          {Array.from({ length: p.tier }, (_, i) => (
+            <i key={i} />
+          ))}
+        </span>
+      ) : null}
     </span>
   );
 }
 
 /** An item's picture in its rarity frame. */
 export function ItemArt(p: { item: ItemArtSource; size?: ArtSize }) {
-  const kind = (kindOfBase(p.item.base) ?? 'charm') as IconKind;
+  const art = resolveItemArt(p.item);
   return (
     <Frame rarity={p.item.rarity} size={p.size}>
-      <Icon kind={kind} />
+      {art.shape()}
     </Frame>
   );
 }
 
 /** A crafting currency's picture. */
 export function CurrencyArt(p: { currency: CurrencyId; size?: ArtSize }) {
+  const art = resolveCurrencyArt(p.currency, LOOT.currency);
   return (
     <Frame rarity="currency" size={p.size}>
-      <CurrencyGlyph id={p.currency} />
+      {art.shape(art.color)}
     </Frame>
   );
 }
 
-/** A Fuse part's picture, marked with its tier (I to III). */
+/** A Fuse part's picture, marked with its tier (I to III) as pips on the frame. */
 export function PartArt(p: { part: string; tier: 1 | 2 | 3; size?: ArtSize }) {
-  void p.part;
+  const art = resolvePartArt(p.part);
+  const tier = p.tier >= 1 && p.tier <= 3 ? p.tier : 1;
   return (
-    <Frame rarity="part" size={p.size}>
-      <Icon kind="part" />
+    <Frame rarity="part" size={p.size} tier={tier}>
+      {art.shape()}
     </Frame>
   );
 }

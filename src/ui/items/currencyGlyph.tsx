@@ -1,4 +1,4 @@
-/** The crafting currency glyph (M5): a knot in the currency's color. ItemArt's CurrencyArt draws it until the art pass. */
+/** The crafting currency glyph (M5): a knot in the currency's color. Menus now draw currencies with CurrencyArt (itemArt.tsx); the crafting bench still uses this. */
 import type { CurrencyId } from '../../../data/currency';
 import { LOOT } from '../../render/world/worldPalette';
 
