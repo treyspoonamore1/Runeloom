@@ -107,7 +107,7 @@ describe('expeditions', () => {
     const uid = s.hero.nextUid;
     ok(s, { kind: 'expeditionSend', tier: 9 });
     const d = expeditionBoard.baseSeconds + expeditionBoard.perTierSeconds * 9;
-    expect(s.hero.hearth.expeditions).toEqual([{ uid, tier: 9, left: d, duration: d }]);
+    expect(s.hero.hearth.expeditions).toEqual([{ uid, tier: 9, left: d, duration: d, cycle: 0 }]);
     expect(applyHeroEdit(s, { kind: 'expeditionSend', tier: 1 })).toMatch(/No free Weaver/);
     expect(applyHeroEdit(s, { kind: 'expeditionCollect', uid })).toMatch(/Not back yet/);
     ok(s, { kind: 'offline', seconds: d });
@@ -137,6 +137,7 @@ describe('expeditions', () => {
       currency: n.currency,
       embers: n.embers,
       sigils: n.sigils,
+      beforeRekindle: false,
     });
     expect(applyHeroEdit(s, { kind: 'expeditionCollect', uid })).toMatch(/No such/);
   });

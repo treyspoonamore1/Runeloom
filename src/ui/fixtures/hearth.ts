@@ -17,8 +17,8 @@ export function litFixtureHearth(hero: HeroState): void {
   h.garden = planted.map((r) => r!.uid);
   planted.forEach((r, i) => (r!.xp = [740, 1180][i] ?? 0));
   h.expeditions = [
-    { uid: hero.nextUid++, tier: 3, left: 412, duration: 585 },
-    { uid: hero.nextUid++, tier: 2, left: 0, duration: 510 },
+    { uid: hero.nextUid++, tier: 3, left: 412, duration: 585, cycle: 1 },
+    { uid: hero.nextUid++, tier: 2, left: 0, duration: 510, cycle: 0 }, // sent before the Rekindle
   ];
   h.salvage = 'normal';
   h.rekindles = 1;

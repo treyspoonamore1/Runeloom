@@ -184,16 +184,28 @@ export interface ClimbState {
   riftsSinceBest: number;
 }
 
-/** Whether to Rekindle now: unlocked, and at the tier cap or stalled. */
+export type RekindleReason = 'cap' | 'failures' | 'stall';
+
+/** Why to Rekindle now (unlocked, and at the tier cap or stalled), or null. */
+export function rekindleReason(
+  hero: Readonly<HeroState>,
+  climb: ClimbState,
+  policy: RekindlePolicy = defaultRekindlePolicy,
+): RekindleReason | null {
+  if (hero.riftTier < rekindle.unlockTier) return null;
+  if (hero.riftTier >= maxRiftTier(hero)) return 'cap';
+  if (policy.stallFailures !== null && climb.failuresInARow >= policy.stallFailures) return 'failures';
+  if (policy.stallRifts !== null && climb.riftsSinceBest >= policy.stallRifts) return 'stall';
+  return null;
+}
+
+/** Whether to Rekindle now (rekindleReason is not null). */
 export function shouldRekindle(
   hero: Readonly<HeroState>,
   climb: ClimbState,
   policy: RekindlePolicy = defaultRekindlePolicy,
 ): boolean {
-  if (hero.riftTier < rekindle.unlockTier) return false;
-  if (hero.riftTier >= maxRiftTier(hero)) return true;
-  if (policy.stallFailures !== null && climb.failuresInARow >= policy.stallFailures) return true;
-  return policy.stallRifts !== null && climb.riftsSinceBest >= policy.stallRifts;
+  return rekindleReason(hero, climb, policy) !== null;
 }
 
 /**

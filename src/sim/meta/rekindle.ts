@@ -4,7 +4,8 @@
  * (each raises the highest openable tier by 2, view.ts maxRiftTier) and resets exactly
  * (DECISIONS 2026-10-24): Embers, Embers spent, building levels and the Kindling Pit's carry,
  * the Rune Garden (its runes stay in the pouch with their levels), the Salvage Loom setting,
- * hero.riftTier (and riftBestClears) and hero.sigils. Everything else is kept, expeditions already out included.
+ * hero.riftTier (and riftBestClears) and hero.sigils. Everything else is kept, expeditions already out
+ * included, and hearth.bestEverTier (the re-climb's mark).
  *
  * Sigil Cache: the new cycle starts with five plain tier 3 sigils, and riftTier = 2 so the ladder
  * opens them (data/hearth.ts mutationEffects.sigilCache).
@@ -32,6 +33,7 @@ export function applyRekindle(state: GameState): string | null {
   const ash = ashForRekindle(hero);
   h.ash += ash;
   h.rekindles++;
+  h.bestEverTier = Math.max(h.bestEverTier, hero.riftTier); // kept: the re-climb's mark
   // ---- The reset list (and nothing else) ----
   h.embers = 0;
   h.embersSpent = 0;

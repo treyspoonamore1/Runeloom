@@ -106,19 +106,20 @@ describe('count-up', () => {
 describe('expeditions', () => {
   it('lists returned ones first, then the soonest back, with progress and text', () => {
     const rows = expeditionRows([
-      { uid: 1, tier: 3, left: 412, duration: 960 },
-      { uid: 2, tier: 2, left: 0, duration: 840 },
-      { uid: 3, tier: 1, left: 60, duration: 720 },
+      { uid: 1, tier: 3, left: 412, duration: 960, cycle: 0 },
+      { uid: 2, tier: 2, left: 0, duration: 840, cycle: 0 },
+      { uid: 3, tier: 1, left: 60, duration: 720, cycle: 0 },
     ]);
     expect(rows.map((r) => r.uid)).toEqual([2, 3, 1]);
     expect(rows[0]).toMatchObject({ ready: true, frac: 1, text: 'Back: ready to collect' });
     expect(rows[2]!.frac).toBeCloseTo(1 - 412 / 960);
     expect(rows[2]!.text).toBe('6m 52s left');
     expect(rows[1]!.ready).toBe(false);
+    expect(rows.map((r) => r.cycle)).toEqual([0, 0, 0]);
   });
 
   it('survives a zero duration', () => {
-    expect(expeditionRows([{ uid: 1, tier: 1, left: 5, duration: 0 }])[0]!.frac).toBe(1);
+    expect(expeditionRows([{ uid: 1, tier: 1, left: 5, duration: 0, cycle: 0 }])[0]!.frac).toBe(1);
   });
 
   it('offers tiers 1 up to the best, at least tier 1, with their durations', () => {

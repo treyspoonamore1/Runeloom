@@ -6,6 +6,8 @@ import { applyHeroEdit } from '../../../src/sim/hero/edits';
 import { makeSigil } from '../../../src/sim/items/sigils';
 import { makeItem, makePart } from '../../../src/sim/items/items';
 import { ashForRekindle, maxRiftTier } from '../../../src/sim/meta/view';
+import { expeditionRewardCounts } from '../../../src/sim/meta/expeditions';
+import { riftBossTierUpChance, riftDrops } from '../../../data/rift';
 import { freeRunes } from '../../../src/sim/hero/runes';
 import { build, hub, ok, plant } from './helpers';
 
@@ -24,7 +26,7 @@ function deepCycle(): GameState {
   h.playSeconds = 9000;
   h.clock = 17;
   plant(state, ['bolt', 'nova'], 7);
-  h.expeditions.push({ uid: hero.nextUid++, tier: 4, left: 120, duration: 1080 });
+  h.expeditions.push({ uid: hero.nextUid++, tier: 4, left: 120, duration: 1080, cycle: 0 });
   hero.riftTier = 9;
   hero.riftBestClears = 4;
   hero.sigils.push(makeSigil(hero, 9, ['hardened']), makeSigil(hero, 10, []));
@@ -59,6 +61,7 @@ describe('Rekindle (M7 acceptance)', () => {
     expected.hero.sigils = [];
     h.ash = before.hero.hearth.ash + ash;
     h.rekindles = before.hero.hearth.rekindles + 1;
+    h.bestEverTier = 9; // M7 re-climb: kept, and at least the ladder Rekindle resets
     expect(after).toEqual(expected);
 
     // The garden's runes are back in the pouch, levels kept, free to socket.
@@ -112,5 +115,39 @@ describe('Rekindle (M7 acceptance)', () => {
     dark.hero.riftTier = 9;
     expect(applyHeroEdit(dark, { kind: 'rekindle' })).toMatch(/not lit/);
     for (const s of [low, rift, away, dark]) expect(s.hero.hearth.rekindles).toBe(0);
+  });
+
+  it('keeps the best tier ever, so the next cycle re-climbs fast below it', () => {
+    const state = deepCycle();
+    state.hero.hearth.bestEverTier = 12; // an earlier cycle went higher
+    ok(state, { kind: 'rekindle' });
+    expect(state.hero.hearth.bestEverTier).toBe(12);
+    expect(riftBossTierUpChance(5, 0, state.hero.hearth.bestEverTier)).toBe(riftDrops.reclimbTierUp);
+  });
+
+  it('expeditions sent before a Rekindle return without a sigil or a best-tier completion', () => {
+    const state = deepCycle();
+    const h = state.hero.hearth;
+    h.expeditions = [];
+    build(state, { expedition_board: 15 });
+    ok(state, { kind: 'expeditionSend', tier: 9 });
+    ok(state, { kind: 'expeditionSend', tier: 9 });
+    ok(state, { kind: 'rekindle' });
+    expect(h.expeditions.map((e) => e.cycle)).toEqual([0, 0]);
+    ok(state, { kind: 'offline', seconds: 8 * 3600 });
+    state.hero.riftTier = 9; // even at the new cycle's best tier, no completion is counted
+    const clears = state.hero.riftBestClears;
+    const [a, b] = h.expeditions.map((e) => e.uid);
+    ok(state, { kind: 'expeditionCollect', uid: a! });
+    ok(state, { kind: 'expeditionCollect', uid: b! });
+    expect(state.hero.sigils).toEqual([]);
+    expect(state.hero.riftBestClears).toBe(clears);
+    const got = state.events.filter((e) => e.type === 'expeditionCollected');
+    expect(got.map((e) => e.type === 'expeditionCollected' && [e.sigils, e.beforeRekindle])).toEqual([
+      [0, true],
+      [0, true],
+    ]);
+    // The Board's preview says the same: everything but the sigil.
+    expect(expeditionRewardCounts(9, false)).toEqual({ ...expeditionRewardCounts(9), sigils: 0 });
   });
 });

@@ -195,6 +195,7 @@ describe('rift bosses and rewards', () => {
     expect(seen).toContainEqual({ type: 'riftCompleted', tier: 4, newBest: true });
     expect(s.hero.riftTier).toBe(4);
     expect(s.hero.riftBestClears).toBe(1);
+    expect(s.hero.hearth.bestEverTier).toBe(4); // M7 re-climb: the best tier ever rises with it
     const tiers = bossSigilTiers(s);
     expect(tiers.some((t) => t === 4 || t === 5)).toBe(true);
     expect(s.loot.filter((d) => d.content.kind === 'currency').length).toBeGreaterThanOrEqual(2);
@@ -218,6 +219,7 @@ describe('rift bosses and rewards', () => {
     run(s, 2);
     expect(s.hero.riftTier).toBe(6);
     expect(s.hero.riftBestClears).toBe(3);
+    expect(s.hero.hearth.bestEverTier).toBe(2); // never lowered; here raised only to the rift's tier
   });
 
   it("the Cinder Warden's first death drops the first Rift Sigil", () => {

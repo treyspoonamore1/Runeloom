@@ -76,7 +76,8 @@ export function ExpeditionsPanel(p: PanelProps) {
             </div>
             <p class={r.ready ? '' : 'mn-muted'}>{r.text}</p>
             <p class="mn-muted">
-              {r.ready ? 'Brings' : 'Will bring'}: {rewardText(b.rewards(r.tier))}
+              {r.ready ? 'Brings' : 'Will bring'}: {rewardText(b.rewards(r.tier, r.cycle))}
+              {b.rewards(r.tier, r.cycle).sigils === 0 ? ' (sent before your Rekindle: no Rift Sigil)' : ''}
             </p>
             <button
               type="button"

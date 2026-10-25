@@ -17,6 +17,8 @@ import { makePart, nextUid } from '../items/items';
 import { grantContent, type LootContent } from '../items/loot';
 import { partTierFor, rollCurrency } from '../items/drops';
 import type { GameState } from '../state';
+import type { HeroState } from '../hero/types';
+import type { Expedition } from './types';
 import { rollSigil } from '../items/sigils';
 import { expeditionSeconds, maxExpeditionTier, maxRiftTier, weavers } from './view';
 
@@ -26,7 +28,14 @@ export const EXPEDITION_PARTS: readonly FusePartId[] = (Object.keys(fuseParts) a
 );
 
 /** Reward counts for an expedition of `tier`. */
-export function expeditionRewardCounts(tier: number): {
+/**
+ * Reward counts for an expedition of `tier`; `thisCycle` false (sent before the last Rekindle,
+ * expeditionThisCycle) brings no Rift Sigils.
+ */
+export function expeditionRewardCounts(
+  tier: number,
+  thisCycle = true,
+): {
   parts: number;
   currency: number;
   embers: number;
@@ -37,8 +46,13 @@ export function expeditionRewardCounts(tier: number): {
     parts: r.parts.min + Math.floor(tier / r.parts.perTier),
     currency: r.currency.min + Math.floor(tier / r.currency.perTier),
     embers: r.embersPerTier * tier,
-    sigils: r.sigils.count,
+    sigils: thisCycle ? r.sigils.count : 0,
   };
+}
+
+/** Whether an expedition was sent in the hero's current cycle (no Rekindle since). */
+export function expeditionThisCycle(hero: Readonly<HeroState>, e: Readonly<Expedition>): boolean {
+  return e.cycle === hero.hearth.rekindles;
 }
 
 /** Weavers not out or waiting to be collected. */
@@ -58,14 +72,17 @@ export function sendExpedition(state: GameState, tier: number): string | null {
       ? 'Expeditions run tier 1 until you complete a rift'
       : `Expeditions run tiers 1 to ${max}`;
   const duration = expeditionSeconds(hero, tier);
-  h.expeditions.push({ uid: nextUid(hero), tier, left: duration, duration });
+  h.expeditions.push({ uid: nextUid(hero), tier, left: duration, duration, cycle: h.rekindles });
   return null;
 }
 
-/** The rewards of an expedition of `tier`, rolled now with the loot RNG, in grant order. */
-export function rollExpeditionRewards(state: GameState, tier: number): LootContent[] {
+/**
+ * The rewards of an expedition of `tier`, rolled now with the loot RNG, in grant order;
+ * `thisCycle` false: no Rift Sigil (sent before the last Rekindle).
+ */
+export function rollExpeditionRewards(state: GameState, tier: number, thisCycle = true): LootContent[] {
   const rng = state.lootRng;
-  const n = expeditionRewardCounts(tier);
+  const n = expeditionRewardCounts(tier, thisCycle);
   const out: LootContent[] = [];
   const partTier = partTierFor(riftAreaLevel(tier));
   for (let i = 0; i < n.parts; i++) {
@@ -78,7 +95,8 @@ export function rollExpeditionRewards(state: GameState, tier: number): LootConte
   const hero = state.hero;
   for (let i = 0; i < n.sigils; i++) {
     const atBest = tier === hero.riftTier;
-    const up = rng.chance(riftBossTierUpChance(tier, atBest ? hero.riftBestClears : 0)) ? 1 : 0;
+    const chance = riftBossTierUpChance(tier, atBest ? hero.riftBestClears : 0, hero.hearth.bestEverTier);
+    const up = rng.chance(chance) ? 1 : 0;
     if (atBest) hero.riftBestClears++;
     out.push({ kind: 'sigil', sigil: rollSigil(hero, rng, Math.min(maxRiftTier(hero), tier + up)) });
   }
@@ -93,7 +111,8 @@ export function collectExpedition(state: GameState, uid: number): string | null 
   const e = h.expeditions[i]!;
   if (e.left > 0) return `Not back yet: ${Math.ceil(e.left)} s to go`;
   h.expeditions.splice(i, 1);
-  const rewards = rollExpeditionRewards(state, e.tier);
+  const thisCycle = expeditionThisCycle(state.hero, e);
+  const rewards = rollExpeditionRewards(state, e.tier, thisCycle);
   let parts = 0;
   let currency = 0;
   let embers = 0;
@@ -105,6 +124,15 @@ export function collectExpedition(state: GameState, uid: number): string | null 
     else if (c.kind === 'embers') embers += c.amount;
     else if (c.kind === 'sigil') sigils++;
   }
-  emit(state, { type: 'expeditionCollected', uid, tier: e.tier, parts, currency, embers, sigils });
+  emit(state, {
+    type: 'expeditionCollected',
+    uid,
+    tier: e.tier,
+    parts,
+    currency,
+    embers,
+    sigils,
+    beforeRekindle: !thisCycle,
+  });
   return null;
 }

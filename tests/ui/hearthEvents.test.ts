@@ -50,6 +50,30 @@ describe('Hearth toasts and banners', () => {
     expect(
       hearthToast({ type: 'expeditionCollected', uid: 1, tier: 2, parts: 1, currency: 2, embers: 30 }),
     ).toMatchObject({ title: 'Expedition collected', sub: '1 Fuse part, 2 currency, 30 Embers' });
+    expect(
+      hearthToast({
+        type: 'expeditionCollected',
+        uid: 1,
+        tier: 2,
+        parts: 1,
+        currency: 2,
+        embers: 30,
+        sigils: 1,
+        beforeRekindle: false,
+      })!.sub,
+    ).toBe('1 Fuse part, 2 currency, 1 Rift Sigil, 30 Embers');
+    expect(
+      hearthToast({
+        type: 'expeditionCollected',
+        uid: 1,
+        tier: 2,
+        parts: 1,
+        currency: 2,
+        embers: 30,
+        sigils: 0,
+        beforeRekindle: true,
+      })!.sub,
+    ).toBe('1 Fuse part, 2 currency, 30 Embers (sent before your Rekindle: no Rift Sigil)');
     expect(hearthToast({ type: 'mutationBought', mutation: 'bright_hearth', count: 3 })).toMatchObject({
       title: 'Bright Hearth',
       sub: 'Mutation: 3 of 10',

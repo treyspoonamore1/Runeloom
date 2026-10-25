@@ -26,6 +26,8 @@ export type HearthEvent =
       embers: number;
       /** Rift Sigils it brought (M7 balance). */
       sigils: number;
+      /** Sent before the last Rekindle: no sigil (sigils are rift progress, which Rekindle resets). */
+      beforeRekindle: boolean;
     }
   /** The Salvage Loom turned a picked-up item into Thread Scrap. */
   | { type: 'autoSalvaged'; base: string; rarity: string; scrap: number; x: number; y: number }

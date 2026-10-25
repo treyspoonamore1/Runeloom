@@ -35,9 +35,9 @@ function hearth(s: Setup): GameState {
   plant(state, ['split'], maxRuneLevel - 1);
   const h = state.hero.hearth;
   h.expeditions.push(
-    { uid: 900, tier: 1, left: 600, duration: 720 },
-    { uid: 901, tier: 5, left: 5000.5, duration: 6000 },
-    { uid: 902, tier: 9, left: 40000, duration: 40000 },
+    { uid: 900, tier: 1, left: 600, duration: 720, cycle: 0 },
+    { uid: 901, tier: 5, left: 5000.5, duration: 6000, cycle: 0 },
+    { uid: 902, tier: 9, left: 40000, duration: 40000, cycle: 0 },
   );
   return state;
 }

@@ -54,7 +54,12 @@ export async function showHearth(page: Page, id: HearthShotId, view: 'fit' | 'pl
       const H = await load<typeof import('../../data/hearth')>('/data/hearth.ts');
       const L = await load<typeof import('../../src/sim/items/loot')>('/src/sim/items/loot.ts');
       R.loop.stop();
-      const st = S.createAdventure({ seed: 1, rooms: rooms.roomTexts, startRoomId: H.hearthRoom, tuning: R.session.state.tuning });
+      const st = S.createAdventure({
+        seed: 1,
+        rooms: rooms.roomTexts,
+        startRoomId: H.hearthRoom,
+        tuning: R.session.state.tuning,
+      });
       const h = st.hero.hearth;
       h.lit = setup.lit;
       for (const [b, l] of Object.entries(setup.levels)) h.buildings[b as keyof typeof h.buildings] = l;
@@ -63,7 +68,9 @@ export async function showHearth(page: Page, id: HearthShotId, view: 'fit' | 'pl
         st.hero.runes.push(rune);
         h.garden.push(rune.uid);
       }
-      setup.expeditions.forEach((left, i) => h.expeditions.push({ uid: 9000 + i, tier: 3, left, duration: 900 }));
+      setup.expeditions.forEach((left, i) =>
+        h.expeditions.push({ uid: 9000 + i, tier: 3, left, duration: 900, cycle: h.rekindles }),
+      );
       if (setup.standAt) {
         const tiles = st.objects.filter((o) => o.kind === setup.standAt);
         const ty = Math.max(...tiles.map((o) => o.ty));
@@ -83,7 +90,8 @@ export async function showHearth(page: Page, id: HearthShotId, view: 'fit' | 'pl
       st.tuning.camera.edgeMargin = 0;
       // Fit: the whole room above the HUD (tuning.camera.hudInset).
       const above = 720 * (1 - st.tuning.camera.hudInset);
-      st.tuning.camera.zoom = view === 'fit' ? Math.min((innerWidth * 720) / (innerHeight * w), above / hh) : 1;
+      st.tuning.camera.zoom =
+        view === 'fit' ? Math.min((innerWidth * 720) / (innerHeight * w), above / hh) : 1;
       R.session.adopt(st, 'adventure');
       const raf = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
       for (let i = 0; i < 40; i++) {
