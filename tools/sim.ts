@@ -19,6 +19,8 @@
  *       M6: the rift bot's clear rate per tier and reference build (tools/lib/riftCli.ts).
  *   npm run sim -- --rift-ladder [--seed 1] [--seeds 3] [--target 8] [--verbose] [--json]
  *       M6.5: a new game to the Warden, then the rift ladder with found gear (tools/lib/riftCli.ts).
+ *   npm run sim -- --playtest-saves [--seed 1] [--tier 7] [--out dir]
+ *       Writes data/playtest/after_warden.json and mid_climb.json (tools/lib/playtestSaves.ts).
  *   npm run sim -- --progression [--seed 1] [--seeds 3] [--rekindles 1] [--variants play,offline,nohearth]
  *                  [--sessions 1.5,16] [--rekindle-stall 3] [--rekindle-after 9] [--max-hours 40] [--out dir] [--no-hearth] [--verbose] [--json]
  *       M7: a new game to the Warden, then rifts with a model player who uses the Hearth, through
@@ -40,6 +42,7 @@ import { printReadout, readoutFromArgs } from './lib/readout';
 import { parseArgs, requireInt, runCli } from './lib/args';
 import { checkReplay, readReplay } from './lib/replay';
 import { loadAllRooms, loadRoomText } from './lib/rooms';
+import { runPlaytestSavesCli } from './lib/playtestSaves';
 import { runCampaignCli, runEncountersCli } from './lib/campaign';
 import { runRiftBotCli, runRiftCli, runRiftLadderCli } from './lib/riftCli';
 import { riftBuilds, type RiftBuild } from '../src/sim/bots/riftBot';
@@ -88,6 +91,10 @@ runCli(() => {
     },
     tier: { kind: 'number' },
     progression: { kind: 'boolean' },
+    'playtest-saves': {
+      kind: 'boolean',
+      help: 'write data/playtest/after_warden.json and mid_climb.json (--seed, --tier (default 7), --out dir)',
+    },
     rekindles: { kind: 'number', default: 1, help: '--progression: Rekindles to play through' },
     variants: { kind: 'string', help: '--progression: play,offline,nohearth (default play,offline)' },
     sessions: { kind: 'string', default: '1.5,16', help: '--progression: <play hours>,<break hours>' },
@@ -105,6 +112,15 @@ runCli(() => {
     out: { kind: 'string', help: '--progression: folder for the CSV and JSON (default shots/progression)' },
     'no-hearth': { kind: 'boolean', help: '--progression: only the player who never uses the Hearth' },
   });
+
+  if (a['playtest-saves']) {
+    runPlaytestSavesCli({
+      seed: requireInt('seed', a.seed, 0),
+      tier: requireInt('tier', a.tier ?? 7, 1),
+      outDir: a.out,
+    });
+    return;
+  }
 
   if (a.progression) {
     const variants = (

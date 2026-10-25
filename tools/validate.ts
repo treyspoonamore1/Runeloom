@@ -33,6 +33,7 @@ import { checkRooms } from './lib/roomChecks';
 import { checkRifts } from './lib/riftChecks';
 import { listRoomIds, loadRoomText } from './lib/rooms';
 import { checkHub } from './lib/hubChecks';
+import { playtestSaveErrors } from './lib/playtestChecks';
 import { checkItemData } from './lib/itemChecks';
 
 const errors: string[] = [];
@@ -176,6 +177,9 @@ for (const f of mustFailWeaves) {
 
 // Passive tree and Fuse part effects (M4).
 errors.push(...passiveTreeErrors(), ...fuseEffectErrors());
+
+// The bundled playtest saves (title screen).
+errors.push(...playtestSaveErrors());
 
 console.log(
   `validate: ${roomIds.length} rooms, ${scenarios.length} scenarios, ${scenes.length} scenes, tuning checked, ` +

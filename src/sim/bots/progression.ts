@@ -70,6 +70,11 @@ export interface ProgressionOptions {
   maxHours?: number;
   /** Stop once this tier is completed in the first cycle (smoke tests). */
   stopAtTier?: number;
+  /**
+   * Called as the run ends with the live game: between rifts, home (in the hub with the Hearth
+   * on), none open. The playtest saves (tools/lib/playtestSaves.ts) are made from it.
+   */
+  onEnd?: (state: GameState, result: ProgressionResult) => void;
 }
 
 export interface ProgressionRift {
@@ -291,5 +296,6 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
   res.offlineHours = offlineSeconds / 3600;
   res.finalLevel = hero.level;
   res.finalHours = play / 3600;
+  opts.onEnd?.(state, res);
   return res;
 }

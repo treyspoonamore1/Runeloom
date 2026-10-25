@@ -5,16 +5,19 @@
 import { signal } from '@preact/signals';
 import { useEffect, useRef } from 'preact/hooks';
 import type { AdventureFlow } from '../../app/adventure';
+import { playtestStarts, type PlaytestStart } from '../../app/playtestStarts';
 import { readFileText } from '../../app/saveFiles';
 import { SAVE_SLOTS, SLOT_LABEL, type SaveRecord, type SaveSlot } from '../../app/saveStore';
 import { Emblem } from '../icons';
 import { SettingsRows } from '../settingsPanel';
 import { injectTitleStyle } from './titleStyle';
 
-export type TitleView = 'menu' | 'load' | 'import' | 'settings' | 'dev' | 'confirmNew';
+export type TitleView = 'menu' | 'load' | 'import' | 'settings' | 'dev' | 'confirmNew' | 'confirmPlaytest';
 export const titleView = signal<TitleView>('menu');
 const message = signal<string | null>(null);
 const busy = signal(false);
+/** The playtest start waiting for the autosave-overwrite confirmation. */
+const pendingStart = signal<PlaytestStart | null>(null);
 const pasted = signal('');
 /** Delete asks twice: the first click arms the slot's button. */
 const armedDelete = signal<SaveSlot | null>(null);
@@ -71,6 +74,39 @@ function Back() {
   );
 }
 
+/** Loads a playtest start's bundled save exactly as Import does (it becomes the autosave). */
+function startPlaytest(p: TitleProps, start: PlaytestStart): void {
+  pendingStart.value = null;
+  void run(p, () => p.flow.importText(start.text));
+}
+
+export function PlaytestStarts(p: TitleProps) {
+  const hasAuto = p.flow.slots.value.some((r) => r.slot === 'auto');
+  return (
+    <section class="tt-playtest" aria-label="Playtest starts">
+      <h2>Playtest starts</h2>
+      {playtestStarts.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          class="rl-btn quiet tt-start"
+          data-start={s.id}
+          disabled={busy.value}
+          onClick={() => {
+            if (hasAuto) {
+              pendingStart.value = s;
+              titleView.value = 'confirmPlaytest';
+            } else startPlaytest(p, s);
+          }}
+        >
+          {s.label}
+          <small>{s.blurb}</small>
+        </button>
+      ))}
+    </section>
+  );
+}
+
 function Menu(p: TitleProps) {
   const slots = p.flow.slots.value;
   const latest = slots.reduce<SaveRecord | null>((b, r) => (!b || r.savedAt > b.savedAt ? r : b), null);
@@ -118,6 +154,7 @@ function Menu(p: TitleProps) {
           Sandbox scenes
         </button>
       ) : null}
+      {p.scenes ? <PlaytestStarts {...p} /> : null}
     </nav>
   );
 }
@@ -256,6 +293,33 @@ function ConfirmNew(p: TitleProps) {
   );
 }
 
+export function ConfirmPlaytest(p: TitleProps) {
+  const start = pendingStart.value;
+  if (!start) return null;
+  return (
+    <div class="tt-panel" aria-label="Start a playtest save">
+      <h2>{start.label}?</h2>
+      <p class="tt-note">Your autosave will be replaced by this start. Saves in slots 1 to 3 stay.</p>
+      <div class="tt-row">
+        <button
+          type="button"
+          class="rl-btn quiet"
+          onClick={() => ((pendingStart.value = null), (titleView.value = 'menu'))}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="rl-btn"
+          onClick={() => ((titleView.value = 'menu'), startPlaytest(p, start))}
+        >
+          Start
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function TitleScreen(p: TitleProps) {
   injectTitleStyle();
   const view = titleView.value;
@@ -300,6 +364,7 @@ export function TitleScreen(p: TitleProps) {
         {view === 'load' ? <Load {...p} /> : null}
         {view === 'import' ? <Import {...p} /> : null}
         {view === 'confirmNew' ? <ConfirmNew {...p} /> : null}
+        {view === 'confirmPlaytest' ? <ConfirmPlaytest {...p} /> : null}
         {view === 'settings' ? (
           <div class="tt-panel rl-pause" aria-label="Settings">
             <h2>Settings</h2>
