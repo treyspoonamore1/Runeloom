@@ -17,7 +17,6 @@ import {
   quickSalvageNeedsConfirm,
   summarizePresets,
   protectedReason,
-  SALVAGE_PRESETS,
   type SalvagePreset,
 } from './salvageSel';
 import { equippedItem } from './stats';
@@ -156,8 +155,6 @@ export function bulkSalvage(session: Session, uids: readonly number[]): void {
     true,
   );
 }
-
-export { SALVAGE_PRESETS };
 
 /** Fuses a part into the equipped spindle: into `socket`, else the first empty one. */
 export function fuse(session: Session, part: FusePart, socket?: number): void {

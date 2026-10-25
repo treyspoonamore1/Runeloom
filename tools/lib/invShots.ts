@@ -96,5 +96,5 @@ export async function runInvShot(page: Page, id: InvShotId): Promise<void> {
   } else if (id === 'inventory_runes') {
     await page.click('.inv-tabs .mn-tab >> text=Rune pouch');
   }
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(900);
 }
