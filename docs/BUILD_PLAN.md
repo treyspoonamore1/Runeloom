@@ -117,7 +117,7 @@ Goal: the world reacts to every element.
 Tasks:
 
 1. Grid storage as typed arrays (DESIGN §6.1), materials from data, an active-cell set, a 20 Hz tick.
-2. Rules 1–20, 22, 23, 25 and 26 from DESIGN §6.3. Rules 21 and 24 wait for M8.
+2. Rules 1–20, 22, 23, 25 and 26 from DESIGN §6.3. Rules 21, 24 and 27–32 wait for M8.
 3. Spells write terrain effects through their footprints (CONTENT §1.2), including Saturate and Lingering.
 4. Entities read the grid: Wet, Oiled, burning ground, charged water, slippery ice, slows.
 5. Hazard ownership and team rules (DESIGN §6.3).
@@ -231,12 +231,53 @@ Playtest:
 
 ## M8: Expansion and polish
 
-- Tide and Gale elements, rules 21 and 24, a wind field.
-- Region 2, Glasswater Fen: rooms, a dungeon (the Drowned Foundry, dungeon item Tide) and a boss.
-- Passive tree to about 300 nodes, about 45 runes, 8 more enemies.
-- Rift atlas: a hex map with adjacent-node bonuses.
-- Gamepad support, key rebinding, accessibility (element patterns, screen shake off, reduced flashing).
-- Tauri desktop build.
+M8 comes in three phases, each with its own report and playtest:
+
+1. **Glasswater Fen** (below): the region, Tide, Gale, the wind field, 8 enemies, 2 bosses and the deep-rift gate.
+2. **Depth**: the rift atlas (a hex map with adjacent-node bonuses), the passive tree to about 300 nodes, about 45 runes.
+3. **Platform**: gamepad support, key rebinding, accessibility (element patterns, screen shake off, reduced flashing), the Tauri desktop build.
+
+### M8 phase 1: Glasswater Fen
+
+Goal: about an hour of new region for a character that has just reached rift tier 8, ending in a boss that opens the deep rifts.
+
+Tasks:
+
+1. Grid fields and formats (DESIGN §6.1, CONTENT §6): `borrowed`, `gustDir`, `gustTimer`, `wet` widened to u16, Fog in the air layer with the room's `fogMask`, room `wind`; materials lit and doused furnace vent; legend `f`, `Q`, `Y`; headers `@fog`, `@wind`, `@pulse`; link conditions `timer:N:switch:S` and `vanes:all`. Hash and save every new field. Room files and saves from before M8 load unchanged.
+2. Tide (DESIGN §6.5): rule 24 in `grid/elements.ts` (`tideCell`), borrowed terrain and rule 27 (generalizing `grid/tempWater.ts`; Hydromancer water joins it), rule 28 (wash, `world/objectBlocks.ts`), rule 30 (vents), rule 32 (Wet on entities), rule 31 (stranding, `actors/terrain.ts` and `actors/locomotion.ts`). Raise `RUNTIME_SHIPS` to include M8.
+3. Wind and Gale (DESIGN §6.6): `grid/wind.ts` with the direction table, gust writes from Gale footprints and enemy gusts, rule 21 in the grid tick's spread roll, smoke and steam drift, rule 29 (fog), wind vanes, the rift suffix "of the Gale".
+4. Rendering: fog with the lantern radius and what draws above it (DESIGN §14), gust and wind streaks, lit and doused vents, borrowed terrain's last-1.5 s flicker, the Fen palette (reeds, rusted teal metal, glassy water), fireflies. F1 overlays: wind, borrowed.
+5. The 8 Fen enemies, their packs and Fuse parts (CONTENT §4, §5), with the AI and chemistry each row names. The Fen's tier 8 difficulty (`regionDifficulty`).
+6. The Old Bellwether and the Glasswater Coil (DESIGN §10.5, CONTENT §5, §13.2), with their states, phases and attacks in `data/bosses.ts` and `data/tuning.ts` `bosses`.
+7. Rooms G1–G8 and F1–F10 (CONTENT §13), K10's storm door (§9.1), `data/progression.ts` (rooms, guaranteed runes at `fenRuneLevel`, boss kinds), the Gale item-get after the Coil, the first-kill tier 9 sigil, the G7 Windward Cache.
+8. The deep-rift gate (DESIGN §10.4) in `world/rift/run.ts` and `meta/view.ts`, with the locked-sigil UI and the toasts. Fen chunks, spawns, rift bosses and the Gale suffix from tier 9 (CONTENT §10.1).
+9. Chemistry Lab stations for rules 21, 24, 27–32, and reference weaves 15–18 (CONTENT §2).
+10. Puzzle tests and `data/rooms/SOLUTIONS.md` entries for every Fen and Foundry puzzle room.
+11. A "Fen start" playtest save (tier 8 completed, standing at K10's Loom Stone) and a title-menu button for it, as M7's starts.
+12. Balance with the bots (acceptance below), then the bench.
+
+Acceptance:
+
+- Unit tests: one per new or changed chemistry rule (21, 24, 25, 27–32), named with its number; every row of the Tide table in DESIGN §6.5 and every gust shape in §6.6 has a case. Fire spread under wind asserts ranges with a seeded RNG: downwind spread at least 1.6× and upwind at most 0.4× the windless count over 2 s.
+- Rune tests: Tide and Gale each have behavior tests, and reference weaves 15–18 pass, with their terrain assertions.
+- Every Fen and Foundry puzzle room has a scripted solution that reaches its door, chest or pickup. Each one also has a test that it can't be solved without the first element in its "Needs" column (CONTENT §13), as M4 did for the Kiln: G1, G3, G5, G8, F1, F2 without Storm; G4's Heart Seed and F3 without Frost; G7's braziers and F4 without Fire; F6–F9 and F1's alcove without Tide; G7's cache without Gale. G4's crossing is a soft gate: the test shows the Frost path takes no pulse damage and wading takes at least 5 pulses.
+- Static gating: every Heart Seed, Loom Shard, chest and exit in the Fen is reachable only with the verb its room teaches (as `regionRooms.test.ts`).
+- Campaign bot: from the "Fen start" save, a tier 8 reference build clears G1 to F10 without dying. Report time per room, deaths, levels gained, the Bellwether's kill time (target 60–100 s) and the Coil's (target 120–180 s, using Tide strands). The bot also clears the Coil with a no-Tide build and reports how much longer it takes (Tide should be clearly faster).
+- Pacing: the Fen takes 50 to 70 minutes at human pacing (`bots/pacing.ts`). Report the progression sim's new first-Rekindle time with the Fen in the route (`npm run sim -- --progression --seeds 6`); M7's was 6–10 h and it is expected to move later. Report it; no target yet.
+- Rift gate: tier 9+ sigils can't open before the Coil dies and can after (tested); Rekindle keeps the Coil's defeat (tested); 1,000 generated rifts per tier 9–16 with Fen chunks and bosses are connected and completable by the solver.
+- Benchmarks: the grid bench with wind (DESIGN §12: room wind, 8 gusts, smoke on 30% of active cells) and the entity bench in a Fen fight room both meet the Node budgets.
+- Determinism and saves: the determinism test passes in a Fen room with wind, fog and borrowed terrain active; save and load round-trip there.
+- Screenshots of every new room on load, of each new Lab station before and after, and of a phase 3 Coil fight, looked at and described.
+
+Playtest:
+
+- Play from the "Fen start" save to the Coil. Target: about an hour.
+- Did Tide feel like a Zelda dungeon-item moment? Did the second half make you use it in new ways each room?
+- Did Stranding the Coil feel clever or fiddly? Was its phase 3 readable with charge, fog and your own water on screen?
+- Was conduction readable: could you tell which pool reached which switch, and when water was charged and by whom?
+- Which Fen enemy was the most fun, and which the most annoying?
+- Is the Fen's difficulty right for where you were on the rift ladder? Did the tier 9 lock feel like a goal or a wall?
+- Gale after the Coil: is it fun in rifts and on the G7 revisit, even with no region built around it yet?
 
 ---
 
