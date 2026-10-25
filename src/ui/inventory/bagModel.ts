@@ -112,3 +112,29 @@ export function viewItems(items: readonly Item[], prefs: BagPrefs, ctx: BagConte
 export function filtersActive(p: BagPrefs): boolean {
   return p.slot !== 'all' || p.rarity !== 'all' || p.upgradesOnly;
 }
+
+/**
+ * Where the arrow keys move inside a grid of `n` tiles in `cols` columns: one tile left or right,
+ * one row up or down, Home and End to the ends. Stays put at an edge; null for other keys.
+ */
+export function nextIndex(i: number, n: number, cols: number, key: string): number | null {
+  if (n === 0) return null;
+  const c = Math.max(1, cols);
+  const clamp = (x: number) => Math.min(n - 1, Math.max(0, x));
+  switch (key) {
+    case 'ArrowLeft':
+      return clamp(i - 1);
+    case 'ArrowRight':
+      return clamp(i + 1);
+    case 'ArrowUp':
+      return i - c >= 0 ? i - c : i;
+    case 'ArrowDown':
+      return i + c <= n - 1 ? i + c : i;
+    case 'Home':
+      return 0;
+    case 'End':
+      return n - 1;
+    default:
+      return null;
+  }
+}

@@ -4,6 +4,7 @@
  * looking at (a tooltip, a dialog, toasts). The death shot drives the session like a test.
  */
 import type { Page } from '@playwright/test';
+import { invShotIds, isInvShot, runInvShot } from './invShots';
 
 export const uiShotIds = [
   'title',
@@ -38,6 +39,7 @@ export const uiShotIds = [
   'hearth_away',
   'hud_twin',
   'loom_twin',
+  ...invShotIds,
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
 
@@ -48,6 +50,8 @@ export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'hud') return `${base}/?${ADV}&ui=play&boss=cinder_warden`;
   if (id === 'hud_twin' || id === 'loom_twin') return `${base}/?${ADV}&ui=play`;
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
+  // The inventory shots (invShots.ts) run on a real game with a rolled bag.
+  if (isInvShot(id)) return `${base}/?scene=adventure&paused=1&seed=1&ui=play`;
   if (id === 'pause') return `${base}/?${ADV}&ui=pause`;
   // The Hearth (M7) with a fixture lit Hearth: every tab, the Rekindle confirmation, the HUD with
   // its counters and toasts, and the offline modal.
@@ -73,6 +77,7 @@ const settle = (page: Page) =>
 export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
   await page.evaluate('window.__name = (f) => f');
   await settle(page);
+  if (isInvShot(id)) return runInvShot(page, id);
   if (id === 'title' || id === 'title_load') {
     // Two saves, so Continue and the slot list have something to show.
     await page.evaluate(async (load) => {
@@ -126,7 +131,7 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
     });
     await page.waitForTimeout(500);
   } else if (id === 'inventory') {
-    await page.hover('.inv-grid .inv-card >> nth=2');
+    await page.hover('.inv-tile >> nth=2');
   } else if (id === 'fuse') {
     await page.click('.inv-socket.full');
   } else if (id === 'tree') {

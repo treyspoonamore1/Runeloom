@@ -4,6 +4,7 @@ import {
   filterItems,
   filtersActive,
   kindOfSlots,
+  nextIndex,
   parsePrefs,
   sortItems,
   viewItems,
@@ -163,5 +164,27 @@ describe('prefs in browser storage', () => {
     setPrefs({ sort: 'rarity', slot: 'cloak', rarity: 'rare', upgradesOnly: true });
     clearFilters();
     expect(bagPrefs.value).toEqual({ ...DEFAULT_PREFS, sort: 'rarity' });
+  });
+});
+
+describe('arrow keys in the grid', () => {
+  // 7 tiles in 3 columns:  0 1 2 / 3 4 5 / 6
+  it('moves one tile or one row, and stays at the edges', () => {
+    expect(nextIndex(4, 7, 3, 'ArrowLeft')).toBe(3);
+    expect(nextIndex(4, 7, 3, 'ArrowRight')).toBe(5);
+    expect(nextIndex(4, 7, 3, 'ArrowUp')).toBe(1);
+    expect(nextIndex(4, 7, 3, 'ArrowDown')).toBe(4); // no tile below 4
+    expect(nextIndex(3, 7, 3, 'ArrowDown')).toBe(6);
+    expect(nextIndex(0, 7, 3, 'ArrowLeft')).toBe(0);
+    expect(nextIndex(6, 7, 3, 'ArrowRight')).toBe(6);
+    expect(nextIndex(1, 7, 3, 'ArrowUp')).toBe(1);
+  });
+
+  it('Home and End jump to the ends; other keys and an empty grid do nothing', () => {
+    expect(nextIndex(4, 7, 3, 'Home')).toBe(0);
+    expect(nextIndex(2, 7, 3, 'End')).toBe(6);
+    expect(nextIndex(2, 7, 3, 'a')).toBeNull();
+    expect(nextIndex(0, 0, 3, 'ArrowRight')).toBeNull();
+    expect(nextIndex(1, 3, 0, 'ArrowDown')).toBe(2); // zero columns count as one
   });
 });

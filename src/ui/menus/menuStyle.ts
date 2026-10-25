@@ -38,6 +38,7 @@ export const menuCss = `
 /* ---- Floating tooltip ---- */
 .mn-tip { position: fixed; z-index: 760; width: calc(var(--u) * 40); max-width: calc(100vw - 16px); pointer-events: none; padding: calc(var(--u) * 1.2) calc(var(--u) * 1.4); border-radius: calc(var(--u) * 1.2); font-size: calc(var(--u) * 1.75); color: var(--sand);
   background: linear-gradient(180deg, rgba(36, 30, 77, 0.98), rgba(18, 14, 40, 0.99)); box-shadow: 0 0 0 calc(var(--u) * 0.3) var(--ink), 0 0 0 calc(var(--u) * 0.6) var(--rar), 0 calc(var(--u) * 1) calc(var(--u) * 3) rgba(0, 0, 0, 0.6); }
+.mn-tip.bare { width: auto; padding: 0; background: none; box-shadow: none; }
 .mn-tip h4 { margin: 0; font-size: calc(var(--u) * 2.2); color: var(--rar); }
 .mn-tip .mn-base { margin: 0 0 calc(var(--u) * 0.7); color: #a59cc8; font-size: calc(var(--u) * 1.55); }
 .mn-tip ul { margin: 0; padding: 0; list-style: none; }
