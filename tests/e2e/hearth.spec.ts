@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { upgradeCost } from '../../src/sim/meta/view';
 
 /** M7 smoke test: light the Hearth, build two buildings at their stations, send an expedition, apply offline time. */
 
@@ -61,7 +62,7 @@ test('the Hearth: build, send an expedition, offline progress', async ({ page })
   await expect.poll(async () => (await hearth(page)).buildings.kindling_pit).toBe(1);
   const afterPit = await hearth(page);
   expect(afterPit.embers).toBeLessThan(5000);
-  expect(afterPit.embers).toBe(5000 - 50);
+  expect(afterPit.embers).toBe(5000 - upgradeCost('kindling_pit', 0));
   await expect(pit.locator('.hx-lv')).toContainText('Lv 1');
 
   await page.keyboard.press('Escape');
