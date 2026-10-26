@@ -8,6 +8,8 @@
  * A tile is free when it is inside the room, not an exit, every cell is walkable ground, no other
  * object (a pickup, a Loom Stone) is on it, and no player or enemy body overlaps it. Pressure
  * plates are free: that's the point.
+ *
+ * M8 rule 28: a Tide footprint washes a block one tile the same way (washBlocks).
  */
 import { MAT } from '../../../data/materials';
 import { tileForChar } from '../../../data/tiles';
@@ -17,6 +19,7 @@ import { emit } from '../events';
 import type { GameState } from '../state';
 import { objectCenter, type WorldObject } from './objects';
 import { coverTile, forTileCells, tileChar, uncoverTile } from './objectGround';
+import type { ElementApplication, Footprint } from '../grid/paint';
 
 const TIME_EPSILON = 1e-9;
 /** pushDir codes → tile steps. Index 0 is "none". */
@@ -59,12 +62,12 @@ export function tileFree(state: GameState, tx: number, ty: number, self: WorldOb
   return true;
 }
 
-/** Every cell of the block's tile was ice before the block covered it. */
+/** Every cell of the block's tile was ice before the block covered it (borrowed ice too, M8). */
 function onIce(state: GameState, o: WorldObject): boolean {
   const g = state.grid;
   let ice = true;
   forTileCells(state, o.tx, o.ty, (i) => {
-    const u = g.under[i];
+    const u = g.cover[i]! > 0 ? g.cover[i]! - 1 : g.under[i];
     if (u !== MAT.ice && u !== MAT.ice_bridge) ice = false;
   });
   return ice;
@@ -159,5 +162,56 @@ export function stepBlocks(state: GameState, input: InputFrame | undefined): voi
       o.push = 0;
       if (!moveBlock(state, o, dir, false)) o.pushDir = 0;
     }
+  }
+}
+
+/** Unit-free centre of a footprint, for rule 28's "away from the footprint's center". */
+function footprintCenter(f: Footprint): [number, number] {
+  switch (f.kind) {
+    case 'line':
+      return [(f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2];
+    default:
+      return [f.x, f.y];
+  }
+}
+
+/** The pushDir (1 +x, 2 −x, 3 +y, 4 −y) of the axis (dx, dy) leans along most; 0 for a zero vector. */
+function axisDir(dx: number, dy: number): number {
+  if (dx === 0 && dy === 0) return 0;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 1 : 2;
+  return dy > 0 ? 3 : 4;
+}
+
+/**
+ * Rule 28 (M8): a Tide footprint covering a resting push or ice block washes it one tile, like a
+ * push, if the tile beyond is free: along the spell's direction (app.dirX/dirY), or away from the
+ * footprint's center when it has none (Nova, Lob, Orb). An ice block that lands on ice slides on
+ * (stepBlocks). Once per block per spell instance (app.spellId; `washId` on the block).
+ */
+export function washBlocks(state: GameState, cells: Int32Array, n: number, app: ElementApplication): void {
+  const g = state.grid;
+  const w = g.width;
+  const tiles = new Set<number>();
+  for (let k = 0; k < n; k++) {
+    const i = cells[k]!;
+    if (g.ground[i] !== MAT.object) continue;
+    const cx = i % w;
+    tiles.add(Math.floor((i - cx) / w / TILE_CELLS) * state.room.tilesW + Math.floor(cx / TILE_CELLS));
+  }
+  if (tiles.size === 0) return;
+  const id = app.spellId ?? 0;
+  for (const o of state.objects) {
+    if (!isBlock(o) || o.timer > 0 || !tiles.has(o.ty * state.room.tilesW + o.tx)) continue;
+    if (id > 0 && o.washId === id) continue;
+    let dir: number;
+    if (app.dirX !== undefined && app.dirY !== undefined) dir = axisDir(app.dirX, app.dirY);
+    else {
+      const [fx, fy] = footprintCenter(app.shape);
+      const c = objectCenter(o);
+      dir = axisDir(c.x - fx, c.y - fy);
+    }
+    if (dir === 0) continue;
+    if (id > 0) o.washId = id;
+    if (moveBlock(state, o, dir, false)) emit(state, { type: 'blockWashed', key: o.key, x: o.tx, y: o.ty });
   }
 }

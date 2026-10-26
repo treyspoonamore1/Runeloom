@@ -25,6 +25,7 @@ import {
   gridTicks,
   ignitable,
   ignite,
+  revertBorrowed,
   setAir,
   setGround,
   smokeTicks,
@@ -96,7 +97,7 @@ export function stepGrid(state: GameState): void {
 function visitCells(state: GameState): void {
   const g = state.grid;
   const a = g.active;
-  const { ground, surface, air, airTimer, fire, fuel, charge, wet, timer, owner } = g;
+  const { ground, surface, air, airTimer, fire, fuel, charge, wet, timer, owner, borrowed } = g;
   const list = a.list;
   const flag = a.flag;
   const len = a.len;
@@ -159,13 +160,13 @@ function visitCells(state: GameState): void {
       if (fuel[i]! > 0) fuel[i]!--;
       if (fuel[i] === 0) burnOut(state, i, oilBurning);
     }
-    if (timer[i]! > 0 && REVERTS[ground[i]!] === 1) timerTick(state, i);
+    if (timer[i]! > 0 && (REVERTS[ground[i]!] === 1 || borrowed[i] === 1)) timerTick(state, i);
     if (
       fire[i]! > 0 ||
       charge[i]! > 0 ||
       airTimer[i]! > 0 ||
       wet[i]! > 0 ||
-      (timer[i]! > 0 && REVERTS[ground[i]!] === 1)
+      (timer[i]! > 0 && (REVERTS[ground[i]!] === 1 || borrowed[i] === 1))
     )
       list[w++] = i;
     else flag[i] = 0;
@@ -176,7 +177,7 @@ function visitCells(state: GameState): void {
 /** True while cell i has anything for the grid tick to do. */
 export function busy(g: Grid, i: number): boolean {
   if (g.fire[i]! > 0 || g.charge[i]! > 0 || g.airTimer[i]! > 0 || g.wet[i]! > 0) return true;
-  return g.timer[i]! > 0 && REVERTS[g.ground[i]!] === 1;
+  return g.timer[i]! > 0 && (REVERTS[g.ground[i]!] === 1 || g.borrowed[i] === 1);
 }
 
 /** Fire burning on ice (rule 5: it melts) or mud (rule 23: 1 s of fire dries it). */
@@ -184,7 +185,9 @@ function fireOnSpecial(state: GameState, i: number): void {
   const g = state.grid;
   let def = materialByCode[g.ground[i]!]!;
   if (def.fireTo !== undefined) {
-    setGround(state, i, MAT[def.fireTo]);
+    // Borrowed ice (M8, rule 27) goes back to what it covered; a doused vent relights.
+    if (g.borrowed[i] === 1) revertBorrowed(state, i);
+    else setGround(state, i, MAT[def.fireTo]);
     def = materialByCode[g.ground[i]!]!;
   }
   if (def.driesAfter !== undefined && def.driesTo !== undefined) {
@@ -217,6 +220,16 @@ function burnOut(state: GameState, i: number, oilBurning: boolean): void {
 function timerTick(state: GameState, i: number): void {
   const g = state.grid;
   const def = materialByCode[g.ground[i]!]!;
+  if (g.borrowed[i] === 1) {
+    // Rule 27 (M8): borrowed terrain returns to `under` when its timer ends, whatever it is now.
+    const t = --g.timer[i]!;
+    const crack = def.crackSeconds !== undefined ? gridTicks(def.crackSeconds) : 0;
+    if (crack > 0 && t === crack) addToBatch(fx.iceBreaking, g, i);
+    if (t > 0) return;
+    if (crack > 0) addToBatch(fx.iceBroke, g, i);
+    revertBorrowed(state, i);
+    return;
+  }
   if (def.revertsToUnder === true) {
     // Temporary water (grid/tempWater.ts) dries back into the ground it covered.
     if (--g.timer[i]! === 0) setGround(state, i, g.under[i]!);

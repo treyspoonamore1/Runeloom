@@ -78,22 +78,44 @@ export function setTileGround(state: GameState, tx: number, ty: number, code: nu
   g.version++;
 }
 
-/** A block covers a tile: its cells become `object`, remembering their ground in `under`. */
+/**
+ * A block covers a tile: its cells become `object`, remembering their ground in `under`. A
+ * borrowed cell (M8) keeps its borrowed origin in `under` and its timer running; the borrowed
+ * ground it hides goes into `cover`, so it can still return to `under` under the block (rule 27).
+ */
 export function coverTile(state: GameState, tx: number, ty: number): void {
   const g = state.grid;
   forTileCells(state, tx, ty, (i) => {
-    if (g.ground[i] !== MAT.object) g.under[i] = g.ground[i]!;
     g.fire[i] = 0;
     g.fuel[i] = 0;
+    if (g.ground[i] === MAT.object) return;
+    if (g.borrowed[i] === 1) {
+      g.cover[i] = g.ground[i]! + 1;
+      const t = g.timer[i]!;
+      setGround(state, i, MAT.object);
+      g.timer[i] = t;
+      return;
+    }
+    g.under[i] = g.ground[i]!;
     setGround(state, i, MAT.object);
   });
   g.version++;
 }
 
-/** A block leaves a tile: its cells go back to the ground they had (`under`). */
+/** A block leaves a tile: its cells go back to the ground they had (`under`, or the borrowed `cover`). */
 export function uncoverTile(state: GameState, tx: number, ty: number): void {
   const g = state.grid;
-  forTileCells(state, tx, ty, (i) => setGround(state, i, g.under[i]!));
+  forTileCells(state, tx, ty, (i) => {
+    if (g.cover[i]! > 0) {
+      const code = g.cover[i]! - 1;
+      const t = g.timer[i]!;
+      g.cover[i] = 0;
+      setGround(state, i, code);
+      g.timer[i] = t;
+      return;
+    }
+    setGround(state, i, g.under[i]!);
+  });
   g.version++;
 }
 

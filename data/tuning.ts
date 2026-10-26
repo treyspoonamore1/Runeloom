@@ -265,6 +265,19 @@ export const defaultTuning = {
     /** DESIGN §7: refLife(L) = refLifeBase × enemyLifeGrowth^(L − 1). */
     refLifeBase: 50,
   },
+  /** Tide (M8, DESIGN §6.5; rules 24, 27, 28, 30, 32). Terrain durations are × Lingering and terrain duration stats. */
+  tide: {
+    /** Stone, ash and pits flood with borrowed water for this long; Tide on borrowed water restarts it. */
+    floodSeconds: 10,
+    /** A burning cell put out, or a flammable cell, stays wet (can't ignite) this long. */
+    wetSeconds: 10,
+    /** A lit furnace vent stays doused this long, then relights (rule 30). */
+    ventSeconds: 10,
+    /** Rule 30: an entity whose body edge is within this many cells of a lit vent's tile is Ignited. */
+    ventTouch: 0.5,
+    /** The last seconds of borrowed terrain flicker (render), so the player sees it about to go. */
+    flickerSeconds: 1.5,
+  },
   /**
    * How entities (player and enemies) read the chemistry grid (DESIGN §6.3 rules 15–20, 22, 25;
    * §6.4 Wet, Oiled, Blind; src/sim/actors/terrain.ts). Per-material slows live in

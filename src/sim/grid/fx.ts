@@ -9,12 +9,24 @@ export function flushFx(state: GameState): void {
   flush(state, 'burntOut', fx.burntOut);
   flush(state, 'iceBreaking', fx.iceBreaking);
   flush(state, 'iceBroke', fx.iceBroke);
+  flush(state, 'borrowedEnded', fx.borrowedEnded);
 }
 
 /** Emits a batched grid event for `b` if it counted any cell, then empties it. */
 export function flush(
   state: GameState,
-  type: 'cellIgnited' | 'tarIgnited' | 'burntOut' | 'iceBreaking' | 'iceBroke' | 'steam' | 'iceFormed',
+  type:
+    | 'cellIgnited'
+    | 'tarIgnited'
+    | 'burntOut'
+    | 'iceBreaking'
+    | 'iceBroke'
+    | 'steam'
+    | 'iceFormed'
+    | 'borrowedEnded'
+    | 'tided'
+    | 'gust'
+    | 'fogCleared',
   b: CellBatch,
 ): void {
   if (b.count === 0) return;

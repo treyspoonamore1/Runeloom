@@ -46,6 +46,10 @@ export function paintSpell(
   const els = inst.spec.elements;
   if (els.length === 0) return;
   const durationMult = inst.spec.terrain.durationMult;
+  // M8: forms with a direction wash blocks along it (rule 28) and aim their gusts with it; Nova,
+  // Lob and Orb act away from their footprint's center.
+  const f = inst.form;
+  const directed = f === 'bolt' || f === 'beam' || f === 'strike' || f === 'swath';
   let storm = -1;
   for (const el of els) {
     const element = el.element as TerrainElement;
@@ -58,6 +62,8 @@ export function paintSpell(
       sourceId: PLAYER_ID,
       hitDamage: element === 'storm' ? storm : 0,
       durationMult,
+      spellId: inst.id,
+      ...(directed ? { dirX: inst.dirX, dirY: inst.dirY } : {}),
     });
   }
 }

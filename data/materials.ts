@@ -88,6 +88,15 @@ export interface MaterialDef {
    * its tile) are Ignited as by rule 16, world-owned (the lit furnace vent).
    */
   ignitesTouching?: boolean;
+  /**
+   * Rule 24 (M8, DESIGN §6.5 Tide table): what Tide does to a cell of this material, after putting
+   * out any fire on it. `to`: the material it becomes, `borrowed` for tuning.tide.floodSeconds
+   * (ventSeconds for a vent) with `under` = what it was; without `borrowed` the change is
+   * permanent (dirt → mud). `wet`: the cell is wet for tuning.tide.wetSeconds (can't ignite).
+   * Absent: no change (water, ice, mud, rime, metal, walls, objects). Borrowed water gets its
+   * timer back (grid/elements.ts tideCell).
+   */
+  tide?: { to?: MaterialId; borrowed?: true; vent?: true; wet?: true };
 }
 
 const base = {
@@ -101,18 +110,20 @@ const base = {
 } as const;
 
 export const materials: Readonly<Record<MaterialId, MaterialDef>> = {
-  stone: { ...base, id: 'stone', code: MAT.stone },
-  dirt: { ...base, id: 'dirt', code: MAT.dirt },
+  stone: { ...base, id: 'stone', code: MAT.stone, tide: { to: 'shallow_water', borrowed: true } },
+  dirt: { ...base, id: 'dirt', code: MAT.dirt, tide: { to: 'mud' } },
   grass: {
     ...base,
     id: 'grass',
     code: MAT.grass,
+    tide: { wet: true },
     flammable: { spreadChance: 0.2, burnSeconds: 2, burntTo: 'ash', smoke: 'light' },
   },
   bramble: {
     ...base,
     id: 'bramble',
     code: MAT.bramble,
+    tide: { wet: true },
     walk: false,
     flammable: { spreadChance: 0.45, burnSeconds: 1, burntTo: 'ash', smoke: 'dense' },
   },
@@ -120,12 +131,14 @@ export const materials: Readonly<Record<MaterialId, MaterialDef>> = {
     ...base,
     id: 'wood',
     code: MAT.wood,
+    tide: { wet: true },
     flammable: { spreadChance: 0.08, burnSeconds: 6, burntTo: 'under', smoke: 'light' },
   },
   crate: {
     ...base,
     id: 'crate',
     code: MAT.crate,
+    tide: { wet: true },
     walk: false,
     blocksShots: true,
     flammable: { spreadChance: 0.1, burnSeconds: 3, burntTo: 'ash', smoke: 'light' },
@@ -134,6 +147,7 @@ export const materials: Readonly<Record<MaterialId, MaterialDef>> = {
     ...base,
     id: 'barricade',
     code: MAT.barricade,
+    tide: { wet: true },
     walk: false,
     blocksShots: true,
     flammable: { spreadChance: 0.1, burnSeconds: 4, burntTo: 'stone', smoke: 'light' },
@@ -142,6 +156,7 @@ export const materials: Readonly<Record<MaterialId, MaterialDef>> = {
     ...base,
     id: 'oil_barrel',
     code: MAT.oil_barrel,
+    tide: { wet: true },
     walk: false,
     blocksShots: true,
     flammable: { spreadChance: 0.3, burnSeconds: 1, burntTo: 'stone', smoke: 'dense', explodeAfter: 1 },
@@ -192,15 +207,23 @@ export const materials: Readonly<Record<MaterialId, MaterialDef>> = {
     blocksShots: true,
     conducts: 'full',
   },
-  ash: { ...base, id: 'ash', code: MAT.ash },
+  ash: { ...base, id: 'ash', code: MAT.ash, tide: { to: 'shallow_water', borrowed: true } },
   wall: { ...base, id: 'wall', code: MAT.wall, walk: false, blocksShots: true },
-  pit: { ...base, id: 'pit', code: MAT.pit, walk: false },
+  pit: { ...base, id: 'pit', code: MAT.pit, walk: false, tide: { to: 'deep_water', borrowed: true } },
   brazier: { ...base, id: 'brazier', code: MAT.brazier, walk: false, blocksShots: true, conducts: 'full' },
   object: { ...base, id: 'object', code: MAT.object, walk: false, blocksShots: true },
   rime: { ...base, id: 'rime', code: MAT.rime, slippery: true, revertsToUnder: true },
   // M8 furnace vents (DESIGN §6.2): the lit one is fire, not fuel, so it never burns out or spreads.
-  vent_lit: { ...base, id: 'vent_lit', code: MAT.vent_lit, walk: false, ignitesTouching: true },
-  vent_doused: { ...base, id: 'vent_doused', code: MAT.vent_doused, conducts: 'full' },
+  vent_lit: {
+    ...base,
+    id: 'vent_lit',
+    code: MAT.vent_lit,
+    walk: false,
+    ignitesTouching: true,
+    tide: { to: 'vent_doused', borrowed: true, vent: true },
+  },
+  // Fire on a doused vent relights it at once (rule 30): fireTo, like ice melting.
+  vent_doused: { ...base, id: 'vent_doused', code: MAT.vent_doused, conducts: 'full', fireTo: 'vent_lit' },
 };
 
 /** Material definitions indexed by code, for per-cell lookups. */

@@ -40,7 +40,7 @@ describe('weave slots in the sim', () => {
       'Cast > Bolt[Storm',
       'Cast > Nova[Fire, Pierce]',
       'Cast > Lob[Fire] > OnExpire > Nova[Fire, Wide] > OnHit > Bolt[]',
-      'Cast > Bolt[Tide]', // M8
+      'Cast > Bolt[Tide, Tide]', // a duplicate element
     ]) {
       const r = setSlotWeave(s, 2, bad);
       expect(r.applied, bad).toBe(false);
@@ -50,6 +50,9 @@ describe('weave slots in the sim', () => {
       expect(s.weaves.slots[2]!.notation).toBe('Cast > Bolt[Storm, Chain]');
       expect(s.weaves.slots[2]!.program).not.toBeNull();
     }
+    // M8 phase 1 ships Tide and Gale.
+    expect(setSlotWeave(s, 3, 'Cast > Bolt[Tide]').applied).toBe(true);
+    expect(setSlotWeave(s, 3, 'Cast > Strike[Fire, Gale]').applied).toBe(true);
     expect(setSlotWeave(s, 2, null).applied).toBe(true);
     expect(s.weaves.slots[2]!.notation).toBeNull();
     expect(() => setSlotWeave(s, 5, null)).toThrow();

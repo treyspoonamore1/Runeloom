@@ -61,6 +61,12 @@ export interface Grid {
    * `under` and stops being borrowed, whatever it became meanwhile (rule 27).
    */
   borrowed: Uint8Array;
+  /**
+   * M8: on a cell a push or ice block covers (ground `object`) while the cell is borrowed: the
+   * borrowed material the block hides, + 1 (0 = none). `under` keeps the borrowed origin, so the
+   * cell can still go back (rule 27) under the block (world/objectGround.ts coverTile).
+   */
+  cover: Uint8Array;
   /** M8: gust direction while gustTimer > 0: 1–8 (E, NE, N, NW, W, SW, S, SE; grid/windDir.ts). */
   gustDir: Uint8Array;
   /** M8: remaining gust grid ticks; 0 = no gust (the cell has the room wind). */
@@ -74,6 +80,11 @@ export interface Grid {
   fogMask: Uint8Array;
   /** M8: live gusts, oldest first, for each team's cap (tuning.wind.maxGusts; grid/wind.ts). */
   gusts: Gust[];
+  /**
+   * M8: furnace vent cells in the room, lit or doused (derived from the room, not hashed): rule
+   * 30's touch check is skipped in rooms without vents.
+   */
+  vents: number;
   /**
    * 1 if the cell's oil is the Tar Matriarch's tar (M4, CONTENT §5): fire on it is world-owned
    * whoever lit it (cells.ts lightCell, elements.ts fireCell). 0 otherwise; cleared when the oil
@@ -217,11 +228,13 @@ export function createGrid(room: Room): Grid {
     under: new Uint8Array(n),
     owner: new Uint8Array(n).fill(OWNER.world),
     borrowed: new Uint8Array(n),
+    cover: new Uint8Array(n),
     gustDir: new Uint8Array(n),
     gustTimer: new Uint8Array(n),
     wind: room.header.wind ?? 0,
     fogMask: new Uint8Array((n + 7) >> 3),
     gusts: [],
+    vents: 0,
     tar: new Uint8Array(n),
     chargeId: new Uint32Array(n),
     chargeFalloff: new Float32Array(n),
@@ -249,6 +262,7 @@ export function createGrid(room: Room): Grid {
     }
   }
   for (const f of room.header.fog ?? []) addFog(grid, f.tx0, f.ty0, f.tx1, f.ty1);
+  for (let i = 0; i < n; i++) if (grid.ground[i] === MAT.vent_lit) grid.vents++;
   return grid;
 }
 

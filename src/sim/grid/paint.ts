@@ -3,21 +3,21 @@
  * bursts, explosions and the Chemistry Lab all call `applyElement` with a shape.
  *
  * CONTRACT (M3): callers use only `applyElement` and the `Footprint` / `ElementApplication` types.
- * It runs rules 1, 4–14 and 26 of DESIGN §6.3 at once on every cell of the footprint (see
+ * It runs rules 1, 4–14, 24 and 26 of DESIGN §6.3 at once on every cell of the footprint (see
  * elements.ts and charge.ts); spread, burning out, thawing and charge timing happen in the 20 Hz
  * grid tick (tick.ts). Safe to call any number of times per sim tick.
  */
 import type { GameState } from '../state';
 import { newBatch } from './cells';
 import { electrify } from './charge';
-import { fireCell, frostCell, steamAround, stormCell, type CellContext } from './elements';
+import { fireCell, frostCell, steamAround, stormCell, tideCell, type CellContext } from './elements';
 import { flush, flushFx } from './fx';
 import { rasterize } from './raster';
 import { MAT, materialByCode } from '../../../data/materials';
 import { iceConducts, terrainDurationMult } from '../hero/effectsTerrain';
 import { elementOnObjects } from '../world/objectHits';
 
-/** Elements that change terrain. Tide and Gale arrive in M8. */
+/** Elements that change terrain. Tide (rule 24) and Gale (rule 21) arrived in M8. */
 export type TerrainElement = 'fire' | 'frost' | 'storm' | 'tide' | 'gale';
 
 /** An area on the grid in world cells. Every cell whose center is inside is affected. */
@@ -50,6 +50,14 @@ export interface ElementApplication {
   hitDamage: number;
   /** Lingering: terrain effects last this much longer (1 = normal). */
   durationMult: number;
+  /**
+   * M8: the spell's direction, for rule 28 (Tide washes blocks along it) and Gale gusts. Absent
+   * for Nova, Lob and Orb footprints and non-spell sources: they act away from the footprint's center.
+   */
+  dirX?: number;
+  dirY?: number;
+  /** M8: the spell instance that painted it (rule 28 washes a block once per instance). */
+  spellId?: number;
 }
 
 /**
@@ -68,10 +76,11 @@ let water = new Int32Array(256);
 let metal = new Int32Array(256);
 const steamBatch = newBatch();
 const iceBatch = newBatch();
+const tideBatch = newBatch();
 
 /** applyElement without flushing the batched events (the grid tick flushes once at its end). */
 export function paintElement(state: GameState, app: ElementApplication): void {
-  if (app.element === 'tide' || app.element === 'gale') return; // TODO(M8): rules 21 and 24.
+  if (app.element === 'gale') return; // TODO(M8): rule 21 (grid/wind.ts).
   const g = state.grid;
   const list = rasterize(g, app.shape);
   const n = list.len;
@@ -83,8 +92,12 @@ export function paintElement(state: GameState, app: ElementApplication): void {
   const c: CellContext = { owner: app.owner, durationMult };
   g.version++;
   // M4 puzzle objects: Fire lights braziers and melts ice blocks, Storm powers switches.
-  elementOnObjects(state, app.element, cells, n);
+  elementOnObjects(state, app.element, cells, n, app);
   switch (app.element) {
+    case 'tide':
+      for (let k = 0; k < n; k++) tideCell(state, cells[k]!, c, tideBatch);
+      flush(state, 'tided', tideBatch);
+      return;
     case 'fire':
       for (let k = 0; k < n; k++) {
         const i = cells[k]!;

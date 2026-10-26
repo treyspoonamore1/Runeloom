@@ -106,6 +106,8 @@ export interface WorldObject {
   push: number;
   /** Blocks: direction being pushed or slid, 0 none, 1 +x, 2 −x, 3 +y, 4 −y. */
   pushDir: number;
+  /** M8 blocks: the spell instance that last washed it (rule 28: once per instance). Absent until washed. */
+  washId?: number;
 }
 
 /** Object kind of each room legend character. */
@@ -174,5 +176,6 @@ export function hashObjects(h: Hasher, objects: readonly WorldObject[]): void {
   for (const o of objects) {
     h.string(o.key).byte(0).u32(o.tx).u32(o.ty).bool(o.on).num(o.timer).num(o.vx).num(o.vy);
     h.string(o.link).byte(0).num(o.push).u32(o.pushDir);
+    if (o.washId !== undefined) h.byte(0x77).u32(o.washId);
   }
 }

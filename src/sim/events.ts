@@ -258,6 +258,14 @@ export type SimEvent =
   | ({ type: 'iceBreaking' } & CellBounds)
   /** Ice bridge cells broke back into deep water (rule 25 is the entity side). */
   | ({ type: 'iceBroke' } & CellBounds)
+  /** M8 rule 24: Tide changed these cells (flooded, doused, wetted, mud, fire out). */
+  | ({ type: 'tided' } & CellBounds)
+  /** M8 rule 27: borrowed terrain went back to its `under` (water drained, ice gone, a vent relit). */
+  | ({ type: 'borrowedEnded' } & CellBounds)
+  /** M8 rule 21: a gust was written onto these cells (grid/wind.ts). */
+  | ({ type: 'gust' } & CellBounds)
+  /** M8 rule 29: fog in these cells was cleared (by a gust or Fire) and will roll back in. */
+  | ({ type: 'fogCleared' } & CellBounds)
   /**
    * A water body (rule 11) or metal network (rule 12) was electrified: charge event `chargeId`
    * over `cells` cells from (x, y) (the first cell reached, its center). handoff: it came across
@@ -288,6 +296,8 @@ export type SimEvent =
       toY: number;
       damage: number;
     }
+  /** M8 rule 30: a furnace vent relit under the target and pushed it off (no fall, no damage). */
+  | { type: 'pushedOff'; target: number | 'player'; fromX: number; fromY: number; toX: number; toY: number }
   /** A Shieldbearer's wooden shield burnt away (4 s of total burning); `Enemy.shield` is now null. */
   | { type: 'shieldBurned'; id: number; x: number; y: number }
   /**

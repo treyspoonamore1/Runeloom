@@ -9,13 +9,21 @@
  * (rule 10); re-freezing temporary ice restarts its timer (map ice stays permanent). Steaming
  * water doesn't freeze (DESIGN §5.3: frost does nothing to steam).
  * Storm: rolls rule 14 per dry flammable cell; the water and metal cells feed charge.ts.
+ * Tide (M8, rule 24, DESIGN §6.5): puts fire out (fuel kept, the cell wet), then per material
+ * (data/materials.ts `tide`): stone and ash flood with borrowed shallow water, a pit with
+ * borrowed deep water, dirt turns to mud, flammables get wet, a lit vent is doused; borrowed
+ * water (and a doused vent) gets its timer back.
+ * Borrowed terrain (rule 27): Fire on borrowed ice or an ice bridge returns the cell to `under`
+ * at once, with steam; Fire on a doused vent relights it.
  */
 import { AIR, MAT, SURFACE, materialByCode, materials } from '../../../data/materials';
 import type { GameState } from '../state';
 import { markActive } from './active';
 import {
   addToBatch,
+  borrowCell,
   fireOwner,
+  revertBorrowed,
   fx,
   gridTicks,
   ignitable,
@@ -39,10 +47,13 @@ export function fireCell(state: GameState, i: number, c: CellContext): boolean {
   const g = state.grid;
   let def = materialByCode[g.ground[i]!]!;
   if (def.fireTo !== undefined) {
-    // Rule 5: ice and ice bridges melt where the fire hits.
-    setGround(state, i, MAT[def.fireTo]);
+    // Rule 5: ice and ice bridges melt where the fire hits. Borrowed ice (M8, rule 27) goes
+    // straight back to what it covered, with steam; a doused vent relights (rule 30).
+    const borrowedIce = g.borrowed[i] === 1 && def.revertSeconds !== undefined;
+    if (g.borrowed[i] === 1) revertBorrowed(state, i);
+    else setGround(state, i, MAT[def.fireTo]);
     def = materialByCode[g.ground[i]!]!;
-    if (g.surface[i] !== SURFACE.oil) return false;
+    if (g.surface[i] !== SURFACE.oil) return borrowedIce;
   }
   if (g.fire[i]! > 0) {
     // Already burning: a new effect takes the new owner (burning tar stays world-owned).
@@ -131,4 +142,46 @@ function frozenTicks(id: keyof typeof materials, mult: number): number {
 export function stormCell(state: GameState, i: number, c: CellContext): void {
   if (!ignitable(state.grid, i)) return;
   if (state.gridRng.chance(state.tuning.grid.stormIgniteChance)) ignite(state, i, c.owner, c.durationMult);
+}
+
+/**
+ * Rule 24 (M8): Tide on cell i (DESIGN §6.5). A burning cell goes out (fuel kept, rule 9) and is
+ * wet for tide.wetSeconds; then its material's `tide` entry decides. Adds changed cells to
+ * `batch`. `durationMult`: Lingering × terrain duration stats.
+ */
+export function tideCell(state: GameState, i: number, c: CellContext, batch: CellBatch): void {
+  const g = state.grid;
+  const T = state.tuning.tide;
+  const wetTicks = u16(gridTicks(T.wetSeconds * c.durationMult));
+  let changed = false;
+  if (g.fire[i]! > 0) {
+    g.fire[i] = 0;
+    if (g.wet[i]! < wetTicks) g.wet[i] = wetTicks;
+    markActive(g.active, i);
+    changed = true;
+  }
+  const def = materialByCode[g.ground[i]!]!;
+  if (g.borrowed[i] === 1 && (def.water !== null || def.id === 'vent_doused')) {
+    // Borrowed water (and a doused vent) gets its full time back.
+    const t = u16(gridTicks((def.water !== null ? T.floodSeconds : T.ventSeconds) * c.durationMult));
+    if (g.timer[i]! < t) g.timer[i] = t;
+    addToBatch(batch, g, i);
+    return;
+  }
+  const tide = def.tide;
+  if (tide !== undefined) {
+    if (tide.to !== undefined) {
+      if (tide.borrowed === true) {
+        const seconds = tide.vent === true ? T.ventSeconds : T.floodSeconds;
+        borrowCell(state, i, MAT[tide.to], u16(gridTicks(seconds * c.durationMult)));
+      } else setGround(state, i, MAT[tide.to]);
+      changed = true;
+    }
+    if (tide.wet === true) {
+      if (g.wet[i]! < wetTicks) g.wet[i] = wetTicks;
+      markActive(g.active, i);
+      changed = true;
+    }
+  }
+  if (changed) addToBatch(batch, g, i);
 }
