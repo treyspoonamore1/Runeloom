@@ -48,7 +48,26 @@ export const riftEntryChunk = 'entry';
 export const riftBosses = [
   { arena: 'tar_pit', boss: 'rift_matriarch' },
   { arena: 'ember_hearth', boss: 'rift_warden' },
-] as const satisfies readonly { arena: string; boss: EnemyKind }[];
+  // M8 (CONTENT §10.1): the Fen bosses from tier 9. The Coil's arena keeps its water whatever the
+  // suffixes say (Drought and Permafrost would strand or ice it for good).
+  { arena: 'belfry', boss: 'rift_bellwether', fromTier: 9 },
+  { arena: 'glass_eye', boss: 'rift_coil', fromTier: 9, keepsWater: true },
+] as const satisfies readonly RiftBossDef[];
+
+/** A rift boss and its arena (data/rooms/rift/bosses/<arena>.txt). */
+export interface RiftBossDef {
+  arena: string;
+  boss: EnemyKind;
+  /** The lowest tier it appears at (default 1). At its tier and up all eligible bosses are equally likely. */
+  fromTier?: number;
+  /** Its arena ignores the suffixes that remove or freeze water (Drought, Permafrost). */
+  keepsWater?: boolean;
+}
+
+/** The rift bosses a rift of `tier` picks from, in table order. */
+export function riftBossesAt(tier: number): readonly RiftBossDef[] {
+  return riftBosses.filter((b: RiftBossDef) => (b.fromTier ?? 1) <= tier);
+}
 
 /**
  * What a spawn marker in a rift chunk holds, picked by weight among those the tier and chunk

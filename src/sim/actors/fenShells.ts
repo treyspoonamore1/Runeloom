@@ -64,10 +64,13 @@ export function bellTakenMult(e: Enemy, b: Bell): number {
   return e.special.openLeft > 0 ? b.openTaken : b.shelledTaken;
 }
 
-/** Rings the bell (stun, shell open) unless it is already open or ringing is on cooldown. */
+/**
+ * Rings the bell (stun, shell open) unless it is already open, ringing is on cooldown, or it is
+ * rolling (the Old Bellwether tucked in: CONTENT §5 "it can't be rung while rolling").
+ */
 export function ringBell(state: GameState, e: Enemy, b: Bell): boolean {
   const s = e.special;
-  if (s.openLeft > 0 || s.ringCooldown > 0) return false;
+  if (s.openLeft > 0 || s.ringCooldown > 0 || s.dashSpeed > 0) return false;
   s.openLeft = b.openSeconds;
   e.terrain.stunLeft = b.stun;
   e.vx = e.vy = 0;

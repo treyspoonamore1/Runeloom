@@ -16,6 +16,7 @@ import { spillOil } from './oil';
 import { spawnProjectile } from './projectiles';
 import { circleHitsShape, type AttackShape } from './shapes';
 import { addChargedStorm, endActiveM8, fenAttackTerrain, startLeap, stepLeap } from './enemyAttacksM8';
+import { startWave, stepWave } from './enemyWave';
 
 /** Timers within this many seconds of zero count as expired (absorbs 1/60 rounding). */
 const TIME_EPSILON = 1e-9;
@@ -123,6 +124,7 @@ export function stepEnemyAttack(state: GameState, e: Enemy): void {
   if (a.phase === 'active' && def.dash && e.special.dashSpeed > 0)
     stepDash(state, e, def.dash, enemyAttackPacket(state, e, def), def.knockback);
   if (a.phase === 'active' && def.leap) stepLeap(e, speed); // M8: a Glasspike in the air.
+  if (a.phase === 'active' && def.wave) stepWave(state, e, def, enemyAttackPacket(state, e, def), speed);
   if (e.dead) return;
   const haste = e.mods.length > 0 ? attackSpeedMult(e) : 1;
   a.timeLeft -= DT * speed;
@@ -167,6 +169,8 @@ export function resolveEnemyAttack(state: GameState, e: Enemy, def: AttackDef): 
   const [dirX, dirY] = attackDir(e);
   // M8: a leap flies to the landing point; its bite comes on touchdown (enemyAttacksM8.ts).
   if (def.leap) return startLeap(state, e, def.leap.seconds);
+  // M8: the Old Bellwether's toll ring expands over the active phase (enemyWave.ts).
+  if (def.wave) return startWave(state, e, def);
   if (def.dash) {
     const s = a.shape;
     return startDash(e, def.dash, dirX, dirY, s.kind === 'line' ? s.length : 0);

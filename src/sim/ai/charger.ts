@@ -43,7 +43,7 @@ export function planCharge(
   state: GameState,
   e: Enemy,
   dash: DashDef,
-  b: Charger,
+  b: Pick<Charger, 'iceLengthMult'>,
   dirX: number,
   dirY: number,
   want: number,

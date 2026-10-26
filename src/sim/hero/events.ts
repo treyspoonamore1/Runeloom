@@ -28,6 +28,11 @@ export type HeroEvent =
    * per save, after that reward's 'rewardGranted'. (x, y): the shrine or the boss, else the player.
    */
   | { type: 'elementUnlocked'; rune: RuneId; roomId: string; x: number; y: number; source: RewardSource }
+  /**
+   * M8: a boss gave Pattern Seeds (the Glasswater Coil): `amount` more passive points, `total` the
+   * hero's Pattern Seeds now. (x, y): the boss.
+   */
+  | { type: 'patternSeedGained'; amount: number; total: number; x: number; y: number }
   /** A drop landed on the floor at (x, y), thrown from (fromX, fromY) (the body). */
   | {
       type: 'lootDropped';

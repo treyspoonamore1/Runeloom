@@ -18,6 +18,9 @@ const FEN_LOOK: Readonly<Record<string, { r: number; color: number; accent: numb
   mire_bull: { r: 2.2, color: 0x6b5238, accent: 0xd9c7a0 },
   bellows_toad: { r: 1.8, color: 0x6c8f4c, accent: 0xd9e3a8 },
   bellshell: { r: 2.2, color: 0x9a7432, accent: 0xd8b05a },
+  // The Drowned Foundry's bosses (data/bossesFen.ts); their rift versions draw as these (lookAs).
+  bellwether: { r: 4.5, color: 0x8a6a2e, accent: 0xd8b05a },
+  glasswater_coil: { r: 5, color: 0xa9d6dc, accent: 0xf5e04a },
 };
 
 function body(p: Pen, r: number, fill: number, accent: number | null): void {

@@ -9,7 +9,8 @@
  * - iceDurationMult (grid/elements.ts frostCell): 1 + iceDurationInc on player-made ice (Long Winter).
  * - chargeSeconds, conduction (grid/charge.ts): + chargeDurationAdd seconds (Overcharge, Storm
  *   Antler); water reach × (1 + conductionRangeInc) + conductionRangeAdd and cell cap +
- *   conductionCellsAdd (Conduit).
+ *   conductionCellsAdd (Conduit); M8 Bellwether's Clapper: × (1 + clapper_reach) on the water reach
+ *   and both cell caps (metalConductionCells).
  * - iceConducts (grid/paint.ts, grid/charge.ts): Stormglass, ice and ice bridges carry the
  *   player's Storm charge like water.
  * - fireSpreadMult (grid/tick.ts): spread chance of player-owned fire × (1 + fireSpreadInc)
@@ -44,10 +45,19 @@ export function waterConduction(state: GameState, owner: number): { maxDistance:
   const w = state.tuning.grid.water;
   if (owner !== OWNER.player) return { maxDistance: w.maxDistance, maxCells: w.maxCells };
   const m = state.heroMods;
+  // M8 Bellwether's Clapper: this much farther, distance and cell cap both.
+  const clapper = 1 + (m.effects.clapper_reach ?? 0);
   return {
-    maxDistance: w.maxDistance * (1 + m.conductionRangeInc) + m.conductionRangeAdd,
-    maxCells: w.maxCells + m.conductionCellsAdd,
+    maxDistance: (w.maxDistance * (1 + m.conductionRangeInc) + m.conductionRangeAdd) * clapper,
+    maxCells: Math.round((w.maxCells + m.conductionCellsAdd) * clapper),
   };
+}
+
+/** Metal network cell cap for `owner`'s chains (M8 Bellwether's Clapper raises the player's). */
+export function metalConductionCells(state: GameState, owner: number): number {
+  const cap = state.tuning.grid.metal.maxCells;
+  if (owner !== OWNER.player) return cap;
+  return Math.round(cap * (1 + (state.heroMods.effects.clapper_reach ?? 0)));
 }
 
 /** Stormglass (or the Stormglass Memory mutation, M7): ice carries Storm charge like water for `owner`'s chains. */

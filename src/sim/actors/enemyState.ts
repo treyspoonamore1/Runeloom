@@ -3,6 +3,8 @@
  * bosses. Fields of `Enemy` (actors/enemies.ts); hashed in hashState.ts.
  */
 import type { Hasher } from '../core/hash';
+import type { BossFight } from '../../../data/enemyTypes';
+import { createFenBossState, hashFenBossState, type FenBossState } from './bossStateFen';
 import { createFenSpecial, hashFenSpecial, type FenSpecial } from './enemyStateM8';
 
 /**
@@ -67,9 +69,13 @@ export interface BossState {
   gap: number;
   /** Tar Matriarch: seconds before being lit while Oiled can light her flare fuse again. */
   flareCooldown: number;
+  /** M8: the Old Bellwether's and the Glasswater Coil's fight state (actors/bossStateFen.ts); null for M4 bosses. */
+  fen: FenBossState | null;
 }
 
-export function createBossState(): BossState {
+/** A new boss's fight state; `fight` and its spawn point (x, y) set up the M8 bosses' part. */
+export function createBossState(fight: BossFight | null = null, x = 0, y = 0): BossState {
+  const fen = fight === 'bellwether' || fight === 'glasswater_coil' ? createFenBossState(x, y) : null;
   return {
     phase: 1,
     pendingPhase: 0,
@@ -82,6 +88,7 @@ export function createBossState(): BossState {
     glowing: false,
     gap: 0,
     flareCooldown: 0,
+    fen,
   };
 }
 
@@ -97,4 +104,6 @@ export function hashBossState(h: Hasher, b: BossState | null): void {
   h.u32(b.phase).u32(b.pendingPhase).bool(b.superheated).num(b.breakLeft).bool(b.wasFrozen);
   h.bool(b.chillNeedsWater).bool(b.inWater).num(b.stormLeft).bool(b.glowing).num(b.gap);
   h.num(b.flareCooldown);
+  // M8 bosses only, so the M4 bosses hash as before.
+  if (b.fen !== null) hashFenBossState(h, b.fen);
 }

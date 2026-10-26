@@ -7,6 +7,7 @@
  *   (actors/chemistry.ts enemyTakenMult). A new Freeze breaks it for superheatBreakSeconds,
  *   counted from the freeze ('superheatChanged'). While chillNeedsWater, frost hits add chill
  *   only while he stands in water (combat/ailments.ts addChill reads inWater).
+ * - M8: the Old Bellwether and the Glasswater Coil (fenPassive.ts).
  * stepBossPassive runs every tick for every live boss, frozen or not (ai/passive.ts).
  */
 import { bossFightOf } from '../../../../data/enemies';
@@ -17,6 +18,7 @@ import { DT } from '../../core/constants';
 import { emit } from '../../events';
 import type { GameState } from '../../state';
 import { stepBrazierStorm } from './braziers';
+import { stepFenBossPassive } from './fenPassive';
 
 /** Life fractions at which phases 2, 3, … begin, per boss. */
 export function phaseThresholds(state: GameState, e: Enemy): readonly number[] {
@@ -24,6 +26,8 @@ export function phaseThresholds(state: GameState, e: Enemy): readonly number[] {
   const fight = bossFightOf(e.kind);
   if (fight === 'tar_matriarch') return [T.matriarchSummonAt];
   if (fight === 'cinder_warden') return [T.wardenPhase2At, T.wardenPhase3At];
+  if (fight === 'bellwether') return [T.bellwetherPhase2At];
+  if (fight === 'glasswater_coil') return [T.coilPhase2At, T.coilPhase3At];
   return [];
 }
 
@@ -53,7 +57,8 @@ export function stepBossPassive(state: GameState, e: Enemy): void {
     const next = b.phase + 1;
     if (next - 2 < th.length && e.life <= e.maxLife * th[next - 2]!) b.pendingPhase = next;
   }
-  if (!state.cheats.noAI) stepBrazierStorm(state, e);
+  if (!state.cheats.noAI && bossFightOf(e.kind) === 'cinder_warden') stepBrazierStorm(state, e);
+  stepFenBossPassive(state, e); // M8: the Old Bellwether's toll clock, the Glasswater Coil's states and pulses.
 }
 
 export function setSuperheat(state: GameState, e: Enemy, on: boolean): void {

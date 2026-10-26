@@ -1,12 +1,14 @@
 /**
- * Boss AI (DESIGN §10.3, CONTENT §5): the Tar Matriarch and the Cinder Warden. Shared loop:
+ * Boss AI (DESIGN §10.3, §10.5, CONTENT §5): the Tar Matriarch, the Cinder Warden, and M8's Old
+ * Bellwether (bellwether.ts) and Glasswater Coil (coil.ts). Shared loop:
  * - Attack phases freeze the boss in place (a charge runs along its dash instead).
  * - 'idle' until the player is within aggroRange with line of sight, or it is hurt; then it sends
  *   'bossAwake' and never leashes.
  * - A pending phase (phases.ts) starts its transition attack as soon as the boss is free.
- * - Otherwise the boss's own picker (matriarch.ts, warden.ts) chooses an attack whose
- *   EnemyAI.cooldowns slot is ready, at most one every tuning.bosses.attackGap s of free time,
- *   and walks toward the player in between.
+ * - Otherwise the boss's own picker (PICKERS) chooses an attack whose EnemyAI.cooldowns slot is
+ *   ready, at most one every tuning.bosses.attackGap s of free time, and walks toward the player
+ *   in between (the Coil swims: patrols or chases through its water, coilRoute.ts; Stranded or
+ *   Iced it does only what coil.ts coilHelpless allows).
  */
 import { attackByName, enemyDef, type BehaviorDef } from '../../../../data/enemies';
 import type { Enemy } from '../../actors/enemies';
@@ -30,6 +32,8 @@ import {
 import { bossAttack } from './attack';
 import { matriarchPace, stepMatriarch } from './matriarch';
 import { stepWarden } from './warden';
+import { stepBellwether } from './bellwether';
+import { coilHelpless, moveCoil, stepCoil } from './coil';
 
 type Boss = Extract<BehaviorDef, { kind: 'boss' }>;
 
@@ -37,6 +41,16 @@ type Boss = Extract<BehaviorDef, { kind: 'boss' }>;
 const PHASE_ATTACKS: Record<Boss['boss'], readonly string[]> = {
   tar_matriarch: ['summon_hulks'],
   cinder_warden: ['flood', 'call_storm'],
+  bellwether: ['toll_foundry'],
+  glasswater_coil: ['coil_dive', 'call_pylons'],
+};
+
+/** Each boss's attack picker: starts an attack (or, the Bellwether, walks to its ring) and returns true. */
+const PICKERS: Record<Boss['boss'], (state: GameState, e: Enemy) => boolean> = {
+  tar_matriarch: stepMatriarch,
+  cinder_warden: stepWarden,
+  bellwether: stepBellwether,
+  glasswater_coil: stepCoil,
 };
 
 export function stepBossAI(state: GameState, e: Enemy, b: Boss): void {
@@ -69,14 +83,15 @@ export function stepBossAI(state: GameState, e: Enemy, b: Boss): void {
 
   const boss = e.boss!;
   if (boss.gap > 0) boss.gap = boss.gap > dt ? boss.gap - dt : 0;
+  // M8: the Coil Stranded or Iced only thrashes (coil.ts); its crawl is rule 31's (actors/strand.ts).
+  if (b.boss === 'glasswater_coil' && coilHelpless(state, e)) return;
   if (boss.pendingPhase > 0) {
     const name = PHASE_ATTACKS[b.boss][boss.pendingPhase - 2];
     const def = name === undefined ? null : attackByName(e.kind, name);
     if (def && bossAttack(state, e, def, toPlayer.ux, toPlayer.uy)) return;
   }
-  if (boss.gap <= 0) {
-    if (b.boss === 'tar_matriarch' ? stepMatriarch(state, e) : stepWarden(state, e)) return;
-  }
+  if (boss.gap <= 0 && PICKERS[b.boss](state, e)) return;
+  if (b.boss === 'glasswater_coil') return moveCoil(state, e);
   // Walk at the player; in reach, plant and face them instead of shoving.
   if (toPlayer.gap <= 0) {
     stop(e);

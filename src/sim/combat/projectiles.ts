@@ -8,6 +8,7 @@ import type { DamagePacket } from './damage';
 import { applyHit } from './hits';
 import { isBlockedByShield } from './shield';
 import { projectileMissed } from '../actors/chemistry';
+import { projectileLanded } from './projectileLand';
 
 /** One projectile, as plain data. Lives in `state.projectiles` in spawn order. */
 export interface Projectile {
@@ -139,6 +140,8 @@ function endProjectile(state: GameState, p: Projectile, reason: ProjectileEndRea
   emit(state, { type: 'projectileEnd', id: p.id, kind: p.kind, x: p.x, y: p.y, reason });
   if (p.team === 'enemy' && (reason === 'wall' || reason === 'expired'))
     projectileMissed(state, p.kind, p.x, p.y);
+  // M8: the Glasswater Coil's spit puddles where it ends, whatever ended it.
+  if (p.team === 'enemy') projectileLanded(state, p.kind, p.x, p.y);
 }
 
 // Scratch for the per-tick enemy candidates and their sort keys; the sim is single-threaded.

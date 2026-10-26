@@ -10,6 +10,7 @@ import { hasLineOfSight } from '../world/los';
 import { kiterConfig as C } from './kiterConfig';
 import { bossIn, conducts, frostShot, nearestWater, stormSoon, wantsWater } from './kiterBoss';
 import { flareShot, flareStandoff, fuseBlastRadius, oilAtRisk, tarFight } from './kiterTar';
+import { fenBossGoal, fenBossHazard, fenBossShot, fenFreeBolts, fenTideShot, fenWaveSoon, fenWaveTelegraph } from './kiterFen';
 import { wallDistanceAt, wallDistanceField } from './wallDistance';
 
 /**
@@ -44,7 +45,7 @@ const BOLT_SLOT = Button.Cast1;
 
 // Scratch.
 const live: Enemy[] = [];
-const goal = { x: 0, y: 0, on: false, fixed: false };
+const goal = { x: 0, y: 0, on: false, fixed: false, exact: false };
 let boss: Enemy | null = null;
 let bestHitSoon = false;
 
@@ -88,14 +89,20 @@ export function kiterInput(state: GameState): InputFrame {
   }
   out.moveX = bestX;
   out.moveY = bestY;
+  // M8: an exact stand spot (bots/kiterFen.ts) closer than a full step: step onto it at part speed.
+  if (goal.on && goal.exact && bestX === 0 && bestY === 0 && !hitSoon) exactStep(state, out);
 
   if (!aimStrike(state, out, strike)) {
-    const spare = p.mana >= p.maxMana * C.boltManaFraction && meleeFarther(state, C.boltSafeDistance);
+    const spare =
+      fenFreeBolts(state, boss) || (p.mana >= p.maxMana * C.boltManaFraction && meleeFarther(state, C.boltSafeDistance));
     if (bolt && (spare || p.mana >= bolt.mana)) aimBolt(state, out, !spare, bolt.spec, strike?.spec ?? null);
   }
 
-  if (!frostShot(state, out, boss)) flareShot(state, out, boss);
+  if (!frostShot(state, out, boss) && !flareShot(state, out, boss) && !fenTideShot(state, out, boss))
+    fenBossShot(state, out, boss);
 
+  // M8: the Bellwether's toll ring front is about to pass: dodge through it (bots/kiterFen.ts).
+  if (fenWaveSoon(state, boss, C.dodgeWithin)) hitSoon = true;
   const dodgeHeld = (state.prevButtons & Button.Dodge) !== 0;
   if (hitSoon && !dodgeHeld && p.dodgeCharges > 0 && (bestX !== 0 || bestY !== 0))
     out.buttons |= Button.Dodge;
@@ -111,11 +118,24 @@ export function kiterGoal(): Readonly<{ x: number; y: number; on: boolean }> {
   return goal;
 }
 
+/** A partial move onto the goal, when it is closer than one lookahead step and the way is clear. */
+function exactStep(state: GameState, out: InputFrame): void {
+  const p = state.player;
+  const dx = goal.x - p.x;
+  const dy = goal.y - p.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  const step = state.tuning.player.moveSpeed * C.lookahead;
+  if (d < 0.5 || d >= step || hazardAt(state, goal.x, goal.y)) return;
+  out.moveX = (dx / d) * (d / step);
+  out.moveY = (dy / d) * (d / step);
+}
+
 /** Sets `goal` to where the bot wants to fight: near its preferred target, behind shields. */
 function pickGoal(state: GameState, canStrike: boolean): void {
   const p = state.player;
   goal.on = false;
   goal.fixed = false;
+  goal.exact = false;
   if (live.length === 0) {
     goal.on = true;
     goal.x = state.room.spawnX;
@@ -128,6 +148,8 @@ function pickGoal(state: GameState, canStrike: boolean): void {
   if (wantsWater(boss) && !stormSoon(boss) && nearestWater(state, C.bossWaterSearch, goal)) return;
   // M4: an Oiled Tar Matriarch with her flare ready: back off and light her (bots/kiterTar.ts).
   if (flareStandoff(state, boss, goal)) return;
+  // M8: the Glasswater Coil's stand spots and lures (bots/kiterFen.ts).
+  if (fenBossGoal(state, boss, goal)) return;
   let best: Enemy | null = null;
   let bestCost = Infinity;
   for (const e of live) {
@@ -199,7 +221,8 @@ function scoreMove(state: GameState, dx: number, dy: number, canStrike: boolean)
     // M4: a running dash (the Warden's charge, a Lurker's lunge) is as dangerous as its telegraph.
     const dashing = a.phase === 'active' && e.special.dashSpeed > 0 && !e.special.dashHit;
     // In the Tar Matriarch's fight, a telegraph that deals no damage (her summon) is no threat.
-    const harmless = a.phase === 'windup' && tarFight(boss) && attackDefFor(e)?.damage === 0;
+    const harmless =
+      (a.phase === 'windup' && tarFight(boss) && attackDefFor(e)?.damage === 0) || fenWaveTelegraph(e);
     if ((a.phase === 'windup' && !harmless) || dashing) {
       const tl = a.timeLeft < T ? a.timeLeft : T;
       const hx = p.x + dx * sp * tl;
@@ -401,6 +424,7 @@ function hazardAt(state: GameState, x: number, y: number): boolean {
   if (cx < 0 || cy < 0 || cx >= g.width || cy >= g.height) return false;
   const i = cy * g.width + cx;
   if (stormSoon(boss) && conducts(state, i)) return true;
+  if (fenBossHazard(state, i, boss)) return true; // M8: the Bellwether's toll, the Coil's water.
   // M4: in the Tar Matriarch's fight, oil near fire may burn world-owned any moment (bots/kiterTar.ts).
   if (oilAtRisk(state, i, boss)) return true;
   if (g.owner[i] === OWNER.player) return false;

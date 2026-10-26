@@ -7,7 +7,7 @@
  * data/enemyTypes.ts.
  */
 import type { DamageAmounts } from './combatTypes';
-import type { AttackDef, EnemyDef } from './enemyTypes';
+import type { AttackDef, BossFight, EnemyDef } from './enemyTypes';
 import { bosses } from './bosses';
 import { m4Enemies } from './enemiesM4';
 import { fenEnemies } from './enemiesFen';
@@ -17,6 +17,7 @@ export type {
   AttackShapeDef,
   AttackTerrainDef,
   BehaviorDef,
+  BossFight,
   DashDef,
   EnemyChemistry,
   EnemyDef,
@@ -165,10 +166,6 @@ export function attackByName(kind: EnemyKind, name: string): AttackDef | null {
   return attackIndex.get(kind)?.get(name) ?? null;
 }
 
-/**
- * The boss fight an enemy kind runs ('tar_matriarch' or 'cinder_warden'), or null: the rift
- * bosses (M6) run the same fights as their region originals.
- */
 /** The kind whose art, sounds and effects `kind` uses (EnemyDef.lookAs), else itself. */
 export function lookKind(kind: string): string {
   if (!isEnemyKind(kind)) return kind;
@@ -176,7 +173,12 @@ export function lookKind(kind: string): string {
   return d.lookAs ?? kind;
 }
 
-export function bossFightOf(kind: string): 'tar_matriarch' | 'cinder_warden' | null {
+/**
+ * The boss fight an enemy kind runs (BossFight: M4's Tar Matriarch and Cinder Warden, M8's Old
+ * Bellwether and Glasswater Coil), or null: the rift bosses run the same fights as their region
+ * originals.
+ */
+export function bossFightOf(kind: string): BossFight | null {
   if (!isEnemyKind(kind)) return null;
   const b = enemyDef(kind).behavior;
   return b.kind === 'boss' ? b.boss : null;

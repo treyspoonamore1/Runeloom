@@ -160,6 +160,21 @@ export const fuseParts = {
     text: 'Shocked enemies take {more} more Physical damage (Tide and Gale hits)',
     values: { more: { base: 0.15, format: 'pct' } },
   },
+  // M8: the Drowned Foundry's bosses (always drop their part, data/loot.ts bossPartChance).
+  bellwethers_clapper: {
+    id: 'bellwethers_clapper',
+    name: "Bellwether's Clapper",
+    dropsFrom: 'bellwether',
+    text: 'Charge you create reaches {reach} farther (water distance and both cell caps)',
+    values: { reach: { base: 0.3, format: 'pct' } },
+  },
+  coil_dynamo: {
+    id: 'coil_dynamo',
+    name: 'Coil Dynamo',
+    dropsFrom: 'glasswater_coil',
+    text: 'When charge you created on water or metal ends, it pulses once more for {share} of its damage (each entity can be hit again)',
+    values: { share: { base: 0.5, format: 'pct' } },
+  },
 } satisfies Record<string, FusePartDef>;
 
 export type FusePartId = keyof typeof fuseParts;

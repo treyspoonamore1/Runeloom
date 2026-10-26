@@ -9,7 +9,7 @@
  *   the attack's cone (grid/wind.ts writeGust).
  * - A Charged Copperback's attacks add Storm (fenChemistry.ts chargedAttackStorm).
  * - The end of an attack's active phase (endActiveM8): a leap's touchdown, a Mirebull's charge
- *   into a wall (ai/charger.ts).
+ *   into a wall (ai/charger.ts), the Old Bellwether's wave and roll (enemyWave.ts).
  */
 import type { AttackDef } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
@@ -18,6 +18,7 @@ import { isWaterCell, locomotionOf } from '../actors/locomotion';
 import { strand } from '../actors/strand';
 import { cellOf } from '../actors/swim';
 import { endCharge } from '../ai/charger';
+import { endBossActive } from './enemyWave';
 import { DT } from '../core/constants';
 import { emit } from '../events';
 import { placeBorrowedWater } from '../grid/tempWater';
@@ -88,6 +89,7 @@ function land(state: GameState, e: Enemy, def: AttackDef, packet: DamagePacket):
 export function endActiveM8(state: GameState, e: Enemy, def: AttackDef, packet: () => DamagePacket): void {
   if (def.leap) land(state, e, def, packet());
   if (def.dash) endCharge(state, e);
+  if (def.wave || def.roll) endBossActive(state, e, def);
 }
 
 /** Adds a Charged Copperback's Storm to an attack packet (at its area level). */

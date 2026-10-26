@@ -176,7 +176,27 @@ export const fuseEffects = {
     element: 'storm',
     text: 'Shocked enemies take {pct}% more Physical damage from you',
   },
+  // M8: the Drowned Foundry's bosses (src/sim/hero/effectsTerrain.ts, src/sim/grid/dynamo.ts).
+  bellwethers_clapper: {
+    ...none,
+    name: "Bellwether's Clapper",
+    effects: { clapper_reach: 0.3 },
+    numeric: true,
+    element: 'storm',
+    text: 'Charge you create reaches {pct}% farther (water distance and both cell caps)',
+  },
+  coil_dynamo: {
+    ...none,
+    name: 'Coil Dynamo',
+    effects: { dynamo_echo: 0.5 },
+    numeric: true,
+    element: 'storm',
+    text: 'When charge you created on water or metal ends, it pulses once more for {pct}% of its damage',
+  },
 } as const satisfies Record<string, FuseEffectDef>;
+
+/** Coil Dynamo (M8): seconds its extra pulse of your ended charge lasts. */
+export const coilDynamoSeconds = 0.5;
 
 /** Pike Scale (M8): the grounds whose slow it removes. */
 export const pikeScaleGrounds = ['shallow_water', 'mud'] as const;

@@ -130,7 +130,7 @@ export const runeDiscovery = {
  * remembered in WorldState.bossesDefeated; rift bosses (data/rift.ts riftBosses) only in the open
  * rift (WorldState.rift.bossDead), since every rift has one.
  */
-export const regionBossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden'];
+export const regionBossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden', 'bellwether', 'glasswater_coil'];
 export const riftBossKinds: readonly string[] = riftBosses.map((b) => b.boss);
 export const bossKinds: readonly string[] = [...regionBossKinds, ...riftBossKinds];
 

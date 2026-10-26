@@ -1,12 +1,13 @@
 /**
  * Bosses (CONTENT §5, DESIGN §10.3): the Tar Matriarch (mini-boss, K5) and the Cinder Warden
- * (K10). Their life and attack damage are absolute: no area-level scaling and no monster rarity.
+ * (K10); M8's Old Bellwether and Glasswater Coil are in data/bossesFen.ts. Their life and attack damage are absolute: no area-level scaling and no monster rarity.
  * Part of `enemies` (data/enemies.ts). Their state machines are in src/sim/ai/bosses; the
  * fight's feel numbers (phase thresholds, Superheat, flood, brazier storm timing) are in
  * data/tuning.ts `bosses`. Values CONTENT doesn't give (speeds, radii, recover, cooldowns,
  * ranges, the breath cone's width, the charge's speed) are first guesses, listed in the M4 report.
  */
 import type { EnemyDef } from './enemyTypes';
+import { fenBosses } from './bossesFen';
 
 /** cos 30°: the fire breath is a 60° cone. */
 const COS30 = 0.8660254037844387;
@@ -182,4 +183,6 @@ export const bosses = {
   ...m4Bosses,
   rift_matriarch: { ...m4Bosses.tar_matriarch, name: 'Rift Matriarch', lookAs: 'tar_matriarch' },
   rift_warden: { ...m4Bosses.cinder_warden, name: 'Rift Warden', lookAs: 'cinder_warden' },
+  // M8: the Old Bellwether and the Glasswater Coil, and their rift versions (data/bossesFen.ts).
+  ...fenBosses,
 } satisfies Record<string, EnemyDef>;
