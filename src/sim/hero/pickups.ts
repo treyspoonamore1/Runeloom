@@ -24,5 +24,5 @@ export function addLoomShard(state: GameState): void {
 export function addPatternSeed(state: GameState, x = state.player.x, y = state.player.y): void {
   state.hero.patternSeeds++;
   refreshHero(state);
-  emit(state, { type: 'patternSeedGained', total: state.hero.patternSeeds, x, y });
+  emit(state, { type: 'patternSeedGained', amount: 1, total: state.hero.patternSeeds, x, y });
 }

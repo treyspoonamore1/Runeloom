@@ -6,7 +6,7 @@
  *   owned by the killer's team, with no damage.
  * - Ember Archer arrows that miss ignite the flammable cells where they land.
  */
-import { enemies, enemyDef, type EnemyChemistry, type EnemyDef } from '../../../data/enemies';
+import { bossFightOf, enemies, enemyDef, type EnemyChemistry, type EnemyDef } from '../../../data/enemies';
 import { OWNER } from '../../../data/materials';
 import { teamOfSource, isIgnited, type AilmentTarget } from '../combat/ailments';
 import { WORLD_SOURCE_ID, ignitable } from '../grid/cells';
@@ -19,6 +19,7 @@ import { explodeHulk } from './hulkBlast';
 import { flare } from '../ai/bosses/flare';
 import { deathFireSquare } from './rarity';
 import { fenDeathTerrain, fenTakenMult } from './fenChemistry';
+import { coilTakenMult } from '../ai/bosses/coilState';
 
 export function chemistryOf(e: Enemy): EnemyChemistry | undefined {
   return enemyDef(e.kind).chemistry;
@@ -38,10 +39,12 @@ export function dousedTakenMult(e: Enemy): number {
 /**
  * Every damage-taken multiplier on an enemy: doused (Tinderling) × Superheated (Cinder Warden,
  * tuning.bosses.superheatDamageTaken) × the Fen's (M8, actors/fenChemistry.ts: Hot or Cracked,
- * shelled or rung open, bogged, Stranded).
+ * shelled or rung open, bogged, Stranded) × the Glasswater Coil's Submerged (M8).
  */
 export function enemyTakenMult(state: GameState, e: Enemy): number {
-  const m = dousedTakenMult(e) * fenTakenMult(state, e);
+  let m = dousedTakenMult(e) * fenTakenMult(state, e);
+  // M8: the Glasswater Coil takes much less while Submerged (ai/bosses/coilState.ts).
+  if (e.boss?.fen && bossFightOf(e.kind) === 'glasswater_coil') m *= coilTakenMult(state, e);
   return e.boss !== null && e.boss.superheated ? m * state.tuning.bosses.superheatDamageTaken : m;
 }
 

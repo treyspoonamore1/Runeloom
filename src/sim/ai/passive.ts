@@ -28,6 +28,7 @@ import { emit } from '../events';
 import type { GameState } from '../state';
 import { stepFlare } from './bosses/flare';
 import { stepBossPassive } from './bosses/phases';
+import { stepFenBossBeforeSwim } from './bosses/fenPassive';
 
 const TIME_EPSILON = 1e-9;
 
@@ -44,6 +45,7 @@ export function stepEnemyPassive(state: GameState, e: Enemy): void {
     if (e.dead) return;
   }
   stepFenPassive(state, e, def);
+  if (e.boss !== null) stepFenBossBeforeSwim(state, e); // M8: the Coil breaks ice it touches.
   if (t.swims && !e.dead) stepSwimmer(state, e);
   if (e.dead) return;
   if (e.boss !== null) stepBossPassive(state, e);

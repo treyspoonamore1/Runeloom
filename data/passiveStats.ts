@@ -73,6 +73,9 @@ export interface StatLine {
  *   release your charge, this fraction of the killing hit), mire_more (your damage to enemies on
  *   mud or in shallow water), gust_seconds_add / gust_area_inc (your gusts), shocked_physical_more
  *   (your Physical on Shocked enemies).
+ * - M8 Foundry boss parts: clapper_reach (your charge reaches this much farther: water distance
+ *   and both cell caps, src/sim/hero/effectsTerrain.ts), dynamo_echo (your charge pulses once
+ *   more for this fraction of its damage when it ends, src/sim/grid/dynamo.ts).
  */
 export const EFFECT_KEYS = [
   'wildheart',
@@ -102,6 +105,8 @@ export const EFFECT_KEYS = [
   'gust_seconds_add',
   'gust_area_inc',
   'shocked_physical_more',
+  'clapper_reach',
+  'dynamo_echo',
 ] as const;
 export type EffectKey = (typeof EFFECT_KEYS)[number];
 

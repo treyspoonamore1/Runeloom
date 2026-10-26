@@ -8,6 +8,7 @@ import { RarityView, rarityAtlasEntries } from './bestiary/rarityView';
 import { smallBeastEntries } from './bestiary/smallBeasts';
 import { fenShapesA } from './bestiary/fenShapesA';
 import { fenShapesB } from './bestiary/fenShapesB';
+import { fenPlaceholderEntries } from './bestiary/fenPlaceholders';
 import { FenTelegraphs, fenTelegraphEntries } from './bestiary/fenTelegraphs';
 import { fenIconEntries } from './bestiary/fenIcons';
 import type { EnemyLayer } from './enemyLayer';
@@ -31,6 +32,7 @@ export function m4AtlasEntries(): AtlasEntry[] {
     ...bigBeastEntries(),
     ...fenShapesA(),
     ...fenShapesB(),
+    ...fenPlaceholderEntries(),
     ...rarityAtlasEntries(),
     ...telegraphAccentEntries(),
     ...fenTelegraphEntries(),

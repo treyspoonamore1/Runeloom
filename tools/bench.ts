@@ -37,6 +37,7 @@ import { loadRoomText } from './lib/rooms';
 import { adventureBench } from './lib/adventureBench';
 import { riftBench } from './lib/riftBench';
 import { fenFightSetup } from './lib/fenBench';
+import { coilFightSetup } from './lib/fenBossBench';
 import { gridWindBench } from './lib/gridWindBench';
 import { summarize, type Summary } from './lib/stats';
 
@@ -310,6 +311,12 @@ export const benches: Bench[] = [
       'Entity step (grid included), the seven Fen packs kept alive around a god-mode bot, Storm in their water',
     budgetMs: ENTITY_BUDGET_MS,
     setup: fenFightSetup,
+  },
+  {
+    id: 'entity:coil_fight',
+    description: 'Entity step (grid included), the boss bot against the Glasswater Coil in phase 3, Tide strips and pulses',
+    budgetMs: ENTITY_BUDGET_MS,
+    setup: coilFightSetup,
   },
   stressBench(),
   wildsTerrainBench(),

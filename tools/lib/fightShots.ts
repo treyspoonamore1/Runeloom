@@ -8,7 +8,7 @@
 import type { Page } from '@playwright/test';
 
 export interface FightShotOptions {
-  /** Region room short id (k5, k10). */
+  /** Region room short id (k5, k10), or a Fen boss arena (bellwether, coil). */
   room: string;
   seed: number;
   /** Fight seconds to stop at. */
@@ -32,19 +32,44 @@ export async function showFight(page: Page, o: FightShotOptions): Promise<string
     let caught: import('../../src/sim').GameState | null = null;
     let start = -1;
     const stop = new Error('stop');
+    // M8: the Fen bosses' test arenas, played by the boss bot (bots/fenBossBot.ts, with Tide).
+    const fen: Record<string, { roomId: string; start: { x: number; y: number } }> = {
+      bellwether: { roomId: 'test/boss_bellwether', start: { x: 52, y: 74 } },
+      coil: { roomId: 'test/boss_coil', start: { x: 62, y: 88 } },
+    };
+    const F = fen[o.room]
+      ? await load<typeof import('../../src/sim/bots/fenBossBot')>('/src/sim/bots/fenBossBot.ts')
+      : null;
     try {
-      E.runEncounter({
-        rooms: rooms.roomTexts,
-        key: o.room as import('../../src/sim/bots/campaign').RoomKey,
-        seed: o.seed,
-        onTick: (_k, st) => {
-          if (start < 0) start = st.tick;
-          if ((st.tick - start) / S.SIM_HZ >= o.at) {
-            caught = st;
-            throw stop;
-          }
-        },
-      });
+      if (F) {
+        const f = fen[o.room]!;
+        F.runFenBossFight({
+          rooms: rooms.roomTexts,
+          roomId: f.roomId,
+          seed: o.seed,
+          tide: 'tide',
+          start: f.start,
+          onStep: (st) => {
+            if (start < 0) start = st.tick;
+            if ((st.tick - start) / S.SIM_HZ >= o.at) {
+              caught = st;
+              throw stop;
+            }
+          },
+        });
+      } else
+        E.runEncounter({
+          rooms: rooms.roomTexts,
+          key: o.room as import('../../src/sim/bots/campaign').RoomKey,
+          seed: o.seed,
+          onTick: (_k, st) => {
+            if (start < 0) start = st.tick;
+            if ((st.tick - start) / S.SIM_HZ >= o.at) {
+              caught = st;
+              throw stop;
+            }
+          },
+        });
     } catch (e) {
       if (e !== stop) throw e;
     }

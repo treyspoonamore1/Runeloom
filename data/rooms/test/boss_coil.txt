@@ -1,0 +1,31 @@
+@id test/boss_coil
+@name The Glass Eye (test)
+@level 24
+@spawn 1 enemy:glasswater_coil
+@note x The Eye goes still. The Loom Stone wakes.
+@note Y The wind tugs north. The Cliffs aren't woven yet.
+@link D sealed
+##############YD################
+#..............................#
+#...~~~~~~............~~~~~~...#
+#...~~~~~~............~~~~~~...#
+#..............................#
+#.....mmm..............mmm.....#
+#.....mMm~~~~~~~~~~~~~~mMm.....#
+#.....mmm~wwwwwwwwwwww~mmm.....#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#...wwwwwwwwwww1wwwwwwwwwwww...#
+#...wwwwwwwwwwwwwwwwwwwwwwww...#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#.....mmm~wwwwwwwwwwww~mmm.....#
+#.....mMm~~~~~~~~~~~~~~mMm.....#
+#.....mmm..............mmm.....#
+#..............................#
+#...~~~~~~............~~~~~~...#
+#...~~~~~~............~~~~~~...#
+#..........x...................#
+################################

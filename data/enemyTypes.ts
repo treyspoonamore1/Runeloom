@@ -9,7 +9,9 @@ import type {
   FenChemistry,
   LeapDef,
   LeaperBehavior,
+  RollDef,
   SwimmerDef,
+  WaveDef,
 } from './enemyTypesM8';
 
 /**
@@ -98,6 +100,10 @@ export interface AttackDef {
    * Heron spits puddles under a dry player). Targeted cadenced attacks aim at the player.
    */
   onlyDryTarget?: boolean;
+  /** M8: the attack is a ring wave expanding over its circle shape (the Old Bellwether's toll ring). */
+  wave?: WaveDef;
+  /** M8: the dash is a roll that runs farther on ice and stuns on a wall (the Old Bellwether). */
+  roll?: RollDef;
 }
 
 /**
@@ -147,10 +153,13 @@ export type BehaviorDef =
    */
   | { kind: 'spawner'; spawn: string; count: number; interval: number; maxAlive: number; distance: number }
   /** A boss with its own state machine (src/sim/ai/bosses). */
-  | { kind: 'boss'; boss: 'tar_matriarch' | 'cinder_warden' }
+  | { kind: 'boss'; boss: BossFight }
   /** M8: Glasspike (ai/leaper.ts), Mirebull (ai/charger.ts); data/enemyTypesM8.ts. */
   | LeaperBehavior
   | ChargerBehavior;
+
+/** The boss fights (src/sim/ai/bosses): M4's two, and M8's Old Bellwether and Glasswater Coil. */
+export type BossFight = 'tar_matriarch' | 'cinder_warden' | 'bellwether' | 'glasswater_coil';
 
 /** How a kind moves over the grid (M4). Missing means 'walk'. */
 export type Locomotion =

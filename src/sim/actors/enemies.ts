@@ -252,7 +252,7 @@ export function spawnEnemy(
     },
     shield: def.shield ? { halfAngleCos: def.shield.halfAngleCos, burnLeft: def.shield.burnTime } : null,
     special,
-    boss: boss ? createBossState() : null,
+    boss: boss ? createBossState(def.behavior.kind === 'boss' ? def.behavior.boss : null, x, y) : null,
   };
   state.enemies.push(e);
   emit(state, { type: 'enemySpawn', id: e.id, kind, x, y });

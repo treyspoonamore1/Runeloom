@@ -138,6 +138,8 @@ export interface ChargeEvent {
   /** Grid ticks until its cells' charge ends. */
   ticksLeft: number;
   cells: number;
+  /** M8 Coil Dynamo: the extra pulse of an ended player event (it never pulses again). */
+  echo?: boolean;
 }
 
 /**

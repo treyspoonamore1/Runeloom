@@ -168,6 +168,7 @@ function hashGrid(h: Hasher, g: Grid): void {
   for (const ev of g.chargeEvents) {
     h.u32(ev.id).u32(ev.chain).string(ev.medium).byte(0).num(ev.damage).u32(ev.owner);
     h.num(ev.sourceId).u32(ev.ticksLeft).u32(ev.cells);
+    if (ev.echo) h.byte(1); // M8 Coil Dynamo only, so other events hash as before.
   }
   h.u32(g.blasts.length);
   for (const b of g.blasts) h.num(b.x).num(b.y).num(b.radius).num(b.damage).u32(b.owner).num(b.sourceId);

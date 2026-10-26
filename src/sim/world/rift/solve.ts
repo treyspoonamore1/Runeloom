@@ -4,7 +4,8 @@
  * can be fought), and the room graph reaches the boss, whose arena leads home once the boss dies.
  *
  * Within a room it flood-fills tiles from where the player arrives (the entry: the room's spawn
- * point; any other room: the exit it was entered by). Walkable tiles pass, and so do the ones a
+ * point; any other room: the exit it was entered by). A marker in water counts when its water
+ * touches a reached tile (M8: the Glasswater Coil is fought from the shore). Walkable tiles pass, and so do the ones a
  * player opens with fire or that open themselves: bramble, crates, barricades, oil barrels and
  * doors (the boss door opens when the boss dies). Deep water, pits, walls and pylons stop it.
  */
@@ -64,6 +65,44 @@ function flood(data: RoomData, starts: number[]): Uint8Array {
   return seen;
 }
 
+/** Water tiles (a swimmer's world): shallow, deep, oily water. */
+const WATER = '~wO';
+
+/**
+ * M8: a spawn marker in water (a swimmer: the Glasswater Coil in the Eye, a pike shoal) can be
+ * fought from the shore: true if the water body it sits in touches a reached tile.
+ */
+function waterReached(data: RoomData, marker: number, reach: Uint8Array): boolean {
+  const w = data.tilesW;
+  const h = data.tilesH;
+  const seen = new Uint8Array(w * h);
+  const queue = [marker];
+  seen[marker] = 1;
+  for (let k = 0; k < queue.length; k++) {
+    const i = queue[k]!;
+    if (reach[i]) return true;
+    const x = i % w;
+    const y = (i - x) / w;
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      const j = ny * w + nx;
+      if (seen[j]) continue;
+      if (reach[j]) return true;
+      if (!WATER.includes(data.rows[ny]![nx]!)) continue;
+      seen[j] = 1;
+      queue.push(j);
+    }
+  }
+  return false;
+}
+
 function tilesOf(data: RoomData, pred: (ch: string) => boolean): number[] {
   const out: number[] = [];
   data.rows.forEach((row, y) => {
@@ -106,7 +145,7 @@ export function solveRift(rift: GeneratedRift): RiftSolveResult {
     }
     const reach = flood(data, starts);
     for (const marker of tilesOf(data, (ch) => ch >= '1' && ch <= '9'))
-      if (!reach[marker])
+      if (!reach[marker] && !waterReached(data, marker, reach))
         problems.push(
           `${id}: spawn marker at tile ${marker % data.tilesW},${Math.floor(marker / data.tilesW)} unreachable`,
         );

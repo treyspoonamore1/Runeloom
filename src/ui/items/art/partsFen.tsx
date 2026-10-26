@@ -174,6 +174,28 @@ function bellBronze() {
   );
 }
 
+function bellwethersClapper() {
+  return (
+    <>
+      <path d="M14 3h4v14h-4z" fill="#8a6a2e" {...S1} />
+      <circle cx="16" cy="22" r="6" fill="#c9973f" {...S} />
+      <path d="M13 20c1-2 2-2 4-2" stroke="#f3d07a" stroke-width={1.4} {...HI} />
+      <path d="M5 14l-2-2M5 20H2M27 14l2-2M27 20h3" stroke={STORM} stroke-width={1.5} {...HI} />
+    </>
+  );
+}
+
+function coilDynamo() {
+  return (
+    <>
+      <path d="M6 22c0-9 5-16 10-16s10 7 10 16c-3 4-6 6-10 6S9 26 6 22z" fill="#cfe9ef" {...S} opacity={0.9} />
+      <path d="M10 12c4 2 8 2 12 0M9 18c5 2 9 2 14 0M10 24c4 1 8 1 12 0" stroke="#7fb8c2" stroke-width={1.3} {...HI} />
+      <path d="M16 6l-3 7h4l-3 8" stroke={STORM} stroke-width={1.8} {...HI} />
+      <path d="M16 6l-3 7h4l-3 8" stroke={STORM_GLOW} stroke-width={0.8} {...HI} opacity={0.7} />
+    </>
+  );
+}
+
 /** Art for each M8 Fen Fuse part id (merged into parts.tsx PART_ART). */
 export const FEN_PART_ART: Record<string, Shape> = {
   pike_scale: pikeScale,
@@ -184,4 +206,6 @@ export const FEN_PART_ART: Record<string, Shape> = {
   mire_horn: mireHorn,
   toad_bellows: toadBellows,
   bell_bronze: bellBronze,
+  bellwethers_clapper: bellwethersClapper,
+  coil_dynamo: coilDynamo,
 };

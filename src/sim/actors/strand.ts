@@ -135,12 +135,15 @@ function crawl(state: GameState, e: Enemy, here: number): void {
   if (e.life <= 0) killEnemy(state, e, WORLD_SOURCE_ID, 'dot');
 }
 
-/** The route to the nearest water by steps over open ground, within crawlReach; none: drying. */
+/**
+ * The route to the nearest water by steps over open ground, within crawlReach (per kind:
+ * EnemyDef.swimmer); none: drying.
+ */
 function planCrawl(state: GameState, e: Enemy, here: number): void {
   const s = e.special;
   const T = state.tuning.swim;
   const g = state.grid;
-  const reach = T.crawlReach;
+  const reach = enemyDef(e.kind).swimmer?.crawlReach ?? T.crawlReach;
   const side = 2 * reach + 1;
   const n = searchFrom(state, here, 'open', side * side, reach);
   let found = -1;

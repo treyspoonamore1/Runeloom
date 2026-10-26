@@ -155,12 +155,12 @@ export const guaranteedRunes: Partial<Record<WorldRoomId, RuneId[]>> = {
   [fenRooms.g8]: ['pulse'],
   [fenRooms.f2]: ['split'],
   [fenRooms.f4]: ['fire'],
-  [fenRooms.f5]: ['on_hit', 'infuse'],
   [fenRooms.f6]: ['tide'],
   [fenRooms.f7]: ['swath'],
   [fenRooms.f8]: ['tide'],
   [fenRooms.f9]: ['lob'],
-  [fenRooms.f10]: ['gale', 'nova'],
+  // F5 (On Hit, Infuse) and F10 (Gale, Nova) pay through their bosses' rewards
+  // (data/bossesFen.ts, world/fenBossRewards.ts), not here, so they aren't paid twice.
 };
 
 /** What a room's loot chest (`$`, M8) holds: paid once when it is opened. */
@@ -209,14 +209,7 @@ export const runeDiscovery = {
  * remembered in WorldState.bossesDefeated; rift bosses (data/rift.ts riftBosses) only in the open
  * rift (WorldState.rift.bossDead), since every rift has one.
  */
-export const regionBossKinds: readonly string[] = [
-  'tar_matriarch',
-  'cinder_warden',
-  // M8: the Foundry's mini-boss and boss (data/bosses.ts once the bosses work lands; until then
-  // F5 and F10 spawn stand-ins, so nothing spawns these kinds).
-  'bellwether',
-  'glasswater_coil',
-];
+export const regionBossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden', 'bellwether', 'glasswater_coil'];
 export const riftBossKinds: readonly string[] = riftBosses.map((b) => b.boss);
 export const bossKinds: readonly string[] = [...regionBossKinds, ...riftBossKinds];
 

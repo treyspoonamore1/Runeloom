@@ -117,4 +117,25 @@ export interface FenChemistry {
 export interface SwimmerDef {
   crawlDelay?: number;
   crawlSpeed?: number;
+  /** Steps over open ground it looks for water within (the Coil: far enough for any lure path). */
+  crawlReach?: number;
+}
+
+/**
+ * A ring wave (the Old Bellwether's toll ring, M8): during the attack's active phase a ring front
+ * expands from the attacker to the circle shape's radius; it hits the player once as it passes
+ * their body (`width` cells thick). A player outside the circle, or dodging through the front, is
+ * never hit.
+ */
+export interface WaveDef {
+  width: number;
+}
+
+/**
+ * A rolling dash (the Old Bellwether's shell roll, M8): cells on ice cost 1 / iceLengthMult of the
+ * run's length, and a run planned into a wall stuns it `wallStun` s when it ends there.
+ */
+export interface RollDef {
+  iceLengthMult: number;
+  wallStun: number;
 }

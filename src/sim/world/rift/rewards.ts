@@ -9,14 +9,12 @@
  *   crafting currency
  *   (riftRewards) and, once the Hearth is lit, Embers (meta/embers.ts), around its body.
  * - The Cinder Warden's first death also lights the Hearth (M7, meta/hearth.ts lightHearth).
- * - The Glasswater Coil's first death (M8, the region boss in F10, never `rift_coil`) drops a tier 9
- *   sigil (data/riftGate.ts firstKillSigilTier). Its Gale arrives as the room's guaranteed rune
- *   (data/progression.ts, the "item get"), like the Warden's Storm.
+ * - M8: the Old Bellwether's and the Glasswater Coil's runes, Pattern Seed and the Coil's tier 9
+ *   sigil (world/fenBossRewards.ts).
  * Called by world/roomClear.ts when a boss dies, after the death is recorded.
  */
 import { riftBossTierUpChance, riftDrops, riftRewards } from '../../../../data/rift';
 import { riftBossKinds } from '../../../../data/progression';
-import { riftGate } from '../../../../data/riftGate';
 import { emit } from '../../events';
 import { rollCurrency } from '../../items/drops';
 import { dropLoot, type LootContent } from '../../items/loot';
@@ -25,6 +23,7 @@ import type { GameState } from '../../state';
 import { lightHearth } from '../../meta/hearth';
 import { riftEmbers } from '../../meta/embers';
 import { maxRiftTier } from '../../meta/view';
+import { payFenBoss } from '../fenBossRewards';
 
 /** A rift room was cleared: restore tuning.rift.roomClearHeal of max life and mana. */
 export function onRiftRoomCleared(state: GameState): void {
@@ -41,8 +40,7 @@ export function onBossDefeated(state: GameState, kind: string, x: number, y: num
     out.push({ kind: 'sigil', sigil: makeSigil(state.hero, riftDrops.wardenSigilTier, []) });
     lightHearth(state); // M7: the Warden's first death lights the Hearth.
   }
-  if (kind === riftGate.boss)
-    out.push({ kind: 'sigil', sigil: makeSigil(state.hero, riftGate.firstKillSigilTier, []) });
+  payFenBoss(state, kind, x, y, out); // M8: the Old Bellwether's and the Glasswater Coil's rewards.
   const rift = state.world.rift;
   if (riftBossKinds.includes(kind) && rift) {
     const tier = rift.spec.tier;

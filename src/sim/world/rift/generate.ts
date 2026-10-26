@@ -13,12 +13,15 @@
  */
 import {
   riftAreaLevel,
-  riftBosses,
+  riftBossesAt,
   riftChunks,
   riftEntryChunk,
   riftLayout,
+  riftMods,
   riftRarity,
   riftSpawns,
+  type RiftBossDef,
+  type RiftModId,
   type RiftSpawn,
 } from '../../../../data/rift';
 import { hashString } from '../../core/hash';
@@ -60,12 +63,20 @@ const DIRS: readonly { edge: Edge; dx: number; dy: number }[] = [
 
 export { isRiftRoomId, riftRoomPrefix } from './types';
 
+/** Suffixes that take a room's water away (Drought) or freeze it (Permafrost); a keepsWater arena skips them. */
+const WATERLESS: readonly RiftModId[] = (Object.keys(riftMods) as RiftModId[]).filter((id) => {
+  const m = riftMods[id];
+  return 'terrain' in m && (m.terrain === 'drought' || m.terrain === 'permafrost');
+});
+
 /** Builds the rift a spec describes from the templates in `templates`. */
 export function generateRift(spec: RiftSpec, templates: RoomSource): GeneratedRift {
   const rng = new Rng((spec.seed ^ hashString('rift')) >>> 0);
   const prefix = riftRoomPrefix(spec.index);
   const plan = layout(rng, prefix);
-  const boss = riftBosses[rng.int(riftBosses.length)]!;
+  // M8: the Fen bosses join from tier 9 (riftBossesAt); below it the pick is the M6 one.
+  const pool = riftBossesAt(spec.tier);
+  const boss = pool[rng.int(pool.length)]!;
   attachBoss(plan, prefix, boss.arena);
   assignChunks(plan, rng);
   const rooms: Record<string, string> = {};
@@ -73,7 +84,8 @@ export function generateRift(spec: RiftSpec, templates: RoomSource): GeneratedRi
     const text = templates[room.template];
     if (text === undefined) throw new Error(`generateRift: no template "${room.template}"`);
     const roomRng = new Rng((spec.seed ^ hashString(room.id)) >>> 0);
-    rooms[room.id] = roomText(spec, room, text, roomRng, room.id === `${prefix}boss` ? boss.boss : null);
+    const isBoss = room.id === `${prefix}boss`;
+    rooms[room.id] = roomText(spec, room, text, roomRng, isBoss ? boss : null);
   }
   return { spec, entryId: `${prefix}entry`, bossId: `${prefix}boss`, bossKind: boss.boss, plan, rooms };
 }
@@ -192,8 +204,9 @@ function roomText(
   room: RiftRoomPlan,
   template: string,
   rng: Rng,
-  bossKind: string | null,
+  boss: RiftBossDef | null,
 ): string {
+  const bossKind = boss?.boss ?? null;
   const data = parseRoom(template);
   const rows = data.rows.map((r) => r.split(''));
   const w = data.tilesW;
@@ -205,7 +218,8 @@ function roomText(
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (rows[y]![x] === ch) rows[y]![x] = '#';
   }
   const entry = room.id.endsWith('/entry');
-  applyRiftTerrain(rows, spec.mods, rng, entry ? { x: Math.floor(w / 2), y: Math.floor(h / 2) } : null);
+  const mods = boss?.keepsWater ? spec.mods.filter((m) => !WATERLESS.includes(m)) : spec.mods;
+  applyRiftTerrain(rows, mods, rng, entry ? { x: Math.floor(w / 2), y: Math.floor(h / 2) } : null);
   const lines = [`@id ${room.id}`, `@name ${data.header.name}`, `@level ${riftAreaLevel(spec.tier)}`];
   for (const { edge } of DIRS)
     if (room.exits[edge] !== undefined) lines.push(`@exit ${edge} ${room.exits[edge]}`);

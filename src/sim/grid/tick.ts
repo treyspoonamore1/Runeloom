@@ -32,6 +32,7 @@ import {
   smokeTicks,
 } from './cells';
 import { tickChargeEvents } from './charge';
+import { dynamoBeforeTick, rearmEcho } from './dynamo';
 import { FIRE_SPECIAL, REVERTS, SMOKE, SMOKE_DENSE, SMOKE_NONE, SPREAD, smokeCode } from './matTables';
 import { flushFx } from './fx';
 import { restingAir, type Grid } from './grid';
@@ -79,6 +80,7 @@ export function stepGrid(state: GameState): void {
   const g = state.grid;
   g.tick++;
   g.blasts.length = 0;
+  dynamoBeforeTick(state); // M8 Coil Dynamo: echoes of the player's ending charge.
   tickChargeEvents(g);
   const a = g.active;
   mergeAdded(a);
@@ -155,7 +157,7 @@ function visitCells(state: GameState): void {
       // Smoke or steam ends (or cleared fog rolls back in, rule 29): fog cells return to fog.
       if (--airTimer[i]! === 0) air[i] = restingAir(g, i);
     }
-    if (charge[i]! > 0 && --charge[i]! === 0) {
+    if (charge[i]! > 0 && --charge[i]! === 0 && !rearmEcho(g, i)) {
       g.chargeId[i] = 0;
       g.chargeFalloff[i] = 0;
     }

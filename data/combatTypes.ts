@@ -19,6 +19,11 @@ export interface ProjectileDef {
   life: number;
   /** Extra targets it passes through before stopping (0: stops on the first hit). */
   pierce: number;
+  /**
+   * M8 (the Glasswater Coil's glass spit): where it ends (a hit, a wall, or its flight's end) it
+   * leaves temporary shallow water of `radius` cells on dry ground for `seconds`.
+   */
+  landWater?: { radius: number; seconds: number };
 }
 
 /**

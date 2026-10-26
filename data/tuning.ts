@@ -3,6 +3,8 @@
  * in the F2 tuning panel. When the designer pastes tuning JSON back, apply it
  * here exactly.
  */
+import { fenBossTuning } from './tuningFenBosses';
+
 export const defaultTuning = {
   player: {
     /** Collision radius in cells. */
@@ -210,6 +212,8 @@ export const defaultTuning = {
     wardenChargeOvershoot: 10,
     /** Cinder Warden: shortest charge worth starting, cells (a wall closer than this: no charge). */
     wardenChargeMinLength: 12,
+    /** M8: the Old Bellwether and the Glasswater Coil (data/tuningFenBosses.ts). */
+    ...fenBossTuning,
   },
   /** Enemy AI shared by every kind (per-kind behavior lives in data/enemies.ts). */
   ai: {

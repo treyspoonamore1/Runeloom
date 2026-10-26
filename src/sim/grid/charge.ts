@@ -14,7 +14,7 @@
  * fixed neighbor order makes every fill deterministic.
  */
 import { MAT, materialByCode } from '../../../data/materials';
-import { chargeSeconds, iceConducts, waterConduction } from '../hero/effectsTerrain';
+import { chargeSeconds, iceConducts, metalConductionCells, waterConduction } from '../hero/effectsTerrain';
 import { emit } from '../events';
 import type { GameState } from '../state';
 import { markActive } from './active';
@@ -124,7 +124,7 @@ function fill(
   const rules = medium === 'water' ? t.water : t.metal;
   // Passives on the player's charge (hero/effectsTerrain.ts): Conduit's reach, Stormglass's ice.
   const reach = src.waterReach ?? waterConduction(state, src.owner);
-  const maxCells = medium === 'water' ? reach.maxCells : rules.maxCells;
+  const maxCells = medium === 'water' ? reach.maxCells : metalConductionCells(state, src.owner);
   const maxDist = medium === 'water' ? reach.maxDistance : Infinity;
   const ice = iceConducts(state, src.owner);
   const id = g.nextChargeId;
