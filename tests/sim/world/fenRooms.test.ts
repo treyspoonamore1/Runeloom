@@ -258,11 +258,7 @@ describe('Fen and Foundry rooms', () => {
   });
 });
 
-/**
- * The spawns CONTENT §13 gives each room, by marker. Until the bosses work (`bellwether`,
- * `glasswater_coil`) is merged, F5 and F10 spawn region-1 stand-ins on the same markers
- * (notes/m8-rooms-decisions.md).
- */
+/** The spawns CONTENT §13 gives each room, by marker. */
 const FEN_SPAWNS: Record<Short, string[]> = {
   g1: ['@spawn 1 pack:sparkfly_cloud'],
   g2: ['@spawn 1 pack:pike_shoal', '@spawn 2 pack:mire_herd'],
@@ -295,12 +291,11 @@ describe('Fen and Foundry spawns (CONTENT §13 "Enemies")', () => {
     expect(spawnLines(s)).toEqual(FEN_SPAWNS[s]);
   });
 
-  // TODO(bosses merge): F5 and F10 spawn stand-ins until `bellwether` and `glasswater_coil` exist.
-  it.skip.each(BOSS_ROOMS)('%s spawns its boss', (s) => {
+  it.each(BOSS_ROOMS)('%s spawns its boss', (s) => {
     expect(spawnLines(s)).toEqual(FEN_SPAWNS[s]);
   });
 
-  it.each(ALL_SHORTS)('%s: its stand-in spawns use the same markers as CONTENT §13', (s) => {
+  it.each(ALL_SHORTS)('%s: its spawns use the markers CONTENT §13 needs', (s) => {
     const markers = (lines: string[]) => lines.map((l) => l.split(' ')[1]).sort();
     expect(markers(room(s).header.spawns.map((sp) => `@spawn ${sp.marker}`))).toEqual(markers(FEN_SPAWNS[s]));
   });
