@@ -7,16 +7,16 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { MAT } from '../../../data/materials';
 import { fenRooms } from '../../../data/progression';
-import type { GameState, ScriptCommand } from '../../../src/sim';
+import type { GameState } from '../../../src/sim';
+import { fenOverworldSteps as O } from '../../../src/sim/bots/fenPuzzles';
+import { foundrySteps as F } from '../../../src/sim/bots/foundryPuzzles';
 import {
-  allOn,
   anyOn,
   attempts,
   BOLT_FIRE,
   BOLT_STORM,
   cast,
   fenTicks,
-  into,
   LOB_FIRE,
   LOB_FROST,
   LOB_STORM,
@@ -24,6 +24,7 @@ import {
   powered,
   prepareFen,
   solveFen,
+  solveStep,
   STRIKE,
   T,
 } from './fenSolve';
@@ -41,39 +42,15 @@ function noneLeft(s: GameState, mat: number, tx0: number, ty0: number, tx1: numb
   return true;
 }
 
-/** True when nothing burns in tiles (tx0..tx1, ty0..ty1). */
-function noFire(s: GameState, tx0: number, ty0: number, tx1: number, ty1: number): boolean {
-  const g = s.grid;
-  for (let cy = ty0 * 4; cy < (ty1 + 1) * 4; cy++)
-    for (let cx = tx0 * 4; cx < (tx1 + 1) * 4; cx++) if (g.fire[cy * g.width + cx]! > 0) return false;
-  return true;
-}
-
 describe('Drowned Foundry puzzle solutions (first half)', () => {
   it('F1: one Storm hit in the moat powers the switch on each bank; the door opens on the stair north', () => {
-    const s = prepareFen('f1', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, LOB_STORM, LOB_FROST] });
-    solveFen('f1', s, [
-      { do: 'moveTo', x: T(21), y: T(10) },
-      cast(2, T(18), T(7)),
-      { do: 'until', cond: (st) => powered(st) === 2, timeout: 2, label: 'both switches' },
-      { do: 'until', cond: (st) => allOn(st, 'door'), timeout: 2, label: 'door opens' },
-      { do: 'moveTo', x: T(45), y: T(1) },
-      { do: 'walk', dirX: 0, dirY: -1, s: 3, until: into(fenRooms.f2) },
-    ]);
+    const s = solveStep('f1', 'w', F.f1);
     // The east alcove stays sealed behind its lit vents.
     expect(objects(s, 'loot_chest').every((o) => !o.on)).toBe(true);
   });
 
   it('F2: the sump touches two pump housings; with the main pump struck within 3 s, all three wake', () => {
-    const s = prepareFen('f2', { arrive: 's', weaves: [BOLT_FIRE, BOLT_STORM, LOB_STORM, LOB_FROST] });
-    solveFen('f2', s, [
-      { do: 'moveTo', x: T(22), y: T(18) },
-      cast(2, T(23), T(25)),
-      cast(1, T(22), T(2)),
-      { do: 'until', cond: (st) => allOn(st, 'door'), timeout: 2, label: 'door opens' },
-      { do: 'moveTo', x: T(40), y: T(2) },
-      { do: 'walk', dirX: 0, dirY: -1, s: 3, until: into(fenRooms.f3) },
-    ]);
+    solveStep('f2', 's', F.f2);
   });
 
   it('F2: struck more than 3 s apart, the first pumps stall again and the door stays shut', () => {
@@ -91,67 +68,19 @@ describe('Drowned Foundry puzzle solutions (first half)', () => {
   });
 
   it('F3: freeze each cooling lane, slide both ice blocks onto the plates; the vault gives the small key', () => {
-    const s = prepareFen('f3', { arrive: 's', weaves: [BOLT_FIRE, STRIKE, LOB_STORM, LOB_FROST] });
-    const plate = (ty: number) => (st: GameState) =>
-      objects(st, 'pressure_plate').some((o) => o.ty === ty && o.on);
-    const lane = (ty: number): ScriptCommand[] => [
-      { do: 'moveTo', x: T(12), y: T(ty) },
-      cast(3, 56, T(ty)),
-      cast(3, 64, T(ty)),
-      cast(3, 72, T(ty)),
-      cast(3, 80, T(ty)),
-      { do: 'moveTo', x: T(12), y: T(ty - 1) },
-      { do: 'moveTo', x: T(7), y: T(ty - 1) },
-      { do: 'moveTo', x: T(7), y: T(ty), tolerance: 0.3 },
-      { do: 'wait', s: 0.3 },
-      { do: 'walk', dirX: 1, dirY: 0, s: 6, until: plate(ty) },
-    ];
-    solveFen('f3', s, [
-      ...lane(8),
-      ...lane(22),
-      { do: 'until', cond: (st) => allOn(st, 'door'), timeout: 3, label: 'vault opens' },
-      { do: 'moveTo', x: T(43), y: T(15) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 2, until: (st) => keys(st) === 1 },
-      { do: 'moveTo', x: T(54), y: T(15) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 3, until: into(fenRooms.f4) },
-    ]);
+    const s = solveStep('f3', 's', F.f3);
     expect(keys(s)).toBe(1);
   });
 
   it('F4: Lob Fire on the oil channel; it runs across the slag pit and burns the barricade; Heart Seed; F3 key opens the Belfry door', () => {
-    const s = prepareFen('f4', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, LOB_STORM, LOB_FIRE] });
+    const s = prepareFen('f4', { arrive: 'w', weaves: F.f4.weaves });
     s.world.keys['foundry'] = 1; // F3's small key
-    const seeds = s.hero.heartSeeds;
-    solveFen('f4', s, [
-      { do: 'moveTo', x: T(29), y: T(15) },
-      cast(3, T(34), T(12)),
-      {
-        do: 'until',
-        cond: (st) => noneLeft(st, MAT.barricade, 50, 6, 50, 6) && noFire(st, 33, 5, 50, 13),
-        timeout: 30,
-        label: 'barricade burned, channel out',
-      },
-      { do: 'moveTo', x: T(54), y: T(6) },
-      { do: 'until', cond: (st) => st.hero.heartSeeds === seeds + 1, timeout: 2, label: 'heart seed' },
-      { do: 'moveTo', x: T(53), y: T(21) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 2, until: (st) => anyOn(st, 'locked_door') },
-      { do: 'moveTo', x: T(58), y: T(21) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 3, until: into(fenRooms.f5) },
-    ]);
+    solveFen(F.f4.name, s, F.f4.script(s));
     expect(keys(s)).toBe(0);
   });
 
   it('F5: the Belfry door opens once the mini-boss falls (`cleared`), on to the Tide Shrine', () => {
-    const s = prepareFen('f5', {
-      arrive: 'w',
-      weaves: [BOLT_FIRE, STRIKE, LOB_STORM, LOB_FIRE],
-      killAll: true,
-    });
-    solveFen('f5', s, [
-      { do: 'until', cond: (st) => allOn(st, 'door'), timeout: 2, label: 'door opens' },
-      { do: 'moveTo', x: T(24), y: T(9) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 3, until: into(fenRooms.f6) },
-    ]);
+    solveStep('f5', 'w', F.f5, { killAll: true });
   });
 });
 
@@ -237,169 +166,56 @@ describe('the Foundry without its element (CONTENT §13 "Needs")', () => {
 
 describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
   it('F6: the shrine gives Tide (the item get); Tide douses the 2-tile vent wall; walk through before it relights', () => {
-    const s = prepareFen('f6', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, LOB_STORM, LOB_FROST] });
+    const s = prepareFen('f6', { arrive: 'w', weaves: F.f6Shrine.weaves });
     const tide = () => s.hero.runes.filter((r) => r.rune === 'tide').length;
     expect(tide()).toBe(0);
-    solveFen('f6 shrine', s, [
-      { do: 'moveTo', x: T(15), y: T(12) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 2, until: (st) => allOn(st, 'rune_shrine') },
-    ]);
+    solveFen(F.f6Shrine.name, s, F.f6Shrine.script(s));
     expect(tide()).toBe(1);
     expect(s.hero.runes.find((r) => r.rune === 'tide')!.level).toBe(10);
     expect(s.events.some((e) => e.type === 'elementUnlocked' && e.rune === 'tide')).toBe(true);
   });
 
   it('F6: Lob[Tide] on the vents opens a 10 s gap; the player walks east through it', () => {
-    const s = prepareFen('f6', {
-      arrive: 'w',
-      weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', LOB_FROST],
-      extra: ['tide'],
-    });
-    solveFen('f6', s, [
-      { do: 'moveTo', x: T(35), y: T(12) },
-      cast(2, T(39) + 2, T(12) + 2),
-      { do: 'moveTo', x: T(45), y: T(12) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 3, until: into(fenRooms.f7) },
-    ]);
+    solveStep('f6', 'w', F.f6, { extra: ['tide'] });
   });
 
   it('F7: douse each of the three fire walls in turn and go through before it relights', () => {
-    const s = prepareFen('f7', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', LOB_STORM] });
-    solveFen('f7', s, [
-      { do: 'moveTo', x: T(20), y: T(10) },
-      cast(2, T(24), T(10) + 2),
-      { do: 'moveTo', x: T(26), y: T(10) },
-      cast(2, T(29), T(10) + 2),
-      { do: 'moveTo', x: T(31), y: T(10) },
-      cast(2, T(34), T(10) + 2),
-      { do: 'moveTo', x: T(36), y: T(10) },
-      { do: 'moveTo', x: T(62), y: T(10) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 3, until: into(fenRooms.f8) },
-    ]);
+    solveStep('f7', 'w', F.f7);
   });
 
   it('F8 east door (Floodline): Swath[Tide, Lingering] paints water from the pool to the dais; Storm the pool', () => {
-    const s = prepareFen('f8', {
-      arrive: 'w',
-      weaves: [BOLT_FIRE, STRIKE, LOB_STORM, 'Cast > Swath[Tide, Lingering]'],
-    });
-    solveFen('f8 east', s, [
-      // Stand in the pool's shallow rim so the strip starts in the pool.
-      { do: 'moveTo', x: T(39), y: T(15) },
-      cast(3, T(47), T(15)),
-      { do: 'moveTo', x: 170, y: T(15) },
-      cast(3, T(47), T(15)),
-      { do: 'moveTo', x: 178, y: T(15) },
-      cast(3, T(47), T(15)),
-      { do: 'moveTo', x: T(39), y: T(18) },
-      cast(2, T(39), T(15)),
-      {
-        do: 'until',
-        cond: (st) => objects(st, 'door').some((o) => o.link === 'D' && o.on),
-        timeout: 3,
-        label: 'east door',
-      },
-      { do: 'moveTo', x: T(58), y: T(15) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 3, until: into(fenRooms.f9) },
-    ]);
+    solveStep('f8', 'w', F.f8East);
   });
 
   it('F8 vault: douse the row of vents, Storm its near end; the grates carry the charge to the switch', () => {
-    const s = prepareFen('f8', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, LOB_STORM, 'Cast > Lob[Tide]'] });
-    solveFen('f8 vault', s, [
-      { do: 'moveTo', x: T(11), y: T(27) },
-      cast(3, 54, T(27)),
-      cast(3, 60, T(27)),
-      cast(3, 66, T(27)),
-      cast(3, 72, T(27)),
-      cast(3, 78, T(27)),
-      cast(2, T(13), T(27)),
-      {
-        do: 'until',
-        cond: (st) => objects(st, 'door').some((o) => o.link === 'd' && o.on),
-        timeout: 3,
-        label: 'vault door',
-      },
-      { do: 'moveTo', x: T(27), y: T(30) },
-      { do: 'until', cond: (st) => st.hero.loomShards === 1, timeout: 3, label: 'Loom Shard' },
-    ]);
+    const s = solveStep('f8', 'w', F.f8Vault);
+    expect(s.hero.loomShards).toBe(1);
+  });
+
+  it("F8 north: with F9's big key the big-key door opens on the Glass Eye", () => {
+    const s = prepareFen('f8', { arrive: 'w', weaves: F.f8North.weaves });
+    s.world.bigKeys.push('foundry');
+    solveFen(F.f8North.name, s, F.f8North.script(s));
+    expect(s.room.id).toBe(fenRooms.f10);
   });
 
   it('F9: Tide fills a stretch of the chasm, Frost freezes it; cross to the big key', () => {
-    const s = prepareFen('f9', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', LOB_FROST] });
-    solveFen('f9 key', s, [
-      { do: 'moveTo', x: T(25), y: T(13) },
-      cast(2, 106, T(13)),
-      cast(2, 114, T(13)),
-      cast(3, 106, T(13)),
-      cast(3, 114, T(13)),
-      { do: 'moveTo', x: T(30), y: T(13) },
-      { do: 'moveTo', x: T(50), y: T(13) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 2, until: (st) => st.world.bigKeys.includes('foundry') },
-    ]);
+    solveStep('f9', 'w', F.f9Key);
   });
 
   it('F9 Heart Seed: Glaze the walled lane over its wall (Lob[Tide], then Lob[Frost]), wash the ice block east with a Lob[Tide] behind it', () => {
-    const s = prepareFen('f9', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', LOB_FROST] });
-    const seeds = s.hero.heartSeeds;
-    const lane = T(27);
-    solveFen('f9 seed', s, [
-      { do: 'moveTo', x: T(7), y: T(24) },
-      // Tide then Frost over every cell of lane tiles 5-10 (Lob bursts, radius 5): borrowed ice for
-      // 15 s. An ice block slides only on a tile that is ice in all 16 cells; the plate's isn't.
-      // Bursts east of the block wash it west, into the pit: it can't go.
-      ...[21.5, 28.5, 35.5, 41.5].map((x) => cast(2, x, lane)),
-      ...[21.5, 28.5, 35.5, 41.5].map((x) => cast(3, x, lane)),
-      // A Lob[Tide] on the pit behind the block washes it east (away from the burst's center).
-      cast(2, T(3), lane),
-      {
-        do: 'until',
-        cond: (st) => objects(st, 'pressure_plate').every((o) => o.on),
-        timeout: 3,
-        label: 'plate',
-      },
-      { do: 'until', cond: (st) => allOn(st, 'door'), timeout: 2, label: 'vault opens' },
-      { do: 'moveTo', x: T(19), y: T(24) },
-      { do: 'moveTo', x: T(20), y: T(28) },
-      { do: 'until', cond: (st) => st.hero.heartSeeds === seeds + 1, timeout: 2, label: 'heart seed' },
-    ]);
+    solveStep('f9', 'w', F.f9Seed);
   });
 
   it('F1 alcove: Tide douses the vent wall; the chest holds a Fuse part and currency', () => {
-    const s = prepareFen('f1', {
-      arrive: 'w',
-      weaves: [BOLT_FIRE, STRIKE, LOB_STORM, 'Cast > Lob[Tide]'],
-      extra: ['tide'],
-    });
+    const s = prepareFen('f1', { arrive: 'w', weaves: F.f1Alcove.weaves, extra: ['tide'] });
     const parts = s.hero.parts.length;
-    solveFen('f1 alcove', s, [
-      { do: 'moveTo', x: T(41), y: T(24) },
-      cast(3, T(43) + 2, T(24)),
-      { do: 'moveTo', x: T(46), y: T(24) },
-      { do: 'walk', dirX: 1, dirY: 0, s: 2, until: (st) => objects(st, 'loot_chest').every((o) => o.on) },
-    ]);
+    solveFen(F.f1Alcove.name, s, F.f1Alcove.script(s));
     expect(s.hero.parts.length).toBe(parts + 1);
   });
 
   it('G7 Windward Cache: a Gale gust spins the vane; the cache gives a Pattern Seed', () => {
-    const s = prepareFen('g7', {
-      arrive: 's',
-      weaves: [BOLT_FIRE, 'Cast > Strike[Gale]', LOB_STORM, LOB_FIRE],
-      extra: ['gale'],
-    });
-    const seeds = s.hero.patternSeeds;
-    solveFen('g7 cache', s, [
-      { do: 'moveTo', x: T(41), y: T(10) },
-      cast(1, T(41), T(7)),
-      {
-        do: 'until',
-        cond: (st) => objects(st, 'door').some((o) => o.link === 'd' && o.on),
-        timeout: 3,
-        label: 'cache door',
-      },
-      { do: 'moveTo', x: T(40), y: T(4) },
-      { do: 'walk', dirX: 0, dirY: -1, s: 2, until: (st) => st.hero.patternSeeds === seeds + 1 },
-    ]);
+    solveStep('g7', 's', O.g7Cache, { extra: ['gale'] });
   });
 });
 

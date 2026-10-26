@@ -15,7 +15,7 @@ describe('Glasswater Coil: arena and numbers', () => {
   it('the Glass Eye: 128×96, a 48×40 deep Eye with a 4-cell shallow rim, sluice channels, four pylon pads, four isolated glass flats', () => {
     const { s, c } = eye();
     expect([s.room.width, s.room.height]).toEqual([128, 96]);
-    expect([c.maxLife, c.areaLevel, c.radius, c.resist.storm]).toEqual([48000, 24, 5, 0.75]);
+    expect([c.maxLife, c.areaLevel, c.radius, c.resist.storm]).toEqual([96000, 24, 5, 0.75]);
     expect([c.x, c.y]).toEqual([62, 46]);
     expect(groundAt(s, 62, 46)).toBe(MAT.deep_water);
     expect(groundAt(s, 41, 30)).toBe(MAT.deep_water);
@@ -116,7 +116,7 @@ describe('Glasswater Coil: states and damage taken', () => {
 });
 
 describe('Glasswater Coil: attacks', () => {
-  it('Lunge: at a player within 14 cells of its water, a 1.0 s ripple line, then a dash at 44 cells/s that stops at the water\'s edge, 150 on contact', () => {
+  it("Lunge: at a player within 14 cells of its water, a 1.0 s ripple line, then a dash at 44 cells/s that stops at the water's edge, 150 on contact", () => {
     const { s, c } = eye(62, 76);
     put(s, c, 62, 62);
     s.cheats.noAI = false;

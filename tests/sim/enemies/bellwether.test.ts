@@ -40,7 +40,7 @@ describe('Old Bellwether', () => {
   it('the Belfry: 104×80, a stone center, a metal ring with four pools at the diagonals and two pylons, stone islands', () => {
     const { s, b } = belfry();
     expect([s.room.width, s.room.height]).toEqual([104, 80]);
-    expect([b.maxLife, b.areaLevel, b.radius]).toEqual([18000, 22, 4.5]);
+    expect([b.maxLife, b.areaLevel, b.radius]).toEqual([27000, 22, 4.5]);
     expect(groundAt(s, 52, 40)).toBe(MAT.stone);
     expect(groundAt(s, 52, 18)).toBe(MAT.metal_floor);
     expect(groundAt(s, 28, 15)).toBe(MAT.shallow_water);

@@ -190,6 +190,9 @@ function standAt(state: GameState, boss: Enemy, want: number, goal: Goal, R = F.
 /** Sets the engage point for a Fen boss; false (goal untouched) to let the kiter pick as usual. */
 export function fenBossGoal(state: GameState, boss: Enemy | null, goal: Goal): boolean {
   const kind = fight(boss);
+  // Not awake yet (it needs to see the player: a pylon can hide the bell from F5's door): walk in
+  // the way the kiter approaches anything.
+  if (kind !== null && boss!.ai.mode === 'idle') return false;
   if (kind === 'bellwether') return bellGoal(state, boss!, goal, F.standSearch);
   if (kind !== 'glasswater_coil') return false;
   const b = boss!;
