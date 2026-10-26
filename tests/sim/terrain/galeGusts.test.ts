@@ -4,7 +4,7 @@
  * from the caster along the aim; Nova, Lob and Orb their footprint, blowing away from its center.
  */
 import { describe, expect, it } from 'vitest';
-import { Button, DT, type GameState, type SimEvent } from '../../../src/sim';
+import { Button, DT, spawnEnemy, type GameState, type SimEvent } from '../../../src/sim';
 import { dummy, idx, ofType, room, run, weaves } from './helpers';
 
 const LMB = Button.Cast1;
@@ -109,19 +109,21 @@ describe('Gale gust shapes (DESIGN §6.6)', () => {
 
 describe('the Gale rune (CONTENT §1.3)', () => {
   it('deals Physical damage with double knockback', () => {
-    const plain = room('.');
-    weaves(plain, ['Cast > Strike[]']);
-    const a = dummy(plain, 23, 40);
-    const gale = room('.');
-    weaves(gale, ['Cast > Strike[Gale]']);
-    const b = dummy(gale, 23, 40);
-    cast(plain, [40, 40]);
-    const ev = [...cast(gale, [40, 40])];
-    run(plain, 40);
-    run(gale, 40);
-    const hit = ofType(ev, 'hit')[0]!;
-    expect(hit.byType?.physical).toBeGreaterThan(0);
-    expect(b.x - 23).toBeCloseTo(2 * (a.x - 23), 1);
+    const push = (notation: string) => {
+      const s = room('.');
+      weaves(s, [notation]);
+      const e = spawnEnemy(s, 'tinderling', 23, 40); // knockbackScale 1
+      e.life = e.maxLife = 1e6;
+      const ev = [...cast(s, [40, 40]), ...run(s, 40)];
+      return { dx: e.x - 23, hit: ofType(ev, 'hit')[0]!, kb: s.weaves.slots[0]!.program!.root.knockback };
+    };
+    const plain = push('Cast > Strike[]');
+    const gale = push('Cast > Strike[Gale]');
+    expect(gale.hit.byType?.physical).toBeGreaterThan(0);
+    expect(plain.kb).toBe(3);
+    expect(gale.kb).toBe(6);
+    expect(plain.dx).toBeGreaterThan(2);
+    expect(gale.dx).toBeCloseTo(2 * plain.dx, 0);
   });
 
   it('its gust moves nothing but chemistry: an entity in the wind keeps its place', () => {
