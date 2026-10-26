@@ -12,7 +12,8 @@ import { MAT } from '../../../data/materials';
 import { TILE_CELLS } from '../core/constants';
 import { emit } from '../events';
 import type { GameState } from '../state';
-import type { TerrainElement } from '../grid/paint';
+import type { ElementApplication, TerrainElement } from '../grid/paint';
+import { washBlocks } from './objectBlocks';
 import { objectCenter, type WorldObject } from './objects';
 import { forTileCells, sendNote, setTileGround } from './objectGround';
 import { brazierSeconds, isSwitch, switchSeconds } from './objectLinks';
@@ -23,8 +24,15 @@ export function elementOnObjects(
   element: TerrainElement,
   cells: Int32Array,
   n: number,
+  app?: ElementApplication,
 ): void {
-  if (state.objects.length === 0 || (element !== 'fire' && element !== 'storm')) return;
+  if (state.objects.length === 0) return;
+  if (element === 'tide') {
+    tideOnObjects(state, cells, n);
+    if (app) washBlocks(state, cells, n, app);
+    return;
+  }
+  if (element !== 'fire' && element !== 'storm') return;
   const g = state.grid;
   const w = g.width;
   for (let k = 0; k < n; k++) {
@@ -40,6 +48,31 @@ export function elementOnObjects(
         if (o.kind === 'brazier') lightBrazier(state, o);
         else if (o.kind === 'ice_block' && !o.on) meltIceBlock(state, o);
       } else if (o.kind === 'conduit_switch') powerSwitch(state, o);
+    }
+  }
+}
+
+/**
+ * Tide on braziers (M8, DESIGN §6.5): a lit brazier goes out, unless its group already opened its
+ * door (those stay lit, so no solved puzzle comes undone).
+ */
+function tideOnObjects(state: GameState, cells: Int32Array, n: number): void {
+  const g = state.grid;
+  const w = g.width;
+  for (let k = 0; k < n; k++) {
+    const i = cells[k]!;
+    if (g.ground[i] !== MAT.brazier) continue;
+    const cx = i % w;
+    const tx = Math.floor(cx / TILE_CELLS);
+    const ty = Math.floor((i - cx) / w / TILE_CELLS);
+    for (const o of state.objects) {
+      if (o.kind !== 'brazier' || !o.on || o.tx !== tx || o.ty !== ty) continue;
+      if (o.link !== '' && state.objects.some((d) => d.kind === 'door' && d.link === o.link && d.on))
+        continue;
+      o.on = false;
+      o.timer = 0;
+      const c = objectCenter(o);
+      emit(state, { type: 'brazierOut', key: o.key, x: c.x, y: c.y });
     }
   }
 }

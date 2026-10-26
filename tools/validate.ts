@@ -19,7 +19,8 @@ import {
   spindleContext,
   type RoomData,
 } from '../src/sim';
-import { forms, runeIds, runes, runeShips, shipsThrough } from '../data/runes';
+import { forms, runeIds, runes, runeShips } from '../data/runes';
+import { RUNTIME_SHIPS } from '../src/sim/weave/runtime/loadout';
 import { spindles, testSpindle } from '../data/spindles';
 import { scenes } from '../src/app/scenes';
 import { defaultTuning } from '../data/tuning';
@@ -155,8 +156,8 @@ for (const [id, sp] of Object.entries(spindles)) {
     errors.push(`data/spindles ${id}: capacity, cast speed and fuse sockets must be > 0`);
 }
 
-// CONTENT §2 reference weaves, with M2 runes only.
-const m2 = shipsThrough('M2');
+// CONTENT §2 reference weaves, with the runes the sim ships (M2 for #1–14, M8's Tide and Gale for #15–18).
+const ships = RUNTIME_SHIPS;
 for (const w of referenceWeaves) {
   const at = `reference weave #${w.n} ${w.name}`;
   const p = parseWeave(w.notation);
@@ -165,14 +166,14 @@ for (const w of referenceWeaves) {
     continue;
   }
   if (printWeave(p.tree) !== w.notation) errors.push(`${at}: prints as "${printWeave(p.tree)}"`);
-  const ok = compileWeave(p.tree, spindleContext(testSpindle(w.cx), { allowShips: m2 }));
+  const ok = compileWeave(p.tree, spindleContext(testSpindle(w.cx), { allowShips: ships }));
   if (!ok.ok) errors.push(`${at}: ${ok.error.message}`);
   else if (ok.costs.complexity !== w.cx) errors.push(`${at}: cx ${ok.costs.complexity}, expected ${w.cx}`);
-  const small = compileWeave(p.tree, spindleContext(testSpindle(w.cx - 1), { allowShips: m2 }));
+  const small = compileWeave(p.tree, spindleContext(testSpindle(w.cx - 1), { allowShips: ships }));
   if (small.ok || small.error.message !== capacityMessage(w.cx, w.cx - 1))
     errors.push(`${at}: on ${w.cx - 1} Capacity expected "${capacityMessage(w.cx, w.cx - 1)}"`);
   const fits = Object.values(spindles)
-    .filter((sp) => !sp.devOnly && compileWeave(p.tree, spindleContext(sp, { allowShips: m2 })).ok)
+    .filter((sp) => !sp.devOnly && compileWeave(p.tree, spindleContext(sp, { allowShips: ships })).ok)
     .map((sp) => sp.id)
     .sort();
   if (fits.join() !== [...w.fits].sort().join())
@@ -180,7 +181,7 @@ for (const w of referenceWeaves) {
 }
 for (const f of mustFailWeaves) {
   const p = parseWeave(f.notation);
-  const r = p.ok ? compileWeave(p.tree, spindleContext(testSpindle(99), { allowShips: m2 })) : null;
+  const r = p.ok ? compileWeave(p.tree, spindleContext(testSpindle(99), { allowShips: ships })) : null;
   const got = !p.ok ? p.error.message : r && !r.ok ? r.error.message : 'compiled';
   if (got !== f.message) errors.push(`must-fail weave ${f.notation}: got "${got}", expected "${f.message}"`);
 }

@@ -24,6 +24,7 @@ import { spawnRoomEnemies } from '../actors/enemies';
 import { resetTerrainState } from '../actors/terrainState';
 import { emit } from '../events';
 import { createGrid } from '../grid/grid';
+import { riftRules } from './rift/rules';
 import type { GameState } from '../state';
 import { cancelCast } from '../weave/runtime/castState';
 import { createLabState } from './lab';
@@ -64,6 +65,8 @@ export function enterRoom(state: GameState, roomId: string, arrival: Arrival): v
   const room = buildRoom(parseRoom(text));
   state.room = room;
   state.grid = createGrid(room);
+  // M8: a rift "of the Gale" blows in every rift room without its own @wind.
+  if (state.grid.wind === 0) state.grid.wind = riftRules(state).wind;
   state.flow = createFlowField(room);
   state.lab = createLabState();
   state.enemyHash = new SpatialHash(room.width, room.height, SPATIAL_BUCKET_CELLS);

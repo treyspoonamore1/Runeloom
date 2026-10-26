@@ -137,6 +137,20 @@ export {
 } from './grid/query';
 export type { ChargeEvent, Blast, Gust } from './grid/grid';
 export { isFogCell, restingAir, addFog } from './grid/grid';
+export { isWater, isBorrowed, borrowedSecondsLeft, touchesLitVent } from './grid/query';
+export { placeTempWater, placeBorrowedWater } from './grid/tempWater';
+export { revertBorrowed, borrowCell } from './grid/cells';
+export { applyWet } from './actors/wet';
+export {
+  writeGust,
+  windAt,
+  windFactor,
+  windFactors,
+  clearFog,
+  galeCone,
+  type GustCone,
+  type GustTeam,
+} from './grid/wind';
 export { WIND_DX, WIND_DY, WIND_BY_NAME, windName, windDirOf, type WindDir } from './grid/windDir';
 export type { CellBounds, ElectrifyFields } from './events';
 export {
@@ -311,3 +325,16 @@ export { strikePoint } from './ai/target';
 export { floodArena } from './ai/bosses/flood';
 export { brazierCenters, stepBrazierStorm } from './ai/bosses/braziers';
 export { phaseThresholds, enterPhase, setSuperheat } from './ai/bosses/phases';
+// M8: swimmers (routes, rule 31) and the Glasswater Fen enemies.
+export { isWaterCell, isIceCell } from './actors/locomotion';
+export { planRoute, swimToward, searchFrom, headFor } from './actors/swim';
+export { isStranded, isAirborne, strand, stepSwimmer, strandedTakenMult } from './actors/strand';
+export { fenTakenMult, isHot } from './actors/fenChemistry';
+export { ringBell } from './actors/fenShells';
+export { regionScaling } from './actors/regionDifficulty';
+export { landingPoint } from './ai/leaper';
+export { planCharge } from './ai/charger';
+export { nearestLight } from './ai/lure';
+export { chargeDamageMult, playerGustScale, playerUnslowedGrounds } from './hero/effectsFen';
+export type { FenSpecial } from './actors/enemyStateM8';
+export type { EnemyEventM8 } from './enemyEventsM8';

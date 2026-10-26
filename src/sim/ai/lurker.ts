@@ -3,7 +3,9 @@ import type { Enemy } from '../actors/enemies';
 import { dashLineLength, planDash } from '../combat/dash';
 import { emit } from '../events';
 import type { GameState } from '../state';
-import { attack, moveAlong, setMode, stop, toPlayer } from './common';
+import { swimToward } from '../actors/swim';
+import { attack, setMode, toPlayer } from './common';
+import { swimSpeed } from './leaper';
 
 type Lurker = Extract<BehaviorDef, { kind: 'lurker' }>;
 
@@ -11,8 +13,8 @@ type Lurker = Extract<BehaviorDef, { kind: 'lurker' }>;
 const MIN_LUNGE = 1;
 
 /**
- * Bog Lurker (CONTENT §5): drifts submerged toward the player through its water
- * ('lurk'; actors/locomotion.ts keeps it in water, so it waits at the shore nearest them).
+ * Bog Lurker (CONTENT §5): drifts submerged toward the player through its water ('lurk';
+ * M8: along a route through the water, actors/swim.ts, so it waits at the shore nearest them).
  * When the player is within the lunge's range with line of sight, the water lets the lunge
  * reach them and it is off cooldown, it surfaces ('lurkerSurface') and lunges: a 1.2 s ripple telegraph along the planned path, then a
  * dash at 32 cells/s through the water that bites on contact. After the lunge it submerges
@@ -36,12 +38,12 @@ export function stepLurker(state: GameState, e: Enemy, b: Lurker, def: AttackDef
       return;
     }
   }
-  if (toPlayer.gap <= 0) {
-    stop(e);
+  // M8: its route follows the water (actors/swim.ts), borrowed water included.
+  const p = state.player;
+  if (toPlayer.gap > 0 && swimToward(state, e, p.x, p.y, swimSpeed(e, b.driftSpeed))) setMode(e, 'lurk');
+  else {
+    e.vx = e.vy = 0;
     setMode(e, 'hold');
-  } else {
-    moveAlong(e, toPlayer.ux, toPlayer.uy, b.driftSpeed);
-    setMode(e, 'lurk');
   }
   e.facingX = toPlayer.ux;
   e.facingY = toPlayer.uy;

@@ -28,6 +28,11 @@ import { wakeRegion } from '../grid/region';
 import { applyElement, type Footprint, type TerrainElement } from '../grid/paint';
 import type { GameState } from '../state';
 import type { Room } from './room';
+import type { WorldObject } from './objects';
+import { placeOnGrid } from './objectBuild';
+import { uncoverTile } from './objectGround';
+import { applyWet } from '../actors/wet';
+import { elements } from '../../../data/runes';
 
 /** A rectangle in cells: [x0, x1) × [y0, y1). */
 export interface CellRect {
@@ -144,6 +149,35 @@ function restoreArea(state: GameState, area: CellRect): void {
   wakeRegion(state, area.x0, area.y0, area.x1 - 1, area.y1 - 1);
 }
 
+/** The tile an object started on, from its key `kind@tx,ty`. */
+function fileTile(o: WorldObject): [number, number] {
+  const m = /@(\d+),(\d+)$/.exec(o.key)!;
+  return [Number(m[1]), Number(m[2])];
+}
+
+/** The room's objects (LAB_OBJECT_KINDS) whose file tile lies in `area`. */
+function stationObjects(state: GameState, area: CellRect): WorldObject[] {
+  return state.objects.filter((o) => {
+    const [tx, ty] = fileTile(o);
+    return inside(area, tx * TILE_CELLS, ty * TILE_CELLS);
+  });
+}
+
+/** True if a block left its file tile (it was pushed, washed or slid). */
+function moved(o: WorldObject): boolean {
+  const [tx, ty] = fileTile(o);
+  return o.kind !== 'wind_vane' && (o.tx !== tx || o.ty !== ty);
+}
+
+/** Puts an object back as the room built it: on its file tile, at rest, off. */
+function resetObject(state: GameState, o: WorldObject): void {
+  [o.tx, o.ty] = fileTile(o);
+  o.on = false;
+  o.timer = o.vx = o.vy = o.push = o.pushDir = 0;
+  delete o.washId;
+  placeOnGrid(state, o);
+}
+
 /** Removes the enemies and projectiles whose centers are in `area`. */
 function clearEntities(state: GameState, area: CellRect): void {
   let n = 0;
@@ -198,6 +232,7 @@ function runAction(state: GameState, t: LabActionTask): void {
     if (e.dead || !inside(t.area, e.x, e.y)) continue;
     if (t.enemyKind !== '' && e.kind !== t.enemyKind) continue;
     if (t.action === 'freeze') freezeTarget(state, e, labFreezeSeconds, PLAYER_ID);
+    else if (t.action === 'wet') applyWet(state, e, elements.tide.wetDuration);
     else killEnemy(state, e, PLAYER_ID, 'hit');
   }
 }
@@ -217,7 +252,11 @@ export function runStation(
   const area = stationArea(station);
   const lab = state.lab;
   lab.tasks = lab.tasks.filter((t) => t.station !== index);
+  const objs = stationObjects(state, area);
+  // A block pushed or washed out of its tile leaves that tile's floor behind (M8, rule 28).
+  for (const o of objs) if (moved(o)) uncoverTile(state, o.tx, o.ty);
   restoreArea(state, area);
+  for (const o of objs) resetObject(state, o);
   clearEntities(state, area);
   const later: LabTask[] = [];
   for (const step of station.script) {

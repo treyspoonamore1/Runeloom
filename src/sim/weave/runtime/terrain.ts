@@ -10,6 +10,8 @@
  * - Lob: its burst circle where it lands. Strike: its arc. Swath: its strip.
  * - Orb: a circle of the trail radius under the orb when it appears and every trail interval.
  * - Sigil: nothing.
+ * - Gale (M8): a gust instead of terrain: Bolt, Beam, Strike and Swath a 60° cone along the spell
+ *   from the footprint's origin; Nova, Lob and Orb their footprint, blowing outward.
  * Elements apply in slot order (DESIGN §5.3). Saturate (footprint area) and Lingering (terrain
  * durations) come from SpellSpec.terrain. Storm's charge damage is the instance's Storm part
  * (stormDamage). Evicted instances paint nothing.
@@ -18,6 +20,7 @@ import { OWNER } from '../../../../data/materials';
 import { PLAYER_ID } from '../../actors/enemies';
 import type { DamagePacket } from '../../combat/damage';
 import { applyElement, type Footprint, type TerrainElement } from '../../grid/paint';
+import { galeCone } from '../../grid/wind';
 import type { GameState } from '../../state';
 import type { SpellInstance } from './types';
 
@@ -46,20 +49,35 @@ export function paintSpell(
   const els = inst.spec.elements;
   if (els.length === 0) return;
   const durationMult = inst.spec.terrain.durationMult;
+  // M8: forms with a direction wash blocks along it (rule 28) and aim their gusts with it; Nova,
+  // Lob and Orb act away from their footprint's center.
+  const f = inst.form;
+  const directed = f === 'bolt' || f === 'beam' || f === 'strike' || f === 'swath';
   let storm = -1;
   for (const el of els) {
     const element = el.element as TerrainElement;
     if (which === 'storm' ? element !== 'storm' : which === 'not_storm' && element === 'storm') continue;
     if (element === 'storm' && storm < 0) storm = stormDamage(inst.packet);
+    // Gale (M8, DESIGN §6.6): directed forms blow a 60° cone from the footprint's origin (a Bolt's
+    // impact, the caster for Beam, Strike and Swath); Nova, Lob and Orb blow their footprint outward.
+    const at = element === 'gale' && directed ? galeConeOf(state, inst, shape) : shape;
     applyElement(state, {
       element,
-      shape,
+      shape: at,
       owner: OWNER.player,
       sourceId: PLAYER_ID,
       hitDamage: element === 'storm' ? storm : 0,
       durationMult,
+      spellId: inst.id,
+      ...(directed ? { dirX: inst.dirX, dirY: inst.dirY } : {}),
     });
   }
+}
+
+/** Gale's cone for a directed form, from the origin of its footprint along the spell's direction. */
+function galeConeOf(state: GameState, inst: SpellInstance, shape: Footprint): Footprint {
+  const [x, y] = shape.kind === 'line' ? [shape.x0, shape.y0] : [shape.x, shape.y];
+  return galeCone(state, x, y, inst.dirX, inst.dirY, inst.spec.terrain.areaMult);
 }
 
 /** Footprint scale of a 'hit_shape' footprint (Saturate's √ of its area mult), else 1. */

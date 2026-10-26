@@ -19,12 +19,12 @@ export function gridTicks(seconds: number): number {
   return t < 1 ? 1 : t;
 }
 
-/** Clamp for u8 timers (fire charge, airTimer, wet). */
+/** Clamp for u8 timers (fire charge, airTimer, gustTimer). */
 export function u8(t: number): number {
   return t > 255 ? 255 : t;
 }
 
-/** Clamp for u16 timers (fuel, material timer). */
+/** Clamp for u16 timers (fuel, material timer, wet). */
 export function u16(t: number): number {
   return t > 65535 ? 65535 : t;
 }
@@ -65,6 +65,8 @@ export const fx = {
   burntOut: newBatch(),
   iceBreaking: newBatch(),
   iceBroke: newBatch(),
+  /** M8 rule 27: borrowed terrain went back to its `under`. */
+  borrowedEnded: newBatch(),
 };
 
 /**
@@ -87,6 +89,33 @@ export function setGround(state: GameState, i: number, code: number): void {
     g.walkVersion++;
   }
   markActive(g.active, i);
+}
+
+/**
+ * Rule 27 (M8): borrowed cell i goes back to its `under` and stops being borrowed, whatever it
+ * became meanwhile (Tide water, a filled pit, ice or an ice bridge frozen from them, a doused
+ * vent). Charge on it ends if `under` doesn't conduct (setGround). Under a block (ground
+ * `object`) the block now hides `under`: only the borrowed state ends.
+ */
+export function revertBorrowed(state: GameState, i: number): void {
+  const g = state.grid;
+  g.borrowed[i] = 0;
+  g.cover[i] = 0;
+  if (g.ground[i] === MAT.object) {
+    g.timer[i] = 0;
+    return;
+  }
+  setGround(state, i, g.under[i]!);
+  addToBatch(fx.borrowedEnded, g, i);
+}
+
+/** Makes cell i borrowed terrain of material `code` for `ticks`, remembering what it was in `under`. */
+export function borrowCell(state: GameState, i: number, code: number, ticks: number): void {
+  const g = state.grid;
+  if (g.borrowed[i] === 0) g.under[i] = g.ground[i]!;
+  g.borrowed[i] = 1;
+  setGround(state, i, code);
+  g.timer[i] = ticks;
 }
 
 export function clearCharge(g: Grid, i: number): void {

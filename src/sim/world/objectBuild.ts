@@ -50,7 +50,8 @@ function linkFor(state: GameState, kind: ObjectKind, tx: number, ty: number): st
   return best;
 }
 
-export function buildRoomObjects(state: GameState): WorldObject[] {
+/** The room's objects; `kinds` limits them to those kinds (the lab room outside adventure mode). */
+export function buildRoomObjects(state: GameState, kinds?: readonly ObjectKind[]): WorldObject[] {
   const room = state.room;
   const flags = roomFlags(state.world, room.id);
   const out: WorldObject[] = [];
@@ -58,7 +59,7 @@ export function buildRoomObjects(state: GameState): WorldObject[] {
     for (let tx = 0; tx < room.tilesW; tx++) {
       const ch = tileChar(room, tx, ty);
       const kind = OBJECT_KIND_BY_CHAR[ch];
-      if (!kind) continue;
+      if (!kind || (kinds && !kinds.includes(kind))) continue;
       const key = `${kind}@${tx},${ty}`;
       const link =
         kind === 'door' ? (room.header.links.some((l) => l.door === ch) ? ch : '') : linkFor(state, kind, tx, ty);
@@ -92,7 +93,7 @@ export function buildRoomObjects(state: GameState): WorldObject[] {
 }
 
 /** Writes an object's starting cells: open doors become floor; blocks remember the floor under them. */
-function placeOnGrid(state: GameState, o: WorldObject): void {
+export function placeOnGrid(state: GameState, o: WorldObject): void {
   if (DOORS.includes(o.kind) && o.on) {
     const floor = floorBeneath(state.room, o.tx, o.ty);
     setTileGround(state, o.tx, o.ty, floor, floor);

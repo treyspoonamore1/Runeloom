@@ -7,10 +7,11 @@
  * CONTRACT (M3): the content agent fills `labStations`; the renderer draws each station's label
  * above its area; the sim runs scripts deterministically (so lab tests run headless).
  *
- * The lab room (data/rooms/test/lab.txt) is a grid of 8 × 4 bays. Every bay is a walled cubicle
+ * The lab room (data/rooms/test/lab.txt) is a grid of 8 × 6 bays (rows 4 and 5: M8). Every bay is a walled cubicle
  * 6 × 6 tiles (24 × 24 cells) that opens SOUTH onto a 3-tile walkway; stations are listed in
  * reading order (row by row), so the list is sorted by rule number. A bay's label sits above it,
- * in the wall row and the walkway of the bay row above.
+ * in the wall row and the walkway of the bay row above. Stations are in rule order within the M3
+ * rows (0–3) and within the M8 rows (4–5); the last three M8 bays are spare.
  */
 import type { Footprint, TerrainElement } from '../src/sim/grid/paint';
 
@@ -43,8 +44,11 @@ export interface LabSpawn {
 export interface LabAction {
   /** Seconds after the station starts. */
   at: number;
-  /** 'freeze': Frozen for 3 s. 'kill': dies as if hit (a Frozen one shatters). */
-  do: 'freeze' | 'kill';
+  /**
+   * 'freeze': Frozen for 3 s. 'kill': dies as if hit (a Frozen one shatters). 'wet' (M8): Wet as a
+   * Tide hit leaves it (rule 32, the Tide rune's wetDuration).
+   */
+  do: 'freeze' | 'kill' | 'wet';
   kind?: string;
 }
 
@@ -106,6 +110,28 @@ const storm = (at: number, x: number, y: number, r: number, hitDamage = 0): LabS
   hitDamage,
 });
 const dummy = (x: number, y: number): LabSpawn => ({ kind: 'dummy', x, y });
+// M8: Tide and Gale steps.
+const tide = (at: number, x: number, y: number, r: number): LabStep => ({
+  at,
+  element: 'tide',
+  shape: circle(x, y, r),
+});
+const tideLine = (at: number, x0: number, y0: number, x1: number, y1: number, width: number): LabStep => ({
+  at,
+  element: 'tide',
+  shape: line(x0, y0, x1, y1, width),
+});
+const frostLine = (at: number, x0: number, y0: number, x1: number, y1: number, width: number): LabStep => ({
+  at,
+  element: 'frost',
+  shape: line(x0, y0, x1, y1, width),
+});
+/** A gust blowing east from (x, y): Gale's 60° cone (cos 30° = 0.866), reach r. */
+const galeEast = (at: number, x: number, y: number, r: number): LabStep => ({
+  at,
+  element: 'gale',
+  shape: { kind: 'arc', x, y, dirX: 1, dirY: 0, r, halfAngleCos: 0.8660254037844387 },
+});
 
 type Entry = Omit<LabStation, 'rect'>;
 
@@ -249,6 +275,104 @@ const entries: Entry[] = [
     spawns: [dummy(8, 12), dummy(16, 12)],
   },
   { rule: 0, label: 'Oil fuse to the powder keg', script: [fire(0.3, 3, 10, 1.5)] },
+  // Row 4 (M8 phase 1: Tide and wind, DESIGN §6.5, §6.6)
+  {
+    rule: 21,
+    label: '21 · Wind fans fire downwind',
+    script: [galeEast(0.2, 1, 12, 26), fire(0.3, 12, 12, 1.5), galeEast(2.2, 1, 12, 26)],
+  },
+  {
+    rule: 21,
+    label: '21 · Smoke drifts with the wind',
+    script: [fire(0.2, 4, 12, 3), galeEast(0.5, 0, 12, 26), galeEast(2.5, 0, 12, 26)],
+  },
+  {
+    rule: 24,
+    label: '24 · Tide floods stone, turns dirt to mud, soaks grass',
+    script: [tide(0.5, 12, 12, 13), fire(1.5, 20, 12, 2)],
+  },
+  {
+    rule: 24,
+    label: '24 · Tide puts fire out; it stays out (10 s)',
+    script: [fire(0.2, 12, 12, 4), tide(1, 12, 12, 9), fire(2, 12, 12, 4)],
+  },
+  {
+    rule: 24,
+    label: '24 · Tide fills a pit; Frost bridges it',
+    script: [tideLine(0.3, 0, 12, 24, 12, 8), frostLine(1.2, 0, 12, 24, 12, 8)],
+  },
+  {
+    rule: 27,
+    label: '27 · Borrowed water and ice go back to stone (10 s, 15 s)',
+    script: [
+      tideLine(0.3, 2, 6, 22, 6, 3),
+      tideLine(0.3, 2, 17, 22, 17, 3),
+      frostLine(0.5, 2, 17, 22, 17, 3),
+    ],
+  },
+  {
+    rule: 28,
+    label: '28 · Tide washes blocks; ice slides on Tide-and-Frost ice',
+    // The ice path is a strip (square ends) so it can't touch the ice block's tile.
+    script: [
+      {
+        at: 0,
+        element: 'tide',
+        shape: { kind: 'strip', x: 8, y: 18, dirX: 1, dirY: 0, length: 16, width: 3.5 },
+      },
+      {
+        at: 0,
+        element: 'frost',
+        shape: { kind: 'strip', x: 8, y: 18, dirX: 1, dirY: 0, length: 16, width: 3.5 },
+      },
+      tide(1, 2, 6, 3),
+      tide(1, 2, 18, 3),
+    ],
+  },
+  {
+    rule: 29,
+    label: '29 · A gust clears fog (10 s); fire burns it off (8 s)',
+    script: [galeEast(0.5, 1, 4, 20), fire(0.5, 10, 12, 2)],
+  },
+  // Row 5
+  {
+    rule: 30,
+    label: '30 · A lit vent ignites what touches it; Tide douses it',
+    script: [tideLine(1.5, 0, 10, 24, 10, 4)],
+    spawns: [dummy(6, 6.3)],
+  },
+  {
+    rule: 30,
+    label: '30 · A doused vent relights and pushes walkers off (10 s)',
+    script: [tideLine(0, 0, 10, 24, 10, 4)],
+    spawns: [dummy(12, 10)],
+  },
+  {
+    rule: 31,
+    label: "31 · A swimmer's borrowed water drains (10 s)",
+    script: [tide(0, 12, 12, 6)],
+    spawns: [{ kind: 'bog_lurker', x: 12, y: 12 }],
+  },
+  {
+    rule: 32,
+    label: '32 · Tide Wets a burning enemy and puts it out',
+    script: [fire(0.3, 8, 12, 2.5), tide(1, 12, 12, 8)],
+    spawns: [dummy(8, 12)],
+    actions: [{ at: 1, do: 'wet' }],
+  },
+  {
+    rule: 0,
+    label: 'Floodline: a Tide strip carries charge end to end',
+    script: [
+      {
+        at: 0,
+        element: 'tide',
+        shape: { kind: 'strip', x: 1, y: 12, dirX: 1, dirY: 0, length: 22, width: 3 },
+      },
+      storm(1, 2, 12, 1.5, 20),
+    ],
+    spawns: [dummy(7, 12), dummy(20, 12)],
+  },
 ];
 
 export const labStations: LabStation[] = entries.map((e, i) => ({ ...e, rect: bay(i) }));

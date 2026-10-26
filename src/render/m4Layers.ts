@@ -6,6 +6,7 @@ import { BeastTelegraphs, telegraphAccentEntries } from './bestiary/beastTelegra
 import { bigBeastEntries } from './bestiary/bigBeasts';
 import { RarityView, rarityAtlasEntries } from './bestiary/rarityView';
 import { smallBeastEntries } from './bestiary/smallBeasts';
+import { fenPlaceholderEntries } from './bestiary/fenPlaceholders';
 import type { EnemyLayer } from './enemyLayer';
 import { objectAtlasEntries } from './world/objectShapes';
 import { objectCue } from './world/objectCues';
@@ -24,6 +25,7 @@ export function m4AtlasEntries(): AtlasEntry[] {
   return [
     ...smallBeastEntries(),
     ...bigBeastEntries(),
+    ...fenPlaceholderEntries(),
     ...rarityAtlasEntries(),
     ...telegraphAccentEntries(),
     ...objectAtlasEntries(),

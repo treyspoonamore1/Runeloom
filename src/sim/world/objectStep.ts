@@ -1,6 +1,6 @@
 /**
  * One tick of the world systems in adventure mode (called by stepObjects, objects.ts), in order:
- * room cleared and boss deaths → Storm charge on switches → timed switches (M8) → timed braziers → pressure plates →
+ * room cleared and boss deaths → Storm charge on switches → timed switches and wind vanes (M8) → timed braziers → pressure plates →
  * block pushes and slides → touches (chests, key doors, pickups, Loom Stones) → Hearth stations
  * (Interact, hub.ts) → @link doors →
  * edge exits. Fire and Storm hits on objects happen earlier, inside applyElement (objectHits.ts).
@@ -12,6 +12,7 @@ import type { GameState } from '../state';
 import { objectCenter } from './objects';
 import { stepBlocks } from './objectBlocks';
 import { stepSwitches, stepSwitchTimers } from './objectHits';
+import { stepVanes } from '../grid/wind';
 import { stepLinks } from './objectLinks';
 import { stepPlates, stepTouches } from './objectTouch';
 import { stepRoomClear } from './roomClear';
@@ -38,6 +39,7 @@ export function stepObjectSystems(state: GameState, input: InputFrame | undefine
   stepStormDoorHint(state);
   stepSwitches(state);
   stepSwitchTimers(state, DT);
+  stepVanes(state, DT);
   stepBraziers(state);
   stepPlates(state);
   stepBlocks(state, input);
@@ -45,4 +47,10 @@ export function stepObjectSystems(state: GameState, input: InputFrame | undefine
   stepHub(state, input);
   stepLinks(state);
   stepExits(state);
+}
+
+/** The Chemistry Lab room outside adventure mode (M8): only its blocks and wind vanes move. */
+export function stepLabObjects(state: GameState, input: InputFrame | undefined): void {
+  stepVanes(state, DT);
+  stepBlocks(state, input);
 }

@@ -78,21 +78,21 @@ describe('lab data', () => {
   const state = lab();
   const ruleNumbers = new Set(labStations.map((s) => s.rule));
 
-  it('has a station for every rule M3 implements, and none for 21 and 24', () => {
-    for (let r = 1; r <= 26; r++) {
-      if (r === 21 || r === 24) expect(ruleNumbers.has(r)).toBe(false);
-      else expect(ruleNumbers.has(r), `rule ${r}`).toBe(true);
-    }
+  it('has a station for every rule M3 implements, and (M8) for rules 21, 24 and 27–32', () => {
+    for (let r = 1; r <= 32; r++) expect(ruleNumbers.has(r), `rule ${r}`).toBe(true);
     expect(labStations.filter((s) => s.rule === 0).length).toBeGreaterThanOrEqual(3);
   });
 
-  it('labels start with the rule number, and stations are in rule order', () => {
-    let last = 0;
-    for (const s of labStations) {
-      if (s.rule === 0) continue;
-      expect(s.label.startsWith(String(s.rule).padStart(2, '0') + ' · '), s.label).toBe(true);
-      expect(s.rule).toBeGreaterThanOrEqual(last);
-      last = s.rule;
+  it('labels start with the rule number, and stations are in rule order within the M3 and M8 rows', () => {
+    const M8_FIRST = 32; // bays of rows 4 and 5
+    for (const part of [labStations.slice(0, M8_FIRST), labStations.slice(M8_FIRST)]) {
+      let last = 0;
+      for (const s of part) {
+        if (s.rule === 0) continue;
+        expect(s.label.startsWith(String(s.rule).padStart(2, '0') + ' · '), s.label).toBe(true);
+        expect(s.rule).toBeGreaterThanOrEqual(last);
+        last = s.rule;
+      }
     }
   });
 

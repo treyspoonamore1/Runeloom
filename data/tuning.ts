@@ -138,6 +138,28 @@ export const defaultTuning = {
     spawnSpacing: 3,
   },
   /**
+   * Swimmers (M8: Bog Lurker, Glasspike, Glasswater Coil; src/sim/actors/swim.ts, strand.ts):
+   * their route through the water and rule 31, Stranded (DESIGN §6.3, §6.4).
+   */
+  swim: {
+    /** Rule 31: a Stranded swimmer takes this × damage (50% more). */
+    strandedTaken: 1.5,
+    /** Rule 31: seconds a Stranded swimmer lies helpless before it crawls (per-kind: EnemyDef.swimmer). */
+    crawlDelay: 2,
+    /** Rule 31: crawl speed toward water, cells/s. */
+    crawlSpeed: 4,
+    /** Rule 31: it crawls only to water within this many steps over open ground (8 neighbors). */
+    crawlReach: 16,
+    /** Rule 31: with no water in reach it loses this fraction of its max life per second (never bosses). */
+    dryLifePerSecond: 0.05,
+    /** Swimmers re-plan their route through the water every this many ticks. */
+    repathTicks: 12,
+    /** Most water cells one route plan searches (a bigger body is searched in steps as it swims). */
+    planCells: 3000,
+    /** A swimmer heads for the cell this many steps along its route. */
+    lookahead: 3,
+  },
+  /**
    * Boss fights (DESIGN §10.3, CONTENT §5; src/sim/ai/bosses). Attack numbers are in
    * data/bosses.ts; these are the fight's pacing and rule numbers.
    */
@@ -224,8 +246,6 @@ export const defaultTuning = {
    * data/materials.ts. Seconds are converted to 20 Hz grid ticks.
    */
   grid: {
-    /** Rule 2 wind factor on spread chance. 1 until Gale and rule 21 arrive (M8). */
-    windFactor: 1,
     /** Scales every fire spread roll (rule 2): the fire-speed knob. 0.85 after the M3 playtest ("a little too fast"). */
     spreadMult: 0.85,
     /** Burn intensity (0–255) by what burns: flammable materials, oil (rule 6 "hot"), placed fire (rule 26). */
@@ -264,6 +284,43 @@ export const defaultTuning = {
     terrainFireKneeLevel: 10,
     /** DESIGN §7: refLife(L) = refLifeBase × enemyLifeGrowth^(L − 1). */
     refLifeBase: 50,
+  },
+  /** Tide (M8, DESIGN §6.5; rules 24, 27, 28, 30, 32). Terrain durations are × Lingering and terrain duration stats. */
+  tide: {
+    /** Stone, ash and pits flood with borrowed water for this long; Tide on borrowed water restarts it. */
+    floodSeconds: 10,
+    /** A burning cell put out, or a flammable cell, stays wet (can't ignite) this long. */
+    wetSeconds: 10,
+    /** A lit furnace vent stays doused this long, then relights (rule 30). */
+    ventSeconds: 10,
+    /** Rule 30: an entity whose body edge is within this many cells of a lit vent's tile is Ignited. */
+    ventTouch: 0.5,
+    /** The last seconds of borrowed terrain flicker (render), so the player sees it about to go. */
+    flickerSeconds: 1.5,
+  },
+  /** Wind (M8, DESIGN §6.6; rules 21 and 29, grid/wind.ts). Gusts move fire spread, smoke, steam and fog, nothing else. */
+  wind: {
+    /** Rule 21: spread chance × this toward a neighbor within 60° of the wind. */
+    downwindMult: 2,
+    /** Rule 21: spread chance × this toward a neighbor against the wind. */
+    upwindMult: 0.25,
+    /** Seconds a gust lasts (× Lingering and terrain duration). */
+    gustSeconds: 2,
+    /** Live gusts per team; one more ends that team's oldest early. */
+    maxGusts: 8,
+    /** Gale's cone for Bolt (from the impact), Beam, Strike and Swath (from the caster): full angle, degrees. */
+    coneDeg: 60,
+    /** Gale's cone reach, cells (× √ Saturate's area). */
+    coneRadius: 12,
+    /** Smoke and steam move one cell downwind every this many grid ticks in a gust (4: 5 cells/s). */
+    gustDriftTicks: 4,
+    /** … and in room wind (8: 2.5 cells/s). */
+    roomDriftTicks: 8,
+    /** Rule 29: a gust clears fog for this long, Fire for fireFogSeconds. Lingering doesn't lengthen it. */
+    gustFogSeconds: 10,
+    fireFogSeconds: 8,
+    /** A wind vane spins (and latches) after wind covers a cell touching it this long, seconds. */
+    vaneSeconds: 0.5,
   },
   /**
    * How entities (player and enemies) read the chemistry grid (DESIGN §6.3 rules 15–20, 22, 25;

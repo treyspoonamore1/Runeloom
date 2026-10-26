@@ -15,30 +15,35 @@
  *    it for the event's damage × the cell's falloff, as Storm (so it Shocks, and arcs if Wet).
  * 6. Rules 22, 18: while burning, it lights the flammable cell under it (its igniter's team; an
  *    always-burning Tinderling: enemy-owned). Oiled and Ignited, every new cell it enters gets fire.
- * 7. Blind (enemies): smoke or steam on its cell or its target's.
+ * 7. Blind (enemies): smoke or steam on its cell or its target's (fog never Blinds, M8).
+ * M8: rule 30, a lit furnace vent within tuning.tide.ventTouch of its body ignites it (world-owned,
+ * as rule 16); a vent relighting under it pushes it off without a fall.
  * Stun counts down here too.
  *
  * Passives (hero/effectsTerrain.ts): Hydromancer keeps the player Wet as if in water, Pyre
  * Walker makes the player ignore burning ground, Wildheart scales player-owned fire's ignite.
  */
-import { AIR, OWNER, SURFACE, materialByCode } from '../../../data/materials';
+import { AIR, MAT, OWNER, SURFACE, materialByCode } from '../../../data/materials';
 import { makePacket } from '../combat/damage';
 import { applyHit } from '../combat/hits';
 import { applyIgnite, extinguish, isIgnited, targetRef, type AilmentTarget } from '../combat/ailments';
 import { DT } from '../core/constants';
 import { emit } from '../events';
 import { ignitable } from '../grid/cells';
-import { chargeEventInfo, hazardHurts, terrainFireDps } from '../grid/query';
+import { chargeEventInfo, hazardHurts, terrainFireDps, touchesLitVent } from '../grid/query';
 import type { GameState } from '../state';
 import { burningOwner, chemistryOf, fireOnCell, hazardSource } from './chemistry';
 import type { Enemy } from './enemies';
-import { fall, isSafeCell } from './falling';
+import { fall, isSafeCell, pushOff } from './falling';
 import { isInvulnerable } from './player';
 import { chargeSeen, rememberCharge } from './terrainState';
 import { alwaysWet, immuneToTerrainFire, terrainFireDpsMult } from '../hero/effectsTerrain';
 import { burningGroundHeal } from '../hero/uniques';
 import { modAlwaysWet } from './rarity';
-import { ignoresGround, locomotionOf } from './locomotion';
+import { ignoresGround, locomotionOf, traitsOf } from './locomotion';
+import { chargeTouched, popByCharge, touchesCharge } from './fenChemistry';
+import { isAirborne } from './strand';
+import { chargeDamageMult } from '../hero/effectsFen';
 import { riftRules } from '../world/rift/rules';
 
 /** Timers within this of zero count as expired. */
@@ -49,13 +54,17 @@ export function stepEntityTerrain(state: GameState): void {
   if (!p.dead) entityTerrain(state, p, OWNER.player);
   const g = state.grid;
   const pc = p.dead ? -1 : cellIndexAt(state, p.x, p.y);
-  const playerHidden = pc >= 0 && g.air[pc] !== AIR.none;
+  // Smoke and steam hide; fog (M8) never Blinds (DESIGN §6.2).
+  const playerHidden = pc >= 0 && (g.air[pc] === AIR.smoke || g.air[pc] === AIR.steam);
   const list = state.enemies;
   for (let k = 0; k < list.length; k++) {
     const e = list[k]!;
     if (e.dead) continue;
-    // M4: floating and fixed kinds (Frost Wisp, Brood Kiln) are above the ground's effects.
-    if (!ignoresGround(e.kind)) entityTerrain(state, e, OWNER.enemy);
+    // M4: floating and fixed kinds (Frost Wisp, Brood Kiln) are above the ground's effects;
+    // M8: a leaping Glasspike is in the air, and Sparkflies hover low enough for charge.
+    if (!ignoresGround(e.kind)) {
+      if (!isAirborne(e)) entityTerrain(state, e, OWNER.enemy);
+    } else if (traitsOf(e.kind).chargeBelow) chargeBelow(state, e);
     if (!e.dead) stepEnemyExtras(state, e, playerHidden);
   }
 }
@@ -76,7 +85,9 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
   const ts = t.terrain;
   // M4: swimmers (Bog Lurker) live in deep water and never fall.
   if (state.room.solid[i] === 1 && !('kind' in t && locomotionOf(t.kind) === 'swim')) {
-    fall(state, t);
+    // Rule 30 (M8): a vent relighting under you pushes you off, without a fall or ignition.
+    if (g.ground[i] === MAT.vent_lit) pushOff(state, t);
+    else fall(state, t);
     if (t.dead) return;
     i = cellIndexAt(state, t.x, t.y);
     if (i < 0) return;
@@ -123,6 +134,19 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
       (1 - t.resist.fire);
     applyIgnite(state, t, dps, state.tuning.ailments.igniteDuration, hazardSource(owner), owner, true);
   }
+  // Rule 30 (M8): touching a lit furnace vent ignites as world-owned burning ground (Wet protects).
+  if (!iframes && !immuneToTerrainFire(state, t) && touchesLitVent(state, t.x, t.y, bodyRadius(state, t))) {
+    const dps = terrainFireDps(state, false) * (1 - t.resist.fire);
+    applyIgnite(
+      state,
+      t,
+      dps,
+      state.tuning.ailments.igniteDuration,
+      hazardSource(OWNER.world),
+      OWNER.world,
+      true,
+    );
+  }
   if ('kind' in t && t.shield !== null && (fireHurts || isIgnited(t))) burnShield(state, t);
   burningGroundHeal(state, t, g.fire[i]! > 0); // Kiln-Heart Cloak (hero/uniques.ts).
 
@@ -142,7 +166,12 @@ function entityTerrain(state: GameState, t: AilmentTarget, team: number): void {
   ts.cell = i;
 }
 
-function becomeWet(state: GameState, t: AilmentTarget): void {
+function bodyRadius(state: GameState, t: AilmentTarget): number {
+  return 'kind' in t ? t.radius : state.tuning.player.radius;
+}
+
+/** An entity becomes Wet (rule 15, and Tide hits, rule 32): the event, and a Tinderling goes out. */
+export function becomeWet(state: GameState, t: AilmentTarget): void {
   emit(state, { type: 'wetChanged', target: targetRef(t), wet: true, x: t.x, y: t.y });
   if (!('kind' in t)) return;
   const b = chemistryOf(t)?.alwaysBurning;
@@ -172,18 +201,47 @@ function burnShield(state: GameState, e: Enemy): void {
   emit(state, { type: 'shieldBurned', id: e.id, x: e.x, y: e.y });
 }
 
-/** Rules 11, 12: one hit per charge event per entity, for the event's damage × falloff. */
+/**
+ * Rules 11, 12: one hit per charge event per entity, for the event's damage × falloff. M8: kinds
+ * whose chemistry reacts to charge (Copperback, Bellshell) feel every event once, whoever owns it
+ * (actors/fenChemistry.ts); Copper Carapace and Heron Plume scale the damage (hero/effectsFen.ts).
+ */
 function chargeHit(state: GameState, t: AilmentTarget, team: number, id: number, falloff: number): void {
   const ts = t.terrain;
   if (chargeSeen(ts, id)) return;
   const ev = chargeEventInfo(state, id);
-  if (ev === null || !hazardHurts(ev.owner, team)) return;
+  if (ev === null) return;
+  const touches = 'kind' in t && touchesCharge(t);
+  if (touches) chargeTouched(state, t, ev);
+  if (!hazardHurts(ev.owner, team)) {
+    if (touches) rememberCharge(ts, id);
+    return;
+  }
   rememberCharge(ts, id);
-  const damage = ev.damage * falloff;
+  const damage = ev.damage * falloff * chargeDamageMult(state, t, ev.owner);
   emit(state, { type: 'chargeHit', target: targetRef(t), chargeId: id, damage, x: t.x, y: t.y });
   if (damage <= 0) return;
   const packet = makePacket(damage, { storm: 1 }, 0, state.tuning.combat.critMultiplier);
   applyHit(state, t, packet, { sourceId: ev.sourceId, dirX: 0, dirY: 0, knockback: 0, owner: ev.owner });
+}
+
+/**
+ * A floater that hovers low (Sparkfly, M8): only charge in the water or metal under it reaches
+ * it, once per event, and pops it (actors/fenChemistry.ts popByCharge).
+ */
+function chargeBelow(state: GameState, e: Enemy): void {
+  const i = cellIndexAt(state, e.x, e.y);
+  if (i < 0) return;
+  const g = state.grid;
+  if (g.charge[i] === 0) return;
+  const id = g.chargeId[i]!;
+  if (chargeSeen(e.terrain, id)) return;
+  const ev = chargeEventInfo(state, id);
+  if (ev === null) return;
+  rememberCharge(e.terrain, id);
+  const damage = ev.damage * g.chargeFalloff[i]!;
+  if (popByCharge(state, e, ev))
+    emit(state, { type: 'chargeHit', target: e.id, chargeId: id, damage, x: e.x, y: e.y });
 }
 
 /** Enemy-only: stun countdown and Blind. */
@@ -193,7 +251,7 @@ function stepEnemyExtras(state: GameState, e: Enemy, playerHidden: boolean): voi
   const i = ts.cell;
   // Rift Choking Smoke (M6): smoke doesn't Blind monsters; steam still does.
   const air = i >= 0 ? state.grid.air[i]! : AIR.none;
-  const inAir = air !== AIR.none && !(air === AIR.smoke && riftRules(state).monstersSeeInSmoke);
+  const inAir = (air === AIR.smoke && !riftRules(state).monstersSeeInSmoke) || air === AIR.steam;
   const blind = inAir || (playerHidden && e.ai.targetId === 0);
   if (blind !== ts.blind) {
     ts.blind = blind;

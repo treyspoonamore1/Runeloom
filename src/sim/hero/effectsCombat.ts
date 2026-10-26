@@ -6,7 +6,9 @@
  * - playerHitPacket (combat/hits.ts, hitEnemy): per-hit "more" multipliers that depend on the
  *   target or the player — Wildheart (Fire 30% less), Oilcraft (Oiled: Fire more), Rainshadow
  *   (Wet: Storm more), Stormglass (Shocked and Frozen: Storm more), Brittle (Chilled or Frozen:
- *   Strike more), Pyre Walker (player on burning ground: all more).
+ *   Strike more), Pyre Walker (player on burning ground: all more). M8 Fuse parts: Slag Core (Wet:
+ *   Fire more), Mire Horn (on mud or in shallow water: all more), Bell Bronze (Shocked: Physical
+ *   more); hero/effectsFen.ts.
  * - afterPlayerHit (combat/hits.ts, hitEnemy): Matriarch's Sac (hits apply Oiled), Tar Gland
  *   (Fire hits leave an oil patch, then ignite it).
  * - ailmentScale (combat/ailments.ts applyHitAilments, combat/arcs.ts): durations and effects of
@@ -25,6 +27,7 @@ import { emit } from '../events';
 import { applyElement } from '../grid/paint';
 import { spillOil } from '../grid/oil';
 import type { GameState } from '../state';
+import { onMireGround } from './effectsFen';
 
 /** What playerHitPacket needs from HitInfo. */
 export interface PlayerHitInfo {
@@ -58,6 +61,7 @@ export function playerHitPacket(
   let all = 1;
   let fire = 1;
   let storm = 1;
+  let physical = 1;
   const pyre = fx.pyre_walker ?? 0;
   if (pyre > 0 && playerOnBurningGround(state)) all *= 1 + pyre;
   const brittle = fx.brittle ?? 0;
@@ -71,10 +75,16 @@ export function playerHitPacket(
   if (rain > 0 && isWet(e)) storm *= 1 + rain;
   const glass = fx.stormglass ?? 0;
   if (glass > 0 && e.ailments.freeze.timeLeft > 0 && e.ailments.shock.timeLeft > 0) storm *= 1 + glass;
-  if (all === 1 && fire === 1 && storm === 1) return packet;
+  const slag = fx.wet_fire_more ?? 0;
+  if (slag > 0 && isWet(e)) fire *= 1 + slag;
+  const mire = fx.mire_more ?? 0;
+  if (mire > 0 && onMireGround(state, e)) all *= 1 + mire;
+  const bronze = fx.shocked_physical_more ?? 0;
+  if (bronze > 0 && e.ailments.shock.timeLeft > 0) physical *= 1 + bronze;
+  if (all === 1 && fire === 1 && storm === 1 && physical === 1) return packet;
   const prev = packet.moreByType;
   const byType: DamageAmounts = {
-    physical: prev?.physical ?? 1,
+    physical: (prev?.physical ?? 1) * physical,
     fire: (prev?.fire ?? 1) * fire,
     frost: prev?.frost ?? 1,
     storm: (prev?.storm ?? 1) * storm,
@@ -121,6 +131,10 @@ const HIT_KEYS = new Set([
   'stormglass',
   'oiled_on_hit',
   'tar_gland',
+  'wet_fire_more',
+  'mire_more',
+  'shocked_physical_more',
+  'kill_charge',
 ]);
 
 /** Multipliers on the ailments one source inflicts. NEUTRAL_AILMENTS for everyone but the player. */
