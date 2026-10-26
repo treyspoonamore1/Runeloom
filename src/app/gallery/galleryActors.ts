@@ -11,8 +11,9 @@ import {
   type EnemyRarity,
   type GameState,
 } from '../../sim';
-import type { EnemyKind } from '../../../data/enemies';
-import type { EnemySpecial } from '../../sim/actors/enemyState';
+import { enemyDef, type EnemyKind } from '../../../data/enemies';
+import { createBossState, type EnemySpecial } from '../../sim/actors/enemyState';
+import type { FenBossState } from '../../sim/actors/bossStateFen';
 import { M4_ATTACKS, type M4AttackKey } from '../m4Wiring';
 import { M4_LOOK, type M4Kind } from '../../render/bestiary/bestiaryPalette';
 
@@ -45,6 +46,14 @@ export interface ActorSpec {
   special?: Partial<EnemySpecial>;
   /** Stunned (a Mirebull at a wall, a rung Bellshell). */
   stun?: boolean;
+  /** M8 Fen bosses: their fight state held every frame (the Coil's state, glows, the toll's wave) and phase. */
+  fen?: Partial<FenBossState>;
+  phase?: number;
+  /**
+   * Swims (or crawls) around a circle of radius `r` cells at `speed` cells/s, until `until` s
+   * after the section is shown: the Coil's drawn body curls up behind it.
+   */
+  swim?: { r: number; speed: number; until?: number };
 }
 
 export interface Actor {
@@ -60,11 +69,18 @@ export function spawnActor(s: GameState, spec: ActorSpec): Actor {
     facingY: spec.facing?.[1] ?? 0.2,
   });
   e.kind = spec.kind as EnemyKind;
-  e.radius = spec.kind in M4_LOOK ? M4_LOOK[spec.kind as M4Kind].radius : (RADIUS[spec.kind] ?? 1);
+  // The Fen bosses' art is drawn smaller than the sim body and scaled up: use the sim's radius.
+  const boss = spec.kind === 'bellwether' || spec.kind === 'glasswater_coil';
+  e.radius = boss
+    ? enemyDef(spec.kind).radius
+    : spec.kind in M4_LOOK
+      ? M4_LOOK[spec.kind as M4Kind].radius
+      : (RADIUS[spec.kind] ?? 1);
   e.rarity = spec.rarity ?? 'normal';
   if (spec.mods) (e as unknown as { mods: string[] }).mods = spec.mods;
   e.maxLife = 100;
   e.life = 100 * (spec.life ?? 1);
+  if (spec.kind === 'bellwether' || spec.kind === 'glasswater_coil') e.boss = createBossState(spec.kind, spec.x, spec.y);
   return { spec, e };
 }
 
@@ -100,6 +116,22 @@ export function poseActors(
       e.x = x;
       e.facingX = Math.cos(t * w * 0.35) >= 0 ? 1 : -1;
       e.facingY = 0.15;
+    }
+    if (spec.swim) {
+      const { r, speed, until } = spec.swim;
+      const w = speed / r;
+      const ts = Math.min(t, until ?? t);
+      const moving = until === undefined || t < until;
+      e.x = spec.x + Math.cos(ts * w) * r;
+      e.y = spec.y + Math.sin(ts * w) * r;
+      e.prevX = moving ? spec.x + Math.cos((ts - 1 / 60) * w) * r : e.x;
+      e.prevY = moving ? spec.y + Math.sin((ts - 1 / 60) * w) * r : e.y;
+      e.facingX = -Math.sin(ts * w);
+      e.facingY = Math.cos(ts * w);
+    }
+    if (e.boss) {
+      if (spec.phase) e.boss.phase = spec.phase;
+      if (spec.fen && e.boss.fen) Object.assign(e.boss.fen, spec.fen);
     }
     const a = e.attack;
     if (spec.pose === 'attack' && spec.attack) {

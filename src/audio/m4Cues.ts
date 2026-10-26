@@ -24,6 +24,12 @@ const WINDUP: Partial<Record<M4AttackKey, M4SfxId>> = {
   fireSlam: 'fireWhoosh',
   fireBreath: 'fireWhoosh',
   brazierStorm: 'stormBuild',
+  // M8 Drowned Foundry bosses (data/sfxFenBosses.ts): the toll, the self-toll, a stranded thrash.
+  tollRing: 'bellToll',
+  tollFoundry: 'bellToll',
+  selfToll: 'bellSelfToll',
+  tailThrash: 'coilThrash',
+  coilLunge: 'lurkerRipple',
 };
 
 const LANDED: Partial<Record<M4AttackKey, M4SfxId>> = {

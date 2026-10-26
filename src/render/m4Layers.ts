@@ -2,14 +2,15 @@ import { Container } from 'pixi.js';
 import type { GameState, SimEvent } from '../sim';
 import { M4Signals } from '../app/m4Signals';
 import type { Atlas, AtlasEntry } from './atlas';
-import { BeastTelegraphs, telegraphAccentEntries } from './bestiary/beastTelegraphs';
+import { telegraphAccentEntries } from './bestiary/beastTelegraphs';
 import { bigBeastEntries } from './bestiary/bigBeasts';
 import { RarityView, rarityAtlasEntries } from './bestiary/rarityView';
 import { smallBeastEntries } from './bestiary/smallBeasts';
 import { fenShapesA } from './bestiary/fenShapesA';
 import { fenShapesB } from './bestiary/fenShapesB';
-import { fenPlaceholderEntries } from './bestiary/fenPlaceholders';
-import { FenTelegraphs, fenTelegraphEntries } from './bestiary/fenTelegraphs';
+import { fenBossShapes } from './bestiary/fenBossShapes';
+import { fenTelegraphEntries } from './bestiary/fenTelegraphs';
+import { FenBossTelegraphs } from './bestiary/fenBossTelegraphs';
 import { fenIconEntries } from './bestiary/fenIcons';
 import type { EnemyLayer } from './enemyLayer';
 import { objectAtlasEntries } from './world/objectShapes';
@@ -32,7 +33,7 @@ export function m4AtlasEntries(): AtlasEntry[] {
     ...bigBeastEntries(),
     ...fenShapesA(),
     ...fenShapesB(),
-    ...fenPlaceholderEntries(),
+    ...fenBossShapes(),
     ...rarityAtlasEntries(),
     ...telegraphAccentEntries(),
     ...fenTelegraphEntries(),
@@ -59,7 +60,7 @@ export interface ScreenXf {
 export class M4Layers {
   readonly signals = new M4Signals();
   readonly rarity: RarityView;
-  readonly tele: BeastTelegraphs;
+  readonly tele: FenBossTelegraphs;
   readonly fx: WorldFx;
   readonly objects: ObjectView;
   readonly loot: LootView;
@@ -77,14 +78,14 @@ export class M4Layers {
   constructor(atlas: Atlas, enemies: EnemyLayer, shake: Shake | null) {
     enemies.signals = this.signals;
     this.rarity = new RarityView(atlas);
-    this.tele = new FenTelegraphs(atlas);
+    this.tele = new FenBossTelegraphs(atlas);
     this.fx = new WorldFx(atlas);
     this.objects = new ObjectView(atlas, this.fx);
     this.loot = new LootView(atlas, this.fx);
     this.moments = new MomentsView(this.fx, shake);
     this.runeGet = new RuneGetView(atlas, this.fx);
     this.hub = new HubView(atlas, this.fx, this.objects.root);
-    this.fx.over.addChild(this.hub.top);
+    this.fx.over.addChild(this.hub.top, this.tele.glow.top);
     this.ground.addChild(this.rarity.glows.container, this.rarity.ground.container);
     this.screen.addChild(this.rarity.plates, this.moments.screen);
   }
@@ -110,6 +111,7 @@ export class M4Layers {
     this.hub.handle(events);
     const cues = this.signals.update(s, events, dt);
     this.tele.handle(cues, s);
+    this.tele.handleSim(events, s);
     for (const c of cues) {
       objectCue(c, this.fx);
       this.loot.handle(c, s);

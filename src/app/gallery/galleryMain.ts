@@ -13,6 +13,7 @@ import { createRenderer, type Renderer } from '../../render/renderer';
 import { poseActors, spawnActor, type Actor, type ActorSpec } from './galleryActors';
 import { beastSpecs, raritySpecs, telegraphSpecs } from './galleryBeasts';
 import { fenSpecs } from './galleryFen';
+import { fenBossGround, fenBossSpecs } from './galleryFenBosses';
 import {
   crowdRoomText,
   galleryRoomText,
@@ -57,6 +58,7 @@ const raf = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => 
 export async function bootGallery(): Promise<void> {
   const state = createGame({ seed: 1, roomText: galleryRoomText(), spawnRoomEnemies: false });
   state.cheats.god = true;
+  fenBossGround(state);
   state.tuning.camera.lookAhead = 0;
   state.tuning.camera.zoom = 2;
   const renderer = await createRenderer(document.getElementById('game')!, state);
@@ -71,6 +73,7 @@ export async function bootGallery(): Promise<void> {
   };
   add(beastSpecs());
   add(fenSpecs());
+  add(fenBossSpecs());
   add(raritySpecs());
   add(telegraphSpecs());
   const world = new GalleryWorld(state, renderer, labels);

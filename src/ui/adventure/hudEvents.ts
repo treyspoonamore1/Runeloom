@@ -12,6 +12,7 @@ import { sigilModLine, sigilName } from '../../sim/items/sigils';
 import type { ItemRarity } from '../../sim/hero/types';
 import { riftGate } from '../../../data/riftGate';
 import { hearthBanner, hearthToast } from '../hearth/hearthEvents';
+import { introCards } from '../../../data/ui';
 
 export const HUD_EVENT = {
   // ---- Rifts (M6, WorldEvent) ----
@@ -42,6 +43,8 @@ export const HUD_EVENT = {
   stormDoorWoke: 'stormDoorWoke',
   /** { kind, roomId }: a boss died. */
   bossDefeated: 'bossDefeated',
+  /** { id, kind, name }: a boss woke (EnemyEvent): its intro card (data/ui.ts introCards). */
+  bossAwake: 'bossAwake',
   // ---- Hero (HeroEvent) ----
   /** { amount, xp, level }: the XP bar reads the hero each frame; no toast. */
   xpGained: 'xpGained',
@@ -53,7 +56,7 @@ export const HUD_EVENT = {
   runeUnlocked: 'runeUnlocked',
   /** { content }: a first-clear reward went straight into the pouch (guaranteed runes, CONTENT §9.1). */
   rewardGranted: 'rewardGranted',
-  /** { total }: a Pattern Seed from a loot chest (M8): +1 passive point. */
+  /** { amount, total }: Pattern Seeds (M8: a loot chest, the Glasswater Coil): +1 passive point each. */
   patternSeedGained: 'patternSeedGained',
   /** { rune, source }: a first element rune: the item-get panel shows it instead of a toast. */
   elementUnlocked: 'elementUnlocked',
@@ -218,9 +221,18 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
             : toast('key', 'Small key', 'Opens one locked door'),
         );
         break;
-      case HUD_EVENT.patternSeedGained:
-        out.push(toast('level', 'Pattern Seed', '+1 passive point'));
+      case HUD_EVENT.patternSeedGained: {
+        const n = Math.max(1, Number(e.amount ?? 1));
+        const total = Number(e.total ?? n);
+        out.push(
+          toast(
+            'level',
+            n > 1 ? `${n} Pattern Seeds` : 'Pattern Seed',
+            `+${n} passive ${n > 1 ? 'points' : 'point'} · press P · ${total} found`,
+          ),
+        );
         break;
+      }
       case HUD_EVENT.keyUsed:
         if (!e.big)
           out.push(toast('key', 'Key used', plural(Number(e.left ?? 0), 'small key', 'small keys')));
@@ -276,6 +288,10 @@ export function bannersFor(
     const hb = hearthBanner(e);
     if (hb) out.push(hb);
     else if (e.type === HUD_EVENT.note) out.push({ title: String(e.text ?? ''), sub: '' });
+    else if (e.type === HUD_EVENT.bossAwake) {
+      const card = introCards.bosses[String(e.kind)];
+      if (card) out.push({ ...card });
+    }
     else if (e.type === HUD_EVENT.bossDefeated)
       out.push({ title: `${bossName(String(e.kind))} defeated`, sub: '' });
     else if (e.type === HUD_EVENT.riftCompleted)
@@ -335,6 +351,15 @@ export function pushToasts(
     list = [...list, { ...t, id: opts.nextId(), until: now + life }];
   }
   return list.slice(-opts.max);
+}
+
+/**
+ * The banner for a 'roomEnter': a region's intro card the first time its first room is entered
+ * (data/ui.ts introCards, "Glasswater Fen. Area level 18 to 24."), else the room's own banner.
+ */
+export function roomEnterBanner(e: LooseEvent, room: { title: string; sub: string }): { title: string; sub: string } {
+  const card = e.firstVisit === true ? introCards.regions[String(e.id)] : undefined;
+  return card ? { ...card } : room;
 }
 
 /** Banner for entering a room: its name, then the region and area level. */

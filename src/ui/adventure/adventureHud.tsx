@@ -28,6 +28,7 @@ import {
   HUD_EVENT,
   pushToasts,
   roomBanner,
+  roomEnterBanner,
   toastsFor,
   type LiveToast,
   type LooseEvent,
@@ -116,15 +117,18 @@ export function createAdventureHud(opts: {
       for (const e of loose) {
         if (e.type === HUD_EVENT.roomEnter) {
           const id = String(e.id ?? session.state.room.id);
-          const b = roomBanner(
-            typeof e.name === 'string' && e.name ? e.name : roomName(session, id),
-            REGION_NAMES[regionOf(id)] ?? '',
-            typeof e.level === 'number' ? e.level : session.state.room.level,
+          const b = roomEnterBanner(
+            e,
+            roomBanner(
+              typeof e.name === 'string' && e.name ? e.name : roomName(session, id),
+              REGION_NAMES[regionOf(id)] ?? '',
+              typeof e.level === 'number' ? e.level : session.state.room.level,
+            ),
           );
           opts.showBanner(b.title, b.sub);
         } else if (e.type === HUD_EVENT.loomStone) opts.onLoomStone?.();
       }
-      // @note texts (K10's ending line) and boss kills take the banner after the room's.
+      // @note texts (K10's ending line), boss intro cards and boss kills take the banner after the room's.
       for (const b of bannersFor(loose, (k) => BOSS_INFO[k]?.name ?? k)) opts.showBanner(b.title, b.sub);
       const fresh = toastsFor(loose, names);
       if (fresh.length) {

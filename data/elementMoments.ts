@@ -39,9 +39,9 @@ export const elementMoments = {
   gale: {
     flavor: "The Coil's last breath, caught in a rune. The air answers you now.",
     does: [
-      'Each spell blows a 2 s gust: fire runs downwind, smoke and steam drift.',
-      'Clears fog and spins wind vanes.',
-      'Knocks enemies back twice as far.',
+      'Every Gale spell blows a 2 s gust: fire runs downwind, smoke and steam drift with it.',
+      'Gusts clear fog and spin wind vanes.',
+      'Hits for Physical damage and knocks enemies back twice as far.',
     ],
   },
 } as const satisfies Partial<Record<RuneId, ElementMomentText>>;

@@ -5,6 +5,7 @@ import type { BeastRig } from './bestiary/beastRig';
 import { SMALL_RIGS } from './bestiary/beastRig';
 import { BIG_RIGS } from './bestiary/beastRigBig';
 import { FEN_RIGS } from './bestiary/fenRigsB';
+import { FEN_BOSS_RIGS } from './bestiary/fenBossRigs';
 import { isM4Kind, M4_LOOK } from './bestiary/bestiaryPalette';
 
 export interface KindLayout {
@@ -78,7 +79,11 @@ export function buildRig(kind: string, atlas: Atlas, root: Container, lift: Cont
     lift.addChild(body);
     r.flash.alpha = 0;
     lift.addChild(r.flash);
-    const make = SMALL_RIGS[kind] ?? BIG_RIGS[kind] ?? FEN_RIGS[kind as keyof typeof FEN_RIGS];
+    const make =
+      SMALL_RIGS[kind] ??
+      BIG_RIGS[kind] ??
+      FEN_RIGS[kind as keyof typeof FEN_RIGS] ??
+      FEN_BOSS_RIGS[kind as keyof typeof FEN_BOSS_RIGS];
     r.beast = make ? make(atlas, art, lift, body, r.flash) : null;
     r.art = art;
     return r;

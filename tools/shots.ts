@@ -13,7 +13,8 @@
  *   npm run shots -- --set item [--milestone m4] [--shot frost_panel]   the K6 rune shrine and the
  *       new-element panels (Frost at the shrine, Storm after the Cinder Warden)
  *   npm run shots -- --set fight [--room k5] [--at 4,12,20] [--milestone m4]   a boss fight as the
- *       encounter sim plays it (campaign bot, reference character), whole room, at each fight second in --at
+ *       encounter sim plays it (campaign bot, reference character), whole room, at each fight second in --at;
+ *       --room bellwether|coil plays the Fen boss arenas; --view fit,play adds play zoom; --viewport 390x844
  *   npm run shots -- --set fen [--shot fog,vents] [--viewport 390x844] [--milestone m8]   M8 Fen looks: fog and
  *       lantern, gusts and room wind, vents, borrowed terrain, pylon warning, F1 overlays, palettes
  *   npm run shots -- --scenario weave_m5 --ticks 300 [--milestone m5]   a sim scenario (src/sim/scenarios.ts)
@@ -80,6 +81,7 @@ runCli(async () => {
     section: { kind: 'string', help: 'gallery sections to shoot, comma-separated (default all, plus crowd)' },
     perf: { kind: 'boolean', help: 'gallery: measure render time with 300 M4 and 300 M1 enemies' },
     at: { kind: 'string', default: '4,12,20', help: '--set fight: fight seconds to shoot, comma-separated' },
+    view: { kind: 'string', help: "--set fight: 'fit' (whole room, default), 'play' (play zoom on the fight), or both: fit,play" },
     scenario: { kind: 'string', help: 'a scenario id (src/sim/scenarios.ts): set up, play --ticks, shoot' },
   });
   const viewport = parseViewport(a.viewport!);
@@ -268,16 +270,20 @@ runCli(async () => {
       if (errors.length) console.warn(`warning: page errors in the gallery: ${errors.join('; ')}`);
     } else if (a.set === 'fight') {
       const room = a.room ?? 'k5';
-      for (const at of a.at!.split(',').map(Number)) {
-        errors.length = 0;
-        await page.goto(`http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`);
-        await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
-        console.log(await showFight(page, { room, seed: SEED, at }));
-        const file = join(SHOTS_DIR, `${milestone}_fight_${room}_${String(at).replace('.', '_')}s.png`);
-        await page.screenshot({ path: file, timeout: 120_000 });
-        written.push(file);
-        if (errors.length) console.warn(`warning: page errors in fight shot ${at}: ${errors.join('; ')}`);
-      }
+      const vp = a.viewport === '1280x720' ? '' : `_${a.viewport}`;
+      const views = (a.view ?? 'fit').split(',') as ('fit' | 'play')[];
+      for (const at of a.at!.split(',').map(Number))
+        for (const view of views) {
+          errors.length = 0;
+          await page.goto(`http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`);
+          await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+          console.log(await showFight(page, { room, seed: SEED, at, view }));
+          const tag = view === 'fit' ? '' : `_${view}`;
+          const file = join(SHOTS_DIR, `${milestone}_fight_${room}_${String(at).replace('.', '_')}s${tag}${vp}.png`);
+          await page.screenshot({ path: file, timeout: 120_000 });
+          written.push(file);
+          if (errors.length) console.warn(`warning: page errors in fight shot ${at}: ${errors.join('; ')}`);
+        }
     } else if (a.scenario !== undefined) {
       const sc = scenarios.find((s) => s.id === a.scenario);
       if (!sc)

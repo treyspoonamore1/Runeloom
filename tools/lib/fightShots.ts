@@ -13,6 +13,11 @@ export interface FightShotOptions {
   seed: number;
   /** Fight seconds to stop at. */
   at: number;
+  /**
+   * 'fit': the whole room above the bottom HUD; 'play': play zoom (1) centered between the
+   * player and the boss, as a phone or laptop sees it in play.
+   */
+  view?: 'fit' | 'play';
 }
 
 /** Plays the encounter to `at` seconds in the page and draws it. Returns a one-line summary. */
@@ -77,9 +82,16 @@ export async function showFight(page: Page, o: FightShotOptions): Promise<string
     if (st === null) return `fight over before ${o.at} s`;
     const w = st.room.width * S.CELL_PX;
     const h = st.room.height * S.CELL_PX;
-    st.tuning.camera.lookAhead = 0;
-    st.tuning.camera.edgeMargin = 0;
-    st.tuning.camera.zoom = Math.min((innerWidth * 720) / (innerHeight * w), 720 / h);
+    const cam = st.tuning.camera;
+    cam.lookAhead = 0;
+    cam.edgeMargin = 0;
+    // Camera scale is CELL_PX × (height / 720) × zoom; the bottom HUD covers hudInset of the
+    // screen, and a room smaller than the view is centered above it (src/render/camera.ts), so
+    // fitting the room into the rest shows all of it.
+    cam.zoom = o.view === 'play' ? 1 : Math.min((innerWidth * 720) / (innerHeight * w), (720 * (1 - cam.hudInset)) / h);
+    const boss = st.enemies.find((e) => e.boss && !e.dead);
+    R.renderer.follow =
+      o.view === 'play' && boss ? { x: (st.player.x + boss.x) / 2, y: (st.player.y + boss.y) / 2 } : null;
     R.session.adopt(st, 'adventure');
     const raf = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
     for (let i = 0; i < 6; i++) {

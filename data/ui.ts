@@ -95,3 +95,25 @@ export const inventoryUi = {
   /** Rarities that ask for confirmation on shift-click salvage. */
   confirmSalvageRarities: ['rare', 'unique'] as readonly string[],
 } as const;
+
+/**
+ * Intro cards (DESIGN §3: "boss intro cards"; CONTENT §9.1, §13), shown in the center banner:
+ * - a region boss's when it wakes ('bossAwake'), its name and a line about it;
+ * - a region's when the player first enters its first room ('roomEnter' with firstVisit), in
+ *   place of that room's banner.
+ * Rift versions of the bosses show only their bars (the rift has its own banners).
+ */
+export const introCards: {
+  bosses: Readonly<Record<string, { title: string; sub: string }>>;
+  regions: Readonly<Record<string, { title: string; sub: string }>>;
+} = {
+  bosses: {
+    tar_matriarch: { title: 'The Tar Matriarch', sub: "Mother of the Kiln's tar crews" },
+    cinder_warden: { title: 'The Cinder Warden', sub: "Keeper of the Sunken Kiln's fire" },
+    bellwether: { title: 'The Old Bellwether', sub: "The Foundry's old shift bell, grown into a beast" },
+    glasswater_coil: { title: 'The Glasswater Coil', sub: 'Lightning asleep in the Glass Eye' },
+  },
+  regions: {
+    'fen/g1_storm_landing': { title: 'Glasswater Fen', sub: 'Area level 18 to 24' },
+  },
+};
