@@ -141,6 +141,21 @@ export const scenarios: Scenario[] = [
     input: (_tick, state) => kiterInput(state),
   },
   {
+    id: 'fen_packs',
+    description:
+      'M8 Glasswater Fen enemies against the kiter bot, god mode, area level 18: pike_shoal, crab_cast, heron_wade, sparkfly_cloud, mire_herd, foundry_crew and toad_chorus over water, mud, metal and ice, with a Storm Bolt.',
+    roomId: 'test/enemies_fen',
+    setup(state) {
+      state.cheats.god = true;
+      state.cheats.infiniteMana = true;
+      applyLoadoutSpec(state, {
+        spindleId: 'heartwood',
+        notations: ['Cast > Bolt[Storm]', 'Cast > Strike[]', 'Cast > Bolt[Fire]', null],
+      });
+    },
+    input: (_tick, state) => kiterInput(state),
+  },
+  {
     id: 'warden_bot',
     description:
       'The Cinder Warden (K10) against the kiter bot at level 10 with a Frost Bolt in Q: all three phases, the flood, Superheat breaks and the brazier storm.',

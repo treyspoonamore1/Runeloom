@@ -15,6 +15,7 @@ import { applyHit, directionOr } from './hits';
 import { spillOil } from './oil';
 import { spawnProjectile } from './projectiles';
 import { circleHitsShape, type AttackShape } from './shapes';
+import { addChargedStorm, endActiveM8, fenAttackTerrain, startLeap, stepLeap } from './enemyAttacksM8';
 
 /** Timers within this many seconds of zero count as expired (absorbs 1/60 rounding). */
 const TIME_EPSILON = 1e-9;
@@ -38,7 +39,9 @@ export function enemyAttackPacket(state: GameState, e: Enemy, def: AttackDef): D
   const dmg = enemyDef(e.kind).isBoss
     ? def.damage * bossDamageScale(state, e)
     : scaleByLevel(def.damage, state.tuning.combat.enemyDamageGrowth, e.areaLevel);
-  return makePacket(dmg, { [def.damageType]: 1 }, 0, state.tuning.combat.critMultiplier);
+  const packet = makePacket(dmg, { [def.damageType]: 1 }, 0, state.tuning.combat.critMultiplier);
+  // M8: a Charged Copperback adds Storm.
+  return e.special.chargedLeft > 0 ? addChargedStorm(state, e, packet) : packet;
 }
 
 /** The attack's shape oriented along the unit direction (dirX, dirY); `length` overrides a line's. */
@@ -119,6 +122,7 @@ export function stepEnemyAttack(state: GameState, e: Enemy): void {
   if (speed <= 0) return;
   if (a.phase === 'active' && def.dash && e.special.dashSpeed > 0)
     stepDash(state, e, def.dash, enemyAttackPacket(state, e, def), def.knockback);
+  if (a.phase === 'active' && def.leap) stepLeap(e, speed); // M8: a Glasspike in the air.
   if (e.dead) return;
   const haste = e.mods.length > 0 ? attackSpeedMult(e) : 1;
   a.timeLeft -= DT * speed;
@@ -129,6 +133,9 @@ export function stepEnemyAttack(state: GameState, e: Enemy): void {
       if (e.dead) return;
     } else if (a.phase === 'active') {
       endDash(e);
+      // M8: a leap touches down (its bite), a Mirebull's charge ends (a wall stuns it).
+      endActiveM8(state, e, def, () => enemyAttackPacket(state, e, def));
+      if (e.dead) return;
       a.phase = 'recover';
       a.timeLeft += def.recover / haste;
     } else {
@@ -158,6 +165,8 @@ export function resolveEnemyAttack(state: GameState, e: Enemy, def: AttackDef): 
   const a = e.attack;
   emit(state, { type: 'attack', id: e.id, attack: def.name, x: a.originX, y: a.originY });
   const [dirX, dirY] = attackDir(e);
+  // M8: a leap flies to the landing point; its bite comes on touchdown (enemyAttacksM8.ts).
+  if (def.leap) return startLeap(state, e, def.leap.seconds);
   if (def.dash) {
     const s = a.shape;
     return startDash(e, def.dash, dirX, dirY, s.kind === 'line' ? s.length : 0);
@@ -229,6 +238,8 @@ function attackTerrain(
 ): void {
   const t = def.terrain!;
   const a = e.attack;
+  if (fenAttackTerrain(state, e, def)) return; // M8: puddles, gusts.
+  if (t.kind !== 'oil' && t.kind !== 'element') return;
   if (t.kind === 'oil') {
     spillOil(state, a.originX, a.originY, t.radius, t.tar === true);
     return;

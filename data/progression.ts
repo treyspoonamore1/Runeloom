@@ -133,3 +133,14 @@ export const runeDiscovery = {
 export const regionBossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden'];
 export const riftBossKinds: readonly string[] = riftBosses.map((b) => b.boss);
 export const bossKinds: readonly string[] = [...regionBossKinds, ...riftBossKinds];
+
+/**
+ * Regions fought at a rift tier's difficulty (M8, CONTENT §5 and §10 Tiers): monsters in rooms
+ * whose id starts with `prefix` get the tier's rift scaling on top of their area level (tier 8:
+ * life × 1.06^7 ≈ 1.50, hit damage × 1.04^7 ≈ 1.32, data/rift.ts riftTierScaling), so the Fen
+ * starts about as hard as a tier 8 rift. Bosses keep their absolute CONTENT §5 numbers.
+ */
+export const regionDifficulty: readonly { prefix: string; tier: number }[] = [
+  { prefix: 'fen/', tier: 8 },
+  { prefix: 'foundry/', tier: 8 },
+];

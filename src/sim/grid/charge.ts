@@ -29,6 +29,11 @@ export interface ChargeSource {
   sourceId: number;
   hitDamage: number;
   durationMult: number;
+  /**
+   * M8: this chain's own water reach instead of the owner's (a Sparkfly's pop reaches 8 cells; the
+   * Glasswater Coil's pulses reach farther). Falloff runs over this distance.
+   */
+  waterReach?: { maxDistance: number; maxCells: number };
 }
 
 // Scratch shared by every fill (one fill runs at a time).
@@ -118,7 +123,7 @@ function fill(
   const t = state.tuning.grid;
   const rules = medium === 'water' ? t.water : t.metal;
   // Passives on the player's charge (hero/effectsTerrain.ts): Conduit's reach, Stormglass's ice.
-  const reach = waterConduction(state, src.owner);
+  const reach = src.waterReach ?? waterConduction(state, src.owner);
   const maxCells = medium === 'water' ? reach.maxCells : rules.maxCells;
   const maxDist = medium === 'water' ? reach.maxDistance : Infinity;
   const ice = iceConducts(state, src.owner);
