@@ -13,6 +13,7 @@ import type { GameState } from '../state';
 import type { Room } from './room';
 import { OBJECT_CHAR, objectCenter, type WorldObject } from './objects';
 import { roomFlags } from './worldState';
+import { noteText } from './riftTierLink';
 
 const NEIGHBORS: ReadonlyArray<readonly [number, number]> = [
   [1, 0],
@@ -123,8 +124,10 @@ export function uncoverTile(state: GameState, tx: number, ty: number): void {
 export function sendNote(state: GameState, o: WorldObject): void {
   const ch = OBJECT_CHAR[o.kind];
   const c = objectCenter(o);
-  for (const n of state.room.header.notes)
-    if (n.char === ch) emit(state, { type: 'note', key: o.key, text: n.text, x: c.x, y: c.y });
+  for (const n of state.room.header.notes) {
+    const text = n.char === ch ? noteText(state, n.text) : null;
+    if (text !== null) emit(state, { type: 'note', key: o.key, text, x: c.x, y: c.y });
+  }
 }
 
 /** Opens a door for good: walkable floor, remembered in RoomFlags.opened, 'doorOpened' and its note. */

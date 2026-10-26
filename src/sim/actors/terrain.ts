@@ -40,7 +40,10 @@ import { chargeSeen, rememberCharge } from './terrainState';
 import { alwaysWet, immuneToTerrainFire, terrainFireDpsMult } from '../hero/effectsTerrain';
 import { burningGroundHeal } from '../hero/uniques';
 import { modAlwaysWet } from './rarity';
-import { ignoresGround, locomotionOf } from './locomotion';
+import { ignoresGround, locomotionOf, traitsOf } from './locomotion';
+import { chargeTouched, popByCharge, touchesCharge } from './fenChemistry';
+import { isAirborne } from './strand';
+import { chargeDamageMult } from '../hero/effectsFen';
 import { riftRules } from '../world/rift/rules';
 
 /** Timers within this of zero count as expired. */
@@ -57,8 +60,11 @@ export function stepEntityTerrain(state: GameState): void {
   for (let k = 0; k < list.length; k++) {
     const e = list[k]!;
     if (e.dead) continue;
-    // M4: floating and fixed kinds (Frost Wisp, Brood Kiln) are above the ground's effects.
-    if (!ignoresGround(e.kind)) entityTerrain(state, e, OWNER.enemy);
+    // M4: floating and fixed kinds (Frost Wisp, Brood Kiln) are above the ground's effects;
+    // M8: a leaping Glasspike is in the air, and Sparkflies hover low enough for charge.
+    if (!ignoresGround(e.kind)) {
+      if (!isAirborne(e)) entityTerrain(state, e, OWNER.enemy);
+    } else if (traitsOf(e.kind).chargeBelow) chargeBelow(state, e);
     if (!e.dead) stepEnemyExtras(state, e, playerHidden);
   }
 }
@@ -195,18 +201,47 @@ function burnShield(state: GameState, e: Enemy): void {
   emit(state, { type: 'shieldBurned', id: e.id, x: e.x, y: e.y });
 }
 
-/** Rules 11, 12: one hit per charge event per entity, for the event's damage × falloff. */
+/**
+ * Rules 11, 12: one hit per charge event per entity, for the event's damage × falloff. M8: kinds
+ * whose chemistry reacts to charge (Copperback, Bellshell) feel every event once, whoever owns it
+ * (actors/fenChemistry.ts); Copper Carapace and Heron Plume scale the damage (hero/effectsFen.ts).
+ */
 function chargeHit(state: GameState, t: AilmentTarget, team: number, id: number, falloff: number): void {
   const ts = t.terrain;
   if (chargeSeen(ts, id)) return;
   const ev = chargeEventInfo(state, id);
-  if (ev === null || !hazardHurts(ev.owner, team)) return;
+  if (ev === null) return;
+  const touches = 'kind' in t && touchesCharge(t);
+  if (touches) chargeTouched(state, t, ev);
+  if (!hazardHurts(ev.owner, team)) {
+    if (touches) rememberCharge(ts, id);
+    return;
+  }
   rememberCharge(ts, id);
-  const damage = ev.damage * falloff;
+  const damage = ev.damage * falloff * chargeDamageMult(state, t, ev.owner);
   emit(state, { type: 'chargeHit', target: targetRef(t), chargeId: id, damage, x: t.x, y: t.y });
   if (damage <= 0) return;
   const packet = makePacket(damage, { storm: 1 }, 0, state.tuning.combat.critMultiplier);
   applyHit(state, t, packet, { sourceId: ev.sourceId, dirX: 0, dirY: 0, knockback: 0, owner: ev.owner });
+}
+
+/**
+ * A floater that hovers low (Sparkfly, M8): only charge in the water or metal under it reaches
+ * it, once per event, and pops it (actors/fenChemistry.ts popByCharge).
+ */
+function chargeBelow(state: GameState, e: Enemy): void {
+  const i = cellIndexAt(state, e.x, e.y);
+  if (i < 0) return;
+  const g = state.grid;
+  if (g.charge[i] === 0) return;
+  const id = g.chargeId[i]!;
+  if (chargeSeen(e.terrain, id)) return;
+  const ev = chargeEventInfo(state, id);
+  if (ev === null) return;
+  rememberCharge(e.terrain, id);
+  const damage = ev.damage * g.chargeFalloff[i]!;
+  if (popByCharge(state, e, ev))
+    emit(state, { type: 'chargeHit', target: e.id, chargeId: id, damage, x: e.x, y: e.y });
 }
 
 /** Enemy-only: stun countdown and Blind. */

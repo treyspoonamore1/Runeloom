@@ -29,7 +29,7 @@ export function fixtureHearthSession(): Session {
     state: {
       hero,
       room: { id: hearthRoom },
-      world: { rift: null },
+      world: { rift: null, bossesDefeated: ['glasswater_coil'] },
       weaves: { slots: [] },
       events: [],
       mode: 'adventure',

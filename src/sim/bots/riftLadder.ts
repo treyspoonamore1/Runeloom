@@ -26,6 +26,7 @@ import type { GameState } from '../state';
 import { step } from '../step';
 import { NEUTRAL_INPUT } from '../core/input';
 import type { RoomSource } from '../world/worldState';
+import { riftGate } from '../../../data/riftGate';
 import { runCampaign } from './campaign';
 import { humanFightFactor, pacingMinutes, riftOverhead } from './pacing';
 import { applyReferenceBuild } from './campaignPlan';
@@ -115,6 +116,8 @@ export function runRiftLadder(opts: LadderOptions): LadderResult {
   if (!state) throw new Error('riftLadder: the campaign gave no game');
   if (state.room.id !== regionRooms.k10)
     throw new Error(`riftLadder: the campaign ended in ${state.room.id}`);
+  // M8 gate: the bot is past the Fen. Mark the Coil dead so tiers above 8 open (the Fen has no bot route).
+  if (!state.world.bossesDefeated.includes(riftGate.boss)) state.world.bossesDefeated.push(riftGate.boss);
   // M7: without Rekindles the ladder stops at the first cycle's cap.
   const cap = Math.min(target, maxRiftTier(state.hero));
   const rifts: LadderRift[] = [];

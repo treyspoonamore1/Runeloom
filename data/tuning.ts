@@ -138,6 +138,28 @@ export const defaultTuning = {
     spawnSpacing: 3,
   },
   /**
+   * Swimmers (M8: Bog Lurker, Glasspike, Glasswater Coil; src/sim/actors/swim.ts, strand.ts):
+   * their route through the water and rule 31, Stranded (DESIGN §6.3, §6.4).
+   */
+  swim: {
+    /** Rule 31: a Stranded swimmer takes this × damage (50% more). */
+    strandedTaken: 1.5,
+    /** Rule 31: seconds a Stranded swimmer lies helpless before it crawls (per-kind: EnemyDef.swimmer). */
+    crawlDelay: 2,
+    /** Rule 31: crawl speed toward water, cells/s. */
+    crawlSpeed: 4,
+    /** Rule 31: it crawls only to water within this many steps over open ground (8 neighbors). */
+    crawlReach: 16,
+    /** Rule 31: with no water in reach it loses this fraction of its max life per second (never bosses). */
+    dryLifePerSecond: 0.05,
+    /** Swimmers re-plan their route through the water every this many ticks. */
+    repathTicks: 12,
+    /** Most water cells one route plan searches (a bigger body is searched in steps as it swims). */
+    planCells: 3000,
+    /** A swimmer heads for the cell this many steps along its route. */
+    lookahead: 3,
+  },
+  /**
    * Boss fights (DESIGN §10.3, CONTENT §5; src/sim/ai/bosses). Attack numbers are in
    * data/bosses.ts; these are the fight's pacing and rule numbers.
    */

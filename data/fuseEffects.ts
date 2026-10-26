@@ -111,7 +111,75 @@ export const fuseEffects = {
     element: 'fire',
     text: 'Grants Harvest > Nova[Fire] as an extra weave that uses no slot and no Capacity',
   },
+  // M8: the Glasswater Fen's parts (src/sim/hero/effectsFen.ts).
+  pike_scale: {
+    ...none,
+    name: 'Pike Scale',
+    effects: { pike_scale: 1 },
+    numeric: false,
+    element: 'storm',
+    text: "You aren't slowed by shallow water or mud",
+  },
+  copper_carapace: {
+    ...none,
+    name: 'Copper Carapace',
+    effects: { charge_taken_less: 0.3 },
+    numeric: true,
+    element: 'storm',
+    text: 'Take {pct}% less damage from charged water and metal',
+  },
+  heron_plume: {
+    ...none,
+    name: 'Heron Plume',
+    effects: { charge_damage_more: 0.25 },
+    numeric: true,
+    element: 'storm',
+    text: '{pct}% more damage with charge you create',
+  },
+  slag_core: {
+    ...none,
+    name: 'Slag Core',
+    effects: { wet_fire_more: 0.3 },
+    numeric: true,
+    element: 'fire',
+    text: 'Your Fire hits on Wet enemies deal {pct}% more damage',
+  },
+  sparkfly_lantern: {
+    ...none,
+    name: 'Sparkfly Lantern',
+    effects: { kill_charge: 0.5 },
+    numeric: true,
+    element: 'storm',
+    text: 'Enemies you kill while they stand in water release your charge into it ({pct}% of the killing hit)',
+  },
+  mire_horn: {
+    ...none,
+    name: 'Mire Horn',
+    effects: { mire_more: 0.15 },
+    numeric: true,
+    element: null,
+    text: 'Enemies on mud or in shallow water take {pct}% more damage from you',
+  },
+  toad_bellows: {
+    ...none,
+    name: 'Toad Bellows',
+    effects: { gust_seconds_add: 1, gust_area_inc: 0.3 },
+    numeric: true,
+    element: null,
+    text: 'Your gusts last {n} s longer and cover {pct}% more area',
+  },
+  bell_bronze: {
+    ...none,
+    name: 'Bell Bronze',
+    effects: { shocked_physical_more: 0.15 },
+    numeric: true,
+    element: 'storm',
+    text: 'Shocked enemies take {pct}% more Physical damage from you',
+  },
 } as const satisfies Record<string, FuseEffectDef>;
+
+/** Pike Scale (M8): the grounds whose slow it removes. */
+export const pikeScaleGrounds = ['shallow_water', 'mud'] as const;
 
 export type FusePartId = keyof typeof fuseEffects;
 

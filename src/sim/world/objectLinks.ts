@@ -10,6 +10,8 @@
  * - `vanes:all` (M8): every wind vane spun.
  * - `plates:all`: every pressure plate is pressed at the same time.
  * - `cleared`: the room is cleared (all its enemies dead).
+ * - `rifttier:N`: the best rift tier ever is at least N, and every `@exit` of the room leads to a
+ *   room that exists (a door to a region not woven yet stays shut). The Fen's storm door (M8).
  * - `sealed`: never holds. A door that stays shut on purpose (the K10 storm door, CONTENT §9.1).
  * A door that opened stays open (RoomFlags.opened), and so do the braziers and switches that
  * opened it: they start lit or powered when the room is entered again.
@@ -19,6 +21,7 @@ import type { RoomHeader } from './room';
 import { roomFlags } from './worldState';
 import type { ObjectKind, WorldObject } from './objects';
 import { openDoor } from './objectGround';
+import { riftTierLinkMet } from './riftTierLink';
 
 export type LinkCondition =
   | { kind: 'braziers'; seconds: number }
@@ -27,7 +30,8 @@ export type LinkCondition =
   | { kind: 'plates' }
   | { kind: 'vanes' }
   | { kind: 'cleared' }
-  | { kind: 'sealed' };
+  | { kind: 'sealed' }
+  | { kind: 'rifttier'; tier: number };
 
 /** Parses a link condition, or returns null if it is not one of CONTENT §6.2's. */
 export function parseLinkCondition(text: string): LinkCondition | null {
@@ -37,6 +41,8 @@ export function parseLinkCondition(text: string): LinkCondition | null {
   if (text === 'vanes:all') return { kind: 'vanes' };
   if (text === 'cleared') return { kind: 'cleared' };
   if (text === 'sealed') return { kind: 'sealed' };
+  const rt = /^rifttier:(\d+)$/.exec(text);
+  if (rt) return { kind: 'rifttier', tier: Number(rt[1]) };
   const m = /^timer:(\d+(?:\.\d+)?):(braziers:all|switch:S)$/.exec(text);
   if (m) {
     const s = Number(m[1]);
@@ -105,7 +111,9 @@ export function linkMet(state: GameState, door: string): boolean {
     any = true;
     const c = parseLinkCondition(l.condition);
     if (c === null || c.kind === 'sealed') return false;
-    if (c.kind === 'cleared') {
+    if (c.kind === 'rifttier') {
+      if (!riftTierLinkMet(state, c.tier)) return false;
+    } else if (c.kind === 'cleared') {
       if (!roomFlags(state.world, state.room.id).cleared) return false;
     } else if (!allOn(state.objects, conditionKinds(c))) return false;
   }

@@ -3,15 +3,19 @@
  * - 'walk' (default): room.solid blocks (moveCircle on the room).
  * - 'float' (Frost Wisp): only shot-blocking cells block, so it crosses water, pits and bramble;
  *   moveCircle runs on a view of the room whose `solid` mask is room.shotSolid.
- * - 'swim' (Bog Lurker): only water cells are open; it moves only to points whose cell is water
- *   (sliding along one axis when the straight move would leave it), never with moveCircle.
+ * - 'swim' (Bog Lurker, M8 Glasspike): only water cells are open; it moves only to points whose
+ *   cell is water (sliding along one axis when the straight move would leave it), never with
+ *   moveCircle, except while Stranded (rule 31), when it crawls over anything shots cross
+ *   (actors/strand.ts). Its route through the water: actors/swim.ts.
  * - 'fixed' (Brood Kiln): never moves.
  * Floating and fixed kinds ignore the ground (no Wet, Oiled, burning ground, charge or falls);
  * swimmers read the ground but never fall (actors/terrain.ts).
  */
 import { enemies, enemyDef, type EnemyKind } from '../../../data/enemies';
 import type { EnemyDef, Locomotion } from '../../../data/enemyTypes';
-import { materialByCode } from '../../../data/materials';
+import { MAT, materialByCode, type MaterialId } from '../../../data/materials';
+import { wadeGrounds } from '../../../data/enemiesFen';
+import type { Grid } from '../grid/grid';
 import type { GameState } from '../state';
 import type { Room } from '../world/room';
 import type { CircleBody } from './collision';
@@ -25,13 +29,28 @@ export function ignoresGround(kind: EnemyKind): boolean {
   return traitsOf(kind).groundless;
 }
 
-/** True if the cell under (x, y) is water (shallow, deep or oily). Outside the grid: false. */
+/**
+ * True if cell i is water a swimmer can be in: shallow or deep, oily or not, map or temporary.
+ * The one place swimmers and rule 31 ask "is this cell water" (M8): borrowed water (Tide,
+ * DESIGN §6.5) is water by its material, so it counts, and stops counting when it returns.
+ */
+export function isWaterCell(g: Grid, i: number): boolean {
+  return materialByCode[g.ground[i]!]!.water !== null;
+}
+
+/** True if cell i is frozen water (ice, ice bridge): a swimmer whose water froze is trapped, not Stranded. */
+export function isIceCell(g: Grid, i: number): boolean {
+  const c = g.ground[i]!;
+  return c === MAT.ice || c === MAT.ice_bridge;
+}
+
+/** True if the cell under (x, y) is water (isWaterCell). Outside the grid: false. */
 export function isWaterAt(state: GameState, x: number, y: number): boolean {
   const g = state.grid;
   const cx = Math.floor(x);
   const cy = Math.floor(y);
   if (cx < 0 || cy < 0 || cx >= g.width || cy >= g.height) return false;
-  return materialByCode[g.ground[cy * g.width + cx]!]!.water !== null;
+  return isWaterCell(g, cy * g.width + cx);
 }
 
 // One floating view per room: the same arrays, with shotSolid standing in for solid. The masks
@@ -89,7 +108,19 @@ export interface KindTraits {
   groundless: boolean;
   /** Has per-tick M4 chemistry or boss bookkeeping (ai/passive.ts). */
   passive: boolean;
+  /** Floats, but charge in the water or metal under it reaches it (M8 Sparkfly). */
+  chargeBelow: boolean;
+  /** Grounds whose slow it ignores, by material code (M8: the Spark Heron wades); null: none. */
+  unslowed: Uint8Array | null;
 }
+
+function groundTable(ids: readonly MaterialId[]): Uint8Array {
+  const t = new Uint8Array(materialByCode.length);
+  for (const id of ids) t[MAT[id]] = 1;
+  return t;
+}
+
+const WADE_TABLE = groundTable(wadeGrounds);
 
 function computeTraits(def: EnemyDef): KindTraits {
   const locomotion = def.locomotion ?? 'walk';
@@ -99,12 +130,21 @@ function computeTraits(def: EnemyDef): KindTraits {
     locomotion,
     swims,
     floats: locomotion === 'float',
+    chargeBelow: c?.chargeFromBelow === true,
+    unslowed: c?.wades === true ? WADE_TABLE : null,
     groundless: locomotion === 'float' || locomotion === 'fixed',
     passive:
       swims ||
       def.isBoss === true ||
+      def.behavior.kind === 'charger' ||
       (c !== undefined &&
-        (c.alwaysWet === true || c.oilTrailRadius !== undefined || c.explodes !== undefined)),
+        (c.alwaysWet === true ||
+          c.oilTrailRadius !== undefined ||
+          c.explodes !== undefined ||
+          c.conductorBody !== undefined ||
+          c.hotShell !== undefined ||
+          c.bell !== undefined ||
+          c.lightLure !== undefined)),
   };
 }
 

@@ -17,6 +17,9 @@ import { afterPlayerHit, hasHitRules, playerHitPacket } from '../hero/effectsCom
 import type { FormId } from '../../../data/runes';
 import { OWNER } from '../../../data/materials';
 import { riftRules } from '../world/rift/rules';
+import { afterFenHit } from '../actors/fenChemistry';
+import { lanternKill } from '../hero/effectsFen';
+import { regionDamageMult } from '../actors/regionDifficulty';
 
 /** How a hit was delivered, besides its damage. */
 export interface HitInfo {
@@ -125,9 +128,12 @@ function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInf
   if (res.crit) addHitstop(state, state.tuning.feel.hitstopCrit);
   if (rules) afterPlayerHit(state, e, res, info);
   if (e.life <= 0 && killEnemy(state, e, info.sourceId, 'hit')) {
+    if (rules) lanternKill(state, e, res); // M8 Sparkfly Lantern.
     if (info.killHitstop !== undefined) addHitstop(state, info.killHitstop);
     return res;
   }
+  afterFenHit(state, e, res, info.sourceId); // M8: a Bellows Toad's gas.
+  if (e.dead) return res;
   afterHit(state, e, packet, res, info);
   return res;
 }
@@ -207,7 +213,10 @@ function hitPlayer(state: GameState, p: PlayerState, packet: DamagePacket, info:
   // Rift Brutal (M6): monsters' hits deal more; world hazards are nobody's.
   // M7: and the tier's damage growth (data/rift.ts riftTierScaling).
   const rr = riftRules(state);
-  const more = (1 + rr.monsterDamageMore) * rr.tierDamageMult;
+  // M8: and the Fen's tier 8 scaling for its monsters (data/progression.ts regionDifficulty).
+  const region =
+    info.sourceId > PLAYER_ID && info.owner !== OWNER.world ? regionDamageMult(state, info.sourceId) : 1;
+  const more = (1 + rr.monsterDamageMore) * rr.tierDamageMult * region;
   if (more !== 1 && info.sourceId > PLAYER_ID && info.owner !== OWNER.world)
     side.takenMult = (side.takenMult ?? 1) * more;
   const res = resolveHit(packet, side, state.combatRng);

@@ -102,6 +102,64 @@ export const fuseParts = {
     values: {},
     element: 'fire',
   },
+  // M8: the Glasswater Fen's parts.
+  pike_scale: {
+    id: 'pike_scale',
+    name: 'Pike Scale',
+    dropsFrom: 'glasspike',
+    text: "You aren't slowed by shallow water or mud",
+    values: {},
+    element: 'storm',
+  },
+  copper_carapace: {
+    id: 'copper_carapace',
+    name: 'Copper Carapace',
+    dropsFrom: 'copperback',
+    text: 'Take {less} less damage from charged water and metal',
+    values: { less: { base: 0.3, format: 'pct' } },
+  },
+  heron_plume: {
+    id: 'heron_plume',
+    name: 'Heron Plume',
+    dropsFrom: 'spark_heron',
+    text: '{more} more damage with charge you create',
+    values: { more: { base: 0.25, format: 'pct' } },
+  },
+  slag_core: {
+    id: 'slag_core',
+    name: 'Slag Core',
+    dropsFrom: 'slagshell',
+    text: 'Your Fire hits on Wet enemies deal {more} more damage',
+    values: { more: { base: 0.3, format: 'pct' } },
+  },
+  sparkfly_lantern: {
+    id: 'sparkfly_lantern',
+    name: 'Sparkfly Lantern',
+    dropsFrom: 'sparkfly',
+    text: 'Enemies you kill while they stand in water release your charge into it ({share} of the killing hit)',
+    values: { share: { base: 0.5, format: 'pct' } },
+  },
+  mire_horn: {
+    id: 'mire_horn',
+    name: 'Mire Horn',
+    dropsFrom: 'mire_bull',
+    text: 'Enemies on mud or in shallow water take {more} more damage from you',
+    values: { more: { base: 0.15, format: 'pct' } },
+  },
+  toad_bellows: {
+    id: 'toad_bellows',
+    name: 'Toad Bellows',
+    dropsFrom: 'bellows_toad',
+    text: 'Your gusts last {seconds} longer and cover {area} more area',
+    values: { seconds: { base: 1, format: 'sec' }, area: { base: 0.3, format: 'pct' } },
+  },
+  bell_bronze: {
+    id: 'bell_bronze',
+    name: 'Bell Bronze',
+    dropsFrom: 'bellshell',
+    text: 'Shocked enemies take {more} more Physical damage (Tide and Gale hits)',
+    values: { more: { base: 0.15, format: 'pct' } },
+  },
 } satisfies Record<string, FusePartDef>;
 
 export type FusePartId = keyof typeof fuseParts;

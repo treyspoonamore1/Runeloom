@@ -1,6 +1,7 @@
 import type { EnemyDef } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
 import { attackSpeedMult } from '../actors/rarity';
+import { isWaterAt } from '../actors/locomotion';
 import { startEnemyAttack } from '../combat/enemyAttacks';
 import type { GameState } from '../state';
 import { setMode, stop, toPlayer } from './common';
@@ -32,7 +33,11 @@ export function tryEveryAttack(state: GameState, e: Enemy, def: EnemyDef): boole
   for (let k = 0; k < extra.length && k < cds.length; k++) {
     const a = extra[k]!;
     if (a.every === undefined || cds[k]! > 0 || toPlayer.gap > a.range) continue;
-    if (!startEnemyAttack(state, e, toPlayer.ux, toPlayer.uy, a)) return false;
+    // M8: the Spark Heron spits only at a dry player; targeted cadenced attacks aim at the player.
+    const p = state.player;
+    if (a.onlyDryTarget && isWaterAt(state, p.x, p.y)) continue;
+    const aim = a.targeted ? { x: p.x, y: p.y } : undefined;
+    if (!startEnemyAttack(state, e, toPlayer.ux, toPlayer.uy, a, aim)) return false;
     cds[k] = a.every / attackSpeedMult(e);
     stop(e);
     setMode(e, 'windup');

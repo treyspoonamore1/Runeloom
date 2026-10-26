@@ -3,6 +3,14 @@
  * second; resistances are fractions (0.75 = 75%).
  */
 import type { AilmentKind, DamageAmounts, DamageType, ProjectileDef } from './combatTypes';
+import type {
+  ChargerBehavior,
+  FenAttackTerrainDef,
+  FenChemistry,
+  LeapDef,
+  LeaperBehavior,
+  SwimmerDef,
+} from './enemyTypesM8';
 
 /**
  * Attack area relative to the attacker. `offset` is how far forward of the enemy's center the
@@ -26,7 +34,9 @@ export type AttackTerrainDef =
    * Matriarch's globs): the oil is volatile tar, and fire on it is world-owned whoever lit it, so
    * it hurts everyone (CONTENT §5).
    */
-  | { kind: 'oil'; radius: number; tar?: boolean };
+  | { kind: 'oil'; radius: number; tar?: boolean }
+  /** M8: borrowed water (Spark Heron's spit), an enemy gust (Bellows Toad's croak). */
+  | FenAttackTerrainDef;
 
 /**
  * A dash attack (M4: Bog Lurker lunge, Cinder Warden charge): on landing, the enemy runs along
@@ -81,6 +91,13 @@ export interface AttackDef {
    * timer (EnemyAI.cooldowns). The first use waits a random 0–100% of it after aggro.
    */
   every?: number;
+  /** The attack is a leap to the shape's origin, hitting on touchdown (M8, Glasspike). */
+  leap?: LeapDef;
+  /**
+   * M8: a cadenced attack (`every`) used only when the player's cell isn't water (the Spark
+   * Heron spits puddles under a dry player). Targeted cadenced attacks aim at the player.
+   */
+  onlyDryTarget?: boolean;
 }
 
 /**
@@ -130,7 +147,10 @@ export type BehaviorDef =
    */
   | { kind: 'spawner'; spawn: string; count: number; interval: number; maxAlive: number; distance: number }
   /** A boss with its own state machine (src/sim/ai/bosses). */
-  | { kind: 'boss'; boss: 'tar_matriarch' | 'cinder_warden' };
+  | { kind: 'boss'; boss: 'tar_matriarch' | 'cinder_warden' }
+  /** M8: Glasspike (ai/leaper.ts), Mirebull (ai/charger.ts); data/enemyTypesM8.ts. */
+  | LeaperBehavior
+  | ChargerBehavior;
 
 /** How a kind moves over the grid (M4). Missing means 'walk'. */
 export type Locomotion =
@@ -143,8 +163,10 @@ export type Locomotion =
    */
   | 'float'
   /**
-   * Swims (Bog Lurker): only water cells (shallow, deep, oily) are open to it. It never falls.
-   * When its water freezes under it, it is trapped until the ice thaws.
+   * Swims (Bog Lurker, Glasspike, M8 the Glasswater Coil): only water cells (shallow, deep,
+   * oily, borrowed) are open to it, and it follows the water toward its goal (actors/swim.ts).
+   * It never falls. When its water freezes under it, it is trapped until the ice thaws; when its
+   * cell stops being water any other way it is Stranded (rule 31, actors/strand.ts).
    */
   | 'swim'
   /** Never moves and ignores the ground (Brood Kiln, which sits inside its own solid tile). */
@@ -188,9 +210,11 @@ export interface EnemyDef {
   locomotion?: Locomotion;
   /** Terrain behavior (CONTENT §5 "Chemistry", M3). Missing means none. */
   chemistry?: EnemyChemistry;
+  /** Swimmers (M8): per-kind overrides of rule 31's crawl (tuning.swim). */
+  swimmer?: SwimmerDef;
 }
 
-export interface EnemyChemistry {
+export interface EnemyChemistry extends FenChemistry {
   /**
    * Always burning (Tinderling): lights the flammable cells it crosses as an enemy-owned fire
    * (rule 22) and leaves fire where it dies. While Wet it is out: stunned for `dousedStun` s when

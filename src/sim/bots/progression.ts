@@ -30,6 +30,7 @@ import { productionMult, scrapPerMinute, maxRiftTier, ashForRekindle, mutationCo
 import type { BuildingId, MutationId } from '../meta/types';
 import type { GameState } from '../state';
 import type { RoomSource } from '../world/worldState';
+import { riftGate } from '../../../data/riftGate';
 import { runCampaign } from './campaign';
 import { applyReferenceBuild } from './campaignPlan';
 import {
@@ -158,6 +159,8 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
   if (state.room.id !== regionRooms.k10)
     throw new Error(`progression: the campaign ended in ${state.room.id}`);
   if (!state.hero.hearth.lit) throw new Error('progression: the Warden did not light the Hearth');
+  // M8 gate: the bot is past the Fen. Mark the Coil dead so tiers above 8 open (the Fen has no bot route).
+  if (!state.world.bossesDefeated.includes(riftGate.boss)) state.world.bossesDefeated.push(riftGate.boss);
   const hero = state.hero;
   const h = hero.hearth;
   let play = pacingMinutes(campaign) * 60;

@@ -10,6 +10,8 @@ import { createBossState, createEnemySpecial, type BossState, type EnemySpecial 
 import type { GameState } from '../state';
 import { riftRules } from '../world/rift/rules';
 import { riftBossKinds } from '../../../data/progression';
+import { initFenSpecial } from './fenChemistry';
+import { regionLifeMult } from './regionDifficulty';
 
 /** Id of the player in events, `targetId`, `ownerId` and `hitIds`. Entity ids start at 1. */
 export const PLAYER_ID = 0;
@@ -196,6 +198,8 @@ export function spawnEnemy(
   // Rift prefixes (M6): Hardened, Resolute, Hasty; the tier's life growth (M7).
   const rift = riftRules(state);
   life *= (1 + rift.monsterLifeMore) * rift.tierLifeMult;
+  // M8: Fen and Foundry rooms apply the tier 8 rift scaling (data/progression.ts regionDifficulty).
+  if (!boss) life *= regionLifeMult(state);
   const resist = { ...def.resist };
   if (rift.monsterResistAdd !== 0)
     for (const k of ['fire', 'frost', 'storm'] as const) resist[k] += rift.monsterResistAdd;
@@ -212,6 +216,7 @@ export function spawnEnemy(
   const special = createEnemySpecial();
   special.submerged = def.behavior.kind === 'lurker';
   special.parentId = opts.parentId ?? -1;
+  initFenSpecial(special, def);
   const e: Enemy = {
     id: state.nextId++,
     kind,

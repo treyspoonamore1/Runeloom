@@ -7,6 +7,7 @@ import type { HeroEvent } from './hero/events';
 import type { WorldEvent } from './world/worldEvents';
 import type { HearthEvent } from './meta/events';
 import type { EnemyEvent } from './enemyEvents';
+import type { EnemyEventM8 } from './enemyEventsM8';
 
 /**
  * Things that happened during one step, for render and audio (hit flash, damage numbers,
@@ -323,6 +324,7 @@ export type SimEvent =
   | { type: 'blindChanged'; id: number; blind: boolean; x: number; y: number }
   /** M4 enemies and bosses: see enemyEvents.ts. */
   | EnemyEvent
+  | EnemyEventM8
   /**
    * An oil barrel exploded at (x, y) (cells): a fire burst of `radius` cells dealing `damage`
    * Fire (already scaled by area level), world-owned. The entity code applies the damage from

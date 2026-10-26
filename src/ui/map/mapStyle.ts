@@ -48,6 +48,10 @@ const mapCss = `
 .rf-list { display: flex; flex-direction: column; gap: calc(var(--u) * 1); }
 .rf-sigil { display: flex; flex-direction: column; gap: calc(var(--u) * 0.4); padding: calc(var(--u) * 1); border-radius: calc(var(--u) * 0.8); background: rgba(42, 34, 54, 0.85); box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #b48cff; }
 .rf-sigil.blocked { box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #4a4270; }
+.rf-sigil.locked { opacity: 0.55; filter: grayscale(0.85); }
+.rf-sigil.locked .rf-open { cursor: help; }
+.rf-lock { width: calc(var(--u) * 2.2); height: calc(var(--u) * 2.2); vertical-align: -0.2em; margin-right: calc(var(--u) * 0.6); color: #9a93b8; }
+.rf-locked-line { margin: 0; font-size: calc(var(--u) * 1.5); color: #b9b0d8; font-style: italic; }
 .rf-head { display: flex; justify-content: space-between; align-items: baseline; gap: calc(var(--u) * 1); }
 .rf-head b { color: #e6d8ff; }
 .rf-head small { color: var(--sand); white-space: nowrap; }

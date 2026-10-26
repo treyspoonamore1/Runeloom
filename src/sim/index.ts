@@ -325,3 +325,16 @@ export { strikePoint } from './ai/target';
 export { floodArena } from './ai/bosses/flood';
 export { brazierCenters, stepBrazierStorm } from './ai/bosses/braziers';
 export { phaseThresholds, enterPhase, setSuperheat } from './ai/bosses/phases';
+// M8: swimmers (routes, rule 31) and the Glasswater Fen enemies.
+export { isWaterCell, isIceCell } from './actors/locomotion';
+export { planRoute, swimToward, searchFrom, headFor } from './actors/swim';
+export { isStranded, isAirborne, strand, stepSwimmer, strandedTakenMult } from './actors/strand';
+export { fenTakenMult, isHot } from './actors/fenChemistry';
+export { ringBell } from './actors/fenShells';
+export { regionScaling } from './actors/regionDifficulty';
+export { landingPoint } from './ai/leaper';
+export { planCharge } from './ai/charger';
+export { nearestLight } from './ai/lure';
+export { chargeDamageMult, playerGustScale, playerUnslowedGrounds } from './hero/effectsFen';
+export type { FenSpecial } from './actors/enemyStateM8';
+export type { EnemyEventM8 } from './enemyEventsM8';

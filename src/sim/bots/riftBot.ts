@@ -34,6 +34,7 @@ import { makeSigil } from '../items/sigils';
 import { step } from '../step';
 import type { GameState } from '../state';
 import { WORLD_SOURCE_ID } from '../grid/cells';
+import { riftGate } from '../../../data/riftGate';
 import { createAdventure } from '../world/adventure';
 import { touchLoomStone } from '../world/objectTouch';
 import { generateRift, type RiftRoomPlan } from '../world/rift/generate';
@@ -179,6 +180,8 @@ export function runRiftBot(opts: RiftBotOptions): RiftRunLog {
     hero: structuredClone(opts.hero ?? riftCharacter(opts.tier)),
     startRoomId: startRoom,
   });
+  // M8 gate: the bot is past the Fen. Mark the Coil dead so tiers above 8 open (the Fen has no bot route).
+  if (!state.world.bossesDefeated.includes(riftGate.boss)) state.world.bossesDefeated.push(riftGate.boss);
   syncWeaveSpindle(state);
   refreshHero(state);
   applyReferenceBuild(state, { frostLmb: opts.build === 'frost', craft: false });

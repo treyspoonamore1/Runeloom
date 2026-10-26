@@ -23,6 +23,10 @@ import { stepKite } from './kite';
 import { stepShield } from './shield';
 import { stepSwarm } from './swarm';
 import { avoidHazards, markHazardTiles } from './hazards';
+import { stepLeaper } from './leaper';
+import { stepCharger } from './charger';
+import { stepLure } from './lure';
+import { avoidWaterWhileHot } from './fenSteer';
 
 export { aggro } from './common';
 
@@ -76,6 +80,10 @@ export function prepareEnemyAI(state: GameState): void {
  * their own loops. Others also use their cadenced extraAttacks (ai/extras.ts: the Frost Wisp's
  * frost line) before their behavior, and 'lurker' (ai/lurker.ts) joins the behaviors. A
  * trapped Bog Lurker does nothing ('trapped'); a running dash keeps its velocity.
+ *
+ * M8: 'leaper' (Glasspike, ai/leaper.ts) and 'charger' (Mirebull, ai/charger.ts) join them; a
+ * Stranded swimmer (rule 31) doesn't think ('stranded'; its crawl is actors/strand.ts); a
+ * Sparkfly near a light circles it ('lured', ai/lure.ts); a Hot Slagshell steers off water.
  */
 export function stepEnemyAI(state: GameState, e: Enemy): void {
   if (state.cheats.noAI) return;
@@ -93,6 +101,11 @@ export function stepEnemyAI(state: GameState, e: Enemy): void {
   if (e.special.trapped) {
     stop(e);
     setMode(e, 'trapped');
+    return;
+  }
+  // M8 rule 31: Stranded, it can't attack; it lies still, then crawls (actors/strand.ts sets that).
+  if (e.special.stranded) {
+    setMode(e, 'stranded');
     return;
   }
 
@@ -125,6 +138,9 @@ export function stepEnemyAI(state: GameState, e: Enemy): void {
   }
 
   if (tryEveryAttack(state, e, def)) return;
+  // M8: a Sparkfly drawn to a light circles it instead (ai/lure.ts).
+  const lure = def.chemistry?.lightLure;
+  if (lure !== undefined && stepLure(state, e, lure, def.attack)) return;
   switch (b.kind) {
     case 'lurker':
       stepLurker(state, e, b, def.attack);
@@ -138,8 +154,17 @@ export function stepEnemyAI(state: GameState, e: Enemy): void {
     case 'kite':
       stepKite(state, e, b, def.attack, def);
       break;
+    case 'leaper':
+      stepLeaper(state, e, b, def.attack);
+      break;
+    case 'charger':
+      stepCharger(state, e, b, def.attack);
+      break;
   }
-  if (e.attack.phase === 'none') avoidHazards(state, e);
+  if (e.attack.phase === 'none') {
+    avoidHazards(state, e);
+    avoidWaterWhileHot(state, e);
+  }
 }
 
 // Scratch for the pack-alert query.

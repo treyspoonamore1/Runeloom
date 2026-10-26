@@ -18,6 +18,7 @@ import { isWet } from './terrainState';
 import { explodeHulk } from './hulkBlast';
 import { flare } from '../ai/bosses/flare';
 import { deathFireSquare } from './rarity';
+import { fenDeathTerrain, fenTakenMult } from './fenChemistry';
 
 export function chemistryOf(e: Enemy): EnemyChemistry | undefined {
   return enemyDef(e.kind).chemistry;
@@ -36,10 +37,11 @@ export function dousedTakenMult(e: Enemy): number {
 
 /**
  * Every damage-taken multiplier on an enemy: doused (Tinderling) × Superheated (Cinder Warden,
- * tuning.bosses.superheatDamageTaken).
+ * tuning.bosses.superheatDamageTaken) × the Fen's (M8, actors/fenChemistry.ts: Hot or Cracked,
+ * shelled or rung open, bogged, Stranded).
  */
 export function enemyTakenMult(state: GameState, e: Enemy): number {
-  const m = dousedTakenMult(e);
+  const m = dousedTakenMult(e) * fenTakenMult(state, e);
   return e.boss !== null && e.boss.superheated ? m * state.tuning.bosses.superheatDamageTaken : m;
 }
 
@@ -112,6 +114,7 @@ export function deathTerrain(state: GameState, e: Enemy, killerId: number, shatt
     if (f !== undefined) flare(state, e, f, false);
     else explodeHulk(state, e, false);
   }
+  fenDeathTerrain(state, e, killerId); // M8: a Sparkfly's pop.
   const square = e.mods.length > 0 ? deathFireSquare(e) : 0;
   if (square > 0) incendiary(state, e, square);
   const b = chemistryOf(e)?.alwaysBurning;

@@ -3,6 +3,7 @@
  * The tier (I to III) is drawn by the frame (itemArt.tsx), not here.
  */
 import { Cased, HI, INK, S, S1, Sparkle, type Shape } from './ink';
+import { FEN_PART_ART } from './partsFen';
 
 function tinderTooth() {
   return (
@@ -179,6 +180,7 @@ export const PART_ART: Record<string, Shape> = {
   kiln_chitin: kilnChitin,
   matriarchs_sac: matriarchsSac,
   cinder_heart: cinderHeart,
+  ...FEN_PART_ART,
 };
 
 /** A part we have no art for: a plain bone shard (the old slot icon's shape). */

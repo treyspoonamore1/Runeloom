@@ -67,6 +67,12 @@ export interface StatLine {
  * - projectile_speed_inc: Bolt and Lob projectiles this much faster.
  * - ice_conducts: ice conducts your Storm, as Stormglass, without its damage (the Stormglass
  *   Memory mutation, M7; src/sim/meta/mutations.ts).
+ * - M8 Fen Fuse parts (src/sim/hero/effectsFen.ts): pike_scale (> 0: no slow on shallow water
+ *   and mud), charge_taken_less (less damage from charge not yours), charge_damage_more (your
+ *   charge deals more), wet_fire_more (your Fire on Wet enemies), kill_charge (kills in water
+ *   release your charge, this fraction of the killing hit), mire_more (your damage to enemies on
+ *   mud or in shallow water), gust_seconds_add / gust_area_inc (your gusts), shocked_physical_more
+ *   (your Physical on Shocked enemies).
  */
 export const EFFECT_KEYS = [
   'wildheart',
@@ -87,6 +93,15 @@ export const EFFECT_KEYS = [
   'projectile_speed_inc',
   'ice_conducts',
   'kindred_flame',
+  'pike_scale',
+  'charge_taken_less',
+  'charge_damage_more',
+  'wet_fire_more',
+  'kill_charge',
+  'mire_more',
+  'gust_seconds_add',
+  'gust_area_inc',
+  'shocked_physical_more',
 ] as const;
 export type EffectKey = (typeof EFFECT_KEYS)[number];
 
