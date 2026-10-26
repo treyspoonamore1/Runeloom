@@ -44,11 +44,15 @@ export const tiles = [
   { char: 'f', id: 'furnace_vent', walk: false, blocksShots: false },
   { char: 'T', id: 'pressure_plate', walk: true, blocksShots: false, marker: true },
   { char: 'D', id: 'door', walk: false, blocksShots: true },
+  // M8: a second linked door with its own @link conditions (G7's wind-vane door, F8's vault).
+  { char: 'd', id: 'side_door', walk: false, blocksShots: true },
   { char: 'K', id: 'locked_door', walk: false, blocksShots: true },
   { char: 'k', id: 'key_chest', walk: false, blocksShots: true, marker: true },
   { char: 'G', id: 'big_key_door', walk: false, blocksShots: true },
   { char: 'g', id: 'big_key_chest', walk: false, blocksShots: true, marker: true },
   { char: 'R', id: 'rune_shrine', walk: false, blocksShots: true, marker: true },
+  // M8: a chest holding the room's data/progression.ts roomChests contents (G7's Windward Cache).
+  { char: '$', id: 'loot_chest', walk: false, blocksShots: true, marker: true },
   // The Hearth's stations (M7, data/hearth.ts STATION_IDS): solid; Interact (F) next to one uses it.
   { char: 's', id: 'spindlewright', walk: false, blocksShots: true, marker: true },
   { char: 'r', id: 'runekeeper', walk: false, blocksShots: true, marker: true },

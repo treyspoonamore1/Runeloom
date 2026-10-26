@@ -9,12 +9,13 @@
  *
  * The runes go straight into the pouch (no floor drop to miss), one 'runeUnlocked' per newly
  * unlocked rune and one 'rewardGranted' per item. Calling it again for a paid room does nothing.
+ * Fen and Foundry runes (M8) arrive at data/progression.ts fenRuneLevel.
  *
  * The dungeon-item moment (DESIGN §10.2): a reward that unlocks an element rune for the first time
  * in the save (Frost at the K6 shrine, Storm from the Cinder Warden) also sends 'elementUnlocked'
  * at `from`. Unlocks are saved with the hero, so it is sent once per element per save.
  */
-import { guaranteedRunes, type RegionRoomId } from '../../../data/progression';
+import { guaranteedRuneLevel, guaranteedRunes, type WorldRoomId } from '../../../data/progression';
 import { runes } from '../../../data/runes';
 import { emit } from '../events';
 import type { GameState } from '../state';
@@ -35,9 +36,10 @@ export function onRoomCleared(state: GameState, roomId: string, from?: RewardFro
   if (flags.rewardsPaid) return;
   flags.rewardsPaid = true;
   const at = from ?? { x: state.player.x, y: state.player.y, source: 'room' };
-  for (const rune of guaranteedRunes[roomId as RegionRoomId] ?? []) {
+  const level = guaranteedRuneLevel(roomId);
+  for (const rune of guaranteedRunes[roomId as WorldRoomId] ?? []) {
     const fresh = !state.hero.unlockedRunes.includes(rune);
-    const content: LootContent = { kind: 'rune', rune: makeRune(state.hero, rune) };
+    const content: LootContent = { kind: 'rune', rune: makeRune(state.hero, rune, level) };
     grantContent(state, content);
     emit(state, { type: 'rewardGranted', roomId, content });
     if (fresh && runes[rune].kind === 'element')

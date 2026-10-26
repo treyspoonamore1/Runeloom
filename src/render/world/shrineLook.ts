@@ -1,5 +1,5 @@
 import type { Sprite } from 'pixi.js';
-import { guaranteedRunes, type RegionRoomId } from '../../../data/progression';
+import { guaranteedRunes, type WorldRoomId } from '../../../data/progression';
 import { getRune } from '../../../data/runes';
 import type { WorldObject } from '../../sim/world/objects';
 import type { Atlas } from '../atlas';
@@ -14,7 +14,7 @@ const TAU = Math.PI * 2;
 
 /** The rune a room's shrine holds: its first element rune, else its first guaranteed rune. */
 export function shrineRune(roomId: string): string {
-  const list = guaranteedRunes[roomId as RegionRoomId] ?? [];
+  const list = guaranteedRunes[roomId as WorldRoomId] ?? [];
   return list.find((r) => getRune(r)?.kind === 'element') ?? list[0] ?? 'frost';
 }
 

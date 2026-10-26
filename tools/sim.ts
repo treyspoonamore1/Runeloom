@@ -20,7 +20,7 @@
  *   npm run sim -- --rift-ladder [--seed 1] [--seeds 3] [--target 8] [--verbose] [--json]
  *       M6.5: a new game to the Warden, then the rift ladder with found gear (tools/lib/riftCli.ts).
  *   npm run sim -- --playtest-saves [--seed 1] [--tier 7] [--out dir]
- *       Writes data/playtest/after_warden.json and mid_climb.json (tools/lib/playtestSaves.ts).
+ *       Writes data/playtest/after_warden.json, mid_climb.json and fen_start.json (tools/lib/playtestSaves.ts).
  *   npm run sim -- --progression [--seed 1] [--seeds 3] [--rekindles 1] [--variants play,offline,nohearth]
  *                  [--sessions 1.5,16] [--rekindle-stall 3] [--rekindle-after 9] [--max-hours 40] [--out dir] [--no-hearth] [--verbose] [--json]
  *       M7: a new game to the Warden, then rifts with a model player who uses the Hearth, through
@@ -93,7 +93,7 @@ runCli(() => {
     progression: { kind: 'boolean' },
     'playtest-saves': {
       kind: 'boolean',
-      help: 'write data/playtest/after_warden.json and mid_climb.json (--seed, --tier (default 7), --out dir)',
+      help: 'write data/playtest/after_warden.json, mid_climb.json and fen_start.json (--seed, --tier (default 7), --out dir)',
     },
     rekindles: { kind: 'number', default: 1, help: '--progression: Rekindles to play through' },
     variants: { kind: 'string', help: '--progression: play,offline,nohearth (default play,offline)' },

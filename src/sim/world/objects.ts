@@ -26,10 +26,14 @@
  * - wind_vane (`Y`, M8, grid/wind.ts stepVanes): `timer` counts how long wind (a gust or room
  *   wind) has covered a cell touching its tile; at tuning.wind.vaneSeconds it spins for good.
  * - pressure_plate (`T`): pressed while the player's, an enemy's or a block's center is on it.
- * - door (`D`, objectLinks.ts): opens for good when its `@link` conditions all hold.
+ * - door (`D`, objectLinks.ts): opens for good when its `@link` conditions all hold. M8: `d` is a
+ *   second door kind-alike with its own @link lines (its `link` is 'd'), so one room can hold two
+ *   doors with different conditions (G7: braziers and a wind vane).
  * - locked_door (`K`) / big_key_door (`G`) (objectTouch.ts): open on touch with a small key (used
  *   up) or the big key of the room's dungeon.
  * - key_chest (`k`) / big_key_chest (`g`): open on touch; give a small key or the big key.
+ * - loot_chest (`$`, M8, objectTouch.ts): opens on touch and pays the room's roomChests contents
+ *   (data/progression.ts: a Pattern Seed, a Fuse part, currency) once per save.
  * - heart_seed (`H`) / loom_shard (`L`): taken on touch; +1 hero.heartSeeds / loomShards.
  * - loom_stone (`x`): activates on touch and becomes the respawn point.
  * - rune_shrine (`R`, objectTouch.ts): an altar holding the room's dungeon item. Touching it pays
@@ -71,6 +75,8 @@ export type ObjectKind =
   | 'loom_shard'
   | 'loom_stone'
   | 'rune_shrine'
+  /** M8 `$`: a chest holding the room's data/progression.ts roomChests contents; opens on touch. */
+  | 'loot_chest'
   /** The Hearth's stations (M7, world/hub.ts): one kind per data/hearth.ts StationId. */
   | StationId;
 
@@ -122,6 +128,7 @@ export const OBJECT_KIND_BY_CHAR: Readonly<Record<string, ObjectKind>> = {
   Y: 'wind_vane',
   T: 'pressure_plate',
   D: 'door',
+  d: 'door',
   K: 'locked_door',
   G: 'big_key_door',
   k: 'key_chest',
@@ -130,6 +137,7 @@ export const OBJECT_KIND_BY_CHAR: Readonly<Record<string, ObjectKind>> = {
   L: 'loom_shard',
   x: 'loom_stone',
   R: 'rune_shrine',
+  $: 'loot_chest',
   s: 'spindlewright',
   r: 'runekeeper',
   C: 'cartographer',
@@ -140,9 +148,15 @@ export const OBJECT_KIND_BY_CHAR: Readonly<Record<string, ObjectKind>> = {
   V: 'salvage_loom',
 };
 
-/** The legend character of an object kind (the inverse of OBJECT_KIND_BY_CHAR). */
+/**
+ * The legend character of an object kind (the inverse of OBJECT_KIND_BY_CHAR). A kind with two
+ * characters (doors: `D` and `d`) maps to its first one; objectGround.ts objectChar gives an
+ * object's own character.
+ */
 export const OBJECT_CHAR = Object.fromEntries(
-  Object.entries(OBJECT_KIND_BY_CHAR).map(([c, k]) => [k, c]),
+  Object.entries(OBJECT_KIND_BY_CHAR)
+    .reverse()
+    .map(([c, k]) => [k, c]),
 ) as Readonly<Record<ObjectKind, string>>;
 
 /**

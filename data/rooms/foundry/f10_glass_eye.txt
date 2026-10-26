@@ -1,0 +1,32 @@
+@id foundry/f10_glass_eye
+@name The Glass Eye
+@level 24
+@exit s foundry/f8_dry_conduit
+@spawn 1 enemy:bog_lurker 3
+@note x The Eye goes still. The Loom Stone wakes.
+@note Y The wind tugs north. The Cliffs aren't woven yet.
+@link D sealed
+##############YD################
+#..............................#
+#...~~~~~~............~~~~~~...#
+#...~~~~~~............~~~~~~...#
+#..............................#
+#.....mmm..............mmm.....#
+#.....mMm~~~~~~~~~~~~~~mMm.....#
+#.....mmm~wwwwwwwwwwww~mmm.....#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#...wwwwwwwwwww1wwwwwwwwwwww...#
+#...wwwwwwwwwwwwwwwwwwwwwwww...#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#........~wwwwwwwwwwww~........#
+#.....mmm~wwwwwwwwwwww~mmm.....#
+#.....mMm~~~~~~~~~~~~~~mMm.....#
+#.....mmm..............mmm.....#
+#..............................#
+#...~~~~~~............~~~~~~...#
+#...~~~~~~............~~~~~~...#
+#..........x...................#
+###############v################

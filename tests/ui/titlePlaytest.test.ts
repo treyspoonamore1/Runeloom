@@ -33,10 +33,11 @@ function setup(withAutosave: boolean) {
 }
 
 describe('title screen playtest starts', () => {
-  it('bundles two saves that parse', () => {
+  it('bundles three saves that parse', () => {
     expect(playtestStarts.map((s) => s.label)).toEqual([
       'After the Cinder Warden',
       'Mid-climb (tier 7, Hearth built)',
+      'Glasswater Fen (tier 8, storm door open)',
     ]);
     for (const s of playtestStarts) expect(parseSave(s.text).ok).toBe(true);
   });

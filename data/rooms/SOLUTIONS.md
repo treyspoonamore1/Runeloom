@@ -327,3 +327,265 @@ surrounds the island.
 Pass: big key taken, G opened, north exit reached. Without Frost: the chest can't be reached
 (tested). Fail case to test: casting `Bolt[Fire]` while standing on the ice bridge next to it
 melts the bridge.
+
+# Glasswater Fen and the Drowned Foundry (M8)
+
+Intended solutions for the Fen and Foundry puzzle rooms (CONTENT §13). Each one is a scripted
+solution test in `tests/sim/world/fenSolutions.test.ts` (G1–G8) or
+`tests/sim/world/foundrySolutions.test.ts` (F1–F9 and G7's Windward Cache), with an attempt
+without the first element of the room's "Needs" column that must fail. Static gating is in
+`tests/sim/world/fenRooms.test.ts`. Same conventions as above (tiles `(x, y)`, cells marked).
+
+The player is a tier 8 character: every M2–M7 rune (CONTENT §13), Tide from F6 on, Gale only after
+the Coil. Weaves fit the Twig Spindle; the tests cast with infinite mana (the puzzles aren't about
+mana) and frozen enemies. Slots in the tests: LMB `Cast > Bolt[Fire]`, RMB `Cast > Strike[]`,
+Q `Cast > Lob[Storm]`, E `Cast > Lob[Fire]` or `Cast > Lob[Frost]` unless a room says otherwise.
+
+Conduction numbers that shape these rooms (data/tuning.ts `grid`): a water charge event covers at
+most 600 cells and 40 flood-fill steps from where it starts; metal has no reach limit (2,000 cells);
+a chain hands off water ↔ metal up to 4 times (rule 13). Sealed switches (`Q`) wake only from
+charge on a cell touching them, never from a spell hit.
+
+## G1 Storm Landing: Storm the glass pond
+
+1. Arrive from K10's storm door at the south exit (24–25, 27). The Loom Stone is at (25, 24).
+2. Walk the boardwalk north to (25, 13). The glass pond (27–33, 11–15, 544 cells) is ringed by
+   reeds, so it is its own body; its switch `S` stands on a post at (31, 13), out in deep water.
+3. Cast `Lob[Storm]` anywhere in the pond, e.g. at (28, 15), its far corner from the switch. The
+   whole pond charges and the switch wakes; the east gate D (50, 6–7) opens (`switch:S`).
+4. Walk the north-shore path east and out (51, 6–7) to G2.
+
+Without Storm: Fire and Frost on the pond and the post do nothing; the gate stays shut (tested).
+The big lake around the pond is a separate body: Storming it charges only the lake.
+
+## G3 Pylon Field: hand-offs, and a melted plug
+
+Walkway A (6–20, 17–18, Q1 on its spur at (12, 10)) and walkway B (28–45, 17–18, Q2 on its spur at
+(36, 21)) both dip into the joint pool (21–27, 13–17). The third switch Q3 (41, 26) sits in a dry
+sump whose only opening is the ice-block plug (41, 25) at the bottom of the sluice pool
+(38–44, 19–24), which touches walkway B.
+
+1. From the stone causeway (24, 18), cast `Lob[Storm]` at the joint pool (24, 15). The pool's
+   charge hands off to both walkways (rule 13): Q1 and Q2 wake.
+2. Walk to the sluice pool's shallow edge (39, 23). Cast `Lob[Fire]` at the plug (41, 25): it melts
+   into shallow water that touches Q3.
+3. Cast `Lob[Storm]` at the sluice pool (41, 21). The charge floods down the meltwater to Q3. (After
+   the melt one hit in the joint pool also reaches it: pool → B → sluice → meltwater.)
+4. The vault door D (46, 17–18) opens on the Loom Shard (50, 17). The north exit (27–30, 0) to G4
+   was always open.
+
+Without Storm: the plug melts, but no switch wakes; the vault stays shut (tested). Q3 has no metal
+of its own: nothing but the plug's meltwater ever touches it, so Lob[Storm] over the sump wall can't
+skip the Fire step (notes/m8-rooms-decisions.md).
+
+## G4 Heron Lake: the soft gate
+
+The lake (4–54, 4–19) is deep glass. Its two pylons (14, 22) and (1, 3) pulse world charge every
+2 s (`@pulse 2`), glowing 0.8 s first. They stand in the old heron canal, a walled shallow sluice
+round the west of the lake: south leg (6–23, 21), south-west walkway (2–5, 21; 2, 12–20), west and
+north-west legs (2, 3–11; 2–10, 2), north walkway (11–23, 2) onto the north shore. The water legs
+take the pylons' charge (hop 1), the rusted walkways pass it on (hop 2), and the north walkway also
+charges the lake beside it (hop 3, 3–5 rows of the north end of the lake).
+
+Frost path (no pulse damage, tested): from the landing at (25, 20), cast `Lob[Frost]` at cells
+(102, 76), (102, 68), (102, 60), (102, 52), (102, 44); walk north on the ice bridge to (25, 12);
+cast at (102, 40) … (102, 8); walk to the north shore (25, 2) and exit north (30–33, 0). The north
+end of the crossing passes the lake water the north walkway charges; ice doesn't conduct.
+
+Wading: walking the canal from the landing to the north shore takes about 14 s and the player is
+hit by at least 5 pulses (6 in the test).
+
+Heart Seed (47, 11) on the islet (45–49, 8–14) ringed by deep water: from the landing at (47, 20),
+`Lob[Frost]` at cells (190, 76), (190, 68), (190, 60), walk to the seed and back. Without Frost the
+seed is out of reach (tested).
+
+## G5 Fogbank: three pools in the fog, 12 seconds
+
+Fog covers tiles (1, 1)–(54, 31). Three deep channel systems each run from the room's wall to a
+pylon islet with a sealed switch beside the pylon: A from the west wall to (14–15, 14), B from the
+north wall to (32, 6–7), C from the east wall to (42–43, 25). Each Q touches only its own pool.
+Decoy pools (3–6, 3–7), (30–34, 13–16), (47–52, 4–7), (19–22, 28–30) and a dead channel (33,
+25–32) reach no switch. The east door D (54, 16–17) wants all three within 12 s.
+
+1. From the causeway at (39, 21), cast `Lob[Storm]` at (42, 24) (pool C). The 12 s start.
+2. Run to the inner spur (19, 15) and cast at (16, 12) (pool A).
+3. Run to (30, 10) and cast at (31, 7) (pool B). About 7 s in all; the door opens.
+4. Exit east (55, 16–17) to G6. The north exit (10–11, 0) to G7 is open.
+
+Fire clears fog for 8 s, so Storming a pool and watching its charge glow up to the pylon it reaches
+is how the player finds which pool is which. Fail case (tested): waking C, waiting 12.5 s, then A and
+B leaves the door shut (C has slept again).
+
+Loom Shard (3, 15) in a walled alcove behind bramble (6–8, 14–16): from (11, 15) cast `Lob[Fire]`
+at (7, 15); when the bramble is ash, walk in. Without Storm the east door stays shut (tested).
+
+## G6 Drowned Causeway (combat)
+
+No puzzle. The sunken stone road (y 18–21) crosses three marsh rivers at three fords (x 13–22,
+32–41, 51–60). Herons perch on the islets in the shallows, the Mirebull herd (the Fen's first Rare)
+charges down the road and bogs in its mud patches (26–28, 19–20) and (45–47, 19–20); Bellshells
+amble in the middle and east fords.
+
+## G7 Lantern Grotto: four braziers in 15 seconds, and the Windward Cache
+
+Braziers: west niche (2, 19) open to the east, east niche (45, 19) open to the west, and two on
+islets out in the black pool, (18, 16) and (33, 16). `timer:15:braziers:all` on D (22–25, 7).
+
+1. From (6, 19), `Bolt[Fire]` at (2, 19).
+2. From (10, 16), `Bolt[Fire]` east at the west islet (18, 16): bolts fly over deep water.
+3. Round the south of the pool to (41, 16), `Bolt[Fire]` west at the east islet (33, 16).
+4. From (41, 19), `Bolt[Fire]` east at (45, 19). About 7 s from first to last.
+5. The vault D opens on the Heart Seed (23, 4).
+
+Without Fire: Storm, Frost and Strike light no brazier (tested).
+
+Windward Cache (after the Coil): the wind-vane door `d` (39–40, 7) has `vanes:all`; its vane `Y`
+stands at (41, 7). From (41, 10) cast `Cast > Strike[Gale]` north (a 60° cone gust from the caster):
+the vane spins after 0.5 s of wind, `d` opens, and the chest `$` (40, 3) gives a Pattern Seed.
+Without Gale nothing spins it (tested; the Gale solution waits for the chemistry merge).
+
+## G8 Foundry Steps: the broken sluice bridge
+
+The chasm (37–45, all rows) is pit. The sluice bridge crosses it on two rusted spans, west
+(36–40, 16–17) and east (43–47, 16–17); the middle span fell into the shallow pool (41–42, 15–18) on
+the chasm floor. The gate's switches sit at the bridge ends: (36, 15) on the west span, (46, 18) on
+the east span.
+
+1. From (33, 16), cast `Lob[Storm]` at the west span (37, 17): metal → the pool in the gap → the
+   east span (rules 12, 13). Both switches wake.
+2. The sluice gate D (57, 16–17) opens; exit east (59, 16–17) to F1. Loom Stone at (8, 17).
+
+Without Storm: the gate stays shut (tested).
+
+## F1 Sluice Gate: the moat carries it across
+
+The moat (1–42, 6–7) is deep; a sealed switch stands on each bank touching it, (21, 8) and
+(21, 5). The far bank is out of reach.
+
+1. From (21, 10), cast `Lob[Storm]` into the moat at (18, 7). Both switches wake.
+2. The east door D (43, 15–16) opens on the stair passage; walk north and exit (45–46, 0) to F2.
+
+Without Storm the door stays shut (tested). The furnace alcove (45–49, 22–27) behind the vent wall
+(43–44, 22–27) holds a chest: come back with Tide, douse the vents (`Lob[Tide]` at the wall from
+(41, 24)) and walk through; the chest gives a Fuse part and 3 currency (test waits for Tide).
+
+## F2 Pump Hall: three pumps in 3 seconds
+
+Networks: the main pump C on the north wall (17–30, 2–5, switch (23, 6)), and two pump housings A
+(15–18, 22–28, switch (16, 21)) and B (29–32, 22–28, switch (31, 21)) with the sump (19–28, 24–26)
+between them, touching both. `timer:3:switch:S`.
+
+Weaves: Q `Cast > Lob[Storm]`, RMB `Cast > Bolt[Storm]`.
+
+1. From (22, 18), cast `Lob[Storm]` at the sump (23, 25): A and B wake.
+2. At once cast `Bolt[Storm]` north at (22, 2): the bolt stops on the wall by the pump and its
+   impact charges C. All three within 3 s; the door D (40–41, 1) opens. Exit north to F3.
+
+Split or chained Storm bolts, Echo, a Storm Sigil or Saturate do it too. Fail case (tested): the
+second hit 3.5 s after the first leaves the door shut. Without Storm nothing wakes (tested).
+
+## F3 Cooling Pools: freeze, slide, plates
+
+Two lanes cross the deep cooling pool at rows 8 and 22 (as K8): a stone runway (5–12) with an ice
+block at (8, y), the lane's deep water (13–20), old ice (21–32) and a plate (32, y) against the
+wall. The vault D (40, 15) opens on `plates:all`; the small key `k` (44, 15).
+
+For each lane:
+
+1. Walk to (12, y) at the runway's end and cast `Lob[Frost]` at cells (56, y), (64, y), (72, y),
+   (80, y) (y = 34 or 90). The lane becomes ice bridge.
+2. Walk back round the block to (7, y) on the lane's center line and push east: the block slides
+   over the bridge and the old ice onto the plate.
+
+Then cross the cart bridge (13–22, 15), open the vault, take the key, exit east to F4. Without Frost
+a pushed block stops at (12, y), the pool edge (tested). Bellshells wade in the shallow margins:
+electrify their pool to ring them.
+
+## F4 Slag Run: the oil channel
+
+The oil channel starts on this side of the slag pit at (34, 12), runs north (34, 6–12) and east
+along a stone lip across the pit (35–49, 6) to the wooden barricade (50, 6) of the Heart Seed vault.
+
+1. From (29, 15), cast `Lob[Fire]` at (34, 12). The fire runs up and across the channel and the
+   barricade burns away (about 6 s).
+2. When the channel is out, walk it to the Heart Seed (54, 6).
+3. With F3's small key, walk east through the locked door K (55, 21) to F5.
+
+Without Fire (and without Storm, whose rule 14 spark can also light oil) the barricade holds
+(tested). Two quench pools, (14–17, 20–23) and (32–35, 21–24), crack Slagshells lured into them.
+
+## F5 Bellwether's Belfry (mini-boss)
+
+The Belfry is CONTENT §13.2's arena: the stone mount (9–16, 6–13), the metal ring round it, four
+shallow pools at its corners, two pylons (12, 4) and (13, 15), stone islands outside cut apart by
+pits. The east door D (24, 9–10) opens when the boss falls (`cleared`; tested with a stand-in).
+
+## F6 Tide Shrine
+
+1. Touch the shrine `R` (16, 12) on the cistern altar: Tide (level 10), the item get. Loom Stone
+   (5, 12).
+2. In the furnace corridor, cast `Lob[Tide]` at the 2-tile vent wall (39–40, 12–13): it is a
+   walkable grate for 10 s. Walk east through and out (47, 12–13) to F7.
+
+Without Tide the vents hold (tested); the shrine is reachable without it.
+
+## F7 Furnace Row
+
+Three walls of lit vents cross the hall at x 24, 29 and 34. For each: cast `Lob[Tide]` at the wall
+(on its center row), walk through the doused gap before it relights, go on. Slagshells patrol
+between them; Tide (or the quench troughs in the side alcoves) cracks them. Without Tide the first
+wall holds (tested).
+
+## F8 Dry Conduit: Floodline, and the vent row
+
+East door D (56, 14–16), `switch:S`: its sealed switch (47, 15) stands on a stone dais 28 cells
+across bare stone from the conduit pool (34–39, 13–17).
+
+1. Standing in the pool's shallow rim (39, 15), cast `Cast > Swath[Tide, Lingering]` east at
+   (47, 15): a strip of borrowed water (3 cells wide, from the caster) for 15 s. Walk along it and
+   cast twice more, from cells x 170 and x 178, so each strip starts inside the last: the water now
+   touches the dais's switch. (A strip that starts a cell short of the water before it leaves a dry
+   gap, and the charge stops there.)
+2. From (39, 18), cast `Lob[Storm]` at the rim (39, 15): within 40 cells of the switch, the charge
+   runs along the borrowed water to it. D opens; exit east to F9.
+
+Side vault (south), door `d` (26–27, 27), `switch:S`: its sealed switch (20, 27) is at the end of a
+row of lit vents (13–19, 27) whose only other neighbors are walls.
+
+1. From (11, 27), cast `Lob[Tide]` along the row at cells x 54, 60, 66, 72, 78 (y 110): every
+   grate doused, none skipped (a dry gap between bursts breaks the conductor). Doused grates
+   conduct like metal floor.
+2. Cast `Lob[Storm]` at the near end (13, 27): the charge runs down the grates to the switch; `d`
+   opens on the Loom Shard (27, 30).
+
+Each door counts only the switch nearer to it (CONTENT §6.2). Without Tide neither switch can be
+reached by charge (tested). The big-key door G (28–31, 5) leads north to F10 with F9's big key.
+
+## F9 Flood Lock
+
+The chasm (26–28, all rows) is 12 cells of pit. Big key `g` (51, 13) on the far dirt ledge.
+
+1. From (25, 13), cast `Lob[Tide]` on the chasm at cells (106, 54) and (114, 54): a stretch of
+   borrowed deep water for 10 s, all 12 cells across. Cast `Lob[Frost]` at the same points: an ice
+   bridge (8 s plus 1.5 s cracking). Cross and take the key. (`Cast > Swath[Tide, Frost]` does both
+   in one cast, 3 cells wide.)
+
+Heart Seed vault D (19, 25), `plates:all`: the lane (5–10, 27) runs 24 cells from the ice block
+(4, 27), which has the pit (3, 27) behind it, to the plate (11, 27). The lane is walled in, so no
+one walks it or stands on the plate; Tide and Frost go over its wall.
+
+1. From (7, 24), Glaze the lane: `Lob[Tide]` at cells x 21.5, 28.5, 35.5, 41.5 (y 110), then
+   `Lob[Frost]` at the same points: borrowed ice for 15 s on every cell of tiles 5–10. (An ice block
+   slides only onto a tile that is ice in all 16 cells; a 3-cell Swath strip can't cover a 4-cell
+   lane, so Lob bursts it is.) Bursts east of the block wash it west, into the pit: it can't move.
+2. `Lob[Tide]` on the pit behind the block (3, 27): the burst washes it east (away from its center,
+   rule 28) and it slides along the glaze onto the plate, the first tile that isn't ice.
+3. The vault opens on the Heart Seed (20, 28).
+
+Without Tide the chasm stays a pit (Frost doesn't change pits) and the block can't be moved east
+(tested). Without Frost, Tide alone can wash the block one tile per cast (seven casts).
+
+## F10 The Glass Eye (boss)
+
+CONTENT §13.3's map exactly. The Loom Stone (11, 22) sleeps until the Coil dies; the north door
+(15, 0) stays sealed, its wind vane (14, 0) only says "The Cliffs aren't woven yet."

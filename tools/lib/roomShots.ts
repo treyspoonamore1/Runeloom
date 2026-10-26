@@ -1,6 +1,6 @@
 /**
- * Region room screenshots (BUILD_PLAN M4 acceptance "screenshots of every room on load"), for
- * `npm run shots -- --set rooms [--room e1,k7]`: each room as a new-game adventure (createAdventure,
+ * Region room screenshots (BUILD_PLAN M4 and M8 acceptance "screenshots of every room on load"), for
+ * `npm run shots -- --set rooms [--room e1,k7,g1]`: each room as a new-game adventure (createAdventure,
  * handed to the page with session.adopt), so objects, enemies and their rarity draw as in play;
  * once zoomed to fit the whole room (the layout) and once at play zoom where the player arrives
  * (readability at real scale).
@@ -8,15 +8,15 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
-import { regionRooms, startRoom } from '../../data/progression';
+import { startRoom, worldRooms } from '../../data/progression';
 import { ROOMS_DIR } from './rooms';
 
-export type RoomShort = keyof typeof regionRooms;
+export type RoomShort = keyof typeof worldRooms;
 
-/** Region rooms that have a file, in play order. */
+/** Region rooms that have a file, in play order: Emberwood and the Kiln, then the Fen and Foundry (M8). */
 export function authoredRegionRooms(): RoomShort[] {
-  return (Object.keys(regionRooms) as RoomShort[]).filter((s) =>
-    existsSync(join(ROOMS_DIR, `${regionRooms[s]}.txt`)),
+  return (Object.keys(worldRooms) as RoomShort[]).filter((s) =>
+    existsSync(join(ROOMS_DIR, `${worldRooms[s]}.txt`)),
   );
 }
 

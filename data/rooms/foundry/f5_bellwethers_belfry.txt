@@ -1,0 +1,28 @@
+@id foundry/f5_bellwethers_belfry
+@name Bellwether's Belfry
+@level 22
+@exit w foundry/f4_slag_run
+@exit e foundry/f6_tide_shrine
+@spawn 1 enemy:tar_hulk 2
+@link D cleared
+@note D The old bell falls silent. The way east opens.
+##########################
+#____................____#
+#____................____#
+#__...~~mmmmmmmmmm~~...__#
+#__...~~mmmmMmmmmm~~...__#
+#.....mmmmmmmmmmmmmm.....#
+#.....mmm........mmm.....#
+#.....mmm........mmm.....#
+#.....mmm........mmm.....#
+<.....mmm...1....mmm....D>
+<.....mmm........mmm....D>
+#.....mmm........mmm.....#
+#.....mmm........mmm.....#
+#.....mmm........mmm.....#
+#.....mmmmmmmmmmmmmm.....#
+#__...~~mmmmmMmmmm~~...__#
+#__...~~mmmmmmmmmm~~...__#
+#____................____#
+#____................____#
+##########################

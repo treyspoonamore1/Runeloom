@@ -53,6 +53,8 @@ export const HUD_EVENT = {
   runeUnlocked: 'runeUnlocked',
   /** { content }: a first-clear reward went straight into the pouch (guaranteed runes, CONTENT §9.1). */
   rewardGranted: 'rewardGranted',
+  /** { total }: a Pattern Seed from a loot chest (M8): +1 passive point. */
+  patternSeedGained: 'patternSeedGained',
   /** { rune, source }: a first element rune: the item-get panel shows it instead of a toast. */
   elementUnlocked: 'elementUnlocked',
   /** { content }: a drop landed on the floor (the renderer draws it; no toast). */
@@ -208,11 +210,16 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
         out.push(toast('rune', `${names.rune(String(e.rune))} level ${Number(e.level)}`, 'Rune leveled up'));
         break;
       case HUD_EVENT.chestOpened:
+        // A loot chest (M8) announces what it held through rewardGranted / patternSeedGained.
+        if (e.kind === 'loot_chest') break;
         out.push(
           e.big
             ? toast('bigKey', 'Big key', 'Opens the boss door')
             : toast('key', 'Small key', 'Opens one locked door'),
         );
+        break;
+      case HUD_EVENT.patternSeedGained:
+        out.push(toast('level', 'Pattern Seed', '+1 passive point'));
         break;
       case HUD_EVENT.keyUsed:
         if (!e.big)

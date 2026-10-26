@@ -15,6 +15,9 @@
  * - `sealed`: never holds. A door that stays shut on purpose (the K10 storm door, CONTENT §9.1).
  * A door that opened stays open (RoomFlags.opened), and so do the braziers and switches that
  * opened it: they start lit or powered when the room is entered again.
+ *
+ * M8: a room may link two door characters (`D` and `d`). A puzzle object counts for the door its
+ * `link` names: the only door watching its kind, or with several, the nearest one (objectBuild.ts).
  */
 import type { GameState } from '../state';
 import type { RoomHeader } from './room';
@@ -93,10 +96,11 @@ export function switchSeconds(header: RoomHeader): number {
   return 0;
 }
 
-function allOn(objects: readonly WorldObject[], kinds: readonly ObjectKind[]): boolean {
+/** Every object of these kinds that belongs to `door` (its `link`, objectBuild.ts) is on. */
+function allOn(objects: readonly WorldObject[], kinds: readonly ObjectKind[], door: string): boolean {
   let any = false;
   for (const o of objects) {
-    if (!kinds.includes(o.kind)) continue;
+    if (!kinds.includes(o.kind) || o.link !== door) continue;
     any = true;
     if (!o.on) return false;
   }
@@ -115,7 +119,7 @@ export function linkMet(state: GameState, door: string): boolean {
       if (!riftTierLinkMet(state, c.tier)) return false;
     } else if (c.kind === 'cleared') {
       if (!roomFlags(state.world, state.room.id).cleared) return false;
-    } else if (!allOn(state.objects, conditionKinds(c))) return false;
+    } else if (!allOn(state.objects, conditionKinds(c), door)) return false;
   }
   return any;
 }

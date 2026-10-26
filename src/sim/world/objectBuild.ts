@@ -18,15 +18,36 @@ const TAKEN: readonly ObjectKind[] = [
   'heart_seed',
   'loom_shard',
   'rune_shrine',
+  'loot_chest',
 ];
 
-/** The door character a puzzle object of `kind` feeds through a @link, or ''. */
-function linkFor(state: GameState, kind: ObjectKind): string {
+/**
+ * The door character a puzzle object of `kind` at (tx, ty) feeds through a @link, or ''. When
+ * several door characters have a link watching the kind (M8: F8's two switch doors), the object
+ * belongs to the nearest door tile among them (squared tile distance; ties to the first in file
+ * order), so each door counts only its own switches.
+ */
+function linkFor(state: GameState, kind: ObjectKind, tx: number, ty: number): string {
+  const doors: string[] = [];
   for (const l of state.room.header.links) {
     const c = parseLinkCondition(l.condition);
-    if (c && conditionKinds(c).includes(kind)) return l.door;
+    if (c && conditionKinds(c).includes(kind) && !doors.includes(l.door)) doors.push(l.door);
   }
-  return '';
+  if (doors.length <= 1) return doors[0] ?? '';
+  const room = state.room;
+  let best = doors[0]!;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const door of doors)
+    for (let y = 0; y < room.tilesH; y++)
+      for (let x = 0; x < room.tilesW; x++) {
+        if (tileChar(room, x, y) !== door) continue;
+        const d = (x - tx) * (x - tx) + (y - ty) * (y - ty);
+        if (d < bestD) {
+          bestD = d;
+          best = door;
+        }
+      }
+  return best;
 }
 
 /** The room's objects; `kinds` limits them to those kinds (the lab room outside adventure mode). */
@@ -41,7 +62,7 @@ export function buildRoomObjects(state: GameState, kinds?: readonly ObjectKind[]
       if (!kind || (kinds && !kinds.includes(kind))) continue;
       const key = `${kind}@${tx},${ty}`;
       const link =
-        kind === 'door' ? (room.header.links.some((l) => l.door === ch) ? ch : '') : linkFor(state, kind);
+        kind === 'door' ? (room.header.links.some((l) => l.door === ch) ? ch : '') : linkFor(state, kind, tx, ty);
       const o: WorldObject = {
         key,
         kind,

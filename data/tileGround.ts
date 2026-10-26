@@ -47,11 +47,13 @@ export const tileGround: Readonly<Record<TileId, TileGround | 'neighbor'>> = {
   furnace_vent: { ground: 'vent_lit' },
   pressure_plate: 'neighbor',
   door: { ground: 'object' },
+  side_door: { ground: 'object' },
   locked_door: { ground: 'object' },
   key_chest: { ground: 'object' },
   big_key_door: { ground: 'object' },
   big_key_chest: { ground: 'object' },
   rune_shrine: { ground: 'object' },
+  loot_chest: { ground: 'object' },
   // Hearth stations (M7): solid and inert, so the Hearth fire never burns anything.
   spindlewright: { ground: 'object' },
   runekeeper: { ground: 'object' },

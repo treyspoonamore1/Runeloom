@@ -32,6 +32,50 @@ export const regionRooms = {
 
 export type RegionRoomId = (typeof regionRooms)[keyof typeof regionRooms];
 
+/**
+ * Glasswater Fen and the Drowned Foundry (M8 phase 1, CONTENT §13): a second region group, reached
+ * through K10's storm door. Kept apart from `regionRooms`, which is the M4 campaign's route (the
+ * campaign bot and the M4 region tests walk it). G7 is the side room north of G5; F9 is the dead
+ * end east of F8, the hub.
+ */
+export const fenRooms = {
+  g1: 'fen/g1_storm_landing',
+  g2: 'fen/g2_glass_reeds',
+  g3: 'fen/g3_pylon_field',
+  g4: 'fen/g4_heron_lake',
+  g5: 'fen/g5_fogbank',
+  g6: 'fen/g6_drowned_causeway',
+  g7: 'fen/g7_lantern_grotto',
+  g8: 'fen/g8_foundry_steps',
+  f1: 'foundry/f1_sluice_gate',
+  f2: 'foundry/f2_pump_hall',
+  f3: 'foundry/f3_cooling_pools',
+  f4: 'foundry/f4_slag_run',
+  f5: 'foundry/f5_bellwethers_belfry',
+  f6: 'foundry/f6_tide_shrine',
+  f7: 'foundry/f7_furnace_row',
+  f8: 'foundry/f8_dry_conduit',
+  f9: 'foundry/f9_flood_lock',
+  f10: 'foundry/f10_glass_eye',
+} as const;
+
+export type FenRoomId = (typeof fenRooms)[keyof typeof fenRooms];
+/** Every hand-authored region room: Emberwood and the Kiln (M4), the Fen and the Foundry (M8). */
+export const worldRooms = { ...regionRooms, ...fenRooms } as const;
+export type WorldRoomId = RegionRoomId | FenRoomId;
+
+/**
+ * Level of the rune copies the Fen pays (CONTENT §13.1): a tier 8 character already owns every
+ * rune the Fen teaches, so it pays second copies at this level (Tide and Gale arrive at it too).
+ */
+export const fenRuneLevel = 10;
+const FEN_ROOM_IDS: ReadonlySet<string> = new Set(Object.values(fenRooms));
+
+/** The level a room's guaranteed runes arrive at: fenRuneLevel in the Fen and Foundry, else 1. */
+export function guaranteedRuneLevel(roomId: string): number {
+  return FEN_ROOM_IDS.has(roomId) ? fenRuneLevel : 1;
+}
+
 /** Where a new game starts. */
 export const startRoom: RegionRoomId = regionRooms.e1;
 
@@ -80,8 +124,12 @@ export const newGame = {
   weaves: ['Cast > Bolt[Fire]', 'Cast > Strike[]', null, null] as (string | null)[],
 } as const;
 
-/** Runes each room guarantees on its first clear (CONTENT §9.1); boss rooms pay when the boss dies. */
-export const guaranteedRunes: Partial<Record<RegionRoomId, RuneId[]>> = {
+/**
+ * Runes each room guarantees on its first clear (CONTENT §9.1, §13.1); boss rooms pay when the
+ * boss dies, rune-shrine rooms (K6, F6) when the shrine is touched. Fen and Foundry runes arrive at
+ * guaranteedRuneLevel. The Coil's Gale is the M8 "item get" (an element's first unlock).
+ */
+export const guaranteedRunes: Partial<Record<WorldRoomId, RuneId[]>> = {
   [regionRooms.e1]: ['swath'],
   [regionRooms.e2]: ['split'],
   [regionRooms.e3]: ['lob', 'on_expire'],
@@ -98,6 +146,37 @@ export const guaranteedRunes: Partial<Record<RegionRoomId, RuneId[]>> = {
   [regionRooms.k8]: ['seeker', 'orb'],
   [regionRooms.k9]: ['on_hurt', 'emit'],
   [regionRooms.k10]: ['storm', 'chain', 'sigil', 'on_crit'],
+  [fenRooms.g1]: ['storm'],
+  [fenRooms.g3]: ['chain'],
+  [fenRooms.g4]: ['frost'],
+  [fenRooms.g5]: ['sigil'],
+  [fenRooms.g6]: ['saturate'],
+  [fenRooms.g7]: ['lingering'],
+  [fenRooms.g8]: ['pulse'],
+  [fenRooms.f2]: ['split'],
+  [fenRooms.f4]: ['fire'],
+  [fenRooms.f5]: ['on_hit', 'infuse'],
+  [fenRooms.f6]: ['tide'],
+  [fenRooms.f7]: ['swath'],
+  [fenRooms.f8]: ['tide'],
+  [fenRooms.f9]: ['lob'],
+  [fenRooms.f10]: ['gale', 'nova'],
+};
+
+/** What a room's loot chest (`$`, M8) holds: paid once when it is opened. */
+export type ChestContent =
+  | { kind: 'pattern_seed' }
+  /** A Fuse part of a kind regular monsters drop, at the room's part tier. */
+  | { kind: 'part' }
+  /** That many crafting currency drops, each rolled like a monster's. */
+  | { kind: 'currency'; amount: number };
+
+/** Loot chest contents by room (CONTENT §13). */
+export const roomChests: Partial<Record<WorldRoomId, readonly ChestContent[]>> = {
+  // The Windward Cache, behind G7's wind-vane door (opens with Gale, after the Coil).
+  [fenRooms.g7]: [{ kind: 'pattern_seed' }],
+  // F1's alcove behind the furnace vents (opens with Tide).
+  [fenRooms.f1]: [{ kind: 'part' }, { kind: 'currency', amount: 3 }],
 };
 
 /**
@@ -130,7 +209,14 @@ export const runeDiscovery = {
  * remembered in WorldState.bossesDefeated; rift bosses (data/rift.ts riftBosses) only in the open
  * rift (WorldState.rift.bossDead), since every rift has one.
  */
-export const regionBossKinds: readonly string[] = ['tar_matriarch', 'cinder_warden'];
+export const regionBossKinds: readonly string[] = [
+  'tar_matriarch',
+  'cinder_warden',
+  // M8: the Foundry's mini-boss and boss (data/bosses.ts once the bosses work lands; until then
+  // F5 and F10 spawn stand-ins, so nothing spawns these kinds).
+  'bellwether',
+  'glasswater_coil',
+];
 export const riftBossKinds: readonly string[] = riftBosses.map((b) => b.boss);
 export const bossKinds: readonly string[] = [...regionBossKinds, ...riftBossKinds];
 

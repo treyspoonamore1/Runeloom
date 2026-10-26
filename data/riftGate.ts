@@ -8,6 +8,8 @@ export const riftGate = {
   openTier: 8,
   /** The boss whose defeat opens tiers above `openTier`. Rekindle never resets it. */
   boss: 'glasswater_coil',
+  /** The sigil the Coil drops on its first (region) kill, the way into the deep rifts (DESIGN §10.5). */
+  firstKillSigilTier: 9,
   /** The best tier ever (hero.hearth.bestEverTier) that wakes K10's storm door. */
   stormDoorTier: 6,
   lockedText:

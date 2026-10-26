@@ -1,0 +1,37 @@
+@id fen/g4_heron_lake
+@name Heron Lake
+@level 19
+@exit s fen/g3_pylon_field
+@exit n fen/g5_fogbank
+@spawn 1 pack:heron_wade
+@pulse 2
+##############################^^^^######################
+########################""............"""""""""""""##""#
+##~~~~~~~~~mmmmmmmmmmmmm""............""""1"####"""""""#
+#M~########wwwwwwwwwwwww""............"""""""""""""""""#
+##~#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##~#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##~#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##~#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##~#wwwwwwwwww...wwwwwwwwwwwwwwwwwwwwwwwwwwwww...wwwwww#
+##~#wwwwwwwwww...wwwwwwwwwwwwwwwwwwwwwwwwwwww.....wwwww#
+##~#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww."...wwwww#
+##~#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww..wwwwwww..H..wwwww#
+##m#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww..wwwwwww...".wwwww#
+##m#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww.....wwwww#
+##m#wwwwwwwwwwwwwwww...wwwwwwwwwwwwwwwwwwwwwww...wwwwww#
+##m#wwwwwwwwwwwwwwww...wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##m#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##m#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##m#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##m#wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#
+##m#####################................"""""""""""""""#
+##mmmm~~~~~~~~~~~~~~~~~~................"""""""""""""""#
+##############M#########................"""""""""""""""#
+#"""""""""""""""""""""""................""""~~~~~~"""""#
+#""""""""""""""##"""""""................""""~wwww~"""""#
+#""""~~~~~"""""##"""""""................""""~wwww~"""""#
+#""""~www~""""""""""""""................##""~~~~~~"""""#
+#""""~~~~~""""""""""""""................##"""""""""""""#
+#"""""""""""""""""""""""................"""""""""""""""#
+##############################vvvv######################

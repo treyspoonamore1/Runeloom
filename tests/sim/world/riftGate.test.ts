@@ -5,9 +5,11 @@ import { applyHeroEdit } from '../../../src/sim/hero/edits';
 import {
   applyElement,
   createAdventure,
+  dealDirectDamage,
   loadSave,
   makeSave,
   parseSave,
+  parseRoom,
   PLAYER_ID,
   type GameState,
 } from '../../../src/sim';
@@ -156,8 +158,58 @@ ${exit ? '@exit n t/landing' : ''}
     expect(obj(s, 'door').on).toBe(false);
   });
 
-  it('K10 today still has no exit to the Fen', () => {
-    expect(ROOMS['fen/g1_storm_landing']).toBeUndefined();
+  describe('the real K10 (M8 rooms): its storm door leads to Glasswater Fen', () => {
+    /** K10 with the Warden dead or alive, best tier ever `best`; Storm on the switch, then a few ticks. */
+    function k10(best: number, wardenDead: boolean): GameState {
+      const s = createAdventure({ seed: 4, rooms: ROOMS, startRoomId: 'kiln/k10_wardens_hearth' });
+      s.cheats.god = true;
+      s.cheats.noAI = true;
+      if (wardenDead) {
+        const w = s.enemies.find((e) => e.kind === 'cinder_warden')!;
+        dealDirectDamage(s, w, w.life + 1e6, PLAYER_ID);
+        run(s, 10);
+      }
+      s.hero.hearth.bestEverTier = best;
+      const sw = obj(s, 'conduit_switch');
+      applyElement(s, {
+        element: 'storm',
+        shape: { kind: 'circle', x: T(sw.tx), y: T(sw.ty), r: 1 },
+        owner: OWNER.player,
+        sourceId: PLAYER_ID,
+        hitDamage: 10,
+        durationMult: 1,
+      });
+      return s;
+    }
+    const notes = (s: GameState) => s.events.filter((e) => e.type === 'note').map((e) => e.text);
+
+    it('G1 exists and K10 exits north to it', () => {
+      expect(ROOMS['fen/g1_storm_landing']).toBeDefined();
+      expect(parseRoom(ROOMS['kiln/k10_wardens_hearth']!).header.exits).toContainEqual({
+        dir: 'n',
+        room: 'fen/g1_storm_landing',
+      });
+    });
+
+    it('at best tier 6 with the Warden dead, the switch opens the door: "The storm door hums open"', () => {
+      const s = k10(6, true);
+      expect(notes(s)).toEqual(['The storm door hums open. Glasswater Fen lies beyond.']);
+      run(s, 2);
+      expect(obj(s, 'door').on).toBe(true);
+    });
+
+    it('below best tier 6 it says "The Fen isn\'t woven yet." and stays shut', () => {
+      const s = k10(5, true);
+      expect(notes(s)).toEqual(["The Fen isn't woven yet."]);
+      run(s, 5);
+      expect(obj(s, 'door').on).toBe(false);
+    });
+
+    it('while the Warden lives it stays shut, even past tier 6', () => {
+      const s = k10(8, false);
+      run(s, 5);
+      expect(obj(s, 'door').on).toBe(false);
+    });
   });
 });
 

@@ -39,7 +39,7 @@ describe('Cinder Warden', () => {
     const { s, w } = hearth();
     expect([s.room.width, s.room.height]).toEqual([120, 80]);
     expect([w.maxLife, w.areaLevel]).toEqual([5000, 10]);
-    expect(groundAt(s, 6, 6)).toBe(MAT.grass);
+    expect(groundAt(s, 10, 6)).toBe(MAT.grass); // (tile 1, 1 is the storm door since M8)
     expect(groundAt(s, 60, 40)).toBe(MAT.stone);
     expect(groundAt(s, 34, 40)).toBe(MAT.shallow_water);
     expect(groundAt(s, 82, 40)).toBe(MAT.shallow_water);

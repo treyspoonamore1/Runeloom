@@ -11,7 +11,7 @@ import { emit } from '../events';
 import { setGround } from '../grid/cells';
 import type { GameState } from '../state';
 import type { Room } from './room';
-import { OBJECT_CHAR, objectCenter, type WorldObject } from './objects';
+import { OBJECT_CHAR, OBJECT_KIND_BY_CHAR, objectCenter, type WorldObject } from './objects';
 import { roomFlags } from './worldState';
 import { noteText } from './riftTierLink';
 
@@ -120,9 +120,19 @@ export function uncoverTile(state: GameState, tx: number, ty: number): void {
   g.version++;
 }
 
+/**
+ * The legend character an object was placed with: its file tile's character (the key keeps the
+ * file tile, `kind@tx,ty`), so a `d` door is 'd' though its kind is 'door'.
+ */
+export function objectChar(state: GameState, o: WorldObject): string {
+  const m = /@(\d+),(\d+)$/.exec(o.key);
+  const ch = m ? tileChar(state.room, Number(m[1]), Number(m[2])) : '';
+  return OBJECT_KIND_BY_CHAR[ch] === o.kind ? ch : OBJECT_CHAR[o.kind];
+}
+
 /** Sends the room's `@note` for this object's character, if it has one. */
 export function sendNote(state: GameState, o: WorldObject): void {
-  const ch = OBJECT_CHAR[o.kind];
+  const ch = objectChar(state, o);
   const c = objectCenter(o);
   for (const n of state.room.header.notes) {
     const text = n.char === ch ? noteText(state, n.text) : null;

@@ -34,7 +34,7 @@ import { labShots } from './lib/labShots';
 import { creatureShotIds, runCreatureShot } from './lib/creatureShots';
 import { listRoomIds } from './lib/rooms';
 import { authoredRegionRooms, showRoom, type RoomShort } from './lib/roomShots';
-import { regionRooms } from '../data/progression';
+import { worldRooms } from '../data/progression';
 import { runUiShot, uiShotIds, uiShotUrl, type UiShotId } from './lib/uiShots';
 import { galleryShots } from './lib/galleryShots';
 import { itemShotIds, itemShotUrl, runItemShot, type ItemShotId } from './lib/itemShots';
@@ -141,7 +141,7 @@ runCli(async () => {
           errors.length = 0;
           await page.goto(`http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`);
           await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
-          await showRoom(page, regionRooms[s], view);
+          await showRoom(page, worldRooms[s], view);
           const file = join(SHOTS_DIR, `${milestone}_room_${s}_${view}.png`);
           await page.screenshot({ path: file, timeout: 120_000 });
           written.push(file);
