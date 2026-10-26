@@ -92,6 +92,8 @@ export type WorldEvent =
     }
   /** A pushed or sliding block reached its tile and came to rest. */
   | { type: 'blockStopped'; key: string; x: number; y: number }
+  /** M8 rule 28: Tide washed a block one tile (a 'blockMoved' with the move comes first). Tile coordinates. */
+  | { type: 'blockWashed'; key: string; x: number; y: number }
   /** Fire melted an ice block into shallow water. */
   | { type: 'iceBlockMelted'; key: string; x: number; y: number }
   /** An object with an `@note` activated: show `text` (e.g. K10's "The Fen isn't woven yet."). */

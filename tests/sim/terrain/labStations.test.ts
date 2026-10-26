@@ -228,12 +228,113 @@ const expected: Expect[] = [
     what: 'the oil fuse burns to the keg and it explodes',
     check: (c) => ofType(c, 'explosion').length === 1,
   },
+  // M8 (rows 4 and 5).
+  {
+    within: 3,
+    what: 'the fire runs downwind (east) at least twice as far as upwind',
+    check: (c) => {
+      const lit = (i: number) => g(c).fire[i]! > 0 || g(c).ground[i] === MAT.ash;
+      const east = c.cells(15, 0, 23, 23, lit);
+      const west = c.cells(0, 0, 9, 23, lit);
+      return c.s.tick >= 2.5 * SIM_HZ && east >= 8 && east >= 2 * west;
+    },
+  },
+  {
+    within: 3,
+    what: 'the bramble smoke drifts east across the bay',
+    check: (c) => c.cells(16, 0, 23, 23, (i) => g(c).air[i] === AIR.smoke) > 0,
+  },
+  {
+    within: 2,
+    what: 'stone floods (borrowed), dirt is mud, and the soaked grass will not burn',
+    check: (c) =>
+      g(c).ground[c.at(2, 12)] === MAT.shallow_water &&
+      g(c).borrowed[c.at(2, 12)] === 1 &&
+      g(c).ground[c.at(10, 12)] === MAT.mud &&
+      g(c).wet[c.at(20, 12)]! > 0 &&
+      c.s.tick >= 1.6 * SIM_HZ &&
+      g(c).fire[c.at(20, 12)] === 0,
+  },
+  {
+    within: 3,
+    what: 'the fire is out and the second fire does not catch',
+    check: (c) =>
+      c.s.tick >= 2.2 * SIM_HZ &&
+      c.cells(7, 7, 17, 17, (i) => g(c).fire[i]! > 0) === 0 &&
+      g(c).wet[c.at(12, 12)]! > 0,
+  },
+  {
+    within: 2,
+    what: 'the pit holds Tide water, then an ice bridge you can walk on',
+    check: (c) => g(c).ground[c.at(12, 10)] === MAT.ice_bridge && c.s.room.solid[c.at(12, 10)] === 0,
+  },
+  {
+    within: 16,
+    what: 'the water strip (10 s) and the ice strip (15 s) both return to stone',
+    check: (c) =>
+      ofType(c, 'borrowedEnded').length >= 2 &&
+      g(c).ground[c.at(12, 6)] === MAT.stone &&
+      g(c).ground[c.at(12, 17)] === MAT.stone,
+  },
+  {
+    within: 3,
+    what: 'the push block is washed one tile and the ice block slides to the end of its ice path',
+    check: (c) => {
+      const o = (k: string) => c.s.objects.find((x) => x.kind === k)!;
+      const b = o('push_block');
+      const ice = o('ice_block');
+      const tx0 = labStations[38]!.rect.tx;
+      return b.tx === tx0 + 2 && ice.tx === tx0 + 5 && ice.timer === 0;
+    },
+  },
+  {
+    within: 1.5,
+    what: 'the gust and the fire clear the fog',
+    check: (c) =>
+      ofType(c, 'fogCleared').length > 0 &&
+      g(c).air[c.at(6, 4)] === AIR.none &&
+      g(c).air[c.at(20, 20)] === AIR.fog,
+  },
+  {
+    within: 2.5,
+    what: 'the dummy touching the vent is Ignited, then Tide douses the vents',
+    check: (c) =>
+      ofType(c, 'ailmentApplied').some((e) => e.target === c.spawned[0]!.id && e.ailment === 'ignite') &&
+      g(c).ground[c.at(12, 10)] === MAT.vent_doused,
+  },
+  {
+    within: 11,
+    what: 'the vent relights and pushes the dummy off, unhurt and not burning',
+    check: (c) =>
+      ofType(c, 'pushedOff').length === 1 &&
+      g(c).ground[c.at(12, 10)] === MAT.vent_lit &&
+      c.s.room.solid[c.under(c.spawned[0]!.x, c.spawned[0]!.y)] === 0 &&
+      c.spawned[0]!.ailments.ignite.timeLeft === 0,
+  },
+  {
+    within: 11,
+    what: "the swimmer's borrowed water drains back to stone",
+    check: (c) => ofType(c, 'borrowedEnded').length > 0 && g(c).ground[c.at(12, 12)] === MAT.stone,
+  },
+  {
+    within: 1.5,
+    what: 'the burning dummy is Wet and no longer Ignited',
+    check: (c) => {
+      const d = c.spawned[0]!;
+      return isWet(d) && d.ailments.ignite.timeLeft === 0 && ofType(c, 'ailmentApplied').length > 0;
+    },
+  },
+  {
+    within: 1.5,
+    what: 'Storm at one end of the Tide strip hits both dummies on it',
+    check: (c) => hitIds(c, 'chargeHit').size === 2,
+  },
 ];
 
 describe('Chemistry Lab stations (all of data/lab.ts)', () => {
   it('has an expectation for every station', () => {
     expect(expected).toHaveLength(labStations.length);
-    expect(labStations).toHaveLength(32);
+    expect(labStations).toHaveLength(45);
   });
 
   labStations.forEach((station, index) => {

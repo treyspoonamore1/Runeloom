@@ -8,6 +8,7 @@ import { DT } from '../../core/constants';
 import { type DamagePacket, type HitResult } from '../../combat/damage';
 import { applyHit, directionOr } from '../../combat/hits';
 import { emit } from '../../events';
+import { applyWet } from '../../actors/wet';
 import type { GameState } from '../../state';
 import type { BranchSpec, SpellSpec } from '../program';
 import { nearestEnemy } from './geom';
@@ -54,6 +55,10 @@ export function spellHit(
     form: inst.form,
   });
   if (res === null) return null;
+  // Rule 32 (M8): Tide Wets what it hits (× Lingering's ailment duration), after the hit's own
+  // ailments, so a Tide spell's hit never leaves an Ignite.
+  const wet = wetSeconds(spec);
+  if (wet > 0 && !e.dead) applyWet(state, e, wet * (packet.ailmentDuration ?? 1));
   inst.hitCount++;
   if (res.crit) noteCrit(state, e.id, e.x, e.y, kbX, kbY);
   refundMana(state, inst, e);
@@ -74,6 +79,13 @@ export function spellHit(
     }
   }
   return res;
+}
+
+/** Seconds of Wet a hit of this spell applies (Tide, rule 32): the longest of its elements', 0 without Tide. */
+function wetSeconds(spec: SpellSpec): number {
+  let s = 0;
+  for (const el of spec.elements) if (el.wetDuration > s) s = el.wetDuration;
+  return s;
 }
 
 /** Spawns a branch's spell from (x, y) along unit (dirX, dirY); a point aim lands at its full reach. */

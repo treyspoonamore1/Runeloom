@@ -12,8 +12,8 @@ import {
 import { compileError, compiled, parsed, testCtx } from './helpers';
 
 describe('CONTENT §2 reference weaves', () => {
-  it('has all 14', () => {
-    expect(referenceWeaves.map((w) => w.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+  it('has all 18 (15–18: M8)', () => {
+    expect(referenceWeaves.map((w) => w.n)).toEqual(Array.from({ length: 18 }, (_, i) => i + 1));
   });
 
   for (const w of referenceWeaves) {

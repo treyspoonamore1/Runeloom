@@ -11,7 +11,6 @@
  * - The end of an attack's active phase (endActiveM8): a leap's touchdown, a Mirebull's charge
  *   into a wall (ai/charger.ts).
  */
-import { hydromancerGrounds } from '../../../data/passives';
 import type { AttackDef } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
 import { chargedAttackStorm } from '../actors/fenChemistry';
@@ -21,7 +20,7 @@ import { cellOf } from '../actors/swim';
 import { endCharge } from '../ai/charger';
 import { DT } from '../core/constants';
 import { emit } from '../events';
-import { placeTempWater } from '../grid/tempWater';
+import { placeBorrowedWater } from '../grid/tempWater';
 import { writeGust } from '../grid/wind';
 import type { GameState } from '../state';
 import { scaleByLevel, type DamagePacket } from './damage';
@@ -108,7 +107,8 @@ export function fenAttackTerrain(state: GameState, e: Enemy, def: AttackDef): bo
   const a = e.attack;
   if (t === undefined) return false;
   if (t.kind === 'water') {
-    placeTempWater(state, a.originX, a.originY, t.radius, t.seconds, hydromancerGrounds);
+    // Enemy puddles are borrowed water (DESIGN §6.5): they go back to the ground (rule 27).
+    placeBorrowedWater(state, a.originX, a.originY, t.radius, t.seconds);
     emit(state, {
       type: 'heronPuddle',
       id: e.id,

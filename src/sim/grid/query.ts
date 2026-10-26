@@ -24,6 +24,7 @@ import {
 } from '../../../data/materials';
 import { scaleByLevel } from '../combat/damage';
 import type { GameState } from '../state';
+import { GRID_HZ } from '../core/constants';
 import { gridTicks } from './cells';
 import type { ChargeEvent, Grid } from './grid';
 
@@ -49,6 +50,10 @@ export interface CellView {
   chargeOwner: number;
   smoke: boolean;
   steam: boolean;
+  /** M8: fog in the air layer (render-only for the player; never Blinds). */
+  fog: boolean;
+  /** M8: the terrain is borrowed and goes back to `under` when its timer ends (rule 27). */
+  borrowed: boolean;
   /** Ice bridge cracking: 0 until it starts, then rises to 1 when it breaks. */
   crackProgress: number;
 }
@@ -72,6 +77,8 @@ function emptyView(): CellView {
     chargeOwner: OWNER.world,
     smoke: false,
     steam: false,
+    fog: false,
+    borrowed: false,
     crackProgress: 0,
   };
 }
@@ -107,6 +114,8 @@ export function cellAt(state: GameState, x: number, y: number, out: CellView = e
   out.chargeOwner = g.owner[i]!;
   out.smoke = g.air[i] === AIR.smoke;
   out.steam = g.air[i] === AIR.steam;
+  out.fog = g.air[i] === AIR.fog;
+  out.borrowed = g.borrowed[i] === 1;
   out.crackProgress = iceCrackProgress(g, i);
   return out;
 }
@@ -153,4 +162,53 @@ export function terrainFireDps(state: GameState, onOil: boolean): number {
 /** Hazard ownership (DESIGN §6.3): world hazards hurt everyone, team hazards only the other team. */
 export function hazardHurts(hazardOwner: number, victimTeam: number): boolean {
   return hazardOwner === OWNER.world || hazardOwner !== victimTeam;
+}
+
+/** M8: true if cell i is water (shallow, deep, borrowed or not). Swimmers and stranding (rule 31) read this. */
+export function isWater(state: GameState, i: number): boolean {
+  return materialByCode[state.grid.ground[i]!]!.water !== null;
+}
+
+/** M8: true if cell i's terrain is borrowed (rule 27: it goes back to `under` when its timer ends). */
+export function isBorrowed(state: GameState, i: number): boolean {
+  return state.grid.borrowed[i] === 1;
+}
+
+/**
+ * M8: seconds until borrowed cell i goes back (0 if not borrowed). The render flickers its last
+ * tuning.tide.flickerSeconds.
+ */
+export function borrowedSecondsLeft(state: GameState, i: number): number {
+  const g = state.grid;
+  return g.borrowed[i] === 1 ? g.timer[i]! / GRID_HZ : 0;
+}
+
+/**
+ * Rule 30 (M8): true if a body of radius r at (x, y) touches a lit furnace vent: some vent cell
+ * lies within r + `touch` (default tuning.tide.ventTouch) of the center. Rooms without vents
+ * return at once.
+ */
+export function touchesLitVent(
+  state: GameState,
+  x: number,
+  y: number,
+  r: number,
+  touch = state.tuning.tide.ventTouch,
+): boolean {
+  const g = state.grid;
+  if (g.vents === 0) return false;
+  const reach = r + touch;
+  const x0 = Math.max(0, Math.floor(x - reach));
+  const y0 = Math.max(0, Math.floor(y - reach));
+  const x1 = Math.min(g.width - 1, Math.floor(x + reach));
+  const y1 = Math.min(g.height - 1, Math.floor(y + reach));
+  const r2 = reach * reach;
+  for (let cy = y0; cy <= y1; cy++)
+    for (let cx = x0; cx <= x1; cx++) {
+      if (!materialByCode[g.ground[cy * g.width + cx]!]!.ignitesTouching) continue;
+      const qx = x < cx ? cx : x > cx + 1 ? cx + 1 : x;
+      const qy = y < cy ? cy : y > cy + 1 ? cy + 1 : y;
+      if ((x - qx) * (x - qx) + (y - qy) * (y - qy) <= r2) return true;
+    }
+  return false;
 }

@@ -116,9 +116,13 @@ export interface RiftModDef {
   floodShare?: number;
   /** Extra metal pylons placed in each room (Live Wires). */
   extraPylons?: number;
+  /** M8: room wind in every rift room, the way it blows (of the Gale: 'e', from the west). */
+  wind?: 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
+  /** M8: the lowest sigil tier it rolls on (default 1). */
+  fromTier?: number;
 }
 
-/** CONTENT §10. The Gale suffix arrives in M8. */
+/** CONTENT §10. The Gale suffix (M8) rolls from tier 9 (CONTENT §10.1). */
 export const riftMods = {
   brutal: {
     id: 'brutal',
@@ -225,6 +229,16 @@ export const riftMods = {
     rarity: 0,
     smokeDurationMult: 2,
     monstersSeeInSmoke: true,
+  },
+  gale: {
+    id: 'gale',
+    kind: 'suffix',
+    name: 'of the Gale',
+    text: 'Constant wind from the west: fire spreads ×2 eastward and ×0.25 westward; smoke and steam drift east',
+    quantity: 0.15,
+    rarity: 0,
+    wind: 'e',
+    fromTier: 9,
   },
 } satisfies Record<string, RiftModDef>;
 

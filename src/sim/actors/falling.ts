@@ -16,6 +16,8 @@ import type { Grid } from '../grid/grid';
 import { emit } from '../events';
 import type { GameState } from '../state';
 import { circleOverlapsSolid } from './collision';
+import { touchesLitVent } from '../grid/query';
+import { ignoresGround } from './locomotion';
 
 export function isSafeCell(g: Grid, i: number): boolean {
   const def = materialByCode[g.ground[i]!]!;
@@ -29,8 +31,11 @@ function radiusOf(state: GameState, t: AilmentTarget): number {
   return 'kind' in t ? t.radius : state.tuning.player.radius;
 }
 
-/** Nearest safe cell center within the search radius where the body fits, or null. Ties: row-major order. */
-function nearestSafe(state: GameState, x: number, y: number, r: number): [number, number] | null {
+/**
+ * Nearest safe cell center within the search radius where a body of radius r fits, or null. Ties:
+ * row-major order. `clear`: the spot must also be at least that far from any solid cell.
+ */
+function nearestSafe(state: GameState, x: number, y: number, r: number, clear = 0): [number, number] | null {
   const g = state.grid;
   const R = state.tuning.terrain.fall.searchRadius;
   const cx = Math.floor(x);
@@ -43,7 +48,7 @@ function nearestSafe(state: GameState, x: number, y: number, r: number): [number
       const py = yy + 0.5;
       const d = (px - x) * (px - x) + (py - y) * (py - y);
       if (d >= bestD || !isSafeCell(g, yy * g.width + xx)) continue;
-      if (circleOverlapsSolid(state.room, px, py, r)) continue;
+      if (circleOverlapsSolid(state.room, px, py, r + clear)) continue;
       best = [px, py];
       bestD = d;
     }
@@ -76,4 +81,38 @@ export function fall(state: GameState, t: AilmentTarget): void {
   const damage = t.maxLife * state.tuning.terrain.fall.lifeFraction;
   emit(state, { type: 'fell', target: targetRef(t), fromX, fromY, toX: to[0], toY: to[1], damage });
   dealDirectDamage(state, t, damage, WORLD_SOURCE_ID);
+}
+
+/**
+ * Rule 30 (M8): a doused furnace vent relit under the entity. Collision pushes it off: it moves
+ * to the nearest safe spot clear of the vent's touch range (tuning.tide.ventTouch), so the relight
+ * doesn't ignite it, with no fall damage. Sends 'pushedOff'. Stays put if nowhere fits.
+ */
+export function pushOff(state: GameState, t: AilmentTarget): void {
+  const r = radiusOf(state, t);
+  const to = nearestSafe(state, t.x, t.y, r, state.tuning.tide.ventTouch + 0.05);
+  if (to === null) return;
+  const fromX = t.x;
+  const fromY = t.y;
+  t.x = t.prevX = to[0];
+  t.y = t.prevY = to[1];
+  t.vx = t.vy = 0;
+  t.kbX = t.kbY = 0;
+  t.terrain.slideX = t.terrain.slideY = 0;
+  emit(state, { type: 'pushedOff', target: targetRef(t), fromX, fromY, toX: to[0], toY: to[1] });
+}
+
+/**
+ * Rule 30 (M8), after each grid tick: a body overlapping a lit vent can only have been standing
+ * on its doused grate when it relit, so it is pushed off (pushOff) before collision or the vent's
+ * touch can ignite it. Floating and fixed kinds are above it.
+ */
+export function pushOffVents(state: GameState): void {
+  if (state.grid.vents === 0) return;
+  const p = state.player;
+  const r = state.tuning.player.radius;
+  if (!p.dead && touchesLitVent(state, p.x, p.y, r - 1e-6, 0)) pushOff(state, p);
+  for (const e of state.enemies)
+    if (!e.dead && !ignoresGround(e.kind) && touchesLitVent(state, e.x, e.y, e.radius - 1e-6, 0))
+      pushOff(state, e);
 }
