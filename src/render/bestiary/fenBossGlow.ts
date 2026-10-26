@@ -45,7 +45,7 @@ export interface GlowView {
  * The Fen bosses' charge warnings on the ground (DESIGN §10.5, §14), drawn cell by cell from
  * the grid so the player sees exactly what will be electrified:
  * - Eye pulse glow: all of its water (along the water from its cell, the pulse's reach) brightens;
- * - Body pulse glow: its water within 20 cells, plus a ring at that reach;
+ * - Body pulse glow: its water within 20 steps along the water;
  * - Pylon glow: each pylon's metal network and the water it hands charge to;
  * - the Old Bellwether's self-toll windup: the metal and water under it and what they conduct to.
  * The fill sits under the bodies; the red-magenta edge cells (a hazard's pulsing edge) go on top,
@@ -104,7 +104,7 @@ export class FenBossGlow {
       }
       const u = Math.min(1, w.t / Math.max(0.1, w.seconds));
       if (w.stage === 'glow') {
-        w.fill.alpha = (0.3 + 0.35 * u) * (0.7 + 0.3 * pulse);
+        w.fill.alpha = (0.16 + 0.24 * u) * (0.7 + 0.3 * pulse);
         w.edge.alpha = u > 0.8 ? 1 : 0.55 + 0.45 * pulse;
       } else {
         const len = w.stage === 'flash' ? FLASH : FADE;
@@ -258,8 +258,8 @@ export class FenBossGlow {
       }
     }
     if (edges) w.edge.fill(T.edge);
-    // Body pulse: a ring at its reach; pylons: a ring around each pad.
-    if (w.kind === 'body') w.edge.circle(x, y, w.reach).stroke({ width: 0.5, color: T.edge });
+    // Pylons: a ring around each pad. (The Body pulse's reach is the edge of its lit water: the
+    // charge walks the water 20 steps, so a circle would promise more than it covers.)
     if (w.kind === 'pylon')
       for (const p of w.pylons) {
         w.edge.circle(p.x, p.y, F.pylonRing).stroke({ width: 1, color: T.edgeDark, alpha: 0.6 });

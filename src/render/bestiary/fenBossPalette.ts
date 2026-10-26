@@ -64,7 +64,7 @@ export const FEN_BOSS = {
     pupil: 0x1d2430,
     /** Submerged: the body is a dark shape under the water. */
     deep: 0x24485a,
-    iced: 0xdff4ff,
+    iced: 0x9fd4f4,
     stranded: 0xa8b8b4,
     ripple: 0xd8f2f6,
     /** The eye's and the body pulse's glow (additive), the pylon glow. */

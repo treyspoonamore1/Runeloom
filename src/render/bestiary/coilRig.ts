@@ -106,7 +106,7 @@ export class CoilRig extends BeastRig {
       case 'stranded':
         return mixRgb(base, C.stranded, 0.45);
       case 'iced':
-        return mixRgb(base, C.iced, 0.7);
+        return C.iced;
       case 'overloaded':
         return Math.random() < 0.3 ? 0xffffff : base;
       default:
@@ -224,9 +224,11 @@ export class CoilRig extends BeastRig {
       const d = fx.spawn(fx.body, fx.tex.dot, p.x, p.y, rand(-5, 5), -rand(4, 8), rand(0.3, 0.5), C.ripple, 0.3, 0.1);
       if (d) d.grav = 26;
     }
-    if (mode === 'iced' && fx.take(5, c.dt)) {
+    if (mode === 'iced' && fx.take(14, c.dt)) {
+      // Frost glints all along the frozen body.
       const p = this.trail.at(Math.floor(rand(0, F.coilSegments)));
-      fx.spawn(fx.add, fx.tex.spark, p.x + rand(-1, 1), p.y + rand(-1, 1), 0, 0, 0.4, 0xffffff, 0.9, 0.1);
+      const g = fx.spawn(fx.add, fx.tex.star, p.x + rand(-1.5, 1.5), p.y + rand(-1.5, 1.5), 0, 0, 0.5, 0xffffff, 0.7, 0.1);
+      if (g) g.rotation = rand(0, TAU);
     }
   }
 

@@ -7,7 +7,7 @@ import { TILE_CELLS as T } from '../../sim';
 export const SECTION_W = 20;
 export const SECTION_H = 12;
 const COLS = 4;
-const ROWS = 4;
+const ROWS = 5;
 
 export const SECTION_IDS = [
   'beasts',
@@ -24,6 +24,9 @@ export const SECTION_IDS = [
   'moments2',
   'fen',
   'fen2',
+  'fen_bosses',
+  'fen_bosses2',
+  'fen_bosses3',
 ] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
 
@@ -113,8 +116,30 @@ export function galleryRoomText(): string {
   fill('fen', 16, 5, 4, 3, '~');
   fill('fen2', 12, 8, 8, 4, '~');
   fill('fen2', 11, 5, 4, 3, ':');
+  // M8 Fen bosses. The Bellwether: a metal pad for its self-toll, a shallow pool where it is rung.
+  fill('fen_bosses', 4, 7, 6, 4, 'm');
+  fill('fen_bosses', 3, 0, 5, 5, '~');
+  // The Coil: a deep pool (submerged, surfaced), stone (stranded), shallows (exposed), ice, deep water.
+  fill('fen_bosses2', 0, 0, 12, 6, 'w');
+  fill('fen_bosses2', 0, 6, 6, 6, '~');
+  fill('fen_bosses2', 6, 6, 6, 6, 'i');
+  fill('fen_bosses2', 12, 6, 8, 6, 'w');
+  // Phase 3 under fog: a deep pool with a shallow rim, pylons on metal pads at two corners.
+  fill('fen_bosses3', 4, 1, 10, 9, '~');
+  fill('fen_bosses3', 5, 2, 8, 7, 'w');
+  fill('fen_bosses3', 1, 0, 3, 3, 'm');
+  fill('fen_bosses3', 2, 1, 1, 1, 'M');
+  fill('fen_bosses3', 14, 8, 3, 3, 'm');
+  fill('fen_bosses3', 15, 9, 1, 1, 'M');
+  const fog = sectionTile('fen_bosses3');
   const rows = g.map((r) => r.join(''));
-  return ['@id test/gallery', '@name Gallery', '@level 1', ...rows].join('\n');
+  return [
+    '@id test/gallery',
+    '@name Gallery',
+    '@level 1',
+    `@fog ${fog.tx} ${fog.ty} ${fog.tx + SECTION_W - 1} ${fog.ty + SECTION_H - 1}`,
+    ...rows,
+  ].join('\n');
 }
 
 /** The crowd stress room: a wide meadow with ponds, sized past one 1× screen (160×90 cells). */

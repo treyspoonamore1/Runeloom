@@ -215,7 +215,8 @@ export class FenBossTelegraphs extends FenTelegraphs {
     const st = this.state;
     const px = st ? st.player.x : a.originX + s.dirX * s.length;
     const py = st ? st.player.y : a.originY + s.dirY * s.length;
-    const d = Math.max(4, (px - a.originX) * s.dirX + (py - a.originY) * s.dirY);
+    // It lands where the player stands, along its aim line (at most the line's length).
+    const d = Math.min(s.length, Math.max(4, (px - a.originX) * s.dirX + (py - a.originY) * s.dirY));
     const lx = a.originX + s.dirX * d;
     const ly = a.originY + s.dirY * d;
     const n = 10;
@@ -224,8 +225,8 @@ export class FenBossTelegraphs extends FenTelegraphs {
       if (f > u * 1.3) break;
       const x = a.originX + (lx - a.originX) * f;
       const y = a.originY + (ly - a.originY) * f - Math.sin(Math.PI * f) * Math.min(8, d * 0.25);
-      this.put(this.pool, this.t.dot, x, y, 0.35, 0.35, INK, 0.45 * u);
-      this.put(this.pool, this.t.dot, x, y, 0.22, 0.22, COIL.glassLight, 0.95 * u);
+      this.put(this.pool, this.t.dot, x, y, 0.5, 0.5, INK, 0.5 * u);
+      this.put(this.pool, this.t.dot, x, y, 0.34, 0.34, COIL.glassLight, 0.95 * u);
     }
     const land = this.landRadius(st, e.id);
     this.put(this.pool, this.t.dot, lx, ly, land, land, T.fill, 0.12 + 0.15 * u);
