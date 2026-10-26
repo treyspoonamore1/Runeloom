@@ -117,26 +117,12 @@ describe('Fen reward hooks for the bosses work', () => {
     expect(sigils.map((d) => (d.content.kind === 'sigil' ? d.content.sigil.tier : 0))).toEqual([9]);
   });
 
-  it('F10 pays Gale (the item get, at the boss) and Nova at rune level 10; F5 pays On Hit and Infuse', () => {
+  it('F5 and F10 pay nothing on room clear: their bosses pay (world/fenBossRewards.ts), so nothing is paid twice', () => {
     const s = adventure(fenRooms.f10);
-    s.hero.unlockedRunes = s.hero.unlockedRunes.filter((r) => r !== 'gale');
     onRoomCleared(s, fenRooms.f10, { x: T(15), y: T(11), source: 'boss' });
-    const got = s.hero.runes.filter((r) => r.rune === 'gale' || r.rune === 'nova');
-    expect(got.map((r) => [r.rune, r.level]).sort()).toEqual([
-      ['gale', 10],
-      ['nova', 10],
-    ]);
-    expect(s.events).toContainEqual(
-      expect.objectContaining({
-        type: 'elementUnlocked',
-        rune: 'gale',
-        roomId: fenRooms.f10,
-        source: 'boss',
-      }),
-    );
     onRoomCleared(s, fenRooms.f5);
     expect(
-      s.hero.runes.filter((r) => r.rune === 'on_hit' || r.rune === 'infuse').every((r) => r.level === 10),
-    ).toBe(true);
+      s.hero.runes.filter((r) => ['gale', 'nova', 'on_hit', 'infuse'].includes(r.rune) && r.level === 10),
+    ).toEqual([]);
   });
 });

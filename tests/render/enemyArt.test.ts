@@ -9,6 +9,7 @@ import { bigBeastEntries } from '../../src/render/bestiary/bigBeasts';
 import { smallBeastEntries } from '../../src/render/bestiary/smallBeasts';
 import { fenShapesA } from '../../src/render/bestiary/fenShapesA';
 import { fenShapesB } from '../../src/render/bestiary/fenShapesB';
+import { fenPlaceholderEntries } from '../../src/render/bestiary/fenPlaceholders';
 import { FEN_LOOK } from '../../src/render/bestiary/fenBeastPalette';
 import { FEN_RIGS } from '../../src/render/bestiary/fenRigsB';
 
@@ -20,6 +21,7 @@ describe('enemy art', () => {
       ...smallBeastEntries(),
       ...fenShapesA(),
       ...fenShapesB(),
+      ...fenPlaceholderEntries(),
     ].map((e) => e.name),
   );
 

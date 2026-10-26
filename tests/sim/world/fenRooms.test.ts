@@ -240,12 +240,11 @@ describe('Fen and Foundry rooms', () => {
       g8: ['pulse'],
       f2: ['split'],
       f4: ['fire'],
-      f5: ['on_hit', 'infuse'],
       f6: ['tide'],
       f7: ['swath'],
       f8: ['tide'],
       f9: ['lob'],
-      f10: ['gale', 'nova'],
+      // F5 and F10 pay through their bosses (world/fenBossRewards.ts, tests/sim/world/fenBossRewards.test.ts).
     };
     for (const s of ALL_SHORTS) expect(guaranteedRunes[fenRooms[s]], s).toEqual(want[s]);
     for (const s of ALL_SHORTS) expect(guaranteedRuneLevel(fenRooms[s])).toBe(10);
