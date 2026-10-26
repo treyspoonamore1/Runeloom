@@ -1,4 +1,5 @@
 import { FEN_LOOK } from './fenBeastPalette';
+import { FEN_BOSS_LOOK } from './fenBossPalette';
 
 /**
  * Colors and feel values for the M4 enemies (CONTENT §5), their rarity looks and boss moments.
@@ -98,7 +99,7 @@ const M4_BASE_LOOK = {
 } as const satisfies Record<string, M4Look>;
 
 /** The M4 kinds and, since M8, the Glasswater Fen kinds (fenBeastPalette.ts): one bestiary. */
-export const M4_LOOK = { ...M4_BASE_LOOK, ...FEN_LOOK } as const;
+export const M4_LOOK = { ...M4_BASE_LOOK, ...FEN_LOOK, ...FEN_BOSS_LOOK } as const;
 
 export type M4Kind = keyof typeof M4_LOOK;
 

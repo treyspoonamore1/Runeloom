@@ -91,6 +91,18 @@ export const M4_ATTACKS = {
   bullCharge: 'bull_charge',
   toadCroak: 'croak',
   bellBite: 'bell_bite',
+  // M8 Drowned Foundry bosses (data/bossesFen.ts): rigs and accents in render/bestiary/bellwetherRig.ts,
+  // coilRig.ts and fenBossTelegraphs.ts.
+  bellSnap: 'bell_snap',
+  tollRing: 'toll_ring',
+  shellRoll: 'shell_roll',
+  selfToll: 'self_toll',
+  tollFoundry: 'toll_foundry',
+  coilLunge: 'coil_lunge',
+  glassSpit: 'glass_spit',
+  tailThrash: 'tail_thrash',
+  coilDive: 'coil_dive',
+  callPylons: 'call_pylons',
 } as const;
 
 export type M4AttackKey = keyof typeof M4_ATTACKS;
@@ -136,6 +148,10 @@ export const BOSS_KINDS: ReadonlySet<string> = new Set([
   'cinder_warden',
   'rift_matriarch',
   'rift_warden',
+  'bellwether',
+  'glasswater_coil',
+  'rift_bellwether',
+  'rift_coil',
 ]);
 
 /** Where a sim event happened: x/y, or the tile center of the object named by `key`. */

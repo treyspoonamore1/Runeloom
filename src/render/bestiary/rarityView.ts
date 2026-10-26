@@ -25,6 +25,8 @@ const NAMES: Record<string, string> = {
   brood_kiln: 'Brood Kiln',
   tar_matriarch: 'Tar Matriarch',
   cinder_warden: 'Cinder Warden',
+  bellwether: 'Old Bellwether',
+  glasswater_coil: 'Glasswater Coil',
 };
 
 /** "thick_skinned" → "Thick-skinned" (CONTENT §5 mod names). */
