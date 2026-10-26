@@ -5,9 +5,20 @@ import { LIB, VERTEX } from './glslLib';
 import { MATERIALS } from './glslMaterials';
 import { PASS_MAINS } from './glslPasses';
 import { GRID_HZ, TerrainPack } from './terrainPack';
+import { AtmoPack, windVector } from './atmoPack';
+import type { RegionLook } from './regionLook';
 import { TILE_CELLS } from '../../sim';
 
-type Pass = 'ground' | 'fire' | 'air' | 'debug';
+type Pass = 'ground' | 'fire' | 'air' | 'atmo' | 'debug';
+const PASSES = ['ground', 'fire', 'air', 'atmo', 'debug'] as const;
+
+/** A light that parts the fog (M8): a lit brazier. Cells; strength 0–1. */
+export interface FogLight {
+  x: number;
+  y: number;
+  radius: number;
+  strength: number;
+}
 
 /** Embers store the low byte of the grid tick, so repack before it can wrap. */
 const EMBER_REPACK_TICKS = 100;
@@ -108,24 +119,33 @@ interface Sources {
   fields: [BufferImageSource, BufferImageSource];
   masks: BufferImageSource;
   glow: BufferImageSource;
+  atmo: BufferImageSource;
+  extra: BufferImageSource;
+}
+
+function allSources(s: Sources): BufferImageSource[] {
+  return [s.codes, s.fields[0], s.fields[1], s.masks, s.glow, s.atmo, s.extra];
 }
 
 /**
  * The grid terrain (DESIGN §12): the grid packed into data textures, re-uploaded when
  * `grid.version` changes (at most once per frame, only the changed texel span), drawn by one
  * shader per layer. Layers are separate containers so the renderer can slot them between the
- * entity layers: ground (floor), fire (flames over props), air (smoke over entities), debug (F1).
+ * entity layers: ground (floor), fire (flames over props), air (smoke over entities), atmo (M8 fog
+ * and wind, over the floor and objects, under threats), debug (F1).
  * Reads the grid, never writes it.
  */
 export class TerrainView {
   readonly ground = new Container();
   readonly fire = new Container();
   readonly air = new Container();
+  readonly atmo = new Container();
   readonly debug = new Container();
   /** CPU ms of the last pack + upload (0 on frames without one), and of the pack alone. */
   lastUploadMs = 0;
   lastPackMs = 0;
   private pack: TerrainPack | null = null;
+  private atmoPack: AtmoPack | null = null;
   private sources: Sources | null = null;
   private grid: Grid | null = null;
   private meshes: Mesh<MeshGeometry, Shader>[] = [];
@@ -143,11 +163,16 @@ export class TerrainView {
     uTick: { value: 0, type: 'f32' },
     uFlags: { value: 0, type: 'f32' },
     uPulses: { value: new Float32Array(16), type: 'vec4<f32>', size: 4 },
+    uRegion: { value: 0, type: 'f32' },
+    uLantern: { value: new Float32Array(4), type: 'vec4<f32>' },
+    uWind: { value: new Float32Array(4), type: 'vec4<f32>' },
+    uLights: { value: new Float32Array(32), type: 'vec4<f32>', size: 8 },
   });
   private readonly programs: Record<Pass, GlProgram> = {
     ground: program('ground'),
     fire: program('fire'),
     air: program('air'),
+    atmo: program('atmo'),
     debug: program('debug'),
   };
   private readonly shaders: Partial<Record<Pass, Shader>> = {};
@@ -166,6 +191,7 @@ export class TerrainView {
     // Pack twice so the previous and current field buffers both hold this grid.
     this.pack!.pack(grid);
     this.pack!.pack(grid);
+    this.atmoPack!.pack(grid);
     this.uploadAll();
     this.uploadedVersion = grid.version;
     this.packTick = grid.tick;
@@ -179,6 +205,7 @@ export class TerrainView {
     if (grid.version !== this.uploadedVersion || stale) {
       const t0 = performance.now();
       pack.pack(grid);
+      this.atmoPack!.pack(grid);
       this.lastPackMs = performance.now() - t0;
       this.uploadDirty();
       this.lastUploadMs = performance.now() - t0;
@@ -190,6 +217,47 @@ export class TerrainView {
     u.uTime = time % TIME_WRAP;
     u.uMix = Math.min(1, Math.max(0, (time - this.uploadTime) * GRID_HZ));
     u.uTick = grid.tick;
+    const wind = u.uWind as Float32Array;
+    const [wx, wy] = windVector(grid.wind);
+    wind[0] = wx;
+    wind[1] = wy;
+    wind[2] = grid.wind !== 0 ? 1 : 0;
+    this.atmo.visible = this.atmoPack!.live(grid);
+  }
+
+  /** The region look of the room (regionLook.ts). */
+  set region(r: RegionLook) {
+    this.uniforms.uniforms.uRegion = r;
+  }
+
+  /**
+   * M8 fog: the player's lantern (cells), the fog's opacity, and the lights that part it (up to 8,
+   * the rest ignored).
+   */
+  setFog(
+    lantern: { x: number; y: number; radius: number; softness: number },
+    alpha: number,
+    lights: readonly FogLight[],
+  ): void {
+    const u = this.uniforms.uniforms;
+    (u.uLantern as Float32Array).set([
+      lantern.x,
+      lantern.y,
+      lantern.radius,
+      Math.max(0.01, lantern.softness),
+    ]);
+    (u.uWind as Float32Array)[3] = alpha;
+    const a = u.uLights as Float32Array;
+    a.fill(0);
+    for (let k = 0; k < Math.min(8, lights.length); k++) {
+      const l = lights[k]!;
+      a.set([l.x, l.y, l.radius, l.strength], k * 4);
+    }
+  }
+
+  /** M8: the room has fog, gusts or room wind (the atmosphere pass draws). */
+  get atmosphere(): boolean {
+    return this.atmo.visible;
   }
 
   /** Electrify pulses for the ground shader (terrainFx.ts), ages taken from `clock` (s). */
@@ -219,12 +287,11 @@ export class TerrainView {
     for (const m of this.meshes) m.destroy();
     for (const g of this.geometries) g.destroy();
     this.meshes = [];
-    if (this.sources) {
-      const s = this.sources;
-      for (const src of [s.codes, s.fields[0], s.fields[1], s.masks, s.glow]) src.destroy();
-    }
+    if (this.sources) for (const src of allSources(this.sources)) src.destroy();
     const pack = new TerrainPack(width, height);
     this.pack = pack;
+    const atmo = new AtmoPack(width, height);
+    this.atmoPack = atmo;
     this.sources = {
       codes: dataSource(pack.codes, width, height, false),
       fields: [
@@ -233,6 +300,8 @@ export class TerrainView {
       ],
       masks: dataSource(pack.masks, width, height, true),
       glow: dataSource(pack.glow, pack.tilesW, pack.tilesH, true),
+      atmo: dataSource(atmo.atmo, width, height, true),
+      extra: dataSource(atmo.extra, width, height, false),
     };
     const u = this.uniforms.uniforms;
     (u.uSize as Float32Array).set([width, height]);
@@ -249,15 +318,17 @@ export class TerrainView {
       ground: full,
       fire: this.fireGeom,
       air: this.airGeom,
+      atmo: full,
       debug: full,
     };
     const layers: Record<Pass, Container> = {
       ground: this.ground,
       fire: this.fire,
       air: this.air,
+      atmo: this.atmo,
       debug: this.debug,
     };
-    for (const pass of ['ground', 'fire', 'air', 'debug'] as const) {
+    for (const pass of PASSES) {
       this.shaders[pass]?.destroy();
       const shader = new Shader({
         glProgram: this.programs[pass],
@@ -268,6 +339,8 @@ export class TerrainView {
           uFieldsPrev: this.sources.fields[1 - pack.cur]!,
           uMasks: this.sources.masks,
           uGlow: this.sources.glow,
+          uAtmo: this.sources.atmo,
+          uExtra: this.sources.extra,
         },
       });
       this.shaders[pass] = shader;
@@ -287,8 +360,7 @@ export class TerrainView {
   }
 
   private uploadAll(): void {
-    const s = this.sources!;
-    for (const src of [s.codes, s.fields[0], s.fields[1], s.masks, s.glow]) src.update();
+    for (const src of allSources(this.sources!)) src.update();
     this.bindFields();
     this.activate();
   }
@@ -307,6 +379,9 @@ export class TerrainView {
     if (d.codes[0]! < d.codes[1]!) s.codes.update(d.codes[0], d.codes[1]);
     if (d.fields[0]! < d.fields[1]!) s.fields[pack.cur].update(d.fields[0], d.fields[1]);
     if (d.masks[0]! < d.masks[1]!) s.masks.update(d.masks[0], d.masks[1]);
+    const ad = this.atmoPack!.dirty;
+    if (ad.atmo[0]! < ad.atmo[1]!) s.atmo.update(ad.atmo[0], ad.atmo[1]);
+    if (ad.extra[0]! < ad.extra[1]!) s.extra.update(ad.extra[0], ad.extra[1]);
     s.glow.update();
     this.bindFields();
     this.activate();
@@ -316,9 +391,6 @@ export class TerrainView {
     for (const m of this.meshes) m.destroy();
     for (const g of this.geometries) g.destroy();
     for (const sh of Object.values(this.shaders)) sh.destroy();
-    if (this.sources) {
-      const s = this.sources;
-      for (const src of [s.codes, s.fields[0], s.fields[1], s.masks, s.glow]) src.destroy();
-    }
+    if (this.sources) for (const src of allSources(this.sources)) src.destroy();
   }
 }

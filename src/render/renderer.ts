@@ -10,6 +10,8 @@ import { LabLabels } from './labLabels';
 import { DEBUG_BITS } from './terrain/glslDebug';
 import { TerrainFx } from './terrain/terrainFx';
 import { TerrainView } from './terrain/terrainView';
+import { regionOf } from './terrain/regionLook';
+import { FenAmbient, fogLights } from './fen/fenAmbient';
 import { Atlas } from './atlas';
 import { Camera } from './camera';
 import { CombatEvents } from './combatEvents';
@@ -45,6 +47,10 @@ export interface Overlays {
   charge: boolean;
   wet: boolean;
   owner: boolean;
+  /** M8: an arrow per gusting cell, and the room wind on a lattice. */
+  wind: boolean;
+  /** M8: borrowed terrain (Tide water, filled pits, their ice, doused vents), striped near its end. */
+  borrowed: boolean;
 }
 
 export interface Renderer {
@@ -110,7 +116,8 @@ function smoothstep(a: number, b: number, v: number): number {
  * (camera, springs, particles, shake) lives here, driven by frameDt.
  *
  * World layers, bottom to top (1 unit = 1 cell): grid terrain floor → baked blocks and props →
- * brazier flames → terrain fire, glow and hazard edges → corpses → enemy shadows → player bolts
+ * brazier flames → objects and loot → fog and wind (M8) → fireflies and vent fx (M8) → terrain
+ * fire, glow and hazard edges → corpses → enemy shadows → player bolts
  * and effects (dimmed when busy) → enemy telegraphs → ember glows → enemies → afterimages →
  * player → smoke and steam → enemy shots → readable effects (clanks, hurt) → lab plaques → debug
  * (AI, grid overlays, hitboxes).
@@ -159,6 +166,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const forms = new FormLayer(atlas, fx);
   const ai = new AiOverlay();
   const terrainFx = new TerrainFx(atlas, shake);
+  const fen = new FenAmbient(atlas);
   world.addChild(
     terrain.ground,
     room.root,
@@ -166,6 +174,8 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     m4.objects.root,
     m4.loot.root,
     m4.fx.under,
+    terrain.atmo,
+    fen.root,
     terrain.fire,
     terrainFx.ground,
     enemies.corpses,
@@ -221,6 +231,8 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     charge: false,
     wet: false,
     owner: false,
+    wind: false,
+    borrowed: false,
   };
   let time = 0;
   let current = state;
@@ -243,9 +255,12 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   let builtRoom: GameState['room'] | null = null;
   const setRoom = (s: GameState): void => {
     current = s;
+    const region = regionOf(s.room.id);
+    terrain.region = region;
     terrain.setGrid(s.grid);
     const owned = m4.owned(s);
-    const map = room.build(s.room, s.grid, owned);
+    const map = room.build(s.room, s.grid, owned, region);
+    fen.build(s, region, s.tuning.atmosphere.fireflyDensity);
     room.sync(s.grid, terrain.blockCells);
     ambient.build(map, owned);
     builtRoom = s.room;
@@ -257,6 +272,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     telegraphs.reset();
     fx.reset();
     terrainFx.reset();
+    fen.reset();
     ailments.reset();
     forms.reset();
     numbers.reset();
@@ -306,12 +322,22 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
         (overlays.fire ? DEBUG_BITS.fire : 0) |
         (overlays.charge ? DEBUG_BITS.charge : 0) |
         (overlays.wet ? DEBUG_BITS.wet : 0) |
-        (overlays.owner ? DEBUG_BITS.owner : 0);
+        (overlays.owner ? DEBUG_BITS.owner : 0) |
+        (overlays.wind ? DEBUG_BITS.wind : 0) |
+        (overlays.borrowed ? DEBUG_BITS.borrowed : 0);
       const version = terrain.version;
       terrain.update(s.grid, time);
       terrainFx.update(dt);
       terrainFx.pylonWarn(s);
       terrain.setPulses(terrainFx.pulses, terrainFx.clock);
+      const atm = s.tuning.atmosphere;
+      if (terrain.atmosphere)
+        terrain.setFog(
+          { x, y, radius: atm.lanternRadius, softness: atm.lanternSoftness },
+          atm.fogOpacity,
+          fogLights(s, atm.brazierClear),
+        );
+      fen.update(s, dt);
       // Burnable props char and vanish with their cells (16 cells per prop, cheap); blocks
       // re-bake only when the count of block cells changes.
       if (terrain.version !== version) room.sync(s.grid, terrain.blockCells);
@@ -370,6 +396,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
         ailments.particleCount +
         forms.particleCount +
         terrainFx.particleCount +
+        fen.count +
         enemies.beastFx.count +
         m4.particleCount,
       playerFxAlpha: dim,

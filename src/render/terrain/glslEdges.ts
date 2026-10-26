@@ -16,6 +16,8 @@ const EDGES: Partial<Record<MaterialId, [number, number, number]>> = {
   mud: [C.mudDark, L.ground, 3],
   metal_floor: [C.metalDark, L.ground, 3],
   dirt: [C.dirtEdge, L.ground, 2],
+  vent_lit: [C.ink, L.ground, 6],
+  vent_doused: [C.ink, L.ground, 6],
   ash: [C.ashDark, L.detail, 1],
 };
 

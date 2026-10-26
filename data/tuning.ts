@@ -338,6 +338,22 @@ export const defaultTuning = {
      */
     hudInset: 0.28,
   },
+  /**
+   * M8 fog and fireflies (render feel, DESIGN §14; src/render/terrain/glslAtmo.ts, render/fen).
+   * Visual only: the sim never reads these.
+   */
+  atmosphere: {
+    /** Cells of clear air around the player in fog (the lantern). */
+    lanternRadius: 12,
+    /** Cells over which the lantern's edge fades into the fog. */
+    lanternSoftness: 3.5,
+    /** Fog opacity at full density, 0–1. */
+    fogOpacity: 0.93,
+    /** Cells of fog a lit brazier parts. */
+    brazierClear: 9,
+    /** Fireflies per 100 water or reed cells of the Fen (0 turns them off). */
+    fireflyDensity: 1.2,
+  },
   /** Rooms, exits and puzzle objects (M4, src/sim/world). */
   world: {
     /** Seconds of walking into a push or ice block before it moves one tile (feel). */

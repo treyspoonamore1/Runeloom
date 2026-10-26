@@ -119,6 +119,18 @@ export const TERRAIN_FX = {
   oilFireHeat: 1.35,
   /** Smoke and steam are drawn this many cells north of their cells (they rise). */
   airLift: 1.5,
+  /** M8: borrowed terrain flickers over its last seconds (DESIGN §6.5). */
+  borrowedFlickerSeconds: 1.5,
+  /** M8: borrowed terrain blinks this fast (Hz) in the first 40%, the next 35% and the end of its flicker. */
+  borrowedBlinkHz: [3, 5, 8] as const,
+  /** M8: how far a blink shows the ground it returns to, at the start and at the end. */
+  borrowedGhost: [0.45, 0.8] as const,
+  /** M8: cleared fog thickens back over its last seconds before it returns (rule 29). */
+  fogReturnSeconds: 1,
+  /** M8: gust streaks are at full strength while this many seconds or more are left. */
+  gustFullSeconds: 0.6,
+  /** M8: a lit furnace vent's flames, as a fire intensity 0–255 for the fire pass. */
+  ventHeat: 190,
   /** Additive glow strength around fire and charge. */
   fireGlow: 0.45,
   stormGlow: 0.3,
@@ -147,7 +159,6 @@ export const DEBUG_MATERIAL: Record<MaterialId, number> = {
   brazier: 0xff5030,
   object: 0xff40c0,
   rime: 0xe4f8ff,
-  // M8 placeholders for the F1 overlay; the rendering pass owns their real look.
   vent_lit: 0xff8020,
   vent_doused: 0x5a7a7a,
 };
@@ -164,8 +175,6 @@ export const DEBUG_OWNER = [0xffffff, 0x3ad0ff, 0xff3050] as const;
 
 /** One-shot terrain effects from grid events (terrainFx.ts). Times in seconds, sizes in cells. */
 export const TERRAIN_ONESHOT = {
-  /** Live Wires (M6.5): seconds the pylons crackle before each pulse. */
-  pylonWarnSeconds: 1,
   /** Particles per layer (four layers). */
   capacity: 400,
   /** Particles in each of the three ordered disc layers. */

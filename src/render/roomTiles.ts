@@ -23,8 +23,8 @@ const PROP_BY_ID: Record<string, Prop> = {
   loom_stone: 'loomstone',
 };
 
-/** Non-walkable tiles the grid shader draws as floor (bramble bushes, pits). */
-const SHADER_DRAWN = new Set(['bramble', 'pit']);
+/** Non-walkable tiles the grid shader draws as floor (bramble bushes, pits, M8 furnace vents). */
+const SHADER_DRAWN = new Set(['bramble', 'pit', 'furnace_vent']);
 
 /** Looks per tile, row-major tilesW × tilesH, plus neighbor queries. Out of bounds reads as void. */
 export class TileMap {
