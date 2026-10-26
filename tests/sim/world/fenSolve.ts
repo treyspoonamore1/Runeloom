@@ -22,6 +22,7 @@ import {
 import { giveRune } from '../hero/helpers';
 import { weaveRunes } from './regionSolve';
 import { ROOMS } from './worldHelpers';
+import { T, type PuzzleStep } from '../../../src/sim/bots/fenPuzzles';
 
 export type FenShort = keyof typeof fenRooms;
 
@@ -94,36 +95,27 @@ export function killAll(state: GameState): void {
   }
 }
 
-/** Cell coordinate of tile t's center. */
-export const T = (t: number): number => (t + 0.5) * 4;
+export {
+  allOn,
+  anyOn,
+  BOLT_FIRE,
+  BOLT_STORM,
+  cast,
+  into,
+  LOB_FIRE,
+  LOB_FROST,
+  LOB_STORM,
+  objectsOf as objects,
+  powered,
+  STRIKE,
+  T,
+} from '../../../src/sim/bots/fenPuzzles';
+
 /** A tile's center as a point. */
 export const at = (tx: number, ty: number) => ({ x: T(tx), y: T(ty) });
-
-export const objects = (s: GameState, kind: WorldObject['kind']): WorldObject[] =>
-  s.objects.filter((o) => o.kind === kind);
-export const allOn = (s: GameState, kind: WorldObject['kind']): boolean =>
-  objects(s, kind).length > 0 && objects(s, kind).every((o) => o.on);
-export const anyOn = (s: GameState, kind: WorldObject['kind']): boolean => objects(s, kind).some((o) => o.on);
 /** The door object on tile (tx, ty) (several tiles make one door; each is an object). */
 export const doorAt = (s: GameState, tx: number, ty: number): WorldObject =>
   s.objects.find((o) => o.kind === 'door' && o.tx === tx && o.ty === ty)!;
-export const into = (id: string) => (s: GameState) => s.room.id === id;
-/** Switches (S and Q) that are powered now. */
-export const powered = (s: GameState): number =>
-  s.objects.filter((o) => (o.kind === 'conduit_switch' || o.kind === 'sealed_switch') && o.on).length;
-
-export const LOB_STORM = 'Cast > Lob[Storm]';
-export const BOLT_STORM = 'Cast > Bolt[Storm]';
-export const BOLT_FIRE = 'Cast > Bolt[Fire]';
-export const LOB_FIRE = 'Cast > Lob[Fire]';
-export const LOB_FROST = 'Cast > Lob[Frost]';
-export const STRIKE = 'Cast > Strike[]';
-/** A cast of slot `slot` at cell (x, y). */
-export const cast = (slot: number, x: number, y: number): ScriptCommand => ({
-  do: 'cast',
-  slot,
-  at: { x, y },
-});
 
 /** Ticks each solution took, printed after a test file (the report quotes them). */
 export const fenTicks: Record<string, number> = {};
@@ -139,6 +131,22 @@ export function solveFen(
   fenTicks[name] = r.ticks;
   expect(r.error, `${name} at (${state.player.x.toFixed(1)}, ${state.player.y.toFixed(1)})`).toBeUndefined();
   return r;
+}
+
+/**
+ * Runs a shared solution step (bots/fenPuzzles.ts, foundryPuzzles.ts: the scripts the Fen
+ * campaign bot plays) in `room` arrived through `arrive`, and expects it to finish.
+ */
+export function solveStep(
+  room: FenShort,
+  arrive: Edge | null,
+  step: PuzzleStep,
+  setup: Omit<FenSetup, 'arrive' | 'weaves'> = {},
+  max?: number,
+): GameState {
+  const s = prepareFen(room, { ...setup, arrive, weaves: step.weaves });
+  solveFen(step.name, s, step.script(s), max);
+  return s;
 }
 
 /** Runs each script in turn on the same state (failures allowed) and returns their errors. */

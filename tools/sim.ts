@@ -13,6 +13,8 @@
  *   npm run sim -- --encounters [--room k10] [--seed 1] [--seeds 5] [--level 12] [--rune-level 10]
  *       Each room's encounter with the reference character at its expected level
  *       (src/sim/bots/campaignEncounter.ts); exit code 1 if the bot dies.
+ *   npm run sim -- --fen [--seed 1] [--build save|reference] [--json]
+ *       M8: the Fen campaign bot from the Fen start save, G1 to F10 (tools/lib/fenCli.ts).
  *   npm run sim -- --rifts [--count 1000] [--tier 5] [--seed 1] [--json]
  *       M6: generates `count` rifts per tier with random modifiers and solves each (tools/lib/riftCli.ts).
  *   npm run sim -- --rift-bot [--count 5] [--tier 4] [--builds fire,frost] [--seed 1] [--json]
@@ -47,6 +49,7 @@ import { runCampaignCli, runEncountersCli } from './lib/campaign';
 import { runRiftBotCli, runRiftCli, runRiftLadderCli } from './lib/riftCli';
 import { riftBuilds, type RiftBuild } from '../src/sim/bots/riftBot';
 import { RIFT_TIERS } from '../data/rift';
+import { runFenCli } from './lib/fenCli';
 import {
   parseSessions,
   PROGRESSION_VARIANTS,
@@ -81,6 +84,11 @@ runCli(() => {
     level: { kind: 'number' },
     'rune-level': { kind: 'number' },
     rifts: { kind: 'boolean' },
+    fen: { kind: 'boolean', help: 'M8: the Fen campaign bot from the Fen start save (--seed reseeds it)' },
+    build: {
+      kind: 'string',
+      help: "--fen: 'save' (the save's character, default) or 'reference' (the boss bot's)",
+    },
     'rift-bot': { kind: 'boolean' },
     'rift-ladder': { kind: 'boolean' },
     target: { kind: 'number', default: 8 },
@@ -112,6 +120,13 @@ runCli(() => {
     out: { kind: 'string', help: '--progression: folder for the CSV and JSON (default shots/progression)' },
     'no-hearth': { kind: 'boolean', help: '--progression: only the player who never uses the Hearth' },
   });
+
+  if (a.fen) {
+    const build = a.build ?? 'save';
+    if (build !== 'reference' && build !== 'save') throw new Error('--build: reference or save');
+    runFenCli({ seed: requireInt('seed', a.seed, 0), build, json: a.json });
+    return;
+  }
 
   if (a['playtest-saves']) {
     runPlaytestSavesCli({

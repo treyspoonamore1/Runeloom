@@ -11,10 +11,11 @@
  *
  * Room ids: `rift/<index>/entry`, `rift/<index>/r<k>`, `rift/<index>/boss`.
  */
+import { packs, type PackDef, type PackId } from '../../../../data/packs';
 import {
   riftAreaLevel,
   riftBossesAt,
-  riftChunks,
+  riftChunksAt,
   riftEntryChunk,
   riftLayout,
   riftMods,
@@ -24,6 +25,7 @@ import {
   type RiftModId,
   type RiftSpawn,
 } from '../../../../data/rift';
+import { tileForChar } from '../../../../data/tiles';
 import { hashString } from '../../core/hash';
 import { Rng } from '../../core/rng';
 import { EXIT_CHAR, OPPOSITE } from '../exits';
@@ -78,7 +80,7 @@ export function generateRift(spec: RiftSpec, templates: RoomSource): GeneratedRi
   const pool = riftBossesAt(spec.tier);
   const boss = pool[rng.int(pool.length)]!;
   attachBoss(plan, prefix, boss.arena);
-  assignChunks(plan, rng);
+  assignChunks(plan, rng, spec.tier);
   const rooms: Record<string, string> = {};
   for (const room of plan) {
     const text = templates[room.template];
@@ -152,14 +154,18 @@ function attachBoss(plan: RiftRoomPlan[], prefix: string, arena: string): void {
   });
 }
 
-/** Entry gets the entry chunk; every other room a random chunk different from its neighbors'. */
-function assignChunks(plan: RiftRoomPlan[], rng: Rng): void {
+/**
+ * Entry gets the entry chunk; every other room a random chunk the tier allows (M8: the Fen's from
+ * tier 9, riftChunksAt) different from its neighbors'. Below tier 9 the pool is the M6 one.
+ */
+function assignChunks(plan: RiftRoomPlan[], rng: Rng, tier: number): void {
   plan[0]!.template = `rift/chunks/${riftEntryChunk}`;
   const byId = new Map(plan.map((p) => [p.id, p]));
+  const pool = riftChunksAt(tier);
   for (const p of plan) {
     if (p.template !== '') continue;
     const near = new Set(Object.values(p.exits).map((id) => byId.get(id!)?.template));
-    const options = riftChunks.map((c) => `rift/chunks/${c}`).filter((t) => !near.has(t));
+    const options = pool.map((c) => `rift/chunks/${c}`).filter((t) => !near.has(t));
     p.template = options[rng.int(options.length)]!;
   }
 }
@@ -173,9 +179,15 @@ function shuffled<T>(rng: Rng, list: readonly T[]): T[] {
   return out;
 }
 
-function pickSpawn(rng: Rng, tier: number, chunk: string): RiftSpawn {
+const waterOnly = (s: RiftSpawn): boolean =>
+  'pack' in s && (packs[s.pack as PackId] as PackDef).waterOnly === true;
+
+function pickSpawn(rng: Rng, tier: number, chunk: string, inWater: boolean): RiftSpawn {
   const list = riftSpawns.filter(
-    (s) => (s.fromTier ?? 1) <= tier && !(s.notIn as readonly string[] | undefined)?.includes(chunk),
+    (s) =>
+      (s.fromTier ?? 1) <= tier &&
+      !(s.notIn as readonly string[] | undefined)?.includes(chunk) &&
+      (inWater || !waterOnly(s)),
   );
   let total = 0;
   for (const s of list) total += s.weight;
@@ -187,8 +199,43 @@ function pickSpawn(rng: Rng, tier: number, chunk: string): RiftSpawn {
   return list[list.length - 1]!;
 }
 
-function spawnLine(rng: Rng, marker: string, tier: number, chunk: string): string {
-  const s = pickSpawn(rng, tier, chunk);
+/** Map characters that resolve to water ground (shallow, deep, oily water). */
+const WATER_CHARS = '~wO';
+
+/**
+ * True when the marker at (x, y) resolves to water: as the grid resolves a marker tile (the most
+ * common ground of its 4 neighbors, ties to stone), counting characters. Water-only packs (M8
+ * pike_shoal) spawn nothing off water, so they are only picked for such markers.
+ */
+function markerInWater(rows: readonly string[][], x: number, y: number): boolean {
+  const counts = new Map<string, number>();
+  for (const [dx, dy] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as const) {
+    const ch = rows[y + dy]?.[x + dx];
+    if (ch === undefined) continue;
+    const def = tileForChar(ch);
+    if (def === undefined || def.marker === true) continue;
+    counts.set(ch, (counts.get(ch) ?? 0) + 1);
+  }
+  let best = '';
+  let bestCount = 0;
+  let tied = false;
+  for (const [ch, c] of counts) {
+    if (c > bestCount) {
+      best = ch;
+      bestCount = c;
+      tied = false;
+    } else if (c === bestCount) tied = true;
+  }
+  return !tied && WATER_CHARS.includes(best);
+}
+
+function spawnLine(rng: Rng, marker: string, tier: number, chunk: string, inWater: boolean): string {
+  const s = pickSpawn(rng, tier, chunk, inWater);
   const rare = riftRarity.rare.base + riftRarity.rare.perTier * (tier - 1);
   const magic = riftRarity.magic.base + riftRarity.magic.perTier * (tier - 1);
   const r = rng.float();
@@ -225,11 +272,17 @@ function roomText(
     if (room.exits[edge] !== undefined) lines.push(`@exit ${edge} ${room.exits[edge]}`);
   if (room.id.endsWith('/entry') || bossKind !== null)
     lines.push(`@exit ${bossKind !== null ? 'n' : 's'} ${spec.home.roomId}`);
-  const markers = new Set<string>();
-  for (const r of rows) for (const ch of r) if (ch >= '1' && ch <= '9') markers.add(ch);
-  for (const m of [...markers].sort()) {
+  // Each marker's first tile (row order) decides whether it sits in water.
+  const markers = new Map<string, boolean>();
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const ch = rows[y]![x]!;
+      if (ch >= '1' && ch <= '9' && !markers.has(ch)) markers.set(ch, markerInWater(rows, x, y));
+    }
+  for (const m of [...markers.keys()].sort()) {
     if (bossKind !== null) lines.push(`@spawn ${m} enemy:${bossKind}`);
-    else lines.push(spawnLine(rng, m, spec.tier, room.template.replace(/^rift\/chunks\//, '')));
+    else
+      lines.push(spawnLine(rng, m, spec.tier, room.template.replace(/^rift\/chunks\//, ''), markers.get(m)!));
   }
   if (bossKind !== null) lines.push('@link D cleared');
   return `${lines.join('\n')}\n${rows.map((r) => r.join('')).join('\n')}\n`;

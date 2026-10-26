@@ -42,3 +42,44 @@ export function pacingMinutes(r: CampaignResult): number {
   for (const l of r.logs) s += l.clearSeconds * humanFightFactor + roomOverhead[l.key];
   return s / 60;
 }
+
+/**
+ * M8: the Glasswater Fen and the Drowned Foundry (bots/fenRun.ts), per route visit. Unlike the
+ * region's, the Fen bot walks its puzzles (the scripted solutions) and every room to room walk,
+ * so those seconds count × humanFightFactor with the fights; an overhead is the rest: walking in
+ * and reading the room, working the puzzle out (and a retry where a timer is tight), looting,
+ * the Loom and menus. A new element (F6's Tide) adds its item-get panel and a Loom visit.
+ */
+export const fenRoomOverhead: Readonly<Record<string, number>> = {
+  k10: 30, // the progression sim's player opens the storm door (the save has it open)
+  g1: 120, // arrival, the Loom Stone, first fog, find the switch on its post
+  g2: 60,
+  g3: 150, // three networks joined by water, the ice plug, the vault's Loom Shard
+  g4: 150, // read the pulses, plan the frozen path, the Heart Seed islet
+  g5: 120, // fog; find the alcove and burn its bramble
+  g7: 150, // four braziers in 15 s, two across black water
+  'g5 (back)': 120, // three switches in 12 s in the fog (a retry likely)
+  g6: 60,
+  g8: 90, // the Loom Stone, the broken bridge
+  f1: 90,
+  f2: 150, // a 3 s window: pick or weave something that reaches three networks
+  f3: 180, // freezing lanes and sliding two ice blocks onto plates
+  f4: 120, // the oil channel, the Heart Seed vault, the locked door
+  f5: 60,
+  f6: 120, // Tide's item get, the Loom, the vent tutorial
+  f7: 90,
+  f8: 210, // the Floodline puzzle, the vents' vault
+  f9: 180, // the ice bridge over the chasm, glazing the lane and washing the block
+  'f8 (back)': 30,
+  f10: 60,
+};
+
+/** Human minutes for a Fen run: (fights + puzzles and walking) × humanFightFactor + overheads. */
+export function fenPacingMinutes(r: {
+  visits: readonly { label: string; fightSeconds: number; puzzleSeconds: number }[];
+}): number {
+  let s = 0;
+  for (const v of r.visits)
+    s += (v.fightSeconds + v.puzzleSeconds) * humanFightFactor + (fenRoomOverhead[v.label] ?? 0);
+  return s / 60;
+}

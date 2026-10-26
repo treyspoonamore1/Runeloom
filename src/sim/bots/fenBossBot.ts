@@ -7,7 +7,8 @@
  *
  * The character (fenBossCharacter): the rift bot's tier 8 reference (bots/riftBot.ts riftCharacter)
  * at character level 30, where a player who has just cleared tier 8 stands (CONTENT §13; the M7
- * tier 7 save is level 29), with two more Cast and Bolt runes. Its build is the campaign's reference build
+ * tier 7 save is level 29), with its runes at level 20 (M8 acceptance: the Fen start save's are)
+ * and two more Cast and Bolt runes. Its build is the campaign's reference build
  * without crafting (Fire Bolt, Strike, Frost Bolt on Q), with a Storm Bolt on E (slot 4) for
  * ringing the Bellwether and Overloading the Coil.
  *
@@ -31,6 +32,7 @@ import { CampaignNav } from './campaignNav';
 import { applyReferenceBuild } from './campaignPlan';
 import { bossIn } from './kiterBoss';
 import { riftCharacter } from './riftBot';
+import { maxRuneLevel } from '../../../data/progression';
 
 /** E weaves for the Fen bosses, best first. */
 export const stormBoltWeaves: readonly string[] = ['Cast > Bolt[Storm, Chain]', 'Cast > Bolt[Storm]'];
@@ -39,6 +41,18 @@ export const stormBoltWeaves: readonly string[] = ['Cast > Bolt[Storm, Chain]', 
 export const tideWeaves: readonly string[] = ['Cast > Swath[Tide, Lingering]', 'Cast > Swath[Tide]'];
 
 export type FenTide = 'tide' | 'none';
+
+/**
+ * The Fen boss weaves on top of the reference build: the Storm Bolt on E (slot 4) and, with
+ * 'tide' and a Tide rune owned, Floodline on Q in place of the Frost Bolt. Returns whether
+ * Floodline went on.
+ */
+export function applyFenBossWeaves(state: GameState, tide: FenTide): boolean {
+  for (const n of stormBoltWeaves) if (setSlotWeave(state, 3, n).applied) break;
+  if (tide !== 'tide') return false;
+  for (const n of tideWeaves) if (setSlotWeave(state, 2, n).applied) return true;
+  return false;
+}
 
 export interface FenBossFightOptions {
   rooms: RoomSource;
@@ -79,6 +93,9 @@ export interface FenBossFightLog {
 export function fenBossCharacter(): HeroState {
   const hero = riftCharacter(8);
   hero.level = 30;
+  // M8 acceptance: a tier 8 character's socketed runes are maxed (the Fen start save, the
+  // progression sim's character at tier 8, has every rune it uses at 20), not riftCharacter's 14.
+  for (const r of hero.runes) r.level = maxRuneLevel;
   // Two more Cast and Bolt runes (duplicates are common by tier 8), so Q and E hold bolts too.
   const level = hero.runes[0]?.level ?? 1;
   for (const rune of ['cast', 'cast', 'bolt', 'bolt'] as const) hero.runes.push(makeRune(hero, rune, level));
@@ -99,14 +116,13 @@ export function setupFenBossFight(opts: Omit<FenBossFightOptions, 'maxSeconds' |
   syncWeaveSpindle(state);
   refreshHero(state);
   applyReferenceBuild(state, { craft: false });
-  for (const n of stormBoltWeaves) if (setSlotWeave(state, 3, n).applied) break;
-  if (opts.tide === 'tide') {
-    // Tide from the F6 shrine, on Q in place of the Frost Bolt.
+  if (opts.tide === 'tide' && !state.hero.runes.some((r) => r.rune === 'tide')) {
+    // Tide from the F6 shrine.
     const hero = state.hero;
     hero.runes.push(makeRune(hero, 'tide', hero.runes[0]?.level ?? 1));
     if (!hero.unlockedRunes.includes('tide')) hero.unlockedRunes.push('tide');
-    for (const n of tideWeaves) if (setSlotWeave(state, 2, n).applied) break;
   }
+  applyFenBossWeaves(state, opts.tide);
   const p = state.player;
   p.x = p.prevX = opts.start.x;
   p.y = p.prevY = opts.start.y;
@@ -116,7 +132,6 @@ export function setupFenBossFight(opts: Omit<FenBossFightOptions, 'maxSeconds' |
   if (!boss) throw new Error(`setupFenBossFight: no boss in ${opts.roomId}`);
   return { state, boss };
 }
-
 
 export function runFenBossFight(opts: FenBossFightOptions): FenBossFightLog {
   const { state, boss } = setupFenBossFight(opts);

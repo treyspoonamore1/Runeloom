@@ -10,7 +10,8 @@
  *   open, with Embers unspent, buildings upgraded and an expedition out.
  * - `fen_start.json` (M8): the progression sim's character once it has completed tier 8 (the cap
  *   before the Glasswater Coil), standing at K10's Loom Stone with the storm door open, so the
- *   Fen is one walk north. The bots mark the Coil dead to climb past 8; this save has it alive.
+ *   Fen is one walk north. The progression sim stops the moment tier 8 is done, before it plays
+ *   the Fen (bots/progressionFen.ts), so the Coil is alive.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -99,8 +100,8 @@ export function buildPlaytestSaves(o: Pick<PlaytestSavesOptions, 'seed' | 'tier'
 }
 
 /**
- * The Fen start (M8): the Coil alive again (the bots mark it dead to climb past tier 8), fast
- * travel to K10's Loom Stone, the storm door opened the way play opens it (a Storm hit on its
+ * The Fen start (M8): the Coil alive (the progression sim plays the Fen only after tier 8; the
+ * filter guards an older route that marked it dead), fast travel to K10's Loom Stone, the storm door opened the way play opens it (a Storm hit on its
  * switch: the Warden is dead and the best tier ever is 8), then a rest at the stone.
  */
 function atStormDoor(s: GameState): void {

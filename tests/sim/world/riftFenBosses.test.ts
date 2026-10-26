@@ -76,7 +76,7 @@ describe('Fen rift bosses', () => {
   it('scale from their own levels (22 and 24) with the rift; a rift Coil keeps its water ways', () => {
     const s = createGame({ seed: 1, roomText: ROOMS['rift/bosses/glass_eye']!.replace('@name', '@level 21\n@name') });
     const c = spawnEnemy(s, 'rift_coil', 62, 46);
-    expect(c.maxLife).toBeCloseTo(enemyDef('glasswater_coil').life * 1.12 ** (21 - 24), 3);
+    expect(c.maxLife).toBeCloseTo(enemyDef('rift_coil').life * 1.12 ** (21 - 24), 3);
     expect(s.grid.ground[46 * s.grid.width + 62]).toBe(MAT.deep_water);
     expect(c.boss!.fen).not.toBeNull();
   });

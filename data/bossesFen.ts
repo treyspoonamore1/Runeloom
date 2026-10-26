@@ -16,8 +16,10 @@ const COS35 = 0.8191520442889918;
 const fenBossDefs = {
   bellwether: {
     name: 'Old Bellwether',
-    // CONTENT §5 says 20,000; 18,000 brings the boss bot's kill into 60–100 s (DECISIONS).
-    life: 18000,
+    // CONTENT §5 says 20,000; 18,000 brought the boss bot's kill into 60–100 s with runes at level
+    // 14. M8 acceptance: a tier 8 character's runes are at 20 (the Fen start save's are), and the
+    // Fen campaign bot from that save kills it in 53–58 s at 18,000; 27,000 gives 80–85 s.
+    life: 27000,
     speed: 9,
     radius: 4.5,
     resist: { physical: 0, fire: 0.25, frost: 0.25, storm: 0.5 },
@@ -104,8 +106,10 @@ const fenBossDefs = {
   },
   glasswater_coil: {
     name: 'Glasswater Coil',
-    // CONTENT §5 says 32,000; 48,000 brings the boss bot's Tide-strand kill into 120–180 s (DECISIONS).
-    life: 48000,
+    // CONTENT §5 says 32,000; 48,000 brought the boss bot's Tide-strand kill into 120–180 s with
+    // runes at 14. M8 acceptance: from the Fen start save (runes at 20) the Fen campaign bot killed
+    // it in 68 s at 48,000; 96,000 gives about 155 s with 3 strands.
+    life: 96000,
     speed: 16,
     // Its head circle: its hits and the hits it takes use it; the trailing body is drawn only.
     radius: 5,
@@ -211,8 +215,10 @@ const fenBossDefs = {
  */
 export const fenBosses = {
   ...fenBossDefs,
-  rift_bellwether: { ...fenBossDefs.bellwether, name: 'Rift Bellwether', lookAs: 'bellwether' },
-  rift_coil: { ...fenBossDefs.glasswater_coil, name: 'Rift Coil', lookAs: 'glasswater_coil' },
+  // The rift versions keep the bosses work's life (M8 acceptance retuned only the region fights,
+  // whose kill times BUILD_PLAN sets); rift bosses scale with riftBossScale and the tier.
+  rift_bellwether: { ...fenBossDefs.bellwether, life: 18000, name: 'Rift Bellwether', lookAs: 'bellwether' },
+  rift_coil: { ...fenBossDefs.glasswater_coil, life: 48000, name: 'Rift Coil', lookAs: 'glasswater_coil' },
 } satisfies Record<string, EnemyDef>;
 
 /**

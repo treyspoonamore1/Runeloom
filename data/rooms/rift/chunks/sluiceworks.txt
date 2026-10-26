@@ -1,0 +1,22 @@
+@id rift/chunks/sluiceworks
+@name Rift Sluiceworks
+###############^^###############
+#fff#..........mm..........#ff##
+#...#mmmmmmmmmmmmmmmmmmmmmm#..##
+#...mmmmmmmmmmmmmmmmmmmmmmmm...#
+#..mmmmmmmmmmm~~mmmmmmmmmmmmm..#
+#..mmmmm1mmmm~ww~mmmmmmmmmmmm..#
+#..mmmmmmmmmm~ww~mmmmmmm2mmmm..#
+#..mmmmmmmmmm~ww~mmmmmmmmmmmm..#
+#..mmmmmmmmmm~ww~mmmmmmmmmmmm..#
+<..mmmmmmmmmmmmmmmmmmmmmmmmmm..>
+<..mmmmmmmmmmmmmmmmmmmmmmmmmm..>
+#..mmmmmmmmmm~ww~mmmmmmmmmmmm..#
+#..mmmmmmmmmm~ww~mmmmmmmmmmmm..#
+#..mmmmmmmmmm~ww~mmmm3mmmmmmm..#
+#..mmmmmmmmmm~ww~mmmmmmmmmmmm..#
+#..mmmmmmmmmmm~~mmmmmmmmmmmmm..#
+#...mmmmmmmmmmmmmmmmmmmmmmmm...#
+##..#mmmmmmmmmmmmmmmmmmmmmm#...#
+##ff#..........mm..........#fff#
+###############vv###############
