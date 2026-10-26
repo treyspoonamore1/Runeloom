@@ -119,8 +119,6 @@ export const TERRAIN_FX = {
   oilFireHeat: 1.35,
   /** Smoke and steam are drawn this many cells north of their cells (they rise). */
   airLift: 1.5,
-  /** M8: borrowed terrain flickers over its last seconds (DESIGN §6.5). */
-  borrowedFlickerSeconds: 1.5,
   /** M8: borrowed terrain blinks this fast (Hz) in the first 40%, the next 35% and the end of its flicker. */
   borrowedBlinkHz: [3, 5, 8] as const,
   /** M8: how far a blink shows the ground it returns to, at the start and at the end. */

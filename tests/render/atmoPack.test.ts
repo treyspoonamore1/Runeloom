@@ -5,6 +5,7 @@ import { AtmoPack } from '../../src/render/terrain/atmoPack';
 import { TERRAIN_FX } from '../../src/render/terrain/terrainColors';
 import { GRID_HZ, TerrainPack } from '../../src/render/terrain/terrainPack';
 import { REGION, regionOf } from '../../src/render/terrain/regionLook';
+import { defaultTuning } from '../../data/tuning';
 
 const ROOM = `@id test/atmo\n@name Atmo\n@level 1\n@fog 2 0 3 1\n....\n.f..\n`;
 const texel = (buf: Uint8Array, i: number): number[] => Array.from(buf.subarray(i * 4, i * 4 + 4));
@@ -58,7 +59,7 @@ describe('AtmoPack (M8 fog, gusts, borrowed)', () => {
     grid.timer[0] = 100;
     pack.pack(grid);
     expect(texel(pack.extra, 0)).toEqual([MAT.stone, 0, 255, 0]);
-    grid.timer[0] = Math.round(TERRAIN_FX.borrowedFlickerSeconds * GRID_HZ * 0.5);
+    grid.timer[0] = Math.round(defaultTuning.tide.flickerSeconds * GRID_HZ * 0.5);
     pack.pack(grid);
     const e = texel(pack.extra, 0);
     expect(e[1]).toBeGreaterThan(100);

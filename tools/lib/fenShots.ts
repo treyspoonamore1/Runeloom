@@ -22,6 +22,8 @@ export const fenShotIds = [
   'palette_fen',
   'palette_foundry',
   'palette_region1',
+  'tide_real',
+  'gale_real',
 ] as const;
 export type FenShotId = (typeof fenShotIds)[number];
 
@@ -35,6 +37,7 @@ export async function runFenShot(page: Page, id: FenShotId): Promise<string> {
     const S = await load<typeof import('../../src/sim')>('/src/sim/index.ts');
     const M = await load<typeof import('../../data/materials')>('/data/materials.ts');
     const WD = await load<typeof import('../../src/sim/grid/windDir')>('/src/sim/grid/windDir.ts');
+    const WN = await load<typeof import('../../src/sim/grid/wind')>('/src/sim/grid/wind.ts');
     R.loop.stop();
     const roomId =
       id === 'palette_foundry'
@@ -252,6 +255,58 @@ export async function runFenShot(page: Page, id: FenShotId): Promise<string> {
         place(...tile(14, 9));
         await frames(1);
         note = 'Foundry palette: dark sooted metal, sluice, vents, soot-dark stone';
+        break;
+      }
+      case 'tide_real': {
+        // The real rules (24, 27, 30): Tide on stone and on the vent row, then wait until 0.8 s are left.
+        place(...tile(12, 15));
+        const tide = (x: number, y: number, r: number) =>
+          S.applyElement(s, {
+            element: 'tide',
+            shape: { kind: 'circle', x, y, r },
+            owner: M.OWNER.player,
+            sourceId: 0,
+            hitDamage: 0,
+            durationMult: 1,
+          });
+        tide(6 * T, 14 * T, 7);
+        tide(21 * T, 18.5 * T, 6);
+        const ticks = Math.round((s.tuning.tide.floodSeconds - 0.8) * 60);
+        const idle = { moveX: 0, moveY: 0, aimX: s.player.x + 5, aimY: s.player.y, buttons: 0 };
+        for (let i = 0; i < ticks; i++) R.session.step(idle);
+        for (let i = 0; i < 6; i++) {
+          R.session.step(idle);
+          R.renderer.handleEvents(R.session.drainEvents());
+          R.renderer.render(R.session.state, 1, 1 / 60);
+          await raf();
+        }
+        note =
+          'real Tide (rules 24, 27, 30) 0.8 s before it goes: the stone pool and the doused vents blink back';
+        break;
+      }
+      case 'gale_real': {
+        // A real Gale cone (rule 21 gust, rule 29 fog clear) blown east into the fog bank.
+        place(...tile(24, 15));
+        S.applyElement(s, {
+          element: 'gale',
+          shape: WN.galeCone(s, s.player.x, s.player.y, 1, 0, 1),
+          owner: M.OWNER.player,
+          sourceId: 0,
+          hitDamage: 0,
+          durationMult: 1,
+          dirX: 1,
+          dirY: 0,
+        });
+        const idle = { moveX: 0, moveY: 0, aimX: s.player.x + 5, aimY: s.player.y, buttons: 0 };
+        for (let i = 0; i < 12; i++) {
+          R.session.step(idle);
+          if (i % 3 === 2) {
+            R.renderer.handleEvents(R.session.drainEvents());
+            R.renderer.render(R.session.state, 1, 3 / 60);
+            await raf();
+          }
+        }
+        note = 'a real Gale cone east from the player: streaks, fog cleared in its cone, the vane in it';
         break;
       }
       case 'palette_region1': {

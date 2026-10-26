@@ -326,6 +326,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
         (overlays.wind ? DEBUG_BITS.wind : 0) |
         (overlays.borrowed ? DEBUG_BITS.borrowed : 0);
       const version = terrain.version;
+      terrain.borrowedFlicker = s.tuning.tide.flickerSeconds;
       terrain.update(s.grid, time);
       terrainFx.update(dt);
       terrainFx.pylonWarn(s);

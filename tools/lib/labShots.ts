@@ -77,7 +77,11 @@ async function cropShot(page: Page, s: LabStation, file: string): Promise<void> 
   const y0 = Math.max(0, (area.y0 - MARGIN.top) * xf.scale + xf.oy);
   const x1 = Math.min(vp.width, (area.x1 + MARGIN.side) * xf.scale + xf.ox);
   const y1 = Math.min(vp.height, (area.y1 + MARGIN.bottom) * xf.scale + xf.oy);
-  await page.screenshot({ path: file, clip: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } });
+  await page.screenshot({
+    path: file,
+    clip: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 },
+    timeout: 120_000,
+  });
 }
 
 /**

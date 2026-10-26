@@ -3,6 +3,7 @@ import { WIND_DX, WIND_DY } from '../../sim/grid/windDir';
 import type { Grid } from '../../sim';
 import { TERRAIN_FX } from './terrainColors';
 import { GRID_HZ } from './terrainPack';
+import { defaultTuning } from '../../../data/tuning';
 
 /**
  * Packs the M8 grid fields (DESIGN §6.1, §6.5, §6.6) into two RGBA8 textures for the terrain
@@ -14,11 +15,11 @@ import { GRID_HZ } from './terrainPack';
  * Fog: an `air = fog` cell is full; a cleared fog cell (no air, fog mask, timer counting to its
  * return) thickens back over its last `fogReturnTicks`; smoke or steam on a fog cell hides it.
  * Gust strength fades with `gustTimer`. Expiry rises from 1 to 255 over a borrowed cell's last
- * `borrowedFlickerSeconds` (DESIGN §6.5: "the last 1.5 s of borrowed terrain flickers").
+ * tuning.tide.flickerSeconds (DESIGN §6.5: "the last 1.5 s of borrowed terrain flickers"; the
+ * renderer passes the live value in `flickerTicks`).
  * Rooms with no fog, gust or borrowed cell pack once and then skip.
  */
 
-const FLICKER_TICKS = Math.round(TERRAIN_FX.borrowedFlickerSeconds * GRID_HZ);
 const RETURN_TICKS = Math.round(TERRAIN_FX.fogReturnSeconds * GRID_HZ);
 const GUST_FULL_TICKS = Math.round(TERRAIN_FX.gustFullSeconds * GRID_HZ);
 
@@ -56,6 +57,8 @@ export class AtmoPack {
   gusts = false;
   /** Any borrowed cell at the last pack. */
   borrowed = false;
+  /** Grid ticks of a borrowed cell's flicker (tuning.tide.flickerSeconds). */
+  flickerTicks = Math.round(defaultTuning.tide.flickerSeconds * GRID_HZ);
   private maskGrid: Grid | null = null;
   private clean = false;
   private readonly atmo32: Uint32Array;
@@ -104,7 +107,7 @@ export class AtmoPack {
     const e32 = this.extra32;
     const aFog = AIR.fog;
     const aNone = AIR.none;
-    const flicker = FLICKER_TICKS;
+    const flicker = Math.max(1, this.flickerTicks);
     const ret = RETURN_TICKS;
     const full = GUST_FULL_TICKS;
     let a0 = n;

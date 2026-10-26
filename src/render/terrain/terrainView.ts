@@ -225,6 +225,11 @@ export class TerrainView {
     this.atmo.visible = this.atmoPack!.live(grid);
   }
 
+  /** Seconds of borrowed terrain's flicker (tuning.tide.flickerSeconds, DESIGN §6.5). */
+  set borrowedFlicker(seconds: number) {
+    if (this.atmoPack) this.atmoPack.flickerTicks = Math.round(seconds * GRID_HZ);
+  }
+
   /** The region look of the room (regionLook.ts). */
   set region(r: RegionLook) {
     this.uniforms.uniforms.uRegion = r;
