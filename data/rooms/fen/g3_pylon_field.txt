@@ -3,7 +3,7 @@
 @level 19
 @exit w fen/g2_glass_reeds
 @exit n fen/g4_heron_lake
-@spawn 1 pack:caller_guard
+@spawn 1 pack:crab_cast
 @link D switch:S
 @note I Meltwater floods the sluice around the third switch.
 @note D The pylons hum together. The vault opens.

@@ -3,7 +3,7 @@
 @level 21
 @exit s foundry/f1_sluice_gate
 @exit n foundry/f3_cooling_pools
-@spawn 1 pack:caller_guard
+@spawn 1 pack:heron_wade
 @link D timer:3:switch:S
 @note Q A pump stirs, and stalls again unless the others wake with it.
 ########################################^^######

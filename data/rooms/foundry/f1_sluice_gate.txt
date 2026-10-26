@@ -3,8 +3,8 @@
 @level 21
 @exit w fen/g8_foundry_steps
 @exit n foundry/f2_pump_hall
-@spawn 1 pack:caller_guard
-@spawn 2 pack:wisp_flight
+@spawn 1 pack:crab_cast
+@spawn 2 pack:sparkfly_cloud
 @link D switch:S
 @note Q The sluice switch wakes. The moat carried the charge across.
 @note D The sluice doors grind open. Behind the furnace vents to the east, something glints.

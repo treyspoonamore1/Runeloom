@@ -3,8 +3,8 @@
 @level 22
 @exit s foundry/f2_pump_hall
 @exit e foundry/f4_slag_run
-@spawn 1 enemy:tar_hulk
-@spawn 2 pack:wisp_flight
+@spawn 1 enemy:bellshell
+@spawn 2 pack:sparkfly_cloud
 @link D plates:all
 @note T A plate sinks under the ice block.
 ########################################################

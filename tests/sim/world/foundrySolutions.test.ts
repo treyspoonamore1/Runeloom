@@ -3,10 +3,6 @@
  * data/rooms/SOLUTIONS.md), as fenSolutions.test.ts does for the overworld: each solution reaches
  * its door, chest or pickup, and each puzzle room has an attempt without its first needed element
  * that fails. G7's Windward Cache (Gale) is here too, with the other after-the-dungeon-item tests.
- *
- * TODO(chemistry merge): the Tide and Gale tests are `it.skip` until the chemistry agent's Tide
- * (DESIGN §6.5: rules 24, 27, 28, 30, borrowed terrain) and Gale gusts (§6.6, wind vanes) are merged
- * and RUNTIME_SHIPS includes M8 (the weaves with Tide or Gale don't compile before that).
  */
 import { afterAll, describe, expect, it } from 'vitest';
 import { MAT } from '../../../data/materials';
@@ -240,8 +236,7 @@ describe('the Foundry without its element (CONTENT §13 "Needs")', () => {
 });
 
 describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
-  // TODO(chemistry merge): enable once Tide (rules 24, 27, 28, 30) lands and RUNTIME_SHIPS has M8.
-  it.skip('F6: the shrine gives Tide (the item get); Tide douses the 2-tile vent wall; walk through before it relights', () => {
+  it('F6: the shrine gives Tide (the item get); Tide douses the 2-tile vent wall; walk through before it relights', () => {
     const s = prepareFen('f6', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, LOB_STORM, LOB_FROST] });
     const tide = () => s.hero.runes.filter((r) => r.rune === 'tide').length;
     expect(tide()).toBe(0);
@@ -254,7 +249,7 @@ describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
     expect(s.events.some((e) => e.type === 'elementUnlocked' && e.rune === 'tide')).toBe(true);
   });
 
-  it.skip('F6: Lob[Tide] on the vents opens a 10 s gap; the player walks east through it', () => {
+  it('F6: Lob[Tide] on the vents opens a 10 s gap; the player walks east through it', () => {
     const s = prepareFen('f6', {
       arrive: 'w',
       weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', LOB_FROST],
@@ -268,7 +263,7 @@ describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
     ]);
   });
 
-  it.skip('F7: douse each of the three fire walls in turn and go through before it relights', () => {
+  it('F7: douse each of the three fire walls in turn and go through before it relights', () => {
     const s = prepareFen('f7', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', LOB_STORM] });
     solveFen('f7', s, [
       { do: 'moveTo', x: T(20), y: T(10) },
@@ -283,18 +278,21 @@ describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
     ]);
   });
 
-  it.skip('F8 east door (Floodline): Swath[Tide, Lingering] paints water from the pool to the dais; Storm the pool', () => {
+  it('F8 east door (Floodline): Swath[Tide, Lingering] paints water from the pool to the dais; Storm the pool', () => {
     const s = prepareFen('f8', {
       arrive: 'w',
       weaves: [BOLT_FIRE, STRIKE, LOB_STORM, 'Cast > Swath[Tide, Lingering]'],
     });
     solveFen('f8 east', s, [
-      { do: 'moveTo', x: T(40) + 1, y: T(15) },
+      // Stand in the pool's shallow rim so the strip starts in the pool.
+      { do: 'moveTo', x: T(39), y: T(15) },
       cast(3, T(47), T(15)),
-      { do: 'moveTo', x: T(43), y: T(15) },
+      { do: 'moveTo', x: 170, y: T(15) },
       cast(3, T(47), T(15)),
-      { do: 'moveTo', x: T(38), y: T(18) },
-      cast(2, T(36), T(15)),
+      { do: 'moveTo', x: 178, y: T(15) },
+      cast(3, T(47), T(15)),
+      { do: 'moveTo', x: T(39), y: T(18) },
+      cast(2, T(39), T(15)),
       {
         do: 'until',
         cond: (st) => objects(st, 'door').some((o) => o.link === 'D' && o.on),
@@ -306,13 +304,15 @@ describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
     ]);
   });
 
-  it.skip('F8 vault: douse the row of vents, Storm its near end; the grates carry the charge to the switch', () => {
+  it('F8 vault: douse the row of vents, Storm its near end; the grates carry the charge to the switch', () => {
     const s = prepareFen('f8', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, LOB_STORM, 'Cast > Lob[Tide]'] });
     solveFen('f8 vault', s, [
       { do: 'moveTo', x: T(11), y: T(27) },
-      cast(3, T(14), T(27)),
-      cast(3, T(17), T(27)),
-      cast(3, T(19), T(27)),
+      cast(3, 54, T(27)),
+      cast(3, 60, T(27)),
+      cast(3, 66, T(27)),
+      cast(3, 72, T(27)),
+      cast(3, 78, T(27)),
       cast(2, T(13), T(27)),
       {
         do: 'until',
@@ -320,48 +320,52 @@ describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
         timeout: 3,
         label: 'vault door',
       },
-      { do: 'moveTo', x: T(27), y: T(29) },
+      { do: 'moveTo', x: T(27), y: T(30) },
       { do: 'until', cond: (st) => st.hero.loomShards === 1, timeout: 3, label: 'Loom Shard' },
     ]);
   });
 
-  it.skip('F9: Tide fills a stretch of the chasm, Frost freezes it; cross to the big key', () => {
+  it('F9: Tide fills a stretch of the chasm, Frost freezes it; cross to the big key', () => {
     const s = prepareFen('f9', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', LOB_FROST] });
     solveFen('f9 key', s, [
       { do: 'moveTo', x: T(25), y: T(13) },
-      cast(2, T(27), T(13)),
-      cast(3, T(27), T(13)),
+      cast(2, 106, T(13)),
+      cast(2, 114, T(13)),
+      cast(3, 106, T(13)),
+      cast(3, 114, T(13)),
       { do: 'moveTo', x: T(30), y: T(13) },
       { do: 'moveTo', x: T(50), y: T(13) },
       { do: 'walk', dirX: 1, dirY: 0, s: 2, until: (st) => st.world.bigKeys.includes('foundry') },
     ]);
   });
 
-  it.skip('F9 Heart Seed: Glaze the lane (Swath[Tide, Frost]), wash the ice block east with a Lob[Tide] behind it', () => {
-    const s = prepareFen('f9', {
-      arrive: 'w',
-      weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', 'Cast > Swath[Tide, Frost]'],
-    });
+  it('F9 Heart Seed: Glaze the walled lane over its wall (Lob[Tide], then Lob[Frost]), wash the ice block east with a Lob[Tide] behind it', () => {
+    const s = prepareFen('f9', { arrive: 'w', weaves: [BOLT_FIRE, STRIKE, 'Cast > Lob[Tide]', LOB_FROST] });
     const seeds = s.hero.heartSeeds;
+    const lane = T(27);
     solveFen('f9 seed', s, [
-      { do: 'moveTo', x: T(7), y: T(27) },
-      cast(3, T(4), T(27)),
-      cast(3, T(11), T(27)),
       { do: 'moveTo', x: T(7), y: T(24) },
-      cast(2, T(3), T(27)),
+      // Tide then Frost over every cell of lane tiles 5-10 (Lob bursts, radius 5): borrowed ice for
+      // 15 s. An ice block slides only on a tile that is ice in all 16 cells; the plate's isn't.
+      // Bursts east of the block wash it west, into the pit: it can't go.
+      ...[21.5, 28.5, 35.5, 41.5].map((x) => cast(2, x, lane)),
+      ...[21.5, 28.5, 35.5, 41.5].map((x) => cast(3, x, lane)),
+      // A Lob[Tide] on the pit behind the block washes it east (away from the burst's center).
+      cast(2, T(3), lane),
       {
         do: 'until',
         cond: (st) => objects(st, 'pressure_plate').every((o) => o.on),
         timeout: 3,
         label: 'plate',
       },
+      { do: 'until', cond: (st) => allOn(st, 'door'), timeout: 2, label: 'vault opens' },
       { do: 'moveTo', x: T(19), y: T(24) },
       { do: 'moveTo', x: T(20), y: T(28) },
       { do: 'until', cond: (st) => st.hero.heartSeeds === seeds + 1, timeout: 2, label: 'heart seed' },
     ]);
   });
 
-  it.skip('F1 alcove: Tide douses the vent wall; the chest holds a Fuse part and currency', () => {
+  it('F1 alcove: Tide douses the vent wall; the chest holds a Fuse part and currency', () => {
     const s = prepareFen('f1', {
       arrive: 'w',
       weaves: [BOLT_FIRE, STRIKE, LOB_STORM, 'Cast > Lob[Tide]'],
@@ -377,8 +381,7 @@ describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
     expect(s.hero.parts.length).toBe(parts + 1);
   });
 
-  // TODO(chemistry merge): enable once Gale gusts spin wind vanes (DESIGN §6.6).
-  it.skip('G7 Windward Cache: a Gale gust spins the vane; the cache gives a Pattern Seed', () => {
+  it('G7 Windward Cache: a Gale gust spins the vane; the cache gives a Pattern Seed', () => {
     const s = prepareFen('g7', {
       arrive: 's',
       weaves: [BOLT_FIRE, 'Cast > Strike[Gale]', LOB_STORM, LOB_FIRE],
@@ -395,7 +398,7 @@ describe('the Foundry with Tide, and the Windward Cache with Gale', () => {
         label: 'cache door',
       },
       { do: 'moveTo', x: T(40), y: T(4) },
-      { do: 'until', cond: (st) => st.hero.patternSeeds === seeds + 1, timeout: 2, label: 'Pattern Seed' },
+      { do: 'walk', dirX: 0, dirY: -1, s: 2, until: (st) => st.hero.patternSeeds === seeds + 1 },
     ]);
   });
 });
@@ -458,18 +461,14 @@ describe('the Foundry without Tide, and the cache without Gale', () => {
     expect(anyOn(s, 'door')).toBe(false);
   });
 
-  it('F9 without Tide: the chasm stays a pit (Frost does nothing to it) and the lane block cannot be pushed', () => {
+  it('F9 without Tide: the chasm stays a pit (Frost does nothing to it), and Frost alone on the walled lane leaves the plate up', () => {
     const s = prepareFen('f9', { arrive: 'w', weaves: NO_TIDE, without: ['tide'] });
     const errors = attempts(s, [
       [{ do: 'moveTo', x: T(25), y: T(13) }, cast(3, T(27), T(13)), { do: 'wait', s: 1 }],
       [{ do: 'moveTo', x: T(30), y: T(13), timeout: 6 }],
-      [
-        { do: 'moveTo', x: T(7), y: T(27) },
-        { do: 'moveTo', x: T(5), y: T(27), timeout: 4 },
-        { do: 'walk', dirX: -1, dirY: 0, s: 2 },
-      ],
+      [{ do: 'moveTo', x: T(7), y: T(24) }, cast(3, 23, T(27)), cast(3, 31, T(27)), { do: 'wait', s: 1 }],
     ]);
-    expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(errors).toHaveLength(1);
     expect(s.world.bigKeys).toEqual([]);
     expect(objects(s, 'ice_block')[0]!.tx).toBe(4);
     expect(anyOn(s, 'pressure_plate')).toBe(false);

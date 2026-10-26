@@ -3,7 +3,7 @@
 @level 22
 @exit w foundry/f3_cooling_pools
 @exit e foundry/f5_bellwethers_belfry
-@spawn 1 pack:tar_crew
+@spawn 1 pack:foundry_crew
 ############################################################
 ############################################################
 ####################################______________##########

@@ -3,9 +3,9 @@
 @level 21
 @exit w fen/g6_drowned_causeway
 @exit e foundry/f1_sluice_gate
-@spawn 1 pack:caller_guard rare
-@spawn 2 pack:caller_guard
-@spawn 3 pack:bog_nest
+@spawn 1 pack:crab_cast rare
+@spawn 2 pack:heron_wade
+@spawn 3 pack:pike_shoal
 @link D switch:S
 @note x The Drowned Foundry. Its bridge fell, but water still joins what metal can't.
 @note D The sluice gate rumbles up.

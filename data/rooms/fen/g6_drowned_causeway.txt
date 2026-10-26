@@ -3,9 +3,9 @@
 @level 20
 @exit w fen/g5_fogbank
 @exit e fen/g8_foundry_steps
-@spawn 1 pack:caller_guard
-@spawn 2 pack:caller_guard rare
-@spawn 3 enemy:tar_hulk
+@spawn 1 pack:heron_wade
+@spawn 2 pack:mire_herd rare
+@spawn 3 enemy:bellshell
 ########################################################################
 #"""""""""""""~~wwww~~"""""""""""~~wwww~~"""""""""""~~wwww~~"""""""""""#
 #"""""""""""""~~wwww~~"""""""""""~~wwww~~"""""""""""~~wwww~~"""""""""""#

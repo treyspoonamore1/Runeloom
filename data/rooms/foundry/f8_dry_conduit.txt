@@ -4,8 +4,8 @@
 @exit w foundry/f7_furnace_row
 @exit e foundry/f9_flood_lock
 @exit n foundry/f10_glass_eye
-@spawn 1 pack:caller_guard
-@spawn 2 pack:wisp_flight
+@spawn 1 pack:crab_cast
+@spawn 2 pack:sparkfly_cloud
 @link D switch:S
 @link d switch:S
 @note Q The conduit takes the charge.

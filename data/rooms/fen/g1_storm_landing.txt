@@ -3,7 +3,7 @@
 @level 18
 @exit s kiln/k10_wardens_hearth
 @exit e fen/g2_glass_reeds
-@spawn 1 pack:wisp_flight
+@spawn 1 pack:sparkfly_cloud
 @link D switch:S
 @fog 1 1 50 5
 @note x Glasswater Fen. Still water carries a storm from shore to shore.

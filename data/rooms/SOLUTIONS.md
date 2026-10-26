@@ -541,16 +541,19 @@ wall holds (tested).
 East door D (56, 14–16), `switch:S`: its sealed switch (47, 15) stands on a stone dais 28 cells
 across bare stone from the conduit pool (34–39, 13–17).
 
-1. From the pool's east edge (40, 15), cast `Cast > Swath[Tide, Lingering]` east at (47, 15): a
-   14-cell strip of borrowed water for 15 s. Walk to its end (43, 15) and cast it again: the water
-   now reaches the dais.
-2. Cast `Lob[Storm]` into the pool: the charge runs along the borrowed water to the switch. D
-   opens; exit east to F9.
+1. Standing in the pool's shallow rim (39, 15), cast `Cast > Swath[Tide, Lingering]` east at
+   (47, 15): a strip of borrowed water (3 cells wide, from the caster) for 15 s. Walk along it and
+   cast twice more, from cells x 170 and x 178, so each strip starts inside the last: the water now
+   touches the dais's switch. (A strip that starts a cell short of the water before it leaves a dry
+   gap, and the charge stops there.)
+2. From (39, 18), cast `Lob[Storm]` at the rim (39, 15): within 40 cells of the switch, the charge
+   runs along the borrowed water to it. D opens; exit east to F9.
 
 Side vault (south), door `d` (26–27, 27), `switch:S`: its sealed switch (20, 27) is at the end of a
 row of lit vents (13–19, 27) whose only other neighbors are walls.
 
-1. From (11, 27), cast `Lob[Tide]` along the row ((14, 27), (17, 27), (19, 27)): doused grates
+1. From (11, 27), cast `Lob[Tide]` along the row at cells x 54, 60, 66, 72, 78 (y 110): every
+   grate doused, none skipped (a dry gap between bursts breaks the conductor). Doused grates
    conduct like metal floor.
 2. Cast `Lob[Storm]` at the near end (13, 27): the charge runs down the grates to the switch; `d`
    opens on the Loom Shard (27, 30).
@@ -562,17 +565,21 @@ reached by charge (tested). The big-key door G (28–31, 5) leads north to F10 w
 
 The chasm (26–28, all rows) is 12 cells of pit. Big key `g` (51, 13) on the far dirt ledge.
 
-1. From (25, 13), cast `Lob[Tide]` on the chasm (27, 13): a stretch of borrowed deep water for
-   10 s. Cast `Lob[Frost]` on it: an ice bridge (8 s plus 1.5 s cracking). Cross and take the key.
-   (`Cast > Swath[Tide, Frost]` does both in one cast, 3 cells wide.)
+1. From (25, 13), cast `Lob[Tide]` on the chasm at cells (106, 54) and (114, 54): a stretch of
+   borrowed deep water for 10 s, all 12 cells across. Cast `Lob[Frost]` at the same points: an ice
+   bridge (8 s plus 1.5 s cracking). Cross and take the key. (`Cast > Swath[Tide, Frost]` does both
+   in one cast, 3 cells wide.)
 
 Heart Seed vault D (19, 25), `plates:all`: the lane (5–10, 27) runs 24 cells from the ice block
-(4, 27), which has the pit (3, 27) behind it so it can't be pushed east, to the plate (11, 27).
+(4, 27), which has the pit (3, 27) behind it, to the plate (11, 27). The lane is walled in, so no
+one walks it or stands on the plate; Tide and Frost go over its wall.
 
-1. From the lane's gap (7, 26), cast `Cast > Swath[Tide, Frost]` west and east along the lane:
-   Glaze, ice for 15 s.
-2. From (7, 24), cast `Lob[Tide]` just behind the block (3, 27): the burst washes it east (away
-   from its center, rule 28) and it slides along the glaze onto the plate.
+1. From (7, 24), Glaze the lane: `Lob[Tide]` at cells x 21.5, 28.5, 35.5, 41.5 (y 110), then
+   `Lob[Frost]` at the same points: borrowed ice for 15 s on every cell of tiles 5–10. (An ice block
+   slides only onto a tile that is ice in all 16 cells; a 3-cell Swath strip can't cover a 4-cell
+   lane, so Lob bursts it is.) Bursts east of the block wash it west, into the pit: it can't move.
+2. `Lob[Tide]` on the pit behind the block (3, 27): the burst washes it east (away from its center,
+   rule 28) and it slides along the glaze onto the plate, the first tile that isn't ice.
 3. The vault opens on the Heart Seed (20, 28).
 
 Without Tide the chasm stays a pit (Frost doesn't change pits) and the block can't be moved east

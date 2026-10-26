@@ -260,9 +260,9 @@ describe('Fen and Foundry rooms', () => {
 });
 
 /**
- * The spawns CONTENT §13 gives each room, by marker. Until the enemies work (the 8 Fen enemies and
- * their packs) and the bosses work (`bellwether`, `glasswater_coil`) are merged, the rooms spawn
- * stand-ins from region 1 on the same markers (notes/m8-rooms-decisions.md).
+ * The spawns CONTENT §13 gives each room, by marker. Until the bosses work (`bellwether`,
+ * `glasswater_coil`) is merged, F5 and F10 spawn region-1 stand-ins on the same markers
+ * (notes/m8-rooms-decisions.md).
  */
 const FEN_SPAWNS: Record<Short, string[]> = {
   g1: ['@spawn 1 pack:sparkfly_cloud'],
@@ -286,12 +286,19 @@ const FEN_SPAWNS: Record<Short, string[]> = {
 };
 
 describe('Fen and Foundry spawns (CONTENT §13 "Enemies")', () => {
-  // TODO(enemies merge, bosses merge): swap the stand-in @spawn lines for FEN_SPAWNS and enable.
-  it.skip.each(ALL_SHORTS)('%s spawns what CONTENT §13 lists', (s) => {
-    const lines = loadRoomText(fenRooms[s])
+  const BOSS_ROOMS: readonly Short[] = ['f5', 'f10'];
+  const spawnLines = (s: Short) =>
+    loadRoomText(fenRooms[s])
       .split('\n')
       .filter((l) => l.startsWith('@spawn'));
-    expect(lines).toEqual(FEN_SPAWNS[s]);
+
+  it.each(ALL_SHORTS.filter((s) => !BOSS_ROOMS.includes(s)))('%s spawns what CONTENT §13 lists', (s) => {
+    expect(spawnLines(s)).toEqual(FEN_SPAWNS[s]);
+  });
+
+  // TODO(bosses merge): F5 and F10 spawn stand-ins until `bellwether` and `glasswater_coil` exist.
+  it.skip.each(BOSS_ROOMS)('%s spawns its boss', (s) => {
+    expect(spawnLines(s)).toEqual(FEN_SPAWNS[s]);
   });
 
   it.each(ALL_SHORTS)('%s: its stand-in spawns use the same markers as CONTENT §13', (s) => {
@@ -299,7 +306,7 @@ describe('Fen and Foundry spawns (CONTENT §13 "Enemies")', () => {
     expect(markers(room(s).header.spawns.map((sp) => `@spawn ${sp.marker}`))).toEqual(markers(FEN_SPAWNS[s]));
   });
 
-  it('the Fen\'s first Rare is in G6, and G8 has one', () => {
+  it("the Fen's first Rare is in G6, and G8 has one", () => {
     const rares = (s: Short) => room(s).header.spawns.filter((sp) => sp.rarity === 'rare').length;
     for (const s of ALL_SHORTS) expect(rares(s), s).toBe(s === 'g6' || s === 'g8' ? 1 : 0);
   });

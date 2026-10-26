@@ -3,8 +3,8 @@
 @level 19
 @exit s fen/g3_pylon_field
 @exit n fen/g5_fogbank
+@spawn 1 pack:heron_wade
 @pulse 2
-@spawn 1 pack:caller_guard
 ##############################^^^^######################
 ########################""............"""""""""""""##""#
 ##~~~~~~~~~mmmmmmmmmmmmm""............""""1"####"""""""#

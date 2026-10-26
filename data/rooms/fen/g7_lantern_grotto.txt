@@ -2,7 +2,7 @@
 @name Lantern Grotto
 @level 20
 @exit s fen/g5_fogbank
-@spawn 1 pack:wisp_flight
+@spawn 1 pack:sparkfly_cloud
 @link D timer:15:braziers:all
 @link d vanes:all
 @fog 1 8 46 30

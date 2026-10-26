@@ -3,8 +3,8 @@
 @level 23
 @exit w foundry/f6_tide_shrine
 @exit e foundry/f8_dry_conduit
-@spawn 1 enemy:tar_hulk
-@spawn 2 pack:tar_crew
+@spawn 1 enemy:slagshell
+@spawn 2 pack:foundry_crew
 ################################################################
 ################################################################
 ##############......################.~~~.#######################
