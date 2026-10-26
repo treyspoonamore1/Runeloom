@@ -10,6 +10,7 @@ import type { DamageAmounts } from './combatTypes';
 import type { AttackDef, EnemyDef } from './enemyTypes';
 import { bosses } from './bosses';
 import { m4Enemies } from './enemiesM4';
+import { fenEnemies } from './enemiesFen';
 
 export type {
   AttackDef,
@@ -131,10 +132,14 @@ const m1Enemies = {
 } satisfies Record<string, EnemyDef>;
 
 /**
- * Every enemy kind: the M1 kinds, the M4 kinds (data/enemiesM4.ts) and the bosses
+ * Every enemy kind: the M1 kinds, the M4 kinds (data/enemiesM4.ts), the M8 Fen kinds
+ * (data/enemiesFen.ts) and the bosses
  * (data/bosses.ts). Ids are exactly CONTENT §5's (Fuse parts drop by kind, CONTENT §4).
  */
-export const enemies = { ...m1Enemies, ...m4Enemies, ...bosses } satisfies Record<string, EnemyDef>;
+export const enemies = { ...m1Enemies, ...m4Enemies, ...fenEnemies, ...bosses } satisfies Record<
+  string,
+  EnemyDef
+>;
 
 export type EnemyKind = keyof typeof enemies;
 

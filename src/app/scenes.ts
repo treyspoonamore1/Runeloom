@@ -33,6 +33,12 @@ export const scenes: SceneDef[] = [
   },
   { id: 'room', label: 'M0 test yard', short: 'Test yard', roomId: 'test/m0_room' },
   {
+    id: 'fen_enemies',
+    label: 'M8 enemy yard: the seven Glasswater Fen packs on water, mud and metal',
+    short: 'Fen enemies',
+    roomId: 'test/enemies_fen',
+  },
+  {
     id: 'adventure',
     label: 'Adventure: a new game in Emberwood',
     short: 'Adventure',

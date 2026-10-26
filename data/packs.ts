@@ -20,7 +20,7 @@ export interface PackDef {
   leader: EnemyKind;
   /** The kind of a Rare pack's extra minions. */
   minion: EnemyKind;
-  /** Spawns only on markers in water, its members on water cells (bog_nest). */
+  /** Spawns only on markers in water, its members on water cells (bog_nest, pike_shoal). */
   waterOnly?: boolean;
 }
 
@@ -67,6 +67,59 @@ export const packs = {
     ],
     leader: 'stormcaller',
     minion: 'shieldbearer',
+  },
+  // M8: the Glasswater Fen (CONTENT §5).
+  pike_shoal: {
+    members: [{ kind: 'glasspike', min: 2, max: 3 }],
+    leader: 'glasspike',
+    minion: 'glasspike',
+    waterOnly: true,
+  },
+  crab_cast: {
+    members: [
+      { kind: 'copperback', min: 3, max: 3 },
+      { kind: 'spark_heron', min: 1, max: 1 },
+    ],
+    leader: 'spark_heron',
+    minion: 'copperback',
+  },
+  heron_wade: {
+    members: [
+      { kind: 'spark_heron', min: 2, max: 2 },
+      { kind: 'bellshell', min: 1, max: 1 },
+    ],
+    leader: 'bellshell',
+    minion: 'spark_heron',
+  },
+  sparkfly_cloud: {
+    members: [{ kind: 'sparkfly', min: 8, max: 12 }],
+    leader: 'sparkfly',
+    minion: 'sparkfly',
+  },
+  mire_herd: {
+    members: [
+      { kind: 'mire_bull', min: 2, max: 2 },
+      { kind: 'bellows_toad', min: 2, max: 2 },
+    ],
+    leader: 'mire_bull',
+    minion: 'bellows_toad',
+  },
+  foundry_crew: {
+    members: [
+      { kind: 'slagshell', min: 1, max: 1 },
+      { kind: 'copperback', min: 2, max: 2 },
+      { kind: 'sparkfly', min: 4, max: 4 },
+    ],
+    leader: 'slagshell',
+    minion: 'copperback',
+  },
+  toad_chorus: {
+    members: [
+      { kind: 'bellows_toad', min: 3, max: 3 },
+      { kind: 'sparkfly', min: 6, max: 6 },
+    ],
+    leader: 'bellows_toad',
+    minion: 'sparkfly',
   },
 } satisfies Record<string, PackDef>;
 

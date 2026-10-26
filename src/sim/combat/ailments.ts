@@ -123,6 +123,8 @@ export function isImmune(t: AilmentTarget, kind: AilmentKind): boolean {
   if (e === null) return false;
   // M5 monster mods: Frostbound (chill, freeze), Grounded (shock).
   if (e.mods.length > 0 && modImmune(e, kind)) return true;
+  // M8: a Hot Slagshell can't be chilled or frozen (CONTENT §5).
+  if ((kind === 'chill' || kind === 'freeze') && e.special.hot) return true;
   const immune = enemyDef(e.kind).immune;
   if (immune === undefined) return false;
   return immune.includes(kind) || (kind === 'freeze' && immune.includes('chill'));

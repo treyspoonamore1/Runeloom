@@ -3,12 +3,13 @@
  * bosses. Fields of `Enemy` (actors/enemies.ts); hashed in hashState.ts.
  */
 import type { Hasher } from '../core/hash';
+import { createFenSpecial, hashFenSpecial, type FenSpecial } from './enemyStateM8';
 
 /**
  * M4 per-enemy chemistry and attack state that isn't an ailment or terrain status. Plain data,
  * hashed; written by src/sim/ai and src/sim/combat/enemyAttacks.ts, read by render.
  */
-export interface EnemySpecial {
+export interface EnemySpecial extends FenSpecial {
   /** Tar Hulk: seconds until its lit fuse explodes (ignited while Oiled); 0 = no fuse. */
   fuseLeft: number;
   /** Bog Lurker: under the surface (true except while it attacks). */
@@ -38,6 +39,7 @@ export function createEnemySpecial(): EnemySpecial {
     dashHit: false,
     parentId: -1,
     trailCell: -1,
+    ...createFenSpecial(),
   };
 }
 
@@ -86,6 +88,7 @@ export function createBossState(): BossState {
 export function hashEnemySpecial(h: Hasher, s: EnemySpecial): void {
   h.num(s.fuseLeft).bool(s.submerged).bool(s.trapped).num(s.dashX).num(s.dashY).num(s.dashSpeed);
   h.bool(s.dashHit).num(s.parentId).num(s.trailCell);
+  hashFenSpecial(h, s);
 }
 
 export function hashBossState(h: Hasher, b: BossState | null): void {

@@ -70,7 +70,7 @@ export const monsterMods = {
     description: 'Always Wet: immune to Ignite, conductive',
     ships: 'M5',
     alwaysWet: true,
-    excludeKinds: ['tinderling', 'bog_lurker'],
+    excludeKinds: ['tinderling', 'bog_lurker', 'glasspike'],
   },
   frostbound: {
     name: 'Frostbound',
@@ -118,6 +118,15 @@ export const swarmMinion: Readonly<Record<string, string>> = {
   frost_wisp: 'kiln_mite',
   stormcaller: 'kiln_mite',
   kiln_mite: 'kiln_mite',
+  // M8: the Fen's weakest are Sparkflies; Glasspikes (in water) bring their own kind.
+  glasspike: 'glasspike',
+  copperback: 'sparkfly',
+  spark_heron: 'sparkfly',
+  slagshell: 'sparkfly',
+  sparkfly: 'sparkfly',
+  mire_bull: 'bellows_toad',
+  bellows_toad: 'sparkfly',
+  bellshell: 'sparkfly',
 };
 
 /** Rarity numbers (CONTENT §5). */
