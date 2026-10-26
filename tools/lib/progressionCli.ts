@@ -70,6 +70,12 @@ function describe(r: ProgressionResult, variant: ProgressionVariant): string[] {
       `; level ${r.finalLevel}; ${r.finalHours.toFixed(2)} h played` +
       (r.offlineHours > 0 ? `, ${r.offlineHours.toFixed(0)} h offline` : ''),
   );
+  for (const f of r.fen)
+    out.push(
+      `  Fen: from ${f.startHours.toFixed(2)} h at T${f.tier}, ${f.minutes.toFixed(1)} min, level ${f.levelBefore} -> ${f.levelAfter}, ` +
+        `${f.deaths} deaths, Bellwether ${f.bellwetherSeconds?.toFixed(1) ?? '-'} s, Coil ${f.coilSeconds?.toFixed(1) ?? '-'} s` +
+        `${f.coilDead ? '' : ' (the Coil LIVES)'}${f.failedSteps.length ? `; failed steps: ${f.failedSteps.join('; ')}` : ''}`,
+    );
   for (const [cycle, fc] of Object.entries(r.firstClear))
     out.push(
       `  cycle ${cycle} first clears (h): ` +
@@ -171,6 +177,8 @@ export function curveRow(r: ProgressionResult) {
     t1: c0[1],
     t4: c0[4],
     t8: c0[8],
+    fen: r.fen[0]?.startHours,
+    fenMinutes: r.fen[0]?.minutes,
     t10: c0[10],
     rekindle: r1?.hours,
     rekindleTier: r1?.bestTier,
@@ -224,12 +232,13 @@ export function runProgressionCli(o: ProgressionCliOptions): void {
   }
   console.log('');
   console.log(
-    "variant   seed   T1    T4    T8    T10   Rekindle (tier, why)  Ash level  back   %    T11'  T12'  Rekindle2 rifts fails  buildings at Rekindle",
+    "variant   seed   T1    T4    T8    Fen   (min)  T10   Rekindle (tier, why)  Ash level  back   %    T11'  T12'  Rekindle2 rifts fails  buildings at Rekindle",
   );
   for (const { variant, rows } of summary) {
     for (const x of rows)
       console.log(
-        `${variant.padEnd(9)} ${String(x.seed).padStart(4)}  ${f2(x.t1)} ${f2(x.t4)} ${f2(x.t8)} ${f2(x.t10)}  ${f2(x.rekindle)} ` +
+        `${variant.padEnd(9)} ${String(x.seed).padStart(4)}  ${f2(x.t1)} ${f2(x.t4)} ${f2(x.t8)} ${f2(x.fen)} ` +
+          `${x.fenMinutes === undefined ? '  -  ' : x.fenMinutes.toFixed(0).padStart(5)}  ${f2(x.t10)}  ${f2(x.rekindle)} ` +
           `${(x.rekindle === undefined ? '' : `(T${x.rekindleTier}, ${x.reason})`).padEnd(14)} ` +
           `${String(x.ash ?? '-').padStart(3)} ${String(x.level).padStart(5)}  ${f2(x.reclimb)} ` +
           `${x.reclimbShare === undefined ? '  - ' : `${Math.round(x.reclimbShare * 100)}%`.padStart(4)} ` +
@@ -247,7 +256,7 @@ export function runProgressionCli(o: ProgressionCliOptions): void {
       );
   }
   console.log(
-    "(hours of play; back: hours from the first Rekindle to its tier again, %: of the first climb from the Warden to it; T11' and T12' after the first Rekindle)",
+    "(hours of play; Fen: when the Fen began (M8, after tier 8) and its human minutes; back: hours from the first Rekindle to its tier again, %: of the first climb from the Warden to it; T11' and T12' after the first Rekindle)",
   );
   console.log(`${((performance.now() - t0) / 1000).toFixed(0)} s; CSV and JSON in ${outDir}`);
 }

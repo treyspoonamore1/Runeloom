@@ -42,6 +42,8 @@ describe('bundled playtest saves (npm run sim -- --playtest-saves)', () => {
     expect(h.embers).toBeGreaterThan(0);
     expect(h.expeditions.length).toBeGreaterThan(0);
     expect(h.rekindles).toBe(0);
+    // M8: the deep rifts stay shut (an older progression route marked the Coil dead).
+    expect(s.world.bossesDefeated).not.toContain('glasswater_coil');
     // Close to Rekindle: its unlock tier is one past the best tier cleared.
     expect(s.hero.sigils.some((g) => g.tier >= s.hero.riftTier)).toBe(true);
   });

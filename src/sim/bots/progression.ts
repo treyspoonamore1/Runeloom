@@ -26,11 +26,17 @@ import { regionRooms } from '../../../data/progression';
 import type { RiftModId } from '../../../data/rift';
 import { applyHeroEdit } from '../hero/edits';
 import { advanceHearth } from '../meta/hearth';
-import { productionMult, scrapPerMinute, maxRiftTier, ashForRekindle, mutationCost } from '../meta/view';
+import {
+  productionMult,
+  scrapPerMinute,
+  maxRiftTier,
+  ashForRekindle,
+  mutationCost,
+  riftOpenCap,
+} from '../meta/view';
 import type { BuildingId, MutationId } from '../meta/types';
 import type { GameState } from '../state';
 import type { RoomSource } from '../world/worldState';
-import { riftGate } from '../../../data/riftGate';
 import { runCampaign } from './campaign';
 import { applyReferenceBuild } from './campaignPlan';
 import {
@@ -42,6 +48,7 @@ import {
 } from './hearthPolicy';
 import { emptyTally, visitHearth, type HearthTally } from './hearthVisit';
 import { humanFightFactor, pacingMinutes, riftOverhead } from './pacing';
+import { fenDue, playFenFromHome, type ProgressionFen } from './progressionFen';
 import { clearOpenRift } from './riftBot';
 import { gearScore, goHome, pickSigil, restAtStone } from './riftLadder';
 
@@ -123,6 +130,8 @@ export interface ProgressionResult {
   sessions: Sessions | null;
   campaignHours: number;
   rifts: ProgressionRift[];
+  /** M8: the Fen runs (normally one, right after tier 8 is first completed). */
+  fen: ProgressionFen[];
   /** Play hours when each tier was first completed, per cycle: firstClear[cycle][tier]. */
   firstClear: Record<number, Record<number, number>>;
   rekindles: ProgressionRekindle[];
@@ -145,6 +154,9 @@ function travelToHearth(state: GameState): void {
   if (err) throw new Error(`progression: ${err}`);
 }
 
+/** Fen attempts before the model player gives up on it (it then climbs no higher than tier 8). */
+const MAX_FEN_TRIES = 2;
+
 export function runProgression(opts: ProgressionOptions): ProgressionResult {
   const useHearth = opts.hearth ?? true;
   const sessions = opts.sessions ?? null;
@@ -159,8 +171,6 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
   if (state.room.id !== regionRooms.k10)
     throw new Error(`progression: the campaign ended in ${state.room.id}`);
   if (!state.hero.hearth.lit) throw new Error('progression: the Warden did not light the Hearth');
-  // M8 gate: the bot is past the Fen. Mark the Coil dead so tiers above 8 open (the Fen has no bot route).
-  if (!state.world.bossesDefeated.includes(riftGate.boss)) state.world.bossesDefeated.push(riftGate.boss);
   const hero = state.hero;
   const h = hero.hearth;
   let play = pacingMinutes(campaign) * 60;
@@ -170,6 +180,7 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
     sessions,
     campaignHours: play / 3600,
     rifts: [],
+    fen: [],
     firstClear: {},
     rekindles: [],
     tally: emptyTally(),
@@ -206,6 +217,18 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
       offlineSeconds += off;
       sessionPlay = 0;
     }
+    // M8: tier 8 done and the Coil alive (tier 9 can't open): play the Fen first (bots/progressionFen.ts).
+    if (fenDue(state) && res.fen.length < MAX_FEN_TRIES) {
+      const simBefore = h.playSeconds;
+      const { fen, seconds } = playFenFromHome(state, play / 3600, useHearth ? 'hearth' : 'k10');
+      const simSeconds = h.playSeconds - simBefore;
+      res.pitScrap += ((scrapPerMinute(h.buildings.kindling_pit) * productionMult(hero)) / 60) * simSeconds;
+      pass(seconds - simSeconds, false);
+      play += seconds;
+      sessionPlay += seconds;
+      res.fen.push(fen);
+      continue;
+    }
     restAtStone(state);
     if (useHearth) {
       visitHearth(state, res.tally);
@@ -241,7 +264,8 @@ export function runProgression(opts: ProgressionOptions): ProgressionResult {
       sessionPlay += riftOverhead.hearthVisit;
     } else applyReferenceBuild(state, { craft: true });
     if (hero.sigils.length === 0) applyHeroEdit(state, { kind: 'freeSigil' });
-    const sigil = pickSigil(hero.sigils, hero.riftTier);
+    // The ladder's next tier, but never past what opens (M8: 8 until the Coil dies).
+    const sigil = pickSigil(hero.sigils, Math.min(hero.riftTier, riftOpenCap(hero, state.world) - 1));
     if (!sigil) throw new Error('progression: no sigil the ladder allows');
     const before = {
       gear: gearScore(state),
