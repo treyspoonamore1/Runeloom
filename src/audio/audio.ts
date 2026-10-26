@@ -6,6 +6,7 @@ import { sfxM4, type M4SfxId } from '../../data/sfxM4';
 import { M4Signals } from '../app/m4Signals';
 import { m4Sounds } from './m4Cues';
 import { hearthSounds } from './hearthCues';
+import { fenBossSounds } from './fenBossCues';
 import { onSettingsChange, settings } from '../app/settings';
 import { readArena, WaveWatcher } from '../ui/arena';
 import { cuesForEvent, spatialize, SpellCueTracker, type Cue } from './cues';
@@ -218,6 +219,7 @@ export function createAudio(): AudioSystem {
           for (const c of terrainCues(e)) playCue(c, state);
           for (const c of creatureCues(e, state)) playCue(c, state);
           for (const c of hearthSounds(e)) playCue(c, state);
+          for (const c of fenBossSounds(e)) playCue(c, state);
         }
         // The fire bed and burn-out crumbles (frame time, capped so a stall doesn't burst).
         const t = now();

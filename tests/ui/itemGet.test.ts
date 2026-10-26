@@ -35,6 +35,27 @@ describe('the item-get panel text', () => {
     for (const w of ['Electrifies water and metal', 'Shocks', 'Arcs between wet enemies'])
       expect(all).toContain(w);
   });
+
+  it('names the Tide rune (F6): borrowed water for 10 s, douses, strands swimmers', () => {
+    const v = itemGetView('tide', { counts: {}, unlimited: true, slots: NEW_GAME_SLOTS });
+    expect(v.title).toBe('Tide Rune');
+    expect(v.flavor.length).toBeGreaterThan(10);
+    expect(v.does.length).toBeGreaterThanOrEqual(2);
+    expect(v.does.length).toBeLessThanOrEqual(3);
+    const all = v.does.join(' ');
+    for (const w of ['water for 10 s', 'pits', 'mud', 'Douses', 'strand']) expect(all).toContain(w);
+  });
+
+  it("names the Gale rune (the Coil's drop): gusts fan fire, drift smoke, clear fog, spin vanes", () => {
+    const v = itemGetView('gale', { counts: {}, unlimited: true, slots: NEW_GAME_SLOTS });
+    expect(v.title).toBe('Gale Rune');
+    expect(v.flavor).toContain('Coil');
+    expect(v.does.length).toBeGreaterThanOrEqual(2);
+    expect(v.does.length).toBeLessThanOrEqual(3);
+    const all = v.does.join(' ');
+    for (const w of ['2 s gust', 'downwind', 'smoke and steam', 'fog', 'wind vanes', 'Physical', 'twice as far'])
+      expect(all).toContain(w);
+  });
 });
 
 describe('the weave suggestion', () => {

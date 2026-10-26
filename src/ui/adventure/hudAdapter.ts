@@ -18,6 +18,7 @@ import { regionLayout } from '../map/adapter';
 import { riftSummary } from '../map/riftModel';
 import { readHearthSummary, stationNow } from '../hearth/adapter';
 import { stations, type StationId } from '../../../data/hearth';
+import { fenBossTuning as FB } from '../../../data/tuningFenBosses';
 
 /** Regions that are dungeons with small keys. */
 export const DUNGEONS: readonly string[] = ['kiln', 'foundry'];
@@ -28,6 +29,11 @@ export const BOSS_INFO: Record<string, { name: string; marks: number[] }> = {
   cinder_warden: { name: 'The Cinder Warden', marks: [0.66, 0.33] },
   rift_matriarch: { name: 'Rift Matriarch', marks: [0.5] },
   rift_warden: { name: 'Rift Warden', marks: [0.66, 0.33] },
+  // M8 (CONTENT §5, DESIGN §10.5): phase thresholds from tuning.bosses (data/tuningFenBosses.ts).
+  bellwether: { name: 'The Old Bellwether', marks: [FB.bellwetherPhase2At] },
+  glasswater_coil: { name: 'The Glasswater Coil', marks: [FB.coilPhase2At, FB.coilPhase3At] },
+  rift_bellwether: { name: 'Rift Bellwether', marks: [FB.bellwetherPhase2At] },
+  rift_coil: { name: 'Rift Coil', marks: [FB.coilPhase2At, FB.coilPhase3At] },
 };
 
 export const REGION_NAMES: Record<string, string> = {

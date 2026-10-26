@@ -4,11 +4,17 @@ import {
   HUD_EVENT,
   pushToasts,
   roomBanner,
+  roomEnterBanner,
   toastsFor,
   type LooseEvent,
   type ToastSpec,
 } from '../../src/ui/adventure/hudEvents';
 import { placeBox } from '../../src/ui/menus/frame';
+import { BOSS_INFO } from '../../src/ui/adventure/hudAdapter';
+import { bossKinds, worldRooms } from '../../data/progression';
+import { introCards } from '../../data/ui';
+import { roomTexts } from '../../src/app/rooms';
+import { createAdventure, enterRoom, type GameState } from '../../src/sim';
 
 const names = {
   rune: (id: string) => id.toUpperCase(),
@@ -129,6 +135,62 @@ describe('adventure HUD events', () => {
     live = pushToasts(live, [heart, heart, heart], 12, opts);
     expect(live).toHaveLength(3);
     expect(pushToasts(live, [], 100, opts)).toEqual([]);
+  });
+
+  it('toasts Pattern Seeds with how many and the total found', () => {
+    const t = toastsFor(
+      [
+        { type: HUD_EVENT.patternSeedGained, amount: 1, total: 3, x: 0, y: 0 },
+        { type: HUD_EVENT.patternSeedGained, amount: 2, total: 5, x: 0, y: 0 },
+      ],
+      names,
+    );
+    expect(t).toEqual([
+      { kind: 'level', title: 'Pattern Seed', sub: '+1 passive point · press P · 3 found', rarity: null, amount: 1 },
+      { kind: 'level', title: '2 Pattern Seeds', sub: '+2 passive points · press P · 5 found', rarity: null, amount: 1 },
+    ]);
+  });
+
+  it('shows a region boss intro card when it wakes (not the rift versions)', () => {
+    const awake = (kind: string): LooseEvent => ({ type: HUD_EVENT.bossAwake, id: 1, kind, name: kind, x: 0, y: 0 });
+    const b = bannersFor([awake('bellwether'), awake('glasswater_coil'), awake('rift_coil'), awake('cinder_warden')], (k) => k);
+    expect(b.map((x) => x.title)).toEqual(['The Old Bellwether', 'The Glasswater Coil', 'The Cinder Warden']);
+    for (const x of b) expect(x.sub.length).toBeGreaterThan(5);
+  });
+
+  it('every boss has a bar name and phase marks; the Fen bosses split where tuning says', () => {
+    for (const k of bossKinds) expect(BOSS_INFO[k], k).toBeDefined();
+    expect(BOSS_INFO.bellwether).toEqual({ name: 'The Old Bellwether', marks: [0.5] });
+    expect(BOSS_INFO.glasswater_coil).toEqual({ name: 'The Glasswater Coil', marks: [0.66, 0.33] });
+    expect(BOSS_INFO.rift_coil!.marks).toEqual(BOSS_INFO.glasswater_coil!.marks);
+  });
+
+  it("shows the Fen's intro card the first time G1 is entered, the room's banner after", () => {
+    const room = roomBanner('Storm Landing', 'Glasswater Fen', 18);
+    const enter = (firstVisit: boolean): LooseEvent => ({
+      type: HUD_EVENT.roomEnter,
+      id: 'fen/g1_storm_landing',
+      name: 'Storm Landing',
+      level: 18,
+      firstVisit,
+    });
+    expect(roomEnterBanner(enter(true), room)).toEqual({ title: 'Glasswater Fen', sub: 'Area level 18 to 24' });
+    expect(roomEnterBanner(enter(false), room)).toEqual(room);
+    expect(roomEnterBanner({ ...enter(true), id: 'fen/g2_glass_reeds' }, room)).toEqual(room);
+  });
+
+  it('the sim triggers the Fen card: G1 is a real room, entered first with firstVisit, then without', () => {
+    const ids = Object.values(worldRooms) as string[];
+    for (const id of Object.keys(introCards.regions)) expect(ids, id).toContain(id);
+    const st: GameState = createAdventure({ seed: 1, rooms: roomTexts, startRoomId: 'kiln/k10_wardens_hearth' });
+    const visits: boolean[] = [];
+    for (let i = 0; i < 2; i++) {
+      st.events.length = 0;
+      enterRoom(st, 'fen/g1_storm_landing', { kind: 'edge', from: 's' });
+      for (const e of st.events as unknown as LooseEvent[])
+        if (e.type === HUD_EVENT.roomEnter) visits.push(roomEnterBanner(e, { title: 'room', sub: '' }).title === 'Glasswater Fen');
+    }
+    expect(visits).toEqual([true, false]);
   });
 
   it('names the room, its region and area level in the banner', () => {
