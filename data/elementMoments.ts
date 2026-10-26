@@ -28,6 +28,22 @@ export const elementMoments = {
       'Arcs between wet enemies.',
     ],
   },
+  tide: {
+    flavor: 'The Foundry kept its sea in a rune. Lend the world water; it gives it back.',
+    does: [
+      'Floods stone with water for 10 s, fills pits, and turns dirt to mud.',
+      'Douses fire and furnace vents, and washes blocks along.',
+      'Soaks enemies: Wet, and swimmers strand when the water goes.',
+    ],
+  },
+  gale: {
+    flavor: "The Coil's last breath, caught in a rune. The air answers you now.",
+    does: [
+      'Each spell blows a 2 s gust: fire runs downwind, smoke and steam drift.',
+      'Clears fog and spins wind vanes.',
+      'Knocks enemies back twice as far.',
+    ],
+  },
 } as const satisfies Partial<Record<RuneId, ElementMomentText>>;
 
 /**

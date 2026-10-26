@@ -6,6 +6,8 @@
  *  - frost: deep water freezes into ice bridge (markers floating on deep water included).
  *  - doors: `D` doors are open (their @link condition is met).
  *  - keys: `K` opens once a small-key chest `k` was reachable, `G` once the big-key chest `g` was.
+ *  - M8: sideDoors: `d` doors are open; tide: lit furnace vents (`f`) douse, and with frost too a
+ *    pit fills and freezes into an ice bridge; bigKey: the dungeon's big key was found elsewhere.
  * Walkability otherwise follows data/tiles.ts; markers stand on their neighbors' ground (§6.1).
  */
 import { tileForChar } from '../../../data/tiles';
@@ -17,6 +19,12 @@ export interface Abilities {
   doors?: boolean;
   /** Small keys the player brings into the room. */
   keys?: number;
+  /** M8: `d` doors are open (their own @link conditions hold). */
+  sideDoors?: boolean;
+  /** M8: Tide douses lit vents; with `frost`, a Tide-filled pit freezes into an ice bridge. */
+  tide?: boolean;
+  /** M8: the big key of this dungeon was found in another room (F9's, for F8's door). */
+  bigKey?: boolean;
 }
 
 export interface Tile {
@@ -24,8 +32,9 @@ export interface Tile {
   y: number;
 }
 
-const GROUND_CHARS = new Set('#.,"*=+~w_mMoOi:');
-const NEIGHBOR_GROUND = new Set('Tx123456789HL<>^v');
+const GROUND_CHARS = new Set('#.,"*=+~w_mMoOi:f');
+// Exit tiles are walkable whatever their neighbors (data/tiles.ts walk, the room's solid mask).
+const NEIGHBOR_GROUND = new Set('Tx123456789HL');
 const BURNS = new Set('*c|b');
 const DIRS: ReadonlyArray<readonly [number, number]> = [
   [1, 0],
@@ -74,6 +83,9 @@ function passable(
 ): boolean {
   const c = charAt(room, x, y);
   if (c === 'D') return !!ab.doors;
+  if (c === 'd') return !!ab.sideDoors;
+  if (c === 'f') return !!ab.tide;
+  if (c === '_') return !!ab.tide && !!ab.frost;
   if (c === 'K') return keys > 0;
   if (c === 'G') return bigKey;
   if (c === 'I') return !!ab.fire;
@@ -88,7 +100,7 @@ function passable(
 /** Tiles the player can stand on, starting from `start`, with these abilities. */
 export function reachable(room: RoomData, start: Tile, ab: Abilities): Set<string> {
   let keys = ab.keys ?? 0;
-  let bigKey = false;
+  let bigKey = !!ab.bigKey;
   let usedChests = new Set<string>();
   for (;;) {
     const seen = new Set<string>([key(start)]);
@@ -125,7 +137,7 @@ export function touches(set: Set<string>, t: Tile): boolean {
   return DIRS.some(([dx, dy]) => set.has(`${t.x + dx},${t.y + dy}`));
 }
 
-const SHOT_BLOCKERS = new Set('#MBc|b&PSDKkGgI');
+const SHOT_BLOCKERS = new Set('#MBc|b&PSQYDdKkGgI$R');
 
 /** Line of sight between tile centers: no shot-blocking tile strictly between them (sampled). */
 export function lineOfSight(room: RoomData, a: Tile, b: Tile): boolean {

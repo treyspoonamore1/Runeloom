@@ -9,7 +9,7 @@ import { uniques, type UniqueDef } from '../../data/uniques';
 import { isPassiveId } from '../../data/passives';
 import { fuseParts, type FusePartDef } from '../../data/fuseParts';
 import { dropRates, killXp } from '../../data/loot';
-import { guaranteedRunes, newGame, runeDiscovery, spindleDropFrom } from '../../data/progression';
+import { fenRooms, guaranteedRunes, newGame, runeDiscovery, spindleDropFrom } from '../../data/progression';
 import { isRuneId, runes } from '../../data/runes';
 import { isSpindleId } from '../../data/spindles';
 import { isEnemyKind } from '../../data/enemies';
@@ -83,10 +83,12 @@ export function checkItemData(): { errors: string[]; warnings: string[] } {
   for (const n of newGame.weaves)
     if (n !== null && !parseWeave(n).ok)
       errors.push(`data/progression.ts newGame weave "${n}" doesn't parse`);
+  // The M4 region pays only M2 runes; the Fen and Foundry (M8) pay copies of any rune, Tide and Gale.
+  const fen = new Set<string>(Object.values(fenRooms));
   for (const [room, list] of Object.entries(guaranteedRunes))
     for (const r of list ?? [])
       if (!isRuneId(r)) errors.push(`data/progression.ts guaranteedRunes ${room}: "${r}" is not a rune`);
-      else if (runes[r].ships !== 'M2')
+      else if (!fen.has(room) && runes[r].ships !== 'M2')
         errors.push(`data/progression.ts guaranteedRunes ${room}: ${r} ships in ${runes[r].ships}`);
   for (const id of Object.keys(runeDiscovery.from))
     if (!isRuneId(id)) errors.push(`data/progression.ts runeDiscovery: "${id}" is not a rune`);

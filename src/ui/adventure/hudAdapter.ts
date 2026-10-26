@@ -20,7 +20,7 @@ import { readHearthSummary, stationNow } from '../hearth/adapter';
 import { stations, type StationId } from '../../../data/hearth';
 
 /** Regions that are dungeons with small keys. */
-export const DUNGEONS: readonly string[] = ['kiln'];
+export const DUNGEONS: readonly string[] = ['kiln', 'foundry'];
 
 /** Boss bar names and the life fractions where phases change. */
 export const BOSS_INFO: Record<string, { name: string; marks: number[] }> = {
@@ -33,6 +33,8 @@ export const BOSS_INFO: Record<string, { name: string; marks: number[] }> = {
 export const REGION_NAMES: Record<string, string> = {
   emberwood: 'Emberwood',
   kiln: 'The Sunken Kiln',
+  fen: 'Glasswater Fen',
+  foundry: 'The Drowned Foundry',
   test: 'Test grounds',
   rift: 'Rift',
 };

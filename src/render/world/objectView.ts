@@ -92,6 +92,7 @@ export class ObjectView {
       }
       case 'key_chest':
       case 'big_key_chest':
+      case 'loot_chest':
         return new ChestLook(this.atlas, o);
       case 'push_block':
       case 'ice_block':

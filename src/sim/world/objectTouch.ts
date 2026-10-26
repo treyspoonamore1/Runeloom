@@ -1,5 +1,5 @@
 /**
- * What the player (and, for plates, enemies and blocks) touches: pressure plates, key chests,
+ * What the player (and, for plates, enemies and blocks) touches: pressure plates, key and loot chests,
  * locked and big-key doors, rune shrines, Heart Seeds, Loom Shards and Loom Stones.
  *
  * Touching: a solid object (chest, door, shrine) is touched when the player's body is within
@@ -18,6 +18,7 @@ import { openDoor, sendNote } from './objectGround';
 import { dungeonOf, loomStoneId, roomFlags } from './worldState';
 import { bossRoomDone, roomBossKinds } from './roomClear';
 import { dropChestEmbers } from '../meta/embers';
+import { payLootChest } from './lootChest';
 
 function inTile(x: number, y: number, o: WorldObject): boolean {
   const x0 = o.tx * TILE_CELLS;
@@ -68,10 +69,11 @@ function touchChest(state: GameState, o: WorldObject): void {
   const w = state.world;
   const dungeon = dungeonOf(state.room.id);
   const big = o.kind === 'big_key_chest';
-  if (big) {
+  const c = objectCenter(o);
+  if (o.kind === 'loot_chest') payLootChest(state, c.x, c.y);
+  else if (big) {
     if (!w.bigKeys.includes(dungeon)) w.bigKeys.push(dungeon);
   } else w.keys[dungeon] = (w.keys[dungeon] ?? 0) + 1;
-  const c = objectCenter(o);
   emit(state, {
     type: 'chestOpened',
     key: o.key,
@@ -139,6 +141,7 @@ export function stepTouches(state: GameState): void {
     switch (o.kind) {
       case 'key_chest':
       case 'big_key_chest':
+      case 'loot_chest':
         if (!o.on && distToTile(p.x, p.y, o.tx, o.ty) <= reach) touchChest(state, o);
         break;
       case 'rune_shrine':

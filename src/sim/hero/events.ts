@@ -28,6 +28,8 @@ export type HeroEvent =
    * per save, after that reward's 'rewardGranted'. (x, y): the shrine or the boss, else the player.
    */
   | { type: 'elementUnlocked'; rune: RuneId; roomId: string; x: number; y: number; source: RewardSource }
+  /** The hero gained a Pattern Seed (+1 passive point) at (x, y); `total` is the count after it (M8 chests). */
+  | { type: 'patternSeedGained'; total: number; x: number; y: number }
   /** A drop landed on the floor at (x, y), thrown from (fromX, fromY) (the body). */
   | {
       type: 'lootDropped';

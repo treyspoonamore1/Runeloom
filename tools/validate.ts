@@ -26,7 +26,7 @@ import { defaultTuning } from '../data/tuning';
 import { enemies, enemyDef, isEnemyKind } from '../data/enemies';
 import { isPackId, packs } from '../data/packs';
 import { isMonsterMod, monsterMods } from '../data/monsterMods';
-import { regionRooms } from '../data/progression';
+import { roomChests, worldRooms } from '../data/progression';
 import { checkPositiveNumbers, missingRefs } from './lib/checks';
 import { fuseEffectErrors, passiveTreeErrors } from './lib/passiveChecks';
 import { checkRooms } from './lib/roomChecks';
@@ -78,8 +78,18 @@ const roomCheck = checkRooms(new Map([...parsed].filter(([id]) => !isRiftRoomTem
   isEnemy: isEnemyKind,
   isPack: isPackId,
   // Region rooms not authored yet: exits to them only warn.
-  pendingRooms: new Set<string>(Object.values(regionRooms).filter((id) => !parsed.has(id))),
+  pendingRooms: new Set<string>(Object.values(worldRooms).filter((id) => !parsed.has(id))),
 });
+// Loot chests (M8): a room with a `$` has roomChests contents, and a room with contents has one `$`.
+for (const [id, data] of parsed) {
+  const n = data.rows.reduce((k, r) => k + [...r].filter((c) => c === '$').length, 0);
+  const has = (roomChests as Record<string, unknown>)[id] !== undefined;
+  if (n > 1) errors.push(`rooms/${id}.txt: ${n} loot chests ('$'); one per room`);
+  if (n > 0 && !has) errors.push(`rooms/${id}.txt: a loot chest ('$') but no data/progression.ts roomChests entry`);
+}
+for (const id of Object.keys(roomChests))
+  if (!parsed.get(id)?.rows.some((r) => r.includes('$')))
+    errors.push(`data/progression.ts roomChests: ${id} has no loot chest ('$')`);
 errors.push(...roomCheck.errors);
 warnings.push(...roomCheck.warnings);
 // The Hearth's hub (M7): its Loom Stone matches data/hearth.ts, every station, a safe room.

@@ -27,6 +27,8 @@ export interface MapProgress {
 const REGION_NAMES: Record<string, string> = {
   emberwood: 'Emberwood',
   kiln: 'The Sunken Kiln',
+  fen: 'Glasswater Fen',
+  foundry: 'The Drowned Foundry',
   test: 'Test grounds',
   rift: 'Rift',
   hearth: 'The Hearth',

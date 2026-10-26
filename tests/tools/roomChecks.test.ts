@@ -68,7 +68,7 @@ describe('checkRooms', () => {
     );
     expect(r.errors).toEqual([
       "rooms/kiln/x.txt: @link D plates:all: no 'T' in the grid",
-      "rooms/kiln/x.txt: @link K: only 'D' doors take a @link",
+      "rooms/kiln/x.txt: @link K: only 'D' and 'd' doors take a @link",
       "rooms/kiln/x.txt: @link K braziers:all: no 'B' in the grid",
       'rooms/kiln/x.txt: @link D lit:maybe: unknown condition',
       "rooms/kiln/x.txt: @note S: no 'S' in the grid",

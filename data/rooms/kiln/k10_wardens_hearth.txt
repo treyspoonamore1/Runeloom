@@ -2,12 +2,16 @@
 @name Warden's Hearth
 @level 10
 @exit s kiln/k9_thaw_lock
+@exit n fen/g1_storm_landing
 @spawn 1 enemy:cinder_warden
-@note S The Fen isn't woven yet.
+@link D cleared
+@link D switch:S
+@link D rifttier:6
+@note S !rifttier:6 The Fen isn't woven yet.
+@note S ?rifttier:6 The storm door hums open. Glasswater Fen lies beyond.
 @note x The Warden's fire settles. The Loom Stone wakes.
-@link D sealed
-#############SMD##############
-#""""""""""""""""""""""""""""#
+#^MS##########################
+#D"""""""""""""""""""""""""""#
 #""""""""""""""""""""""""""""#
 #""""""""""""""""""""""""""""#
 #"""......................"""#

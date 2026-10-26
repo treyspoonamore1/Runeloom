@@ -318,11 +318,13 @@ Rooms are text files in `data/rooms/<region>/<room>.txt`. Lines starting with `@
 | `Y` | Wind vane (M8): solid. Spins while wind (a gust or room wind) covers a cell touching its tile for 0.5 s, then stays spun (latched, like a switch). Counts for `vanes:all` |
 | `T` | Pressure plate |
 | `D` | Door, opened by its `@link` condition |
+| `d` | Second door (M8): a door with its own `@link` lines, for a room with two doors on different conditions (G7's brazier vault and wind-vane cache, F8's two switch doors) |
 | `K` | Locked door, needs a small key |
 | `k` | Chest with a small key |
 | `G` | Big-key door |
 | `g` | Chest with the big key |
 | `R` | Rune shrine: an altar holding the room's dungeon item. Touching it pays the room's guaranteed runes (§9.1); it pays once and stays empty |
+| `$` | Chest (M8): opens on touch and pays the room's `data/progression.ts` `roomChests` contents once per save (a Pattern Seed, a Fuse part, currency): G7's Windward Cache, F1's furnace alcove |
 | `H` | Heart Seed |
 | `L` | Loom Shard |
 | `x` | Loom Stone: waypoint and respawn point |
@@ -334,7 +336,7 @@ Rooms are text files in `data/rooms/<region>/<room>.txt`. Lines starting with `@
 
 Hearth stations are solid and inert, and Interact (F) beside one opens its screen. A station that covers several tiles repeats its character in one rectangle (the hub draws 3×2 buildings and a 3×3 Hearth fire).
 
-A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `R`, `S`, `Q`, `Y`, `T`, `x`, `c`, `\|`, `b`, `&`, `P`) sits on the most common ground among its 4 neighbors. Ties go to stone. This is how the Heart Seed in the example below ends up floating on deep water.
+A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `R`, `$`, `S`, `Q`, `Y`, `T`, `x`, `c`, `\|`, `b`, `&`, `P`) sits on the most common ground among its 4 neighbors. Ties go to stone. This is how the Heart Seed in the example below ends up floating on deep water.
 
 ### 6.2 Headers
 
@@ -357,6 +359,7 @@ Link conditions: `braziers:all`, `switch:S`, `plates:all`, `cleared` (all enemie
 
 - `timer:<seconds>:switch:S`: every switch (`S` and `Q`) powered within the time. Each one unlatches that many seconds after it was powered unless the group completes first, as timed braziers go out (`src/sim/world/objectLinks.ts`).
 - `vanes:all`: every wind vane spun.
+- Two doors (M8): `D` and `d` take their own `@link` lines. A brazier, switch, plate or vane counts for the door whose links watch its kind; when both doors watch the same kind (F8: two `switch:S` doors), each object counts for the nearer door (tile distance; ties to the first `@link` in the file). Rooms with one linked door are unchanged.
 - `rifttier:N`: the best rift tier ever (`hero.hearth.bestEverTier`, kept through Rekindle) is at least N, and every `@exit` of the room leads to a room that exists, so a door to a region not built yet stays shut (`src/sim/world/riftTierLink.ts`). K10's storm door uses `rifttier:6`.
 - Conditional notes: a `@note` whose text starts with `?rifttier:N ` shows only when that condition holds when the object activates; `!rifttier:N ` only when it doesn't. K10's switch says "The Fen isn't woven yet." before tier 6 and "The storm door hums open." after.
 
@@ -507,7 +510,7 @@ Spindles drop by item level (area level). Ashwood can drop from E4 on, Ironbark 
 
 After the boss, a sealed door with a storm mark leads toward Glasswater Fen. Hitting its metal pylon with Storm powers it and shows "The Fen isn't woven yet." Region 2 arrives in M8.
 
-M8: the storm door opens. K10 becomes `@link D cleared` plus `@link D switch:S`, gains `@exit n fen/g1_storm_landing`, and its note becomes `@note S The storm door hums open. Glasswater Fen lies beyond.` It opens when the player powers it once a tier 6 rift has been completed (best tier ever ≥ 6, so a Rekindle never closes it again); before that, powering it shows `The Fen isn't woven yet.` as today (designer, DECISIONS 2026-10-25). The region map shows the Fen's area levels, and G1's intro card reads "Glasswater Fen. Area level 18 to 24."
+M8: the storm door opens. K10 has `@exit n fen/g1_storm_landing` and `@link D cleared`, `@link D switch:S`, `@link D rifttier:6`, with two conditional notes: `@note S !rifttier:6 The Fen isn't woven yet.` and `@note S ?rifttier:6 The storm door hums open. Glasswater Fen lies beyond.` It opens when the player powers it after the Warden's death once a tier 6 rift has been completed (best tier ever ≥ 6, so a Rekindle never closes it again); before that, powering it shows `The Fen isn't woven yet.` as today (designer, DECISIONS 2026-10-25). The storm door stands in the arena's north-west corner, the north exit behind it, its switch and pylon in the wall beside (the M4 Warden fight's arena is otherwise unchanged). The region map shows the Fen's area levels, and G1's intro card reads "Glasswater Fen. Area level 18 to 24."
 
 ---
 

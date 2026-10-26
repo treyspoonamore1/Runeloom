@@ -76,6 +76,7 @@ const OBJECT_CUE: Partial<Record<ObjectKind, M4CueType>> = {
   big_key_door: 'doorOpened',
   key_chest: 'chestOpened',
   big_key_chest: 'chestOpened',
+  loot_chest: 'chestOpened',
   heart_seed: 'pickup',
   loom_shard: 'pickup',
   loom_stone: 'loomStoneActivated',

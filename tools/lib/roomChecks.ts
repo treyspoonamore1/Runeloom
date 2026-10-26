@@ -116,7 +116,7 @@ export function checkRooms(rooms: ReadonlyMap<string, RoomData>, opts: RoomCheck
     for (const l of h.links) {
       if (!chars.has(l.door)) errors.push(`${at}: @link ${l.door}: no '${l.door}' in the grid`);
       if (OBJECT_KIND_BY_CHAR[l.door] !== 'door')
-        errors.push(`${at}: @link ${l.door}: only 'D' doors take a @link`);
+        errors.push(`${at}: @link ${l.door}: only 'D' and 'd' doors take a @link`);
       const c = parseLinkCondition(l.condition);
       if (!c) {
         errors.push(`${at}: @link ${l.door} ${l.condition}: unknown condition`);
@@ -126,8 +126,9 @@ export function checkRooms(rooms: ReadonlyMap<string, RoomData>, opts: RoomCheck
       if (need && ![...need].some((ch) => chars.has(ch)))
         errors.push(`${at}: @link ${l.door} ${l.condition}: no '${[...need].join("' or '")}' in the grid`);
     }
-    if (chars.has('D') && !h.links.some((l) => l.door === 'D'))
-      warnings.push(`${at}: 'D' doors without a @link never open`);
+    for (const d of ['D', 'd'])
+      if (chars.has(d) && !h.links.some((l) => l.door === d))
+        warnings.push(`${at}: '${d}' doors without a @link never open`);
 
     // @fog (M8): rectangles inside the room.
     for (const f of h.fog ?? [])
