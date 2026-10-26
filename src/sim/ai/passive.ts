@@ -2,8 +2,11 @@
  * What M4 enemies do every tick whatever their state, frozen or not, before they think
  * (actors/enemyMovement.ts): their chemistry and boss bookkeeping.
  * - Always Wet (Bog Lurker): Wet is topped up wherever it is.
- * - Swimmers: trapped while the cell under them isn't water (frozen), free when it thaws
- *   ('lurkerTrapped'); being trapped cancels a windup and stops a lunge.
+ * - Swimmers: trapped while their water is frozen, free when it thaws ('lurkerTrapped'); being
+ *   trapped cancels a windup and stops a lunge. M8: Stranded when their cell stops being water
+ *   any other way (rule 31, actors/strand.ts).
+ * - M8 Fen chemistry (actors/fenChemistry.ts): Copperback charge, Slagshell heat, Bellshell
+ *   ring timers, Sparkfly lure timers, Mirebull bogging.
  * - Oil trail (Tar Hulk): oil on the cells around its center whenever it enters a new
  *   cell (combat/oil.ts).
  * - Fuse (Tar Hulk): Ignited while Oiled lights a fuse ('hulkFuse'); Wet puts it out
@@ -14,10 +17,11 @@
 import { enemyDef, type EnemyChemistry } from '../../../data/enemies';
 import type { Enemy } from '../actors/enemies';
 import { explodeHulk } from '../actors/hulkBlast';
-import { isWaterAt, traitsOf } from '../actors/locomotion';
+import { traitsOf } from '../actors/locomotion';
+import { stepSwimmer } from '../actors/strand';
+import { stepFenPassive } from '../actors/fenChemistry';
 import { isOiled } from '../actors/terrainState';
 import { isIgnited } from '../combat/ailments';
-import { endDash } from '../combat/dash';
 import { spillOil } from '../combat/oil';
 import { DT } from '../core/constants';
 import { emit } from '../events';
@@ -39,7 +43,9 @@ export function stepEnemyPassive(state: GameState, e: Enemy): void {
     if (chem.flare !== undefined) stepFlare(state, e, chem.flare);
     if (e.dead) return;
   }
-  if (t.swims) checkTrapped(state, e);
+  stepFenPassive(state, e, def);
+  if (t.swims && !e.dead) stepSwimmer(state, e);
+  if (e.dead) return;
   if (e.boss !== null) stepBossPassive(state, e);
 }
 
@@ -73,20 +79,5 @@ function stepFuse(state: GameState, e: Enemy, ex: NonNullable<EnemyChemistry['ex
   if (ignited && isOiled(e)) {
     s.fuseLeft = ex.fuse;
     emit(state, { type: 'hulkFuse', id: e.id, fuse: ex.fuse, x: e.x, y: e.y });
-  }
-}
-
-function checkTrapped(state: GameState, e: Enemy): void {
-  const s = e.special;
-  const trapped = !isWaterAt(state, e.x, e.y);
-  if (trapped === s.trapped) return;
-  s.trapped = trapped;
-  emit(state, { type: 'lurkerTrapped', id: e.id, trapped, x: e.x, y: e.y });
-  if (!trapped) return;
-  e.vx = e.vy = 0;
-  endDash(e);
-  if (e.attack.phase === 'windup') {
-    e.attack.phase = 'none';
-    e.attack.timeLeft = 0;
   }
 }

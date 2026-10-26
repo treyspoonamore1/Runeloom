@@ -7,10 +7,13 @@ import { enemies, lookKind } from '../../data/enemies';
 import { enemyAtlasEntries } from '../../src/render/enemyShapes';
 import { bigBeastEntries } from '../../src/render/bestiary/bigBeasts';
 import { smallBeastEntries } from '../../src/render/bestiary/smallBeasts';
+import { fenPlaceholderEntries } from '../../src/render/bestiary/fenPlaceholders';
 
 describe('enemy art', () => {
   const names = new Set(
-    [...enemyAtlasEntries(), ...bigBeastEntries(), ...smallBeastEntries()].map((e) => e.name),
+    [...enemyAtlasEntries(), ...bigBeastEntries(), ...smallBeastEntries(), ...fenPlaceholderEntries()].map(
+      (e) => e.name,
+    ),
   );
 
   it.each(Object.keys(enemies))('%s has body and flash sprites', (kind) => {

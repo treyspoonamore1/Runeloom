@@ -20,6 +20,7 @@ import { noteDodge } from '../weave/runtime/queue';
 import { actionSpeed, createAilments, isFrozen, type Ailments } from '../combat/ailments';
 import { createTerrainState, type TerrainState } from './terrainState';
 import { readGround } from './ground';
+import { playerUnslowedGrounds } from '../hero/effectsFen';
 import { dodgeTrail } from '../hero/effectsTerrain';
 import { rimeTrail } from '../hero/uniques';
 
@@ -289,7 +290,7 @@ function walk(
     p.faceX = mx / l;
     p.faceY = my / l;
   }
-  const ground = readGround(state, p.x, p.y, p.terrain);
+  const ground = readGround(state, p.x, p.y, p.terrain, playerUnslowedGrounds(state));
   const moveSpeed = playerMoveSpeed(state);
   // Channel (weave/runtime/triggers.ts): walking while a Channel button is held is slower.
   const speed = moveSpeed * actionSpeed(state, p) * ground.moveMult * slow;

@@ -36,6 +36,7 @@ import { parseArgs, requireInt, runCli } from './lib/args';
 import { loadRoomText } from './lib/rooms';
 import { adventureBench } from './lib/adventureBench';
 import { riftBench } from './lib/riftBench';
+import { fenFightSetup } from './lib/fenBench';
 import { summarize, type Summary } from './lib/stats';
 
 export interface Bench {
@@ -301,6 +302,14 @@ export const benches: Bench[] = [
   scenarioBench('weave_mix'),
   scenarioBench('weave_events'),
   scenarioBench('wilds_terrain'),
+  scenarioBench('fen_packs'),
+  {
+    id: 'entity:fen_fight',
+    description:
+      'Entity step (grid included), the seven Fen packs kept alive around a god-mode bot, Storm in their water',
+    budgetMs: ENTITY_BUDGET_MS,
+    setup: fenFightSetup,
+  },
   stressBench(),
   wildsTerrainBench(),
   weave14Bench(),

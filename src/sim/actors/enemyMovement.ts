@@ -11,6 +11,7 @@ import { readGround } from './ground';
 import { isStunned } from './terrainState';
 import { stepEnemyPassive } from '../ai/passive';
 import { floatRoom, swimMove, traitsOf } from './locomotion';
+import { fenMoveMult } from './fenChemistry';
 
 // Scratch: separation velocity per enemy index and a body for moveCircle.
 let sepX = new Float64Array(64);
@@ -68,13 +69,15 @@ export function stepEnemies(state: GameState): void {
     const mvx = ts.slideX + sepX[i]!;
     const mvy = ts.slideY + sepY[i]!;
     const traits = traitsOf(e.kind);
-    const room = traits.floats ? floatRoom(state.room) : state.room;
+    // M8: a Stranded swimmer crawls over anything shots cross (rule 31, actors/strand.ts).
+    const crawling = traits.swims && e.special.stranded;
+    const room = traits.floats || crawling ? floatRoom(state.room) : state.room;
     if (mvx !== 0 || mvy !== 0) {
       body.x = e.x;
       body.y = e.y;
       body.vx = mvx;
       body.vy = mvy;
-      if (traits.swims) swimMove(state, body, mvx * DT, mvy * DT);
+      if (traits.swims && !crawling) swimMove(state, body, mvx * DT, mvy * DT);
       else if (moveCircle(room, body, e.radius, mvx * DT, mvy * DT) && ts.onIce) {
         // Sliding into a wall loses the part of the slide pointing into it.
         ts.slideX = body.vx - sepX[i]!;
@@ -96,21 +99,31 @@ export function stepEnemies(state: GameState): void {
  */
 function walkVelocity(state: GameState, e: Enemy): void {
   let ts = e.terrain;
-  if (traitsOf(e.kind).groundless) {
+  const traits = traitsOf(e.kind);
+  if (traits.groundless) {
     // Floating (or fixed): the ground neither slows nor slides it.
     ts.moveMult = 1;
     ts.onIce = false;
-  } else ts = readGround(state, e.x, e.y, ts);
-  const k = actionSpeed(state, e) * ts.moveMult;
+  } else ts = readGround(state, e.x, e.y, ts, traits.unslowed);
+  // M8: a Cracked Slagshell is slower (actors/fenChemistry.ts).
+  const k = actionSpeed(state, e) * ts.moveMult * fenMoveMult(e);
   const wx = e.vx * k;
   const wy = e.vy * k;
-  if (!ts.onIce) {
+  // M8: a dash (the Mirebull's charge on ice) runs at its own speed; it doesn't ease in.
+  if (!ts.onIce || e.special.dashSpeed > 0) {
     ts.slideX = wx;
     ts.slideY = wy;
     return;
   }
   const T = state.tuning.terrain;
   const top = enemyDef(e.kind).speed;
+  // After a dash on ice it slides on from no faster than its top speed.
+  const s2 = ts.slideX * ts.slideX + ts.slideY * ts.slideY;
+  if (s2 > top * top) {
+    const c = top / Math.sqrt(s2);
+    ts.slideX *= c;
+    ts.slideY *= c;
+  }
   const rate = top / (wx !== 0 || wy !== 0 ? T.iceAccelTime : T.iceDecelTime);
   const max = rate * DT;
   const dx = wx - ts.slideX;
