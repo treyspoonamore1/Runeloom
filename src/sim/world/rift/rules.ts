@@ -12,12 +12,14 @@
  *   (data/rift.ts riftTierScaling), so climbing needs the power the Hearth and gear give.
  * - Chemistry (grid/tick.ts, grid/elements.ts, actors/terrain.ts): fire spread chance (Drought),
  *   ice duration (Permafrost), smoke duration and monsters not Blinded by smoke (Choking Smoke),
- *   monsters always Oiled (Tinderbox), pylon pulses (Live Wires, pulse.ts).
+ *   monsters always Oiled (Tinderbox), pylon pulses (Live Wires, pulse.ts), room wind (of the
+ *   Gale, M8: grid.wind set when the room is entered, world/transition.ts).
  * - Loot (items/drops.ts): item quantity and rarity, the sum over the modifiers.
  */
 import { riftMods, riftTierScaling, type RiftModDef } from '../../../../data/rift';
 import type { GameState } from '../../state';
 import type { RiftSpec } from './types';
+import { WIND_BY_NAME, type WindDir } from '../../grid/windDir';
 import { isRiftRoomId } from './types';
 import { sigilBonus } from '../../items/sigils';
 
@@ -37,6 +39,8 @@ export interface RiftRules {
   monstersOiled: boolean;
   /** 0: no pulses. */
   pylonPulseSeconds: number;
+  /** M8 "of the Gale": room wind in every rift room (0 none; grid/windDir.ts), set on room entry. */
+  wind: WindDir;
   quantity: number;
   rarity: number;
 }
@@ -55,6 +59,7 @@ export const NEUTRAL_RIFT_RULES: Readonly<RiftRules> = Object.freeze({
   monstersSeeInSmoke: false,
   monstersOiled: false,
   pylonPulseSeconds: 0,
+  wind: 0,
   quantity: 0,
   rarity: 0,
 });
@@ -87,6 +92,7 @@ export function rulesOf(mods: RiftSpec['mods'], tier = 1): RiftRules {
     r.monstersSeeInSmoke ||= m.monstersSeeInSmoke === true;
     r.monstersOiled ||= m.monstersOiled === true;
     if (m.pylonPulseSeconds !== undefined) r.pylonPulseSeconds = m.pylonPulseSeconds;
+    if (m.wind !== undefined) r.wind = WIND_BY_NAME[m.wind]!;
   }
   const bonus = sigilBonus(mods);
   r.quantity = bonus.quantity;

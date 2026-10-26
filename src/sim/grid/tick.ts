@@ -2,8 +2,9 @@
  * The 20 Hz grid tick (DESIGN §6.1): visits the active cells in ascending index order and runs
  * their timers and fires.
  *
- * Per cell: smoke/steam, charge and wet count down; a burning cell rolls spread into each
- * ignitable 4-neighbor (rule 2, gridRng), smokes, dries mud (rule 23), melts ice under it (rule 5)
+ * Per cell: smoke/steam, charge, wet and gusts count down; smoke and steam drift under wind
+ * (rule 21, M8); a burning cell clears fog (rule 29), rolls spread into each ignitable 4-neighbor
+ * (rule 2 × rule 21's wind factor, gridRng), smokes, dries mud (rule 23), melts ice under it (rule 5)
  * and burns fuel; at 0 fuel oil burns away (the material below may catch next), flammable
  * material becomes its burnt result (rule 3), an oil barrel explodes and placed fire goes out.
  * Frozen water counts down to thawing, an ice bridge through its cracking.
@@ -35,6 +36,7 @@ import { FIRE_SPECIAL, REVERTS, SMOKE, SMOKE_DENSE, SMOKE_NONE, SPREAD, smokeCod
 import { flushFx } from './fx';
 import { restingAir, type Grid } from './grid';
 import { paintElement } from './paint';
+import { clearFog, driftTarget, stepGusts, windFactors } from './wind';
 import { spillOil } from './oil';
 import { areaLevel } from './query';
 import { fireSpreadMult } from '../hero/effectsTerrain';
@@ -64,15 +66,8 @@ function push(l: IntList, v: number): void {
 const ignitions = newList();
 const denseSmoke = newList();
 const explosions = newList();
-
-/**
- * Rule 2 wind factor from cell `from` toward `to`. Constant (tuning.grid.windFactor) until Gale
- * (M8, rule 21) makes it directional; the hot loop in visitCells reads the constant directly, so
- * M8 replaces that read with a call here.
- */
-export function windFactor(state: GameState, _from: number, _to: number): number {
-  return state.tuning.grid.windFactor;
-}
+// M8 drift: (source, target, air kind, airTimer) per moving smoke or steam cell.
+const drifts = newList();
 
 /** Advances the grid by one 20 Hz tick. Called from step() every GRID_EVERY non-hitstop ticks. */
 export function stepGrid(state: GameState): void {
@@ -82,10 +77,12 @@ export function stepGrid(state: GameState): void {
   tickChargeEvents(g);
   const a = g.active;
   mergeAdded(a);
-  ignitions.len = denseSmoke.len = explosions.len = 0;
+  ignitions.len = denseSmoke.len = explosions.len = drifts.len = 0;
   const len = a.len;
   visitCells(state);
+  applyDrift(state);
   applyPending(state);
+  stepGusts(g);
   if (len > 0) g.version++;
   flushFx(state);
 }
@@ -98,6 +95,7 @@ function visitCells(state: GameState): void {
   const g = state.grid;
   const a = g.active;
   const { ground, surface, air, airTimer, fire, fuel, charge, wet, timer, owner, borrowed } = g;
+  const { gustDir, gustTimer } = g;
   const list = a.list;
   const flag = a.flag;
   const len = a.len;
@@ -106,7 +104,16 @@ function visitCells(state: GameState): void {
   const rng = state.gridRng;
   const rift = riftRules(state);
   // Rift Drought (M6): every fire spreads faster.
-  const spreadK = state.tuning.grid.windFactor * state.tuning.grid.spreadMult * rift.fireSpreadMult;
+  const spreadK = state.tuning.grid.spreadMult * rift.fireSpreadMult;
+  // M8 wind: rule 21's factor per (wind direction, neighbor); drift ticks; Fire clearing fog.
+  const WT = windFactors(state);
+  const roomWind = g.wind;
+  const W = state.tuning.wind;
+  const gustPeriod = W.gustDriftTicks;
+  const roomPeriod = W.roomDriftTicks;
+  const gustDrift = g.tick % gustPeriod === 0;
+  const roomDrift = roomWind !== 0 && g.tick % roomPeriod === 0;
+  const fireFog = W.fireFogSeconds;
   // Fire you create spreads faster with passives (Kindler, Wildheart; hero/effectsTerrain.ts).
   const playerSpreadK = spreadK * fireSpreadMult(state);
   const oilChance = oil.spreadChance;
@@ -115,8 +122,23 @@ function visitCells(state: GameState): void {
   let w = 0;
   for (let r = 0; r < len; r++) {
     const i = list[r]!;
-    // Smoke or steam ends (or cleared fog rolls back in, rule 29): fog cells return to fog.
-    if (airTimer[i]! > 0 && --airTimer[i]! === 0) air[i] = restingAir(g, i);
+    const gt = gustTimer[i]!;
+    const wd = gt > 0 ? gustDir[i]! : roomWind;
+    if (airTimer[i]! > 0) {
+      // Rule 21 drift (M8): smoke and steam under wind move one cell downwind on drift ticks.
+      const ak = air[i]!;
+      if (wd !== 0 && (ak === AIR.smoke || ak === AIR.steam) && (gt > 0 ? gustDrift : roomDrift)) {
+        const j = driftTarget(g, i, wd, gt > 0 ? gustPeriod : roomPeriod);
+        if (j >= 0 && airTimer[i]! > 1) {
+          push(drifts, i);
+          push(drifts, j);
+          push(drifts, ak);
+          push(drifts, airTimer[i]! - 1);
+        }
+      }
+      // Smoke or steam ends (or cleared fog rolls back in, rule 29): fog cells return to fog.
+      if (--airTimer[i]! === 0) air[i] = restingAir(g, i);
+    }
     if (charge[i]! > 0 && --charge[i]! === 0) {
       g.chargeId[i] = 0;
       g.chargeFalloff[i] = 0;
@@ -126,6 +148,9 @@ function visitCells(state: GameState): void {
       // Rule 2: roll spread into each ignitable 4-neighbor (+x, −x, +y, −y).
       const x = i % width;
       const o = owner[i]!;
+      const wb = wd * 4;
+      // Rule 29 (M8): fire burns fog off.
+      if (air[i] === AIR.fog) clearFog(g, i, fireFog);
       // Inlined for speed; order +x, −x, +y, −y (fixed, so rolls are deterministic).
       for (let k = 0; k < 4; k++) {
         const j =
@@ -144,7 +169,8 @@ function visitCells(state: GameState): void {
                 : i - width;
         if (j < 0 || fire[j]! > 0 || wet[j]! > 0) continue;
         const p = surface[j] === SURFACE.oil ? oilChance : SPREAD[ground[j]!]!;
-        if (p > 0 && rng.float() < p * (o === OWNER.player ? playerSpreadK : spreadK)) {
+        // Rule 21 (M8): × the wind factor toward this neighbor (1 without wind).
+        if (p > 0 && rng.float() < p * (o === OWNER.player ? playerSpreadK : spreadK) * WT[wb + k]!) {
           push(ignitions, j);
           push(ignitions, o);
         }
@@ -161,7 +187,9 @@ function visitCells(state: GameState): void {
       if (fuel[i] === 0) burnOut(state, i, oilBurning);
     }
     if (timer[i]! > 0 && (REVERTS[ground[i]!] === 1 || borrowed[i] === 1)) timerTick(state, i);
+    if (gt > 0 && --gustTimer[i]! === 0) gustDir[i] = 0;
     if (
+      gustTimer[i]! > 0 ||
       fire[i]! > 0 ||
       charge[i]! > 0 ||
       airTimer[i]! > 0 ||
@@ -176,7 +204,8 @@ function visitCells(state: GameState): void {
 
 /** True while cell i has anything for the grid tick to do. */
 export function busy(g: Grid, i: number): boolean {
-  if (g.fire[i]! > 0 || g.charge[i]! > 0 || g.airTimer[i]! > 0 || g.wet[i]! > 0) return true;
+  if (g.fire[i]! > 0 || g.charge[i]! > 0 || g.airTimer[i]! > 0 || g.wet[i]! > 0 || g.gustTimer[i]! > 0)
+    return true;
   return g.timer[i]! > 0 && (REVERTS[g.ground[i]!] === 1 || g.borrowed[i] === 1);
 }
 
@@ -242,6 +271,23 @@ function timerTick(state: GameState, i: number): void {
   if (t > 0) return;
   setGround(state, i, MAT[def.fireTo]);
   if (crack > 0) addToBatch(fx.iceBroke, g, i);
+}
+
+/**
+ * Applies the collected drift moves (DESIGN §6.6): every source is cleared first (to fog where
+ * the room has it), then each target gets the moved air, keeping the longer timer of the same
+ * kind. Nothing moves twice in a tick and the visiting order doesn't matter.
+ */
+function applyDrift(state: GameState): void {
+  if (drifts.len === 0) return;
+  const g = state.grid;
+  const d = drifts.a;
+  for (let k = 0; k < drifts.len; k += 4) {
+    const i = d[k]!;
+    g.air[i] = restingAir(g, i);
+    g.airTimer[i] = 0;
+  }
+  for (let k = 0; k < drifts.len; k += 4) setAir(g, d[k + 1]!, d[k + 2]!, d[k + 3]!);
 }
 
 function applyPending(state: GameState): void {

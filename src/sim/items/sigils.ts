@@ -3,7 +3,7 @@
  * and two suffixes (data/rift.ts sigilRolls). Each modifier adds item quantity and rarity
  * (CONTENT §10). Rolled with the loot RNG.
  */
-import { RIFT_TIERS, riftMods, sigilRolls, type RiftModId } from '../../../data/rift';
+import { RIFT_TIERS, riftMods, sigilRolls, type RiftModDef, type RiftModId } from '../../../data/rift';
 import type { Rng } from '../core/rng';
 import type { HeroState, RiftSigil } from '../hero/types';
 import { nextUid } from './items';
@@ -41,7 +41,8 @@ export function rollSigilMods(rng: Rng, tier: number): RiftModId[] {
     if (suf.length < sigilRolls.maxSuffixes) pools.push({ list: suf, from: SUFFIXES });
     if (pools.length === 0) break;
     const pool = pools[rng.int(pools.length)]!;
-    const free = pool.from.filter((id) => !pool.list.includes(id));
+    // M8: a modifier with `fromTier` (of the Gale: 9) rolls only from that tier.
+    const free = pool.from.filter((id) => !pool.list.includes(id) && (riftModFromTier(id) ?? 1) <= tier);
     pool.list.push(free[rng.int(free.length)]!);
   }
   return [...sortMods(pre), ...sortMods(suf)];
@@ -91,4 +92,9 @@ export function sigilModLine(mods: readonly RiftModId[]): string {
 
 export function findSigil(hero: HeroState, uid: number): RiftSigil | undefined {
   return hero.sigils.find((g) => g.uid === uid);
+}
+
+function riftModFromTier(id: RiftModId): number | undefined {
+  const m: RiftModDef = riftMods[id];
+  return m.fromTier;
 }

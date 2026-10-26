@@ -224,8 +224,6 @@ export const defaultTuning = {
    * data/materials.ts. Seconds are converted to 20 Hz grid ticks.
    */
   grid: {
-    /** Rule 2 wind factor on spread chance. 1 until Gale and rule 21 arrive (M8). */
-    windFactor: 1,
     /** Scales every fire spread roll (rule 2): the fire-speed knob. 0.85 after the M3 playtest ("a little too fast"). */
     spreadMult: 0.85,
     /** Burn intensity (0–255) by what burns: flammable materials, oil (rule 6 "hot"), placed fire (rule 26). */
@@ -277,6 +275,30 @@ export const defaultTuning = {
     ventTouch: 0.5,
     /** The last seconds of borrowed terrain flicker (render), so the player sees it about to go. */
     flickerSeconds: 1.5,
+  },
+  /** Wind (M8, DESIGN §6.6; rules 21 and 29, grid/wind.ts). Gusts move fire spread, smoke, steam and fog, nothing else. */
+  wind: {
+    /** Rule 21: spread chance × this toward a neighbor within 60° of the wind. */
+    downwindMult: 2,
+    /** Rule 21: spread chance × this toward a neighbor against the wind. */
+    upwindMult: 0.25,
+    /** Seconds a gust lasts (× Lingering and terrain duration). */
+    gustSeconds: 2,
+    /** Live gusts per team; one more ends that team's oldest early. */
+    maxGusts: 8,
+    /** Gale's cone for Bolt (from the impact), Beam, Strike and Swath (from the caster): full angle, degrees. */
+    coneDeg: 60,
+    /** Gale's cone reach, cells (× √ Saturate's area). */
+    coneRadius: 12,
+    /** Smoke and steam move one cell downwind every this many grid ticks in a gust (4: 5 cells/s). */
+    gustDriftTicks: 4,
+    /** … and in room wind (8: 2.5 cells/s). */
+    roomDriftTicks: 8,
+    /** Rule 29: a gust clears fog for this long, Fire for fireFogSeconds. Lingering doesn't lengthen it. */
+    gustFogSeconds: 10,
+    fireFogSeconds: 8,
+    /** A wind vane spins (and latches) after wind covers a cell touching it this long, seconds. */
+    vaneSeconds: 0.5,
   },
   /**
    * How entities (player and enemies) read the chemistry grid (DESIGN §6.3 rules 15–20, 22, 25;

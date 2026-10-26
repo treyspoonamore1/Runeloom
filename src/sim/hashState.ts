@@ -188,7 +188,10 @@ function hashGrid(h: Hasher, g: Grid): void {
     h.byte(0x88).u32(g.wind);
     h.bytes(g.borrowed).bytes(g.cover).bytes(g.gustDir).bytes(g.gustTimer).bytes(g.fogMask);
     h.u32(g.gusts.length);
-    for (const gu of g.gusts) h.u32(gu.team).u32(gu.endTick).bytes(gu.cells);
+    for (const gu of g.gusts) {
+      h.u32(gu.team).u32(gu.key).u32(gu.endTick).u32(gu.len);
+      h.bytes(gu.cells.subarray(0, gu.len)).bytes(gu.ends.subarray(0, gu.len));
+    }
   }
 }
 

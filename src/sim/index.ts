@@ -141,6 +141,16 @@ export { isWater, isBorrowed, borrowedSecondsLeft, touchesLitVent } from './grid
 export { placeTempWater, placeBorrowedWater } from './grid/tempWater';
 export { revertBorrowed, borrowCell } from './grid/cells';
 export { applyWet } from './actors/wet';
+export {
+  writeGust,
+  windAt,
+  windFactor,
+  windFactors,
+  clearFog,
+  galeCone,
+  type GustCone,
+  type GustTeam,
+} from './grid/wind';
 export { WIND_DX, WIND_DY, WIND_BY_NAME, windName, windDirOf, type WindDir } from './grid/windDir';
 export type { CellBounds, ElectrifyFields } from './events';
 export {

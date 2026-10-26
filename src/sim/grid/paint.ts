@@ -13,6 +13,7 @@ import { electrify } from './charge';
 import { fireCell, frostCell, steamAround, stormCell, tideCell, type CellContext } from './elements';
 import { flush, flushFx } from './fx';
 import { rasterize } from './raster';
+import { paintGust } from './wind';
 import { MAT, materialByCode } from '../../../data/materials';
 import { iceConducts, terrainDurationMult } from '../hero/effectsTerrain';
 import { elementOnObjects } from '../world/objectHits';
@@ -80,7 +81,11 @@ const tideBatch = newBatch();
 
 /** applyElement without flushing the batched events (the grid tick flushes once at its end). */
 export function paintElement(state: GameState, app: ElementApplication): void {
-  if (app.element === 'gale') return; // TODO(M8): rule 21 (grid/wind.ts).
+  if (app.element === 'gale') {
+    // Rule 21 (M8): Gale's footprint is a gust (grid/wind.ts); it changes no terrain itself.
+    paintGust(state, app, app.durationMult * terrainDurationMult(state, app.owner));
+    return;
+  }
   const g = state.grid;
   const list = rasterize(g, app.shape);
   const n = list.len;

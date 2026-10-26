@@ -141,14 +141,20 @@ export interface ChargeEvent {
 }
 
 /**
- * A live gust (M8, grid/wind.ts): the cells it wrote and the grid tick it ends. A cell still
- * belongs to it while its gustTimer equals endTick − grid.tick (a newer gust overwrites it).
+ * A live gust (M8, grid/wind.ts): the cells it wrote and the grid tick each ends. Cell cells[k]
+ * still belongs to it while its gustTimer equals ends[k] − grid.tick (a newer gust overwrites it).
  */
 export interface Gust {
   /** 0 player, 1 enemy (each team keeps at most tuning.wind.maxGusts). */
   team: number;
+  /** The spell instance whose writes it gathers (Nova bands, Orb trail), or 0 for a one-off write. */
+  key: number;
+  /** The grid tick its last cell ends. */
   endTick: number;
+  /** Written cells and their end ticks, [0, len) used. */
   cells: Int32Array;
+  ends: Int32Array;
+  len: number;
 }
 
 /** An oil barrel explosion (DESIGN §6.2). Positions and radius in cells. */

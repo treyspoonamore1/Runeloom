@@ -35,6 +35,7 @@ import {
 } from './cells';
 import type { CellBatch } from './cells';
 import { iceDurationMult } from '../hero/effectsTerrain';
+import { clearFog } from './wind';
 import { riftRules } from '../world/rift/rules';
 
 export interface CellContext {
@@ -45,6 +46,8 @@ export interface CellContext {
 /** Applies Fire to cell i. Returns true if the cell is water that should steam (rule 4). */
 export function fireCell(state: GameState, i: number, c: CellContext): boolean {
   const g = state.grid;
+  // Rule 29 (M8): Fire burns fog off for wind.fireFogSeconds (Lingering doesn't lengthen it).
+  if (g.air[i] === AIR.fog) clearFog(g, i, state.tuning.wind.fireFogSeconds);
   let def = materialByCode[g.ground[i]!]!;
   if (def.fireTo !== undefined) {
     // Rule 5: ice and ice bridges melt where the fire hits. Borrowed ice (M8, rule 27) goes
