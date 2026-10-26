@@ -37,6 +37,11 @@ export const tiles = [
   { char: 'P', id: 'push_block', walk: false, blocksShots: true, marker: true },
   { char: 'I', id: 'ice_block', walk: false, blocksShots: true, marker: true },
   { char: 'S', id: 'conduit_switch', walk: false, blocksShots: true, marker: true },
+  // M8: a sealed conduit switch (only charge on a touching cell powers it) and a wind vane.
+  { char: 'Q', id: 'sealed_switch', walk: false, blocksShots: true, marker: true },
+  { char: 'Y', id: 'wind_vane', walk: false, blocksShots: true, marker: true },
+  // M8: a lit furnace vent, solid flame over a grate (blocks movement, not projectiles).
+  { char: 'f', id: 'furnace_vent', walk: false, blocksShots: false },
   { char: 'T', id: 'pressure_plate', walk: true, blocksShots: false, marker: true },
   { char: 'D', id: 'door', walk: false, blocksShots: true },
   { char: 'K', id: 'locked_door', walk: false, blocksShots: true },

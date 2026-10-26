@@ -122,7 +122,7 @@ export class TerrainPack {
   }
 
   /**
-   * 32-bit views of the grid's arrays (4 cells per word; timer 2 per word), or null when the
+   * 32-bit views of the grid's arrays (4 cells per word; wet and timer 2 per word), or null when the
    * layout doesn't allow them. Built once per grid object.
    */
   private wordViews(grid: Grid): Uint32Array[] | null {
@@ -143,9 +143,12 @@ export class TerrainPack {
     ];
     const ok =
       this.width % 4 === 0 && arrays.every((a) => a.byteOffset % 4 === 0) && grid.timer.byteOffset % 4 === 0;
+    // Byte-per-cell arrays get 4 cells per word; wet (u16 since M8) and timer 2 cells per word.
     this.views = ok
       ? [
-          ...arrays.map((a) => new Uint32Array(a.buffer, a.byteOffset, n >> 2)),
+          ...arrays.map(
+            (a) => new Uint32Array(a.buffer, a.byteOffset, a.byteLength >> 2 === n >> 1 ? n >> 1 : n >> 2),
+          ),
           new Uint32Array(grid.timer.buffer, grid.timer.byteOffset, n >> 1),
         ]
       : null;
@@ -210,6 +213,8 @@ export class TerrainPack {
     const blockLut = isBlock;
 
     const views = this.wordViews(grid);
+    // Wet is u16 since M8 (2 cells per word); fixtures may still hand a u8 one.
+    const wet2 = views !== null && views[3]!.length === n >> 1;
     const quiet = this.quiet;
     const last32 = this.last32;
     const prevFire32 = this.prevFire32;
@@ -227,7 +232,7 @@ export class TerrainPack {
             (views[0]![j]! |
               views[1]![j]! |
               views[2]![j]! |
-              views[3]![j]! |
+              (wet2 ? views[3]![j * 2]! | views[3]![j * 2 + 1]! : views[3]![j]!) |
               views[4]![j]! |
               prevFire32[j]!) ===
               0 &&

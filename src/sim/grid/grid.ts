@@ -7,6 +7,7 @@
  * Units: timers are in GRID TICKS (20 Hz; DESIGN §6.1), not sim ticks or seconds.
  */
 import {
+  AIR,
   MAT,
   OWNER,
   SURFACE,
@@ -20,6 +21,7 @@ import { tileForChar } from '../../../data/tiles';
 import { TILE_CELLS } from '../core/constants';
 import type { Room } from '../world/room';
 import { createActiveSet, type ActiveSet } from './active';
+import type { WindDir } from './windDir';
 
 export interface Grid {
   /** Size in cells (same as the room). */
@@ -29,7 +31,7 @@ export interface Grid {
   ground: Uint8Array;
   /** SURFACE code: none or oil. */
   surface: Uint8Array;
-  /** AIR code: none, smoke or steam. */
+  /** AIR code: none, smoke, steam or fog (M8). */
   air: Uint8Array;
   /** Burn intensity 0–255; 0 = not burning. */
   fire: Uint8Array;
@@ -37,16 +39,41 @@ export interface Grid {
   fuel: Uint16Array;
   /** Remaining electrified grid ticks; 0 = not charged. */
   charge: Uint8Array;
-  /** Remaining smoke/steam grid ticks. */
+  /**
+   * Remaining smoke/steam grid ticks. On a fog cell (fogMask) with no air, the grid ticks until
+   * the fog rolls back in (rule 29, M8); fog itself has no timer.
+   */
   airTimer: Uint8Array;
   /** Material timer in grid ticks: thaw, crack, dry, temporary terrain. 0 = none (permanent). */
   timer: Uint16Array;
-  /** Remaining grid ticks a non-water cell stays wet (Tide, Hydromancer). Wet cells can't ignite. */
-  wet: Uint8Array;
+  /**
+   * Remaining grid ticks a non-water cell stays wet (Tide, Hydromancer). Wet cells can't ignite.
+   * u16 since M8 (a Lingering Tide wets for 15 s = 300 grid ticks).
+   */
+  wet: Uint16Array;
   /** Material code the cell becomes when its ground burns away or its timer ends. */
   under: Uint8Array;
   /** OWNER code of the team whose effect is on the cell (fire, charge, smoke). */
   owner: Uint8Array;
+  /**
+   * M8: 1 while the cell's terrain is temporary (Tide or Hydromancer water, a Tide-filled pit, ice
+   * or an ice bridge frozen from them, a doused vent). When its `timer` ends it returns to
+   * `under` and stops being borrowed, whatever it became meanwhile (rule 27).
+   */
+  borrowed: Uint8Array;
+  /** M8: gust direction while gustTimer > 0: 1–8 (E, NE, N, NW, W, SW, S, SE; grid/windDir.ts). */
+  gustDir: Uint8Array;
+  /** M8: remaining gust grid ticks; 0 = no gust (the cell has the room wind). */
+  gustTimer: Uint8Array;
+  /**
+   * M8: room wind, 0 or a direction 1–8 (`@wind`, or east in a rift "of the Gale"). A cell's
+   * wind is its gust while gustTimer > 0, else this.
+   */
+  wind: WindDir;
+  /** M8: one bit per cell (cell i is bit i & 7 of byte i >> 3), set where the room's `@fog` lies. */
+  fogMask: Uint8Array;
+  /** M8: live gusts, oldest first, for each team's cap (tuning.wind.maxGusts; grid/wind.ts). */
+  gusts: Gust[];
   /**
    * 1 if the cell's oil is the Tar Matriarch's tar (M4, CONTENT §5): fire on it is world-owned
    * whoever lit it (cells.ts lightCell, elements.ts fireCell). 0 otherwise; cleared when the oil
@@ -100,6 +127,17 @@ export interface ChargeEvent {
   /** Grid ticks until its cells' charge ends. */
   ticksLeft: number;
   cells: number;
+}
+
+/**
+ * A live gust (M8, grid/wind.ts): the cells it wrote and the grid tick it ends. A cell still
+ * belongs to it while its gustTimer equals endTick − grid.tick (a newer gust overwrites it).
+ */
+export interface Gust {
+  /** 0 player, 1 enemy (each team keeps at most tuning.wind.maxGusts). */
+  team: number;
+  endTick: number;
+  cells: Int32Array;
 }
 
 /** An oil barrel explosion (DESIGN §6.2). Positions and radius in cells. */
@@ -175,9 +213,15 @@ export function createGrid(room: Room): Grid {
     charge: new Uint8Array(n),
     airTimer: new Uint8Array(n),
     timer: new Uint16Array(n),
-    wet: new Uint8Array(n),
+    wet: new Uint16Array(n),
     under: new Uint8Array(n),
     owner: new Uint8Array(n).fill(OWNER.world),
+    borrowed: new Uint8Array(n),
+    gustDir: new Uint8Array(n),
+    gustTimer: new Uint8Array(n),
+    wind: room.header.wind ?? 0,
+    fogMask: new Uint8Array((n + 7) >> 3),
+    gusts: [],
     tar: new Uint8Array(n),
     chargeId: new Uint32Array(n),
     chargeFalloff: new Float32Array(n),
@@ -204,7 +248,35 @@ export function createGrid(room: Room): Grid {
       }
     }
   }
+  for (const f of room.header.fog ?? []) addFog(grid, f.tx0, f.ty0, f.tx1, f.ty1);
   return grid;
+}
+
+/**
+ * Sets the fog bit and puts fog in the air layer on every cell of tiles (tx0, ty0)–(tx1, ty1),
+ * corners inclusive, clamped to the grid. Shot-blocking cells (walls) get the bit but no fog.
+ */
+export function addFog(grid: Grid, tx0: number, ty0: number, tx1: number, ty1: number): void {
+  const x0 = Math.max(0, tx0 * TILE_CELLS);
+  const y0 = Math.max(0, ty0 * TILE_CELLS);
+  const x1 = Math.min(grid.width, (tx1 + 1) * TILE_CELLS);
+  const y1 = Math.min(grid.height, (ty1 + 1) * TILE_CELLS);
+  for (let y = y0; y < y1; y++)
+    for (let x = x0; x < x1; x++) {
+      const i = y * grid.width + x;
+      grid.fogMask[i >> 3]! |= 1 << (i & 7);
+      if (grid.air[i] === AIR.none && !materialOf(grid, i).blocksShots) grid.air[i] = AIR.fog;
+    }
+}
+
+/** True if cell i lies under the room's `@fog` (fog belongs there when no smoke or steam is). */
+export function isFogCell(grid: Grid, i: number): boolean {
+  return ((grid.fogMask[i >> 3]! >> (i & 7)) & 1) === 1;
+}
+
+/** What the air layer of cell i holds once its smoke or steam is gone: fog on fog cells, else none. */
+export function restingAir(grid: Grid, i: number): number {
+  return isFogCell(grid, i) && !materialOf(grid, i).blocksShots ? AIR.fog : AIR.none;
 }
 
 /** True if the cell's current material can be walked on. Outside the grid is not walkable. */

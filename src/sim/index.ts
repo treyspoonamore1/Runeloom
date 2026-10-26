@@ -135,7 +135,9 @@ export {
   hazardHurts,
   type CellView,
 } from './grid/query';
-export type { ChargeEvent, Blast } from './grid/grid';
+export type { ChargeEvent, Blast, Gust } from './grid/grid';
+export { isFogCell, restingAir, addFog } from './grid/grid';
+export { WIND_DX, WIND_DY, WIND_BY_NAME, windName, windDirOf, type WindDir } from './grid/windDir';
 export type { CellBounds, ElectrifyFields } from './events';
 export {
   isWet,

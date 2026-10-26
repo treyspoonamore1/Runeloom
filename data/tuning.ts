@@ -358,6 +358,8 @@ export const defaultTuning = {
     stationReach: 6,
     /** An exit triggers when the player's center is within radius + this many cells of the room edge, facing out. */
     exitSlack: 0.3,
+    /** M8 `@pulse` and Live Wires: pylons glow this many seconds before each pulse (the telegraph). */
+    pulseGlowSeconds: 0.8,
   },
   rift: {
     /**

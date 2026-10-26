@@ -156,6 +156,10 @@ export function hashHex(n: number): string {
 /**
  * Every cell field plus the charge events, blasts and counters. Not hashed: `version` (render
  * upload counter) and `active` (derived; see grid/active.ts).
+ *
+ * M8 fields hash so that a grid that uses none of them hashes exactly as before M8: `wet` (u16
+ * since M8) as its low bytes, then its high bytes only when some cell is wet for more than 255
+ * ticks; `borrowed`, the gust fields, `wind`, `fogMask` and the gust list only when any is set.
  */
 function hashGrid(h: Hasher, g: Grid): void {
   h.u32(g.width).u32(g.height).u32(g.tick).u32(g.clock).u32(g.walkVersion).u32(g.nextChargeId);
@@ -167,19 +171,29 @@ function hashGrid(h: Hasher, g: Grid): void {
   }
   h.u32(g.blasts.length);
   for (const b of g.blasts) h.num(b.x).num(b.y).num(b.radius).num(b.damage).u32(b.owner).num(b.sourceId);
-  for (const a of [
-    g.ground,
-    g.surface,
-    g.air,
-    g.fire,
-    g.fuel,
-    g.charge,
-    g.airTimer,
-    g.timer,
-    g.wet,
-    g.under,
-    g.owner,
-    g.tar,
-  ])
-    h.bytes(a);
+  for (const a of [g.ground, g.surface, g.air, g.fire, g.fuel, g.charge, g.airTimer, g.timer]) h.bytes(a);
+  const wet = g.wet;
+  let wetHigh = false;
+  for (let i = 0; i < wet.length; i++) {
+    const v = wet[i]!;
+    h.byte(v);
+    if (v > 255) wetHigh = true;
+  }
+  for (const a of [g.under, g.owner, g.tar]) h.bytes(a);
+  if (wetHigh) {
+    h.byte(0x5e);
+    for (let i = 0; i < wet.length; i++) h.byte(wet[i]! >>> 8);
+  }
+  if (g.wind !== 0 || g.gusts.length > 0 || anySet(g.borrowed) || anySet(g.gustTimer) || anySet(g.fogMask)) {
+    h.byte(0x88).u32(g.wind);
+    h.bytes(g.borrowed).bytes(g.gustDir).bytes(g.gustTimer).bytes(g.fogMask);
+    h.u32(g.gusts.length);
+    for (const gu of g.gusts) h.u32(gu.team).u32(gu.endTick).bytes(gu.cells);
+  }
+}
+
+/** True if any byte of the array is non-zero. */
+function anySet(a: Uint8Array): boolean {
+  for (let i = 0; i < a.length; i++) if (a[i] !== 0) return true;
+  return false;
 }
