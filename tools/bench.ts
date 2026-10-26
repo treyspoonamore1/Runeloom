@@ -37,6 +37,7 @@ import { loadRoomText } from './lib/rooms';
 import { adventureBench } from './lib/adventureBench';
 import { riftBench } from './lib/riftBench';
 import { fenFightSetup } from './lib/fenBench';
+import { gridWindBench } from './lib/gridWindBench';
 import { summarize, type Summary } from './lib/stats';
 
 export interface Bench {
@@ -314,6 +315,7 @@ export const benches: Bench[] = [
   wildsTerrainBench(),
   weave14Bench(),
   gridTypicalBench(),
+  gridWindBench(GRID_BUDGET_MS),
   gridWorstBench(),
   adventureBench(ENTITY_BUDGET_MS),
   riftBench(ENTITY_BUDGET_MS),

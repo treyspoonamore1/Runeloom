@@ -17,7 +17,7 @@ import { AIR, MAT, OWNER, SURFACE, materialByCode, materials, oil } from '../../
 import { scaleByLevel } from '../combat/damage';
 import { emit } from '../events';
 import type { GameState } from '../state';
-import { mergeAdded } from './active';
+import { markActive, mergeAdded } from './active';
 import {
   WORLD_SOURCE_ID,
   addToBatch,
@@ -36,7 +36,7 @@ import { FIRE_SPECIAL, REVERTS, SMOKE, SMOKE_DENSE, SMOKE_NONE, SPREAD, smokeCod
 import { flushFx } from './fx';
 import { restingAir, type Grid } from './grid';
 import { paintElement } from './paint';
-import { clearFog, driftTarget, stepGusts, windFactors } from './wind';
+import { clearFog, driftSteps, stepGusts, windFactors } from './wind';
 import { spillOil } from './oil';
 import { areaLevel } from './query';
 import { fireSpreadMult } from '../hero/effectsTerrain';
@@ -68,6 +68,11 @@ const denseSmoke = newList();
 const explosions = newList();
 // M8 drift: (source, target, air kind, airTimer) per moving smoke or steam cell.
 const drifts = newList();
+// This grid tick's drift step per wind direction, in a gust and in room wind.
+const GDX = new Int32Array(9);
+const GDY = new Int32Array(9);
+const RDX = new Int32Array(9);
+const RDY = new Int32Array(9);
 
 /** Advances the grid by one 20 Hz tick. Called from step() every GRID_EVERY non-hitstop ticks. */
 export function stepGrid(state: GameState): void {
@@ -113,6 +118,10 @@ function visitCells(state: GameState): void {
   const roomPeriod = W.roomDriftTicks;
   const gustDrift = g.tick % gustPeriod === 0;
   const roomDrift = roomWind !== 0 && g.tick % roomPeriod === 0;
+  if (gustDrift) driftSteps(g, gustPeriod, GDX, GDY);
+  if (roomDrift) driftSteps(g, roomPeriod, RDX, RDY);
+  const height = g.height;
+  const shotSolid = state.room.shotSolid;
   const fireFog = W.fireFogSeconds;
   // Fire you create spreads faster with passives (Kindler, Wildheart; hero/effectsTerrain.ts).
   const playerSpreadK = spreadK * fireSpreadMult(state);
@@ -128,12 +137,19 @@ function visitCells(state: GameState): void {
       // Rule 21 drift (M8): smoke and steam under wind move one cell downwind on drift ticks.
       const ak = air[i]!;
       if (wd !== 0 && (ak === AIR.smoke || ak === AIR.steam) && (gt > 0 ? gustDrift : roomDrift)) {
-        const j = driftTarget(g, i, wd, gt > 0 ? gustPeriod : roomPeriod);
-        if (j >= 0 && airTimer[i]! > 1) {
-          push(drifts, i);
-          push(drifts, j);
-          push(drifts, ak);
-          push(drifts, airTimer[i]! - 1);
+        const ddx = gt > 0 ? GDX[wd]! : RDX[wd]!;
+        const ddy = gt > 0 ? GDY[wd]! : RDY[wd]!;
+        const cx = (i % width) + ddx;
+        const cy = ((i / width) | 0) + ddy;
+        // Shot-blocking cells and the grid edge stop drift (room.shotSolid mirrors the materials).
+        if (cx >= 0 && cx < width && cy >= 0 && cy < height && airTimer[i]! > 1) {
+          const j = cy * width + cx;
+          if (shotSolid[j] === 0) {
+            push(drifts, i);
+            push(drifts, j);
+            push(drifts, ak);
+            push(drifts, airTimer[i]! - 1);
+          }
         }
       }
       // Smoke or steam ends (or cleared fog rolls back in, rule 29): fog cells return to fog.
@@ -281,13 +297,23 @@ function timerTick(state: GameState, i: number): void {
 function applyDrift(state: GameState): void {
   if (drifts.len === 0) return;
   const g = state.grid;
+  const { air, airTimer, fogMask } = g;
   const d = drifts.a;
-  for (let k = 0; k < drifts.len; k += 4) {
+  const n = drifts.len;
+  for (let k = 0; k < n; k += 4) {
     const i = d[k]!;
-    g.air[i] = restingAir(g, i);
-    g.airTimer[i] = 0;
+    air[i] = fogMask[i >> 3] !== 0 ? restingAir(g, i) : AIR.none;
+    airTimer[i] = 0;
   }
-  for (let k = 0; k < drifts.len; k += 4) setAir(g, d[k + 1]!, d[k + 2]!, d[k + 3]!);
+  for (let k = 0; k < n; k += 4) {
+    const j = d[k + 1]!;
+    const kind = d[k + 2]!;
+    const t = d[k + 3]!;
+    // setAir inlined: keep the longer timer of the same kind.
+    if (air[j] !== kind || airTimer[j]! < t) airTimer[j] = t;
+    air[j] = kind;
+    markActive(g.active, j);
+  }
 }
 
 function applyPending(state: GameState): void {

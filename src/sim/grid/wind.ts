@@ -119,6 +119,21 @@ export function driftTarget(g: Grid, i: number, w: number, period: number): numb
 }
 
 /**
+ * The drift step of every direction on this grid tick, for the hot loop: into dx[d], dy[d]. A
+ * diagonal alternates x and y by the drift count (tick ÷ period), as driftTarget does.
+ */
+export function driftSteps(g: Grid, period: number, dx: Int32Array, dy: Int32Array): void {
+  const odd = (((g.tick / period) | 0) & 1) === 1;
+  for (let d = 0; d < 9; d++) {
+    const x = WIND_DX[d]!;
+    const y = WIND_DY[d]!;
+    const diag = x !== 0 && y !== 0;
+    dx[d] = diag && odd ? 0 : x;
+    dy[d] = diag && !odd ? 0 : y;
+  }
+}
+
+/**
  * Rule 29: clears fog in cell i for `seconds` (a gust 10 s, Fire 8 s): its air is empty and its
  * airTimer counts down to the fog's return. A cell already cleared keeps the longer time.
  * Lingering never lengthens it. Returns true if the cell had fog (or cleared fog).
