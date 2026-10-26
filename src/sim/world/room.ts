@@ -39,7 +39,14 @@ export interface RoomHeader {
   fog?: FogRect[];
   wind?: WindDir;
   pulse?: number;
+  /**
+   * `@look fen|foundry` (M8): the region look the renderer draws the room in, for rooms whose id
+   * doesn't say it (rift chunks and arenas built from Fen rooms). Purely visual.
+   */
+  look?: RoomLook;
 }
+
+export type RoomLook = 'fen' | 'foundry';
 
 /** A parsed room file (CONTENT §6), before it becomes simulation data. */
 export interface RoomData {
@@ -197,6 +204,14 @@ function parseHeaderLine(h: RoomHeader, line: string, lineNo: number): void {
       if (!Number.isFinite(sec) || sec <= 0 || args.length > 1)
         throw new RoomParseError('@pulse takes a positive number of seconds', lineNo);
       h.pulse = sec;
+      break;
+    }
+    case 'look': {
+      need(1);
+      const look = args[0];
+      if ((look !== 'fen' && look !== 'foundry') || args.length > 1)
+        throw new RoomParseError('@look takes fen or foundry', lineNo);
+      h.look = look;
       break;
     }
     default:

@@ -120,6 +120,20 @@ describe('the Fen in rifts (CONTENT §10.1)', () => {
     expect(fenRooms).toBeGreaterThan(100);
   });
 
+  it("Fen chunks and arenas keep the Fen's look (@look) in the rift, whatever their room id", () => {
+    const looks = new Map<string, string | undefined>();
+    for (let seed = 0; seed < 40; seed++) {
+      const r = generateRift(spec(seed, 9 + (seed % 8)), ROOMS);
+      for (const p of r.plan) looks.set(chunkOf(p.template), parseRoom(r.rooms[p.id]!).header.look);
+    }
+    expect(looks.get('reedmarsh')).toBe('fen');
+    expect(looks.get('pylon_flats')).toBe('fen');
+    expect(looks.get('sluiceworks')).toBe('foundry');
+    expect(looks.get('belfry')).toBe('foundry');
+    expect(looks.get('glass_eye')).toBe('foundry');
+    expect(looks.get('glade')).toBeUndefined();
+  });
+
   it('below tier 9 the Fen changes nothing: the same spec builds the same rooms', () => {
     // Pinned from the generator before the Fen joined (commit 77a2807).
     const texts: string[] = [];

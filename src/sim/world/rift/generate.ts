@@ -268,6 +268,7 @@ function roomText(
   const mods = boss?.keepsWater ? spec.mods.filter((m) => !WATERLESS.includes(m)) : spec.mods;
   applyRiftTerrain(rows, mods, rng, entry ? { x: Math.floor(w / 2), y: Math.floor(h / 2) } : null);
   const lines = [`@id ${room.id}`, `@name ${data.header.name}`, `@level ${riftAreaLevel(spec.tier)}`];
+  if (data.header.look) lines.push(`@look ${data.header.look}`);
   for (const { edge } of DIRS)
     if (room.exits[edge] !== undefined) lines.push(`@exit ${edge} ${room.exits[edge]}`);
   if (room.id.endsWith('/entry') || bossKind !== null)

@@ -1,5 +1,6 @@
 @id rift/chunks/sluiceworks
 @name Rift Sluiceworks
+@look foundry
 ###############^^###############
 #fff#..........mm..........#ff##
 #...#mmmmmmmmmmmmmmmmmmmmmm#..##

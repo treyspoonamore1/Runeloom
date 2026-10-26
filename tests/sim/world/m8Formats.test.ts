@@ -59,12 +59,19 @@ describe('M8 headers', () => {
     expect(() => room('@fog 0 0 1 -1')).toThrow(/@fog takes four tile coordinates/);
     expect(() => room('@wind up')).toThrow(/@wind takes one of/);
     expect(() => room('@pulse 0')).toThrow(/@pulse takes a positive/);
+    expect(() => room('@look kiln')).toThrow(/@look takes fen or foundry/);
+  });
+
+  it('@look names the region look (rift chunks built from Fen rooms)', () => {
+    expect(room('@look fen').header.look).toBe('fen');
+    expect(room('@look foundry').header.look).toBe('foundry');
+    expect(room('@wind e').header.look).toBeUndefined();
   });
 
   it('rooms without M8 headers parse to the same header as before M8 (no new keys)', () => {
     for (const [id, text] of Object.entries(ROOMS)) {
       const h = parseRoom(text).header;
-      if (text.includes('@fog') || text.includes('@wind') || text.includes('@pulse')) continue;
+      if (['@fog', '@wind', '@pulse', '@look'].some((k) => text.includes(k))) continue;
       expect(Object.keys(h).sort(), id).toEqual(
         ['clearOnExit', 'exits', 'id', 'level', 'links', 'name', 'notes', 'spawns'].sort(),
       );

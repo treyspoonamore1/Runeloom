@@ -1,5 +1,6 @@
 @id rift/bosses/belfry
 @name Drowned Belfry
+@look foundry
 ############^^############
 #...........DD...........#
 #........................#

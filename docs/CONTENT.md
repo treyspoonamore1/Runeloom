@@ -353,6 +353,7 @@ A marker or object tile (digits, `B`, `H`, `L`, `k`, `g`, `R`, `$`, `S`, `Q`, `Y
 @fog <tx0> <ty0> <tx1> <ty1>
 @wind <n|ne|e|se|s|sw|w|nw>
 @pulse <seconds>
+@look <fen|foundry>
 ```
 
 Link conditions: `braziers:all`, `switch:S`, `plates:all`, `cleared` (all enemies dead), `timer:<seconds>:braziers:all` (all braziers lit within the time), `sealed` (never opens: a door that stays shut on purpose, like the K10 storm door). Several `@link` lines for one door must all hold. M8 adds:
@@ -368,6 +369,7 @@ M8 headers (`src/sim/world/room.ts`):
 - `@fog`: fog over a rectangle of tiles, corners inclusive. Several lines add up. Fog is the air layer's Fog (DESIGN §6.2).
 - `@wind`: room wind, the way it blows (`@wind e` blows from the west toward the east). Fen rooms have none; it exists for the rift suffix and Galeback later.
 - `@pulse`: every metal pylon (`M`) in the room pulses world-owned charge every that many seconds, as the rift suffix of Live Wires does (`src/sim/world/rift/pulse.ts`, now also outside rifts). Pylons glow for `tuning.world.pulseGlowSeconds` = 0.8 s first.
+- `@look`: the region look the renderer draws the room in when its id doesn't say it (`fen/` and `foundry/` rooms need none). The Fen rift chunks and the Fen bosses' rift arenas carry it, and the rift generator copies it into the room it builds. Purely visual.
 
 Rarity (M4): a trailing `magic` makes every spawned enemy Magic with the same 1–2 mods. A trailing `rare` makes a pack's leader Rare with 2 normal minions of the pack's minion kind, or makes each enemy of an `enemy:` line Rare with 2 minions of its own kind. Bosses ignore rarity.
 

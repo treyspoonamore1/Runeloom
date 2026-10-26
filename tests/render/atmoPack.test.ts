@@ -86,4 +86,10 @@ describe('AtmoPack (M8 fog, gusts, borrowed)', () => {
     expect(regionOf('kiln/k1_gate')).toBe(REGION.base);
     expect(regionOf('emberwood/e1_glade')).toBe(REGION.base);
   });
+
+  it("a room's @look wins over its id (Fen chunks in rifts)", () => {
+    expect(regionOf('rift/3/r2', 'fen')).toBe(REGION.fen);
+    expect(regionOf('rift/3/boss', 'foundry')).toBe(REGION.foundry);
+    expect(regionOf('rift/3/r1')).toBe(REGION.base);
+  });
 });

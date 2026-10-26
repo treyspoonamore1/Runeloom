@@ -10,10 +10,13 @@ export type RegionLook = 0 | 1 | 2;
 export const REGION = { base: 0, fen: 1, foundry: 2 } as const;
 
 /**
- * The look of a room by its id: `fen/…` and `foundry/…`; test rooms named `test/fen_…` and
+ * The look of a room: its `@look` header when it has one (rift chunks and arenas built from Fen
+ * rooms), else by its id: `fen/…` and `foundry/…`; test rooms named `test/fen_…` and
  * `test/foundry_…` (render test rooms) and the Fen enemy test room look the same. Everything else is region 1.
  */
-export function regionOf(roomId: string): RegionLook {
+export function regionOf(roomId: string, look?: 'fen' | 'foundry'): RegionLook {
+  if (look === 'fen') return REGION.fen;
+  if (look === 'foundry') return REGION.foundry;
   if (roomId.startsWith('fen/') || roomId.startsWith('test/fen_') || roomId === 'test/enemies_fen')
     return REGION.fen;
   if (roomId.startsWith('foundry/') || roomId.startsWith('test/foundry_')) return REGION.foundry;

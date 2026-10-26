@@ -255,7 +255,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   let builtRoom: GameState['room'] | null = null;
   const setRoom = (s: GameState): void => {
     current = s;
-    const region = regionOf(s.room.id);
+    const region = regionOf(s.room.id, s.room.header.look);
     terrain.region = region;
     terrain.setGrid(s.grid);
     const owned = m4.owned(s);
