@@ -3,7 +3,7 @@
  * `count` rifts per tier with random modifiers, runs the solver on each and prints a table per tier.
  * Exit code 1 if any rift is not connected and completable.
  */
-import { RIFT_TIERS, riftMods, type RiftModId } from '../../data/rift';
+import { RIFT_TIERS, riftChunkFromTier, riftMods, type RiftModId } from '../../data/rift';
 import { generateRift, solveRift } from '../../src/sim';
 import { Rng } from '../../src/sim/core/rng';
 import { loadAllRooms } from './rooms';
@@ -29,8 +29,14 @@ interface TierRow {
   rifts: number;
   solved: number;
   avgRooms: number;
+  /** M8: rifts holding at least one Fen chunk (from tier 9), and with a Fen rift boss. */
+  fenChunks: number;
+  fenBoss: number;
   firstProblem: string | null;
 }
+
+const FEN_TEMPLATES = new Set(Object.keys(riftChunkFromTier).map((c) => `rift/chunks/${c}`));
+const FEN_BOSSES = new Set(['rift_bellwether', 'rift_coil']);
 
 const PREFIXES = (Object.keys(riftMods) as RiftModId[]).filter((id) => riftMods[id].kind === 'prefix');
 const SUFFIXES = (Object.keys(riftMods) as RiftModId[]).filter((id) => riftMods[id].kind === 'suffix');
@@ -49,12 +55,22 @@ export function runRiftCli(o: RiftCliOptions): void {
   const rows: TierRow[] = [];
   const t0 = performance.now();
   for (const tier of tiers) {
-    const row: TierRow = { tier, rifts: o.count, solved: 0, avgRooms: 0, firstProblem: null };
+    const row: TierRow = {
+      tier,
+      rifts: o.count,
+      solved: 0,
+      avgRooms: 0,
+      fenChunks: 0,
+      fenBoss: 0,
+      firstProblem: null,
+    };
     for (let k = 0; k < o.count; k++) {
       const mods = [...pick(rng, PREFIXES, rng.int(3)), ...pick(rng, SUFFIXES, rng.int(3))];
       const spec = { index: k, seed: rng.nextU32(), tier, mods, home: { roomId: 'home', key: 'stone' } };
       const rift = generateRift(spec, templates);
       row.avgRooms += rift.plan.length / o.count;
+      if (rift.plan.some((p) => FEN_TEMPLATES.has(p.template))) row.fenChunks++;
+      if (FEN_BOSSES.has(rift.bossKind)) row.fenBoss++;
       const res = solveRift(rift);
       if (res.ok) row.solved++;
       else row.firstProblem ??= `seed ${spec.seed} [${mods.join(' ')}]: ${res.problems[0]}`;
@@ -65,10 +81,11 @@ export function runRiftCli(o: RiftCliOptions): void {
   const failed = rows.some((r) => r.solved < r.rifts);
   if (o.json) console.log(JSON.stringify({ rows, ms }));
   else {
-    console.log('tier  rifts  solved  avg rooms (incl. boss)');
+    console.log('tier  rifts  solved  avg rooms (incl. boss)  Fen chunks  Fen boss');
     for (const r of rows) {
       console.log(
-        `${String(r.tier).padStart(4)}  ${String(r.rifts).padStart(5)}  ${String(r.solved).padStart(6)}  ${r.avgRooms.toFixed(2)}`,
+        `${String(r.tier).padStart(4)}  ${String(r.rifts).padStart(5)}  ${String(r.solved).padStart(6)}  ${r.avgRooms.toFixed(2).padStart(22)}` +
+          `  ${String(r.fenChunks).padStart(10)}  ${String(r.fenBoss).padStart(8)}`,
       );
       if (r.firstProblem) console.log(`      first failure: ${r.firstProblem}`);
     }

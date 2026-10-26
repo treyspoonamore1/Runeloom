@@ -1,0 +1,9 @@
+# M8 phase 1 acceptance: decision rows
+
+Rows for `docs/DECISIONS.md` (date, question, decision, reason).
+
+| Date | Question | Decision | Reason |
+|---|---|---|---|
+| 2026-10-26 | How do the Fen chunks join rifts "from tier 9"? | `data/rift.ts` `riftChunkFromTier` (reedmarsh, pylon_flats, sluiceworks: 9) and `riftChunksAt(tier)`; the generator picks each room's chunk from that pool. Below tier 9 the pool, and so every rift, is the M6 one (pinned by a hash of 40 tier 1–8 rifts generated before the change) | CONTENT §10.1 says chunks gain the same `fromTier` as spawns, bosses and modifiers; a lookup keeps `riftChunks` the plain id list validation walks |
+| 2026-10-26 | pike_shoal "not in chunks without water markers" | The generator picks a water-only pack (pike_shoal) only for a marker that resolves to water once the suffixes have rewritten the room (its 4 neighbours' most common ground, as the grid resolves markers), instead of a `notIn` chunk list | A per-marker check never wastes a marker on a pack that spawns nothing (a dry marker in a wet chunk, or Drought drying a pool), and needs no list to keep in step with the chunks. Tiers 1–8 have no water-only spawns, so their rolls are unchanged |
+| 2026-10-26 | The three Fen chunks | `reedmarsh` (G2's reeds: shallow pools joined by channels, dirt and mud islands, one deep pool; marker 1 in a shallow pool), `pylon_flats` (G3's rusted walkways with 4 pylons over a shallow lake with deep patches, stone causeways along both socket lines; markers 1–2 in the lake), `sluiceworks` (F7's metal halls, a deep sluice in two runs either side of the west–east line, lit vents only in four corner alcoves). 32×20 tiles like every chunk, sockets mid-edge, no puzzles, no fog. Spawn markers sit in shallow water or on land, never deep water, so every pack can stand on them | The solver treats deep water and lit vents as walls; markers in shallow water let both swimmers and walkers spawn there |

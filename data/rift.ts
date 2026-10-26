@@ -35,8 +35,24 @@ export const riftChunks = [
   'frostcave',
   'pithall',
   'plaza',
+  // M8 (CONTENT §10.1): the Fen's chunks, from tier 9 (riftChunkFromTier).
+  'reedmarsh',
+  'pylon_flats',
+  'sluiceworks',
 ] as const;
 export type RiftChunkId = (typeof riftChunks)[number];
+
+/** The lowest tier a chunk appears at (default 1). M8: the Fen's from tier 9, after the Coil. */
+export const riftChunkFromTier: Readonly<Partial<Record<RiftChunkId, number>>> = {
+  reedmarsh: 9,
+  pylon_flats: 9,
+  sluiceworks: 9,
+};
+
+/** The chunks a rift of `tier` picks rooms from, in table order. */
+export function riftChunksAt(tier: number): readonly RiftChunkId[] {
+  return riftChunks.filter((c) => (riftChunkFromTier[c] ?? 1) <= tier);
+}
 
 /** The room a rift starts in. Its south socket is the way home. */
 export const riftEntryChunk = 'entry';
@@ -93,6 +109,17 @@ export const riftSpawns: readonly RiftSpawn[] = [
   { enemy: 'tar_hulk', count: 2, weight: 40, fromTier: 3 },
   { enemy: 'stormcaller', count: 2, weight: 40, fromTier: 4 },
   { enemy: 'frost_wisp', count: 3, weight: 40, fromTier: 5 },
+  // M8 (CONTENT §10.1): the Fen's packs from tier 9. Water-only packs (pike_shoal) are only picked
+  // for markers that sit in water once the suffixes have rewritten the room (generate.ts).
+  { pack: 'pike_shoal', weight: 50, fromTier: 9 },
+  { pack: 'crab_cast', weight: 60, fromTier: 9 },
+  { pack: 'heron_wade', weight: 60, fromTier: 9 },
+  { pack: 'sparkfly_cloud', weight: 70, fromTier: 9, notIn: FIRE_PRONE },
+  { pack: 'mire_herd', weight: 50, fromTier: 9 },
+  { pack: 'foundry_crew', weight: 50, fromTier: 9, notIn: FIRE_PRONE },
+  { pack: 'toad_chorus', weight: 40, fromTier: 9 },
+  { enemy: 'slagshell', count: 2, weight: 30, fromTier: 10 },
+  { enemy: 'bellshell', count: 2, weight: 30, fromTier: 9 },
 ];
 
 /** Chance a spawn marker's group is Magic or Rare, by tier: base + perTier × (tier − 1). */
