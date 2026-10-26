@@ -4,6 +4,7 @@ import { ENEMY as C } from './combatPalette';
 import type { BeastRig } from './bestiary/beastRig';
 import { SMALL_RIGS } from './bestiary/beastRig';
 import { BIG_RIGS } from './bestiary/beastRigBig';
+import { FEN_RIGS } from './bestiary/fenRigsB';
 import { isM4Kind, M4_LOOK } from './bestiary/bestiaryPalette';
 
 export interface KindLayout {
@@ -77,7 +78,7 @@ export function buildRig(kind: string, atlas: Atlas, root: Container, lift: Cont
     lift.addChild(body);
     r.flash.alpha = 0;
     lift.addChild(r.flash);
-    const make = SMALL_RIGS[kind] ?? BIG_RIGS[kind];
+    const make = SMALL_RIGS[kind] ?? BIG_RIGS[kind] ?? FEN_RIGS[kind as keyof typeof FEN_RIGS];
     r.beast = make ? make(atlas, art, lift, body, r.flash) : null;
     r.art = art;
     return r;

@@ -3,6 +3,7 @@ import type { Ailments } from '../sim';
 import type { Atlas } from './atlas';
 import { AIL, mixRgb } from './ailmentPalette';
 import { ImmediatePool } from './particles';
+import { ICON_CHARGED, ICON_CRACKED, ICON_HOT, ICON_RUNG, ICON_STRANDED } from './bestiary/fenIcons';
 
 /** Grid-state bits for StatusIcons.row (M3: DESIGN §14 Wet, Oiled; §6.4 Blind). */
 export const ICON_WET = 1;
@@ -29,6 +30,8 @@ export class StatusIcons {
     oil: Texture;
     blind: Texture;
   };
+  /** Grid and M8 state icons, by bit, in the order they draw (Wet, Oiled, Blind, then the Fen's). */
+  private readonly states: Array<[number, Texture]>;
   private time = 0;
   /** Cells per 720p screen pixel this frame. */
   private u = 1 / 8;
@@ -47,6 +50,16 @@ export class StatusIcons {
       oil: atlas.get('icon_oil'),
       blind: atlas.get('icon_blind'),
     };
+    this.states = [
+      [ICON_WET, this.tex.wet],
+      [ICON_OIL, this.tex.oil],
+      [ICON_BLIND, this.tex.blind],
+      [ICON_STRANDED, atlas.get('icon_stranded')],
+      [ICON_CHARGED, atlas.get('icon_charged')],
+      [ICON_HOT, atlas.get('icon_hot')],
+      [ICON_CRACKED, atlas.get('icon_cracked')],
+      [ICON_RUNG, atlas.get('icon_rung')],
+    ];
   }
 
   /** cellsPerPx: world cells per screen pixel at 720p (screen scale ÷ camera scale). */
@@ -85,7 +98,7 @@ export class StatusIcons {
     if (shock) w += shockW + gap;
     if (frozen) w += I + gap;
     if (chill) w += meterW + gap;
-    for (let b = ICON_WET; b <= ICON_BLIND; b <<= 1) if (flags & b) w += I + gap;
+    for (const [b] of this.states) if (flags & b) w += I + gap;
     let cx = x - w / 2;
 
     // Icon textures are 1.2 cells across at scale 1, digits 1.2 tall.
@@ -135,17 +148,13 @@ export class StatusIcons {
         fill.paint(hot > 0 ? mixRgb(AIL.frost, 0xffffff, hot * (0.3 + 0.4 * pulse)) : AIL.frost, 1);
       }
     }
-    // Grid states after the ailments: Wet, Oiled, Blind.
+    // Grid states after the ailments: Wet, Oiled, Blind, then the M8 states.
     if (chill) cx += meterW + gap;
-    if (flags & ICON_WET) {
-      this.put(this.tex.wet, cx + I / 2, y, I / 1.2, 0xffffff, 1);
+    for (const [b, t] of this.states) {
+      if ((flags & b) === 0) continue;
+      this.put(t, cx + I / 2, y, I / 1.2, 0xffffff, 1);
       cx += I + gap;
     }
-    if (flags & ICON_OIL) {
-      this.put(this.tex.oil, cx + I / 2, y, I / 1.2, 0xffffff, 1);
-      cx += I + gap;
-    }
-    if (flags & ICON_BLIND) this.put(this.tex.blind, cx + I / 2, y, I / 1.2, 0xffffff, 1);
   }
 
   private put(t: Texture, x: number, y: number, scale: number, tint: number, alpha: number): void {

@@ -11,10 +11,11 @@ export const REGION = { base: 0, fen: 1, foundry: 2 } as const;
 
 /**
  * The look of a room by its id: `fen/…` and `foundry/…`; test rooms named `test/fen_…` and
- * `test/foundry_…` (render test rooms) look the same. Everything else is region 1.
+ * `test/foundry_…` (render test rooms) and the Fen enemy test room look the same. Everything else is region 1.
  */
 export function regionOf(roomId: string): RegionLook {
-  if (roomId.startsWith('fen/') || roomId.startsWith('test/fen_')) return REGION.fen;
+  if (roomId.startsWith('fen/') || roomId.startsWith('test/fen_') || roomId === 'test/enemies_fen')
+    return REGION.fen;
   if (roomId.startsWith('foundry/') || roomId.startsWith('test/foundry_')) return REGION.foundry;
   return REGION.base;
 }

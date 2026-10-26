@@ -1,7 +1,7 @@
 import { Container, type Texture } from 'pixi.js';
 import { TILE_CELLS, type Enemy, type GameState } from '../../sim';
 import type { M4Cue, M4Signals } from '../../app/m4Signals';
-import { HULK_FUSE, m4AttackKey } from '../../app/m4Wiring';
+import { HULK_FUSE, m4AttackKey, type M4AttackKey } from '../../app/m4Wiring';
 import type { Atlas, AtlasEntry } from '../atlas';
 import { rand } from '../ailmentBursts';
 import { mixRgb } from '../ailmentPalette';
@@ -61,14 +61,14 @@ export function telegraphAccentEntries(): AtlasEntry[] {
  */
 export class BeastTelegraphs {
   readonly root = new Container();
-  private readonly pool: ImmediatePool;
-  private readonly over: ImmediatePool;
-  private readonly fx: FxLayer;
-  private readonly t: Record<
+  protected readonly pool: ImmediatePool;
+  protected readonly over: ImmediatePool;
+  protected readonly fx: FxLayer;
+  protected readonly t: Record<
     'dot' | 'ring' | 'glow' | 'chevron' | 'strike' | 'glob' | 'crystal' | 'zapA' | 'zapB' | 'shadow',
     Texture
   >;
-  private time = 0;
+  protected time = 0;
   private braziers: Array<{ x: number; y: number }> = [];
   private brazierRoom = '';
   /** A storm windup this frame (brazier glow strength 0–1). */
@@ -122,6 +122,7 @@ export class BeastTelegraphs {
       const key = m4AttackKey(a.name);
       if (!key) continue;
       const u = this.progress(e);
+      if (this.accent(e, key, u)) continue;
       if (key === 'stormStrike') this.crackle(a.originX, a.originY, u);
       else if (key === 'tarGlob') this.glob(e, u);
       else if (key === 'wispFrostLine') this.frostLine(e, u);
@@ -130,9 +131,18 @@ export class BeastTelegraphs {
       else if (key === 'brazierStorm') this.storm = Math.max(this.storm, u);
     }
     if (this.storm > 0) this.brazierGlow(s, this.storm);
+    this.ongoing(s);
     this.pool.end();
     this.over.end();
   }
+
+  /** Subclass hook: draws an accent for a windup this class doesn't know; true if it did. */
+  protected accent(_e: Enemy, _key: M4AttackKey, _u: number): boolean {
+    return false;
+  }
+
+  /** Subclass hook: accents that last past a windup (a leap in the air). */
+  protected ongoing(_s: GameState): void {}
 
   /** Windup progress from the enemy's own timer (the view's tracked length). */
   private progress(e: Enemy): number {
@@ -147,7 +157,7 @@ export class BeastTelegraphs {
   }
   private readonly totals = new Map<number, { name: string; total: number; left: number }>();
 
-  private put(
+  protected put(
     pool: ImmediatePool,
     tex: Texture,
     x: number,
@@ -180,7 +190,7 @@ export class BeastTelegraphs {
     this.put(this.pool, this.t.ring, e.x, e.y, r, r, T.edge, u > 0.8 ? 1 : 0.65 + 0.35 * pulse);
   }
 
-  private crackle(x: number, y: number, u: number): void {
+  protected crackle(x: number, y: number, u: number): void {
     const n = 1 + Math.floor(u * 3);
     for (let i = 0; i < n; i++) {
       if (Math.random() > 0.35 + 0.6 * u) continue;
@@ -201,7 +211,7 @@ export class BeastTelegraphs {
       this.put(this.pool, this.t.strike, x, y, 0.5, 1, 0xffffff, 0.25 + 0.4 * (u - 0.75) * 4);
   }
 
-  private bolt(x: number, y: number): void {
+  protected bolt(x: number, y: number): void {
     const p = this.fx.spawn(this.t.strike, x, y, 0, 0, 0.18, 0xffffff, 1.1, 1);
     if (p) p.hold = 0.5;
     const g = this.fx.spawn(this.t.glow, x, y, 0, 0, 0.25, ELEMENT.storm, 3, 5);
@@ -267,7 +277,7 @@ export class BeastTelegraphs {
     }
   }
 
-  private chevrons(e: Enemy, u: number): void {
+  protected chevrons(e: Enemy, u: number): void {
     const s = e.attack.shape;
     if (s.kind !== 'line') return;
     const rot = Math.atan2(s.dirY, s.dirX);
@@ -289,7 +299,7 @@ export class BeastTelegraphs {
     }
   }
 
-  private embers(e: Enemy, u: number): void {
+  protected embers(e: Enemy, u: number): void {
     if (Math.random() > 0.5 + u) return;
     const a = e.attack;
     const s = a.shape;

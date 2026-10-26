@@ -7,7 +7,7 @@ import { TILE_CELLS as T } from '../../sim';
 export const SECTION_W = 20;
 export const SECTION_H = 12;
 const COLS = 4;
-const ROWS = 3;
+const ROWS = 4;
 
 export const SECTION_IDS = [
   'beasts',
@@ -22,6 +22,8 @@ export const SECTION_IDS = [
   'moments',
   'telegraphs2',
   'moments2',
+  'fen',
+  'fen2',
 ] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
 
@@ -104,6 +106,13 @@ export function galleryRoomText(): string {
   fill('objects2', 1, 9, 12, 1, 'i');
   // Moments: a Loom Stone to respawn at sits in the objects layer; grass around it.
   fill('moments2', 4, 3, 12, 6, '"');
+  // M8 Fen: a pool for the Glasspikes and a wading Heron, water for the Heron's strike, a ford for
+  // the Bellshells, mud for a bogged Mirebull.
+  fill('fen', 0, 0, 16, 4, '~');
+  fill('fen', 2, 1, 4, 2, 'w');
+  fill('fen', 16, 5, 4, 3, '~');
+  fill('fen2', 12, 8, 8, 4, '~');
+  fill('fen2', 11, 5, 4, 3, ':');
   const rows = g.map((r) => r.join(''));
   return ['@id test/gallery', '@name Gallery', '@level 1', ...rows].join('\n');
 }

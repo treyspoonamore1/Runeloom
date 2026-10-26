@@ -304,7 +304,7 @@ runCli(async () => {
         () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
       );
       const file = join(SHOTS_DIR, `${milestone}_scenario_${sc.id}_${ticks}.png`);
-      await page.screenshot({ path: file });
+      await page.screenshot({ path: file, timeout: 120_000 });
       written.push(file);
       if (errors.length) console.warn(`warning: page errors in scenario ${sc.id}: ${errors.join('; ')}`);
     } else if (a.set !== undefined)

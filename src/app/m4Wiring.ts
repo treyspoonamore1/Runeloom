@@ -80,6 +80,17 @@ export const M4_ATTACKS = {
   fireSlam: 'fire_slam',
   fireBreath: 'fire_breath',
   brazierStorm: 'call_storm',
+  // M8 Glasswater Fen (data/enemiesFen.ts): looks and accents in render/bestiary/fen*.
+  pikeLeap: 'pike_leap',
+  copperPinch: 'copper_pinch',
+  heronBeak: 'heron_beak',
+  puddleSpit: 'puddle_spit',
+  slagSlam: 'slag_slam',
+  sparkZap: 'spark_zap',
+  bullGore: 'bull_gore',
+  bullCharge: 'bull_charge',
+  toadCroak: 'croak',
+  bellBite: 'bell_bite',
 } as const;
 
 export type M4AttackKey = keyof typeof M4_ATTACKS;

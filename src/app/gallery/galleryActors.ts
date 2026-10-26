@@ -12,6 +12,7 @@ import {
   type GameState,
 } from '../../sim';
 import type { EnemyKind } from '../../../data/enemies';
+import type { EnemySpecial } from '../../sim/actors/enemyState';
 import { M4_ATTACKS, type M4AttackKey } from '../m4Wiring';
 import { M4_LOOK, type M4Kind } from '../../render/bestiary/bestiaryPalette';
 
@@ -40,6 +41,10 @@ export interface ActorSpec {
   spawns?: boolean;
   /** Seconds added to the attack cycle (a crowd attacks out of step). */
   offset?: number;
+  /** M8 Fen state held every frame (Charged, Hot, bogged, open shell, a leap in the air...). */
+  special?: Partial<EnemySpecial>;
+  /** Stunned (a Mirebull at a wall, a rung Bellshell). */
+  stun?: boolean;
 }
 
 export interface Actor {
@@ -128,6 +133,8 @@ export function poseActors(
       ail.ignite.dps = 4;
     }
     if (spec.wet) e.terrain.wetLeft = FOREVER;
+    if (spec.special) Object.assign(e.special, spec.special);
+    if (spec.stun) e.terrain.stunLeft = FOREVER;
     if (spec.oiled) e.terrain.oiledLeft = FOREVER;
   }
 }
