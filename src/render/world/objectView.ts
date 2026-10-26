@@ -5,6 +5,7 @@ import type { Atlas } from '../atlas';
 import { buildFlame } from '../ambientView';
 import type { WorldFx } from './worldFx';
 import { ShrineLook, shrineRune } from './shrineLook';
+import { SealedSwitchLook, VaneLook } from './fenObjectLooks';
 import {
   BlockLook,
   BrazierLook,
@@ -53,7 +54,7 @@ export class ObjectView {
       this.reset();
       this.roomId = s.room.id;
     }
-    const f: Frame = { t: this.time, dt, fx: this.fx };
+    const f: Frame = { t: this.time, dt, fx: this.fx, grid: s.grid };
     for (const o of s.objects) {
       let l = this.looks.get(o.key);
       if (!l) {
@@ -98,6 +99,10 @@ export class ObjectView {
         return new BlockLook(this.atlas, o);
       case 'conduit_switch':
         return new SwitchLook(this.atlas, o);
+      case 'sealed_switch':
+        return new SealedSwitchLook(this.atlas, o);
+      case 'wind_vane':
+        return new VaneLook(this.atlas, o);
       case 'pressure_plate':
         return new PlateLook(this.atlas, o);
       case 'heart_seed':

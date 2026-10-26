@@ -8,6 +8,7 @@ import { RarityView, rarityAtlasEntries } from './bestiary/rarityView';
 import { smallBeastEntries } from './bestiary/smallBeasts';
 import type { EnemyLayer } from './enemyLayer';
 import { objectAtlasEntries } from './world/objectShapes';
+import { fenObjectAtlasEntries } from './world/fenObjectShapes';
 import { objectCue } from './world/objectCues';
 import { ObjectView, ownedTiles } from './world/objectView';
 import { WorldFx } from './world/worldFx';
@@ -27,6 +28,7 @@ export function m4AtlasEntries(): AtlasEntry[] {
     ...rarityAtlasEntries(),
     ...telegraphAccentEntries(),
     ...objectAtlasEntries(),
+    ...fenObjectAtlasEntries(),
     ...lootAtlasEntries(),
     ...runeAtlasEntries(),
   ];

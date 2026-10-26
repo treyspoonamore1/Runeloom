@@ -1,5 +1,5 @@
 import { Container, Graphics, Sprite, type GraphicsContext } from 'pixi.js';
-import { TILE_CELLS as T } from '../../sim';
+import { TILE_CELLS as T, type Grid } from '../../sim';
 import type { WorldObject } from '../../sim/world/objects';
 import type { Atlas } from '../atlas';
 import { rand } from '../ailmentBursts';
@@ -9,6 +9,7 @@ import { clamp, smoothstep } from '../mathx';
 import { PAL } from '../palette';
 import type { WorldFx } from './worldFx';
 import { OBJ as C, OBJ_FEEL as F } from './worldPalette';
+import { TimerRing } from './timerRing';
 
 /** Per-kind looks of the puzzle objects and pickups (ObjectView owns one per object). */
 const TAU = Math.PI * 2;
@@ -17,6 +18,8 @@ export interface Frame {
   t: number;
   dt: number;
   fx: WorldFx;
+  /** The chemistry grid (M8 wind vanes read the wind on their tile). */
+  grid?: Grid;
 }
 
 /** One object's sprites and state animation. */
@@ -203,14 +206,17 @@ export class BlockLook extends Look {
 export class SwitchLook extends Look {
   private readonly crystal: Sprite;
   private readonly glow: Sprite;
+  private readonly ring: TimerRing;
   constructor(atlas: Atlas, o: WorldObject) {
     super(atlas, o);
     this.glow = this.add('glow', 0, -1.6);
     this.add('switch_base');
     this.crystal = this.add('switch_crystal', 0, -1.4);
+    this.ring = new TimerRing(this.root, -1.6);
     this.root.scale.set(1.3);
   }
   protected pose(o: WorldObject, f: Frame): void {
+    this.ring.update(o, f.t);
     const on = smoothstep(0, 1, this.k);
     const pulse = 0.5 + 0.5 * Math.sin(f.t * TAU * F.switchHz);
     this.crystal.tint = mixRgb(C.crystalOff, C.crystalOn, on);
