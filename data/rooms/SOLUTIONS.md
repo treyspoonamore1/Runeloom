@@ -516,9 +516,12 @@ Without Fire (and without Storm, whose rule 14 spark can also light oil) the bar
 
 ## F5 Bellwether's Belfry (mini-boss)
 
-The Belfry is CONTENT §13.2's arena: the stone mount (9–16, 6–13), the metal ring round it, four
-shallow pools at its corners, two pylons (12, 4) and (13, 15), stone islands outside cut apart by
-pits. The east door D (24, 9–10) opens when the boss falls (`cleared`; tested with a stand-in).
+The Belfry is CONTENT §13.2's arena, the bosses work's test arena (`data/rooms/test/boss_bellwether.txt`)
+with the exits added: the stone mount (9–16, 6–13), the 3-tile metal ring round it (1,824 cells, so
+one Storm hit charges all of it), 2×2 shallow pools at the ring's outer corners with channels from
+them to the side walls splitting the outer stone into four islands, pylons on the ring's west and
+east sides (7, 9) and (18, 9). The east door D (24, 9–10) opens when the Bellwether falls
+(`cleared`).
 
 ## F6 Tide Shrine
 
@@ -587,5 +590,6 @@ Without Tide the chasm stays a pit (Frost doesn't change pits) and the block can
 
 ## F10 The Glass Eye (boss)
 
-CONTENT §13.3's map exactly. The Loom Stone (11, 22) sleeps until the Coil dies; the north door
+CONTENT §13.3's map exactly (the bosses work's `data/rooms/test/boss_coil.txt` plus the south exit).
+The Coil spawns in the Eye's deep water. The Loom Stone (11, 22) sleeps until the Coil dies; the north door
 (15, 0) stays sealed, its wind vane (14, 0) only says "The Cliffs aren't woven yet."

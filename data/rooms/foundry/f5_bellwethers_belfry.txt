@@ -3,26 +3,26 @@
 @level 22
 @exit w foundry/f4_slag_run
 @exit e foundry/f6_tide_shrine
-@spawn 1 enemy:tar_hulk 2
+@spawn 1 enemy:bellwether
 @link D cleared
 @note D The old bell falls silent. The way east opens.
 ##########################
-#____................____#
-#____................____#
-#__...~~mmmmmmmmmm~~...__#
-#__...~~mmmmMmmmmm~~...__#
+#........................#
+#........................#
+#.....~~mmmmmmmmmm~~.....#
+#~~~~~~~mmmmmmmmmm~~~~~~~#
 #.....mmmmmmmmmmmmmm.....#
 #.....mmm........mmm.....#
 #.....mmm........mmm.....#
 #.....mmm........mmm.....#
-<.....mmm...1....mmm....D>
+<.....mMm...1....mMm....D>
 <.....mmm........mmm....D>
 #.....mmm........mmm.....#
 #.....mmm........mmm.....#
 #.....mmm........mmm.....#
 #.....mmmmmmmmmmmmmm.....#
-#__...~~mmmmmMmmmm~~...__#
-#__...~~mmmmmmmmmm~~...__#
-#____................____#
-#____................____#
+#~~~~~~~mmmmmmmmmm~~~~~~~#
+#.....~~mmmmmmmmmm~~.....#
+#........................#
+#........................#
 ##########################
