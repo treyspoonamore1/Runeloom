@@ -66,6 +66,11 @@ export const referenceWeaves: readonly ReferenceWeave[] = [
     cx: 22,
     fits: [],
   },
+  // M8 phase 1: Tide and Gale (terrain assertions: tests/sim/terrain/referenceTerrainM8.test.ts).
+  { n: 15, name: 'Floodline', notation: 'Cast > Swath[Tide, Lingering]', cx: 3, fits: ALL },
+  { n: 16, name: 'Glaze', notation: 'Cast > Swath[Tide, Frost]', cx: 3, fits: ALL },
+  { n: 17, name: 'Fan the Flames', notation: 'Cast > Strike[Fire, Gale]', cx: 3, fits: ALL },
+  { n: 18, name: 'Downpour', notation: 'Pulse > Lob[Tide, Saturate]', cx: 6, fits: ALL },
 ];
 
 export interface MustFailWeave {

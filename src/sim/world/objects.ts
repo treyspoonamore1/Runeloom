@@ -8,8 +8,9 @@
  * stepObjects (and the room loader) write them. Crates, barricades, oil barrels and burnable
  * bramble stay grid materials (M3), not objects. The Brood Kiln is an enemy (CONTENT §5).
  *
- * Objects exist only in 'adventure' mode: sandbox, arena and lab games get none, so their rooms
- * play exactly as in M3.
+ * Objects exist only in 'adventure' mode: sandbox and arena games get none, so their rooms play
+ * exactly as in M3. M8: the Chemistry Lab room gets its push and ice blocks and wind vanes in any
+ * mode (LAB_OBJECT_KINDS), for the rule 28 and wind stations.
  *
  * How each kind works (see the files named):
  * - brazier (`B`, objectHits.ts): a metal grid cell (conducts Storm, M3) that Fire lights. In a
@@ -48,7 +49,8 @@ import type { InputFrame } from '../core/input';
 import { TILE_CELLS } from '../core/constants';
 import type { GameState } from '../state';
 import { buildRoomObjects } from './objectBuild';
-import { stepObjectSystems } from './objectStep';
+import { stepLabObjects, stepObjectSystems } from './objectStep';
+import { labRoomId } from '../../../data/lab';
 
 export type ObjectKind =
   | 'brazier'
@@ -106,6 +108,8 @@ export interface WorldObject {
   push: number;
   /** Blocks: direction being pushed or slid, 0 none, 1 +x, 2 −x, 3 +y, 4 −y. */
   pushDir: number;
+  /** M8 blocks: the spell instance that last washed it (rule 28: once per instance). Absent until washed. */
+  washId?: number;
 }
 
 /** Object kind of each room legend character. */
@@ -141,20 +145,28 @@ export const OBJECT_CHAR = Object.fromEntries(
   Object.entries(OBJECT_KIND_BY_CHAR).map(([c, k]) => [k, c]),
 ) as Readonly<Record<ObjectKind, string>>;
 
-/** Builds the room's objects from its file and flags (adventure mode only; [] otherwise). */
+/**
+ * Object kinds the Chemistry Lab room has outside adventure mode (M8: rule 28's blocks and wind
+ * vanes), so its stations can show them.
+ */
+export const LAB_OBJECT_KINDS: readonly ObjectKind[] = ['push_block', 'ice_block', 'wind_vane'];
+
+/** Builds the room's objects from its file and flags (adventure mode; the lab room gets LAB_OBJECT_KINDS; [] otherwise). */
 export function buildObjects(state: GameState): WorldObject[] {
-  if (state.mode !== 'adventure') return [];
-  return buildRoomObjects(state);
+  if (state.mode === 'adventure') return buildRoomObjects(state);
+  if (state.room.id === labRoomId) return buildRoomObjects(state, LAB_OBJECT_KINDS);
+  return [];
 }
 
 /**
  * Advances objects one tick: room cleared and boss checks, Storm on switches, brazier timers,
  * plates, block pushes and slides, touches (chests, keys, pickups, Loom Stones), door links and
- * edge exits. Adventure mode only. `input` is this tick's input (block pushing reads the move).
+ * edge exits. Adventure mode only (the lab room: its blocks and vanes). `input` is this tick's
+ * input (block pushing reads the move).
  */
 export function stepObjects(state: GameState, input?: InputFrame): void {
-  if (state.mode !== 'adventure') return;
-  stepObjectSystems(state, input);
+  if (state.mode === 'adventure') stepObjectSystems(state, input);
+  else if (state.objects.length > 0 && state.room.id === labRoomId) stepLabObjects(state, input);
 }
 
 /** The object on tile (tx, ty), skipping melted ice blocks, or undefined. */
@@ -174,5 +186,6 @@ export function hashObjects(h: Hasher, objects: readonly WorldObject[]): void {
   for (const o of objects) {
     h.string(o.key).byte(0).u32(o.tx).u32(o.ty).bool(o.on).num(o.timer).num(o.vx).num(o.vy);
     h.string(o.link).byte(0).num(o.push).u32(o.pushDir);
+    if (o.washId !== undefined) h.byte(0x77).u32(o.washId);
   }
 }
