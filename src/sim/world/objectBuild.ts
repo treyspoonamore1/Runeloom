@@ -7,7 +7,7 @@
  */
 import type { GameState } from '../state';
 import { OBJECT_KIND_BY_CHAR, type ObjectKind, type WorldObject } from './objects';
-import { conditionKind, parseLinkCondition } from './objectLinks';
+import { conditionKinds, isSwitch, parseLinkCondition } from './objectLinks';
 import { floorBeneath, forTileCells, setTileGround, tileChar } from './objectGround';
 import { loomStoneId, roomFlags } from './worldState';
 
@@ -24,7 +24,7 @@ const TAKEN: readonly ObjectKind[] = [
 function linkFor(state: GameState, kind: ObjectKind): string {
   for (const l of state.room.header.links) {
     const c = parseLinkCondition(l.condition);
-    if (c && conditionKind(c) === kind) return l.door;
+    if (c && conditionKinds(c).includes(kind)) return l.door;
   }
   return '';
 }
@@ -60,9 +60,9 @@ export function buildRoomObjects(state: GameState): WorldObject[] {
       out.push(o);
     }
   }
-  // The group that opened a door stays done: its braziers lit, its switches powered.
+  // The group that opened a door stays done: its braziers lit, its switches powered, its vanes spun.
   for (const o of out) {
-    if (o.link === '' || (o.kind !== 'brazier' && o.kind !== 'conduit_switch')) continue;
+    if (o.link === '' || (o.kind !== 'brazier' && !isSwitch(o.kind) && o.kind !== 'wind_vane')) continue;
     if (flags.opened.some((k) => out.some((d) => d.key === k && d.kind === 'door' && d.link === o.link)))
       o.on = true;
   }

@@ -31,6 +31,10 @@ export const MAT = {
   object: 19,
   /** Frost on dry ground (Rimewalkers' dodge trail, M5): slippery, reverts to `under`. */
   rime: 20,
+  /** M8: a lit furnace vent, solid flame on a metal grate (DESIGN §6.2, rule 30). */
+  vent_lit: 21,
+  /** M8: a doused furnace vent, the bare grate: walkable, conducts like metal floor, borrowed (relights). */
+  vent_doused: 22,
 } as const;
 
 export type MaterialId = keyof typeof MAT;
@@ -79,6 +83,11 @@ export interface MaterialDef {
    * when their material timer runs out. Map-placed cells have timer 0 and stay.
    */
   revertsToUnder?: boolean;
+  /**
+   * Rule 30 (M8): entities touching a cell of this material (within tuning.tide.ventTouch cells of
+   * its tile) are Ignited as by rule 16, world-owned (the lit furnace vent).
+   */
+  ignitesTouching?: boolean;
 }
 
 const base = {
@@ -189,6 +198,9 @@ export const materials: Readonly<Record<MaterialId, MaterialDef>> = {
   brazier: { ...base, id: 'brazier', code: MAT.brazier, walk: false, blocksShots: true, conducts: 'full' },
   object: { ...base, id: 'object', code: MAT.object, walk: false, blocksShots: true },
   rime: { ...base, id: 'rime', code: MAT.rime, slippery: true, revertsToUnder: true },
+  // M8 furnace vents (DESIGN §6.2): the lit one is fire, not fuel, so it never burns out or spreads.
+  vent_lit: { ...base, id: 'vent_lit', code: MAT.vent_lit, walk: false, ignitesTouching: true },
+  vent_doused: { ...base, id: 'vent_doused', code: MAT.vent_doused, conducts: 'full' },
 };
 
 /** Material definitions indexed by code, for per-cell lookups. */
@@ -201,8 +213,11 @@ export const materialByCode: readonly MaterialDef[] = (() => {
 /** Grid.surface values. */
 export const SURFACE = { none: 0, oil: 1 } as const;
 
-/** Grid.air values. */
-export const AIR = { none: 0, smoke: 1, steam: 2 } as const;
+/**
+ * Grid.air values. Fog (M8) is placed by a room's `@fog` headers (Grid.fogMask) and never times
+ * out; smoke and steam replace it while they last (DESIGN §6.2).
+ */
+export const AIR = { none: 0, smoke: 1, steam: 2, fog: 3 } as const;
 
 /** Grid.owner values: the team whose effect is on the cell (DESIGN §6.3 hazard ownership). */
 export const OWNER = { world: 0, player: 1, enemy: 2 } as const;

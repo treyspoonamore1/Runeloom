@@ -131,6 +131,8 @@ function restoreArea(state: GameState, area: CellRect): void {
     const dst = live[key];
     const src = orig[key];
     if (!ArrayBuffer.isView(dst) || !ArrayBuffer.isView(src)) continue;
+    // Per-cell fields only (fogMask holds a bit per cell; the lab room has no fog).
+    if ((dst as unknown as Uint8Array).length !== live.width * live.height) continue;
     const d = dst as unknown as Uint8Array;
     const s = src as unknown as Uint8Array;
     for (let cy = area.y0; cy < area.y1; cy++) {

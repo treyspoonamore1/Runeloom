@@ -66,6 +66,12 @@ export type WorldEvent =
   | { type: 'plateChanged'; key: string; pressed: boolean; x: number; y: number }
   /** A conduit switch was powered by Storm (it stays powered). */
   | { type: 'switchPowered'; key: string; x: number; y: number }
+  /** M8: a switch of a `timer:N:switch:S` group unlatched before the group completed. */
+  | { type: 'switchOff'; key: string; x: number; y: number }
+  /** M8: a wind vane spun (latched) after wind covered it for tuning.wind.vaneSeconds. */
+  | { type: 'vaneSpun'; key: string; x: number; y: number }
+  /** M8: metal pylons start glowing tuning.world.pulseGlowSeconds before a pulse (`@pulse`, Live Wires). */
+  | { type: 'pylonGlow'; x: number; y: number; seconds: number }
   /**
    * A push or ice block started moving one tile, from tile (fromTx, fromTy) to (tx, ty).
    * slide: an ice block sliding on ice (not a push). It occupies the new tile at once; draw it

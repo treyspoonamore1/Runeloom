@@ -18,7 +18,12 @@
  *   pushes it one tile if the tile beyond is free; an ice block keeps sliding while it is on ice.
  *   Fire melts an ice block into shallow water (`on` = melted).
  * - conduit_switch (`S`, objectHits.ts, objectLinks.ts): powered (and latched) by a Storm hit on
- *   it, or by charge on any cell touching its tile (charged metal or water next to it).
+ *   it, or by charge on any cell touching its tile (charged metal or water next to it). In a
+ *   `timer:N:switch:S` room each one unlatches N s after it was powered unless the group finished.
+ * - sealed_switch (`Q`, M8): a conduit switch in a glass case: only charge on a touching cell
+ *   powers it. It counts for `switch:S` with the `S` switches.
+ * - wind_vane (`Y`, M8, grid/wind.ts stepVanes): `timer` counts how long wind (a gust or room
+ *   wind) has covered a cell touching its tile; at tuning.wind.vaneSeconds it spins for good.
  * - pressure_plate (`T`): pressed while the player's, an enemy's or a block's center is on it.
  * - door (`D`, objectLinks.ts): opens for good when its `@link` conditions all hold.
  * - locked_door (`K`) / big_key_door (`G`) (objectTouch.ts): open on touch with a small key (used
@@ -50,6 +55,10 @@ export type ObjectKind =
   | 'push_block'
   | 'ice_block'
   | 'conduit_switch'
+  /** M8 `Q`: powered only by charge on a cell touching its tile, never a spell hit; counts for `switch:S`. */
+  | 'sealed_switch'
+  /** M8 `Y`: spins (and latches) after wind covers a cell touching its tile for 0.5 s; `vanes:all`. */
+  | 'wind_vane'
   | 'pressure_plate'
   | 'door'
   | 'locked_door'
@@ -80,8 +89,9 @@ export interface WorldObject {
    */
   on: boolean;
   /**
-   * Seconds left on a timed state: a lit brazier in a timed group, or a block still travelling
-   * to its tile (vx, vy say from where). Else 0.
+   * Seconds left on a timed state: a lit brazier or a powered switch in a timed group, or a block
+   * still travelling to its tile (vx, vy say from where). A wind vane: seconds of wind so far.
+   * Else 0.
    */
   timer: number;
   /** Motion for sliding and pushed blocks, tiles per second; 0 when still. */
@@ -104,6 +114,8 @@ export const OBJECT_KIND_BY_CHAR: Readonly<Record<string, ObjectKind>> = {
   P: 'push_block',
   I: 'ice_block',
   S: 'conduit_switch',
+  Q: 'sealed_switch',
+  Y: 'wind_vane',
   T: 'pressure_plate',
   D: 'door',
   K: 'locked_door',

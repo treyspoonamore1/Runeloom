@@ -26,10 +26,12 @@ export interface RoomCheckResult {
 }
 
 const EDGES: readonly Edge[] = ['w', 'e', 'n', 's'];
+/** Tile characters a link condition watches: at least one of them must be in the grid. */
 const WATCHED: Readonly<Record<string, string>> = {
   braziers: 'B',
-  switch: 'S',
+  switch: 'SQ',
   plates: 'T',
+  vanes: 'Y',
 };
 
 /** Characters in the grid. */
@@ -121,11 +123,18 @@ export function checkRooms(rooms: ReadonlyMap<string, RoomData>, opts: RoomCheck
         continue;
       }
       const need = WATCHED[c.kind];
-      if (need && !chars.has(need))
-        errors.push(`${at}: @link ${l.door} ${l.condition}: no '${need}' in the grid`);
+      if (need && ![...need].some((ch) => chars.has(ch)))
+        errors.push(`${at}: @link ${l.door} ${l.condition}: no '${[...need].join("' or '")}' in the grid`);
     }
     if (chars.has('D') && !h.links.some((l) => l.door === 'D'))
       warnings.push(`${at}: 'D' doors without a @link never open`);
+
+    // @fog (M8): rectangles inside the room.
+    for (const f of h.fog ?? [])
+      if (f.tx1 >= room.tilesW || f.ty1 >= room.tilesH)
+        errors.push(
+          `${at}: @fog ${f.tx0} ${f.ty0} ${f.tx1} ${f.ty1}: outside the ${room.tilesW}×${room.tilesH} map`,
+        );
 
     // @note: an object character that is in the grid.
     for (const n of h.notes) {

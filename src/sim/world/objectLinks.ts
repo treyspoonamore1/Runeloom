@@ -4,7 +4,10 @@
  * - `braziers:all`: every brazier in the room is lit.
  * - `timer:<seconds>:braziers:all`: every brazier lit within the time (each one goes out that
  *   many seconds after it was lit unless the group completes first).
- * - `switch:S`: every conduit switch in the room is powered.
+ * - `switch:S`: every conduit switch in the room (`S` and sealed `Q`) is powered.
+ * - `timer:<seconds>:switch:S` (M8): every switch powered within the time (each one unlatches
+ *   that many seconds after it was powered unless the group completes first).
+ * - `vanes:all` (M8): every wind vane spun.
  * - `plates:all`: every pressure plate is pressed at the same time.
  * - `cleared`: the room is cleared (all its enemies dead).
  * - `sealed`: never holds. A door that stays shut on purpose (the K10 storm door, CONTENT §9.1).
@@ -19,32 +22,44 @@ import { openDoor } from './objectGround';
 
 export type LinkCondition =
   | { kind: 'braziers'; seconds: number }
-  | { kind: 'switch' }
+  /** `seconds` > 0: `timer:<seconds>:switch:S` (M8); 0: `switch:S`. */
+  | { kind: 'switch'; seconds: number }
   | { kind: 'plates' }
+  | { kind: 'vanes' }
   | { kind: 'cleared' }
   | { kind: 'sealed' };
 
 /** Parses a link condition, or returns null if it is not one of CONTENT §6.2's. */
 export function parseLinkCondition(text: string): LinkCondition | null {
   if (text === 'braziers:all') return { kind: 'braziers', seconds: 0 };
-  if (text === 'switch:S') return { kind: 'switch' };
+  if (text === 'switch:S') return { kind: 'switch', seconds: 0 };
   if (text === 'plates:all') return { kind: 'plates' };
+  if (text === 'vanes:all') return { kind: 'vanes' };
   if (text === 'cleared') return { kind: 'cleared' };
   if (text === 'sealed') return { kind: 'sealed' };
-  const m = /^timer:(\d+(?:\.\d+)?):braziers:all$/.exec(text);
+  const m = /^timer:(\d+(?:\.\d+)?):(braziers:all|switch:S)$/.exec(text);
   if (m) {
     const s = Number(m[1]);
-    if (s > 0) return { kind: 'braziers', seconds: s };
+    if (s > 0) return m[2] === 'switch:S' ? { kind: 'switch', seconds: s } : { kind: 'braziers', seconds: s };
   }
   return null;
 }
 
-/** The object kind a condition watches, if any. */
+const WATCHES: Readonly<Partial<Record<LinkCondition['kind'], readonly ObjectKind[]>>> = {
+  braziers: ['brazier'],
+  switch: ['conduit_switch', 'sealed_switch'],
+  plates: ['pressure_plate'],
+  vanes: ['wind_vane'],
+};
+
+/** The object kinds a condition watches ([] for cleared and sealed). */
+export function conditionKinds(c: LinkCondition): readonly ObjectKind[] {
+  return WATCHES[c.kind] ?? [];
+}
+
+/** The first object kind a condition watches, if any (see conditionKinds). */
 export function conditionKind(c: LinkCondition): ObjectKind | null {
-  if (c.kind === 'braziers') return 'brazier';
-  if (c.kind === 'switch') return 'conduit_switch';
-  if (c.kind === 'plates') return 'pressure_plate';
-  return null;
+  return conditionKinds(c)[0] ?? null;
 }
 
 /** Door characters with at least one @link, in file order (no repeats). */
@@ -63,10 +78,19 @@ export function brazierSeconds(header: RoomHeader): number {
   return 0;
 }
 
-function allOn(objects: readonly WorldObject[], kind: ObjectKind): boolean {
+/** Seconds a powered switch stays powered in this room (M8): the timed link's time, or 0 (latched). */
+export function switchSeconds(header: RoomHeader): number {
+  for (const l of header.links) {
+    const c = parseLinkCondition(l.condition);
+    if (c?.kind === 'switch' && c.seconds > 0) return c.seconds;
+  }
+  return 0;
+}
+
+function allOn(objects: readonly WorldObject[], kinds: readonly ObjectKind[]): boolean {
   let any = false;
   for (const o of objects) {
-    if (o.kind !== kind) continue;
+    if (!kinds.includes(o.kind)) continue;
     any = true;
     if (!o.on) return false;
   }
@@ -83,7 +107,7 @@ export function linkMet(state: GameState, door: string): boolean {
     if (c === null || c.kind === 'sealed') return false;
     if (c.kind === 'cleared') {
       if (!roomFlags(state.world, state.room.id).cleared) return false;
-    } else if (!allOn(state.objects, conditionKind(c)!)) return false;
+    } else if (!allOn(state.objects, conditionKinds(c))) return false;
   }
   return any;
 }
@@ -96,8 +120,13 @@ export function stepLinks(state: GameState): void {
     if (!closed || !linkMet(state, door)) continue;
     for (const o of state.objects) {
       if (o.kind === 'door' && o.link === door && !o.on) openDoor(state, o);
-      // The group that opened it stays as it is now.
-      if (o.link === door && o.kind === 'brazier') o.timer = 0;
+      // The group that opened it stays as it is now (timed braziers and switches stop counting).
+      if (o.link === door && (o.kind === 'brazier' || isSwitch(o.kind))) o.timer = 0;
     }
   }
+}
+
+/** A conduit switch, sealed or not. */
+export function isSwitch(kind: ObjectKind): boolean {
+  return kind === 'conduit_switch' || kind === 'sealed_switch';
 }

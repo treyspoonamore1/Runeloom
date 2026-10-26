@@ -4,8 +4,9 @@
  * the lab) also reaches objects:
  * - Fire lights braziers (rule-wise a brazier is a metal grid cell; M3 gives it no fire
  *   behavior, so being lit is object state) and melts ice blocks into shallow water.
- * - Storm powers conduit switches. Charge that reaches a switch through metal or water is
- *   checked each tick in stepSwitches.
+ * - Storm powers conduit switches (not sealed ones, M8). Charge that reaches a switch (sealed or
+ *   not) through metal or water is checked each tick in stepSwitches; a switch in a timed group
+ *   unlatches when its time runs out (stepSwitchTimers).
  */
 import { MAT } from '../../../data/materials';
 import { TILE_CELLS } from '../core/constants';
@@ -14,7 +15,7 @@ import type { GameState } from '../state';
 import type { TerrainElement } from '../grid/paint';
 import { objectCenter, type WorldObject } from './objects';
 import { forTileCells, sendNote, setTileGround } from './objectGround';
-import { brazierSeconds } from './objectLinks';
+import { brazierSeconds, isSwitch, switchSeconds } from './objectLinks';
 
 /** Called by paintElement with the footprint's cells (shared scratch: read, don't keep). */
 export function elementOnObjects(
@@ -55,6 +56,7 @@ export function lightBrazier(state: GameState, o: WorldObject): void {
 export function powerSwitch(state: GameState, o: WorldObject): void {
   if (o.on) return;
   o.on = true;
+  o.timer = switchSeconds(state.room.header);
   const c = objectCenter(o);
   emit(state, { type: 'switchPowered', key: o.key, x: c.x, y: c.y });
   sendNote(state, o);
@@ -77,7 +79,7 @@ export function meltIceBlock(state: GameState, o: WorldObject): void {
 export function stepSwitches(state: GameState): void {
   const g = state.grid;
   for (const o of state.objects) {
-    if (o.kind !== 'conduit_switch' || o.on) continue;
+    if (!isSwitch(o.kind) || o.on) continue;
     let charged = false;
     const x0 = o.tx * TILE_CELLS - 1;
     const y0 = o.ty * TILE_CELLS - 1;
@@ -93,5 +95,19 @@ export function stepSwitches(state: GameState): void {
     }
     if (!charged) forTileCells(state, o.tx, o.ty, (i) => (charged ||= g.charge[i]! > 0));
     if (charged) powerSwitch(state, o);
+  }
+}
+
+const TIME_EPSILON = 1e-9;
+
+/** Powered switches of a timed group (M8) count down and unlatch at 0 (the group that opened its door stays). */
+export function stepSwitchTimers(state: GameState, dt: number): void {
+  for (const o of state.objects) {
+    if (!isSwitch(o.kind) || !o.on || o.timer <= 0) continue;
+    o.timer = o.timer > dt + TIME_EPSILON ? o.timer - dt : 0;
+    if (o.timer > 0) continue;
+    o.on = false;
+    const c = objectCenter(o);
+    emit(state, { type: 'switchOff', key: o.key, x: c.x, y: c.y });
   }
 }

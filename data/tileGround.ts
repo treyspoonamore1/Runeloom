@@ -41,6 +41,10 @@ export const tileGround: Readonly<Record<TileId, TileGround | 'neighbor'>> = {
   push_block: { ground: 'object' },
   ice_block: { ground: 'object' },
   conduit_switch: { ground: 'object' },
+  sealed_switch: { ground: 'object' },
+  wind_vane: { ground: 'object' },
+  // Its `under` is itself: a doused vent (borrowed) returns to a lit one (rule 27).
+  furnace_vent: { ground: 'vent_lit' },
   pressure_plate: 'neighbor',
   door: { ground: 'object' },
   locked_door: { ground: 'object' },

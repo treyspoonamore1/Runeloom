@@ -147,6 +147,9 @@ export const DEBUG_MATERIAL: Record<MaterialId, number> = {
   brazier: 0xff5030,
   object: 0xff40c0,
   rime: 0xe4f8ff,
+  // M8 placeholders for the F1 overlay; the rendering pass owns their real look.
+  vent_lit: 0xff8020,
+  vent_doused: 0x5a7a7a,
 };
 
 /** Debug colors indexed by material code. */

@@ -1,5 +1,14 @@
 import { TILE_CELLS } from '../core/constants';
 import { tileForChar } from '../../../data/tiles';
+import { WIND_BY_NAME, type WindDir } from '../grid/windDir';
+
+/** `@fog tx0 ty0 tx1 ty1` (M8): a rectangle of tiles, corners inclusive. */
+export interface FogRect {
+  tx0: number;
+  ty0: number;
+  tx1: number;
+  ty1: number;
+}
 
 export interface RoomHeader {
   id: string;
@@ -21,6 +30,15 @@ export interface RoomHeader {
    * Null when absent.
    */
   clearOnExit: 'w' | 'e' | 'n' | 's' | null;
+  /**
+   * M8 headers (CONTENT §6.2), present only when the file has them, so rooms from before M8 parse
+   * to the same header. `fog`: `@fog` rectangles in file order (they add up; the grid's fogMask).
+   * `wind`: `@wind`, the way the room wind blows (1–8, grid/windDir.ts). `pulse`: `@pulse`, the
+   * seconds between world-owned pulses of every metal pylon (world/rift/pulse.ts).
+   */
+  fog?: FogRect[];
+  wind?: WindDir;
+  pulse?: number;
 }
 
 /** A parsed room file (CONTENT §6), before it becomes simulation data. */
@@ -149,6 +167,36 @@ function parseHeaderLine(h: RoomHeader, line: string, lineNo: number): void {
       if (args[0] !== 'exit' || (dir !== 'w' && dir !== 'e' && dir !== 'n' && dir !== 's'))
         throw new RoomParseError('@clear takes "exit <w|e|n|s>"', lineNo);
       h.clearOnExit = dir;
+      break;
+    }
+    case 'fog': {
+      need(4);
+      const n = args.slice(0, 4).map(Number);
+      if (args.length > 4 || !n.every((v) => Number.isInteger(v) && v >= 0))
+        throw new RoomParseError('@fog takes four tile coordinates: tx0 ty0 tx1 ty1', lineNo);
+      const [a, b, c, d] = n as [number, number, number, number];
+      (h.fog ??= []).push({
+        tx0: Math.min(a, c),
+        ty0: Math.min(b, d),
+        tx1: Math.max(a, c),
+        ty1: Math.max(b, d),
+      });
+      break;
+    }
+    case 'wind': {
+      need(1);
+      const dir = WIND_BY_NAME[args[0]!];
+      if (dir === undefined || args.length > 1)
+        throw new RoomParseError('@wind takes one of n, ne, e, se, s, sw, w, nw', lineNo);
+      h.wind = dir;
+      break;
+    }
+    case 'pulse': {
+      need(1);
+      const sec = Number(args[0]);
+      if (!Number.isFinite(sec) || sec <= 0 || args.length > 1)
+        throw new RoomParseError('@pulse takes a positive number of seconds', lineNo);
+      h.pulse = sec;
       break;
     }
     default:

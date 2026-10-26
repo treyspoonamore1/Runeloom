@@ -32,7 +32,7 @@ import {
 import { tickChargeEvents } from './charge';
 import { FIRE_SPECIAL, REVERTS, SMOKE, SMOKE_DENSE, SMOKE_NONE, SPREAD, smokeCode } from './matTables';
 import { flushFx } from './fx';
-import type { Grid } from './grid';
+import { restingAir, type Grid } from './grid';
 import { paintElement } from './paint';
 import { spillOil } from './oil';
 import { areaLevel } from './query';
@@ -114,7 +114,8 @@ function visitCells(state: GameState): void {
   let w = 0;
   for (let r = 0; r < len; r++) {
     const i = list[r]!;
-    if (airTimer[i]! > 0 && --airTimer[i]! === 0) air[i] = AIR.none;
+    // Smoke or steam ends (or cleared fog rolls back in, rule 29): fog cells return to fog.
+    if (airTimer[i]! > 0 && --airTimer[i]! === 0) air[i] = restingAir(g, i);
     if (charge[i]! > 0 && --charge[i]! === 0) {
       g.chargeId[i] = 0;
       g.chargeFalloff[i] = 0;
