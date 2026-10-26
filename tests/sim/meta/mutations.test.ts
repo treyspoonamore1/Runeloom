@@ -85,6 +85,7 @@ describe('the Rekindle rift tier cap', () => {
     run(s, 1);
     s.hero.riftTier = riftTier;
     s.hero.hearth.rekindles = rekindles;
+    s.world.bossesDefeated.push('glasswater_coil'); // this block tests the Rekindle cap alone
     const g = makeSigil(s.hero, tier, []);
     s.hero.sigils.push(g);
     return { s, uid: g.uid };

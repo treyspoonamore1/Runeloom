@@ -32,6 +32,7 @@ import {
   inHearth,
   maxExpeditionTier,
   maxRiftTier,
+  riftOpenCap,
   maxRiftTierFor,
   mutationCost,
   productionMult,
@@ -84,7 +85,7 @@ export function getHearthSummary(session: Session): HearthSummary {
     embers: h.embers,
     ash: h.ash,
     rekindles: h.rekindles,
-    maxRiftTier: Math.min(s.hero.riftTier + 1, maxRiftTier(s.hero)),
+    maxRiftTier: Math.min(s.hero.riftTier + 1, riftOpenCap(s.hero, s.world)),
     inHearth: inHearth(s),
     expeditionsReady: h.expeditions.filter((e) => e.left <= 0).length,
   };

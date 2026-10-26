@@ -30,6 +30,8 @@ export type WorldEvent =
   | { type: 'riftOpened'; tier: number; mods: readonly string[]; index: number }
   /** The rift ended: its boss died and the player went home, the player left early, or died in it. */
   | { type: 'riftClosed'; tier: number; completed: boolean; reason: 'completed' | 'left' | 'died' }
+  /** Best tier ever reached the storm door's tier (M8): sent once per save, also on loading a save past it. */
+  | { type: 'stormDoorWoke' }
   /** A boss died; its room stays empty for good (WorldState.bossesDefeated; rift bosses: until the rift closes). */
   | { type: 'bossDefeated'; kind: string; roomId: string; x: number; y: number }
   /** A door tile opened: a `D` whose @link condition was met, a `K` a small key opened, a `G` the big key opened. */

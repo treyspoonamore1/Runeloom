@@ -168,6 +168,7 @@ describe('rift bosses and rewards', () => {
     const { s, uid } = atStone(tier);
     s.hero.riftTier = tier - 1;
     s.hero.hearth.rekindles = rekindlesForTier(tier); // M7: past the Rekindle tier cap.
+    s.world.bossesDefeated.push('glasswater_coil'); // M8: the deep rifts are open
     open(s, uid);
     s.world.pending = { roomId: 'rift/0/boss', arrival: { kind: 'edge', from: 'n' }, reason: 'exit' };
     run(s, 1);

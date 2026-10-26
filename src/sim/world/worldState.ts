@@ -66,6 +66,8 @@ export interface WorldState {
   rift: ActiveRift | null;
   /** Rifts opened in this save; the next rift's index (its room ids' prefix). */
   riftCount: number;
+  /** The storm door's one-time hint (best tier ever reached riftGate.stormDoorTier) was sent (M8). */
+  stormDoorHinted: boolean;
 }
 
 /** An open rift: what it is built from, and whether its boss has died. */
@@ -98,6 +100,7 @@ export function createWorldState(roomId: string): WorldState {
     pending: null,
     rift: null,
     riftCount: 0,
+    stormDoorHinted: false,
   };
 }
 
@@ -162,7 +165,7 @@ export function hashWorld(h: Hasher, w: WorldState): void {
     hashArrival(h, w.pending.arrival);
     h.string(w.pending.reason ?? 'exit').byte(0);
   }
-  h.u32(w.riftCount).bool(w.rift !== null);
+  h.u32(w.riftCount).bool(w.stormDoorHinted).bool(w.rift !== null);
   if (w.rift) {
     const s = w.rift.spec;
     h.u32(s.index).u32(s.seed).u32(s.tier).bool(w.rift.bossDead).u32(s.mods.length);

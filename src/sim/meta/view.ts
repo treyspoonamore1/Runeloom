@@ -19,6 +19,8 @@ import {
   type MutationId,
 } from '../../../data/hearth';
 import { RIFT_TIERS } from '../../../data/rift';
+import { riftGate } from '../../../data/riftGate';
+import type { WorldState } from '../world/worldState';
 import type { GameState } from '../state';
 import type { HeroState } from '../hero/types';
 import type { SalvageSetting } from './types';
@@ -86,8 +88,25 @@ export function maxRiftTierFor(rekindles: number): number {
   return Math.min(RIFT_TIERS, rekindle.baseMaxTier + rekindle.maxTierPerRekindle * rekindles);
 }
 
+/** The Rekindle cap only (what sigils may drop at). What opens also needs `riftOpenCap`. */
 export function maxRiftTier(hero: Readonly<HeroState>): number {
   return maxRiftTierFor(hero.hearth.rekindles);
+}
+
+/** True once the Glasswater Coil is dead (M8): tiers above riftGate.openTier can open. Kept through Rekindle. */
+export function deepRiftsOpen(world: Pick<WorldState, 'bossesDefeated'>): boolean {
+  return world.bossesDefeated.includes(riftGate.boss);
+}
+
+/** The highest tier that can open now: the Rekindle cap, and 8 until the Coil is dead. */
+export function riftOpenCap(hero: Readonly<HeroState>, world: Pick<WorldState, 'bossesDefeated'>): number {
+  const cap = maxRiftTier(hero);
+  return deepRiftsOpen(world) ? cap : Math.min(cap, riftGate.openTier);
+}
+
+/** The best rift tier ever completed, across Rekindles. */
+export function bestTierEver(hero: Readonly<HeroState>): number {
+  return Math.max(hero.hearth.bestEverTier, hero.riftTier);
 }
 
 /** The fewest Rekindles that let a rift of `tier` open (bots and tests that start past the cap). */

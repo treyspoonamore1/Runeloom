@@ -357,6 +357,8 @@ Link conditions: `braziers:all`, `switch:S`, `plates:all`, `cleared` (all enemie
 
 - `timer:<seconds>:switch:S`: every switch (`S` and `Q`) powered within the time. Each one unlatches that many seconds after it was powered unless the group completes first, as timed braziers go out (`src/sim/world/objectLinks.ts`).
 - `vanes:all`: every wind vane spun.
+- `rifttier:N`: the best rift tier ever (`hero.hearth.bestEverTier`, kept through Rekindle) is at least N, and every `@exit` of the room leads to a room that exists, so a door to a region not built yet stays shut (`src/sim/world/riftTierLink.ts`). K10's storm door uses `rifttier:6`.
+- Conditional notes: a `@note` whose text starts with `?rifttier:N ` shows only when that condition holds when the object activates; `!rifttier:N ` only when it doesn't. K10's switch says "The Fen isn't woven yet." before tier 6 and "The storm door hums open." after.
 
 M8 headers (`src/sim/world/room.ts`):
 
