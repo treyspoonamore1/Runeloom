@@ -1,6 +1,7 @@
 import { f1, c3 } from './glslLib';
 import { TERRAIN as C, TERRAIN_FX as FX, TERRAIN_LINE as L, TERRAIN_ONESHOT as O } from './terrainColors';
 import { GRID_HZ } from './terrainPack';
+import { ATMO_MAIN } from './glslAtmo';
 
 /**
  * The fragment mains, one program per pass:
@@ -91,7 +92,20 @@ void main() {
   Cls cl = classify(p);
   ivec2 cell = ivec2(floor(p));
   vec4 code = codesAt(cell);
+  vec4 ex = extraAt(cell);
+  // Borrowed ice (M8) goes back to its ground, not to water: no thaw look, the flicker says it.
+  if (ex.b > 0.5 && cl.a == M_ICE) code.b = 0.0;
   vec3 col = shadeMaterial(cl.a, p, cl, code, aa);
+  // Borrowed terrain's last seconds (DESIGN §6.5): it blinks to the ground it returns to,
+  // faster and fuller as the end nears.
+  if (ex.g > 0.0) {
+    float k = ex.g;
+    // Stepped rates: a rate that changed every grid tick would jump the blink's phase.
+    float hz = k < 0.4 ? ${f1(FX.borrowedBlinkHz[0])} : k < 0.75 ? ${f1(FX.borrowedBlinkHz[1])} : ${f1(FX.borrowedBlinkHz[2])};
+    float blink = smoothstep(0.3, 0.7, 0.5 + 0.5 * sin(uTime * TAU * hz));
+    vec3 ghost = shadeMaterial(byteOf(ex.r), p, cl, code, aa);
+    col = mix(col, ghost, blink * mix(${f1(FX.borrowedGhost[0])}, ${f1(FX.borrowedGhost[1])}, k));
+  }
   // A shadow under bramble clumps, which stand taller than the floor.
   if (cl.a != M_BRAMBLE && groundAt(ivec2(floor(vec2(p.x, p.y - 0.7)))) == M_BRAMBLE) col *= 0.82;
   // The edge line between the two leading materials, colored by the higher-priority one.
@@ -277,4 +291,4 @@ void main() {
 }
 `;
 
-export const PASS_MAINS = { ground: GROUND_MAIN, fire: FIRE_MAIN, air: AIR_MAIN } as const;
+export const PASS_MAINS = { ground: GROUND_MAIN, fire: FIRE_MAIN, air: AIR_MAIN, atmo: ATMO_MAIN } as const;

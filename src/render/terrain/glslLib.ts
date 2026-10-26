@@ -50,6 +50,9 @@ uniform sampler2D uFields;
 uniform sampler2D uFieldsPrev;
 uniform sampler2D uMasks;
 uniform sampler2D uGlow;
+/** M8 (atmoPack.ts): fog, gust strength, gust vector (linear) and under, borrowed expiry (nearest). */
+uniform sampler2D uAtmo;
+uniform sampler2D uExtra;
 uniform vec2 uSize;
 uniform vec2 uGlowSize;
 uniform float uTime;
@@ -58,6 +61,14 @@ uniform float uTick;
 uniform float uFlags;
 /** Electrify pulses: x, y (cells), age (s), strength (0 = none). */
 uniform vec4 uPulses[4];
+/** M8 region look (regionLook.ts): 0 region 1, 1 Glasswater Fen, 2 the Drowned Foundry. */
+uniform float uRegion;
+/** M8 fog: the player's lantern x, y, radius and softness, in cells. */
+uniform vec4 uLantern;
+/** M8: room wind x, y (unit), 1 if on, fog opacity. */
+uniform vec4 uWind;
+/** M8: lights that part the fog (lit braziers): x, y, radius, strength (0 = none). */
+uniform vec4 uLights[8];
 
 ${materialConsts}
 const int F_OIL = ${FLAG.oil};
@@ -117,6 +128,10 @@ vec4 fieldsAt(vec2 p) {
 }
 vec4 masksAt(vec2 p) { return texture(uMasks, p / uSize); }
 vec4 glowAt(vec2 p) { return texture(uGlow, p / (uGlowSize * 4.0)); }
+/** M8: fog density, gust strength, gust direction x, y (0.5 = 0), bilinear. */
+vec4 atmoAt(vec2 p) { return texture(uAtmo, p / uSize); }
+/** M8: under code, borrowed expiry progress (0 = not expiring), borrowed flag; exact per cell. */
+vec4 extraAt(ivec2 c) { return texelFetch(uExtra, clampCell(c), 0); }
 
 bool isWater(int g) { return g == M_SHALLOW_WATER || g == M_DEEP_WATER; }
 bool isIce(int g) { return g == M_ICE || g == M_ICE_BRIDGE || g == M_RIME; }

@@ -7,14 +7,28 @@ import { enemies, lookKind } from '../../data/enemies';
 import { enemyAtlasEntries } from '../../src/render/enemyShapes';
 import { bigBeastEntries } from '../../src/render/bestiary/bigBeasts';
 import { smallBeastEntries } from '../../src/render/bestiary/smallBeasts';
-import { fenPlaceholderEntries } from '../../src/render/bestiary/fenPlaceholders';
+import { fenShapesA } from '../../src/render/bestiary/fenShapesA';
+import { fenShapesB } from '../../src/render/bestiary/fenShapesB';
+import { FEN_LOOK } from '../../src/render/bestiary/fenBeastPalette';
+import { FEN_RIGS } from '../../src/render/bestiary/fenRigsB';
 
 describe('enemy art', () => {
   const names = new Set(
-    [...enemyAtlasEntries(), ...bigBeastEntries(), ...smallBeastEntries(), ...fenPlaceholderEntries()].map(
-      (e) => e.name,
-    ),
+    [
+      ...enemyAtlasEntries(),
+      ...bigBeastEntries(),
+      ...smallBeastEntries(),
+      ...fenShapesA(),
+      ...fenShapesB(),
+    ].map((e) => e.name),
   );
+
+  it('every Glasswater Fen kind has a look, a rig and its art radius matches the sim', () => {
+    for (const kind of Object.keys(FEN_LOOK) as (keyof typeof FEN_LOOK)[]) {
+      expect(FEN_RIGS[kind], kind).toBeDefined();
+      expect(enemies[kind as keyof typeof enemies]?.radius, kind).toBe(FEN_LOOK[kind].radius);
+    }
+  });
 
   it.each(Object.keys(enemies))('%s has body and flash sprites', (kind) => {
     const look = lookKind(kind);

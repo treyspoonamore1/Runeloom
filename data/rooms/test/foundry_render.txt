@@ -1,0 +1,21 @@
+@id test/foundry_render
+@name Foundry Render Test
+@level 22
+##############################
+#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#mmmmmmmmmmmmmmmfmmmmmmmmmmmm#
+#mmmmmmmBmmmmmmmfmmmmmmmmMmmm#
+#mmmmmmmmmmmmmmmfmmmmmmmmmmmm#
+#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#ww==wwwwwwwwwwwwwwwwwwwwwwww#
+#ww==wwwwwwwwwwwwwwwwwwwwwwww#
+#ww==wwwwwwwwwwwwwwwwwwwwwwww#
+#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#mmmmm........mmmmmmmmmmmmmmm#
+#mmmmm...x....mmmmmmffffmmmmm#
+#mmmmm........mmmmmmmmmmmmmmm#
+#mmmmm........mmmmmmmmmmmmQ~m#
+#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#
+##############################

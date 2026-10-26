@@ -1,3 +1,5 @@
+import { FEN_LOOK } from './fenBeastPalette';
+
 /**
  * Colors and feel values for the M4 enemies (CONTENT §5), their rarity looks and boss moments.
  * Purely presentational. Bodies stay off the element colors at full saturation (DESIGN §14):
@@ -20,7 +22,7 @@ export interface M4Look {
   box: { w: number; top: number; bottom: number };
 }
 
-export const M4_LOOK = {
+const M4_BASE_LOOK = {
   bog_lurker: {
     radius: 1.8,
     shadowRx: 2.1,
@@ -94,6 +96,9 @@ export const M4_LOOK = {
     box: { w: 4.8, top: -8.2, bottom: 4.0 },
   },
 } as const satisfies Record<string, M4Look>;
+
+/** The M4 kinds and, since M8, the Glasswater Fen kinds (fenBeastPalette.ts): one bestiary. */
+export const M4_LOOK = { ...M4_BASE_LOOK, ...FEN_LOOK } as const;
 
 export type M4Kind = keyof typeof M4_LOOK;
 

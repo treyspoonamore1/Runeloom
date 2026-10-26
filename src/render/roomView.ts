@@ -13,6 +13,7 @@ import {
 } from './propShapes';
 import { TileMap, edgeRuns, type Edge } from './roomTiles';
 import { GRID_HZ, isBlockCode } from './terrain/terrainPack';
+import { REGION, wallColors, type RegionLook } from './terrain/regionLook';
 
 /** Batches same-colored shapes into one path, so the room is a handful of fills, not thousands. */
 class FillBatch {
@@ -47,6 +48,16 @@ interface BurnableProp {
   fuelMax: number;
 }
 
+/** Region 1 walls and pylons (other regions: regionLook.ts wallColors). */
+const BASE_WALLS = {
+  top: PAL.wallTop,
+  light: PAL.wallTopLight,
+  front: PAL.wallFront,
+  seam: PAL.wallSeam,
+  chip: PAL.wallChip,
+  pylon: RAISED_TOP.metal_pylon!,
+};
+
 /** Tint of a prop about to burn out. */
 const CHARRED = 0x3a2a26;
 
@@ -68,13 +79,21 @@ export class RoomView {
   private blockCells = -1;
   /** Tiles (index ty·w + tx) drawn by the M4 object layer instead of the bake: doors, chests, blocks, Loom Stones. */
   private owned: ReadonlySet<number> = new Set();
+  /** Wall and pylon colors of the room's region (regionLook.ts). */
+  private walls: Record<keyof typeof BASE_WALLS, number> = BASE_WALLS;
 
   constructor() {
     this.root.addChild(this.shadows, this.blocks, this.props, this.burnables);
   }
 
-  build(room: Room, grid: Grid, owned: ReadonlySet<number> = new Set()): TileMap {
+  build(
+    room: Room,
+    grid: Grid,
+    owned: ReadonlySet<number> = new Set(),
+    region: RegionLook = REGION.base,
+  ): TileMap {
     const map = new TileMap(room);
+    this.walls = wallColors(region) ?? BASE_WALLS;
     this.map = map;
     this.grid = grid;
     this.owned = owned;
@@ -126,7 +145,8 @@ export class RoomView {
     const sh = this.shadows.clear();
     for (let ty = 0; ty < map.h; ty++) {
       for (let tx = 0; tx < map.w; tx++) {
-        if (raised(tx, ty) && ty + 1 < map.h && !raised(tx, ty + 1)) sh.rect(tx * T, (ty + 1) * T, T, BLOCK.shadow);
+        if (raised(tx, ty) && ty + 1 < map.h && !raised(tx, ty + 1))
+          sh.rect(tx * T, (ty + 1) * T, T, BLOCK.shadow);
       }
     }
     sh.fill({ color: PAL.shadow, alpha: BLOCK.shadowAlpha });
@@ -142,8 +162,9 @@ export class RoomView {
         const x = tx * T;
         const y = ty * T;
         const isWall = t.id === 'wall';
-        const top = isWall ? PAL.wallTop : (RAISED_TOP[t.id] ?? PAL.blockTop);
-        const front = isWall ? PAL.wallFront : darken(top, 0.62);
+        const wc = this.walls;
+        const top = isWall ? wc.top : t.id === 'metal_pylon' ? wc.pylon : (RAISED_TOP[t.id] ?? PAL.blockTop);
+        const front = isWall ? wc.front : darken(top, 0.62);
         const hasFront = ty + 1 < map.h && !raised(tx, ty + 1);
         const topH = hasFront ? T - BLOCK.front : T;
         fills.add(top, (gg) => void gg.rect(x, y, T, topH));
@@ -153,20 +174,20 @@ export class RoomView {
           const sx = tx + 0.2 + hash2(tx, ty, 3) * 0.6;
           seams.push({ x0: sx, y0: ty + topH / T, x1: sx, y1: ty + 1 });
         }
-        const light = isWall ? PAL.wallTopLight : lighten(top, 0.25);
+        const light = isWall ? wc.light : lighten(top, 0.25);
         if (!raised(tx, ty - 1)) fills.add(light, (gg) => void gg.rect(x, y, T, 0.4));
         if (!raised(tx - 1, ty)) fills.add(light, (gg) => void gg.rect(x, y, 0.35, topH));
         if (isWall && hash2(tx, ty, 5) < 0.35) {
           const cx = x + 0.8 + hash2(tx, ty, 6) * 2.2;
           const cy = y + 0.9 + hash2(tx, ty, 8) * Math.max(0.2, topH - 1.8);
-          fills.add(PAL.wallChip, (gg) => void gg.roundRect(cx, cy, 0.9, 0.45, 0.2));
+          fills.add(wc.chip, (gg) => void gg.roundRect(cx, cy, 0.9, 0.45, 0.2));
         }
       }
     }
     fills.flush(g);
     // Lines go after the fills so they sit on top, one path per color.
-    strokeEdges(g, seams, LINE.detail, PAL.wallSeam);
-    strokeEdges(g, mergeRuns(faceLines), LINE.detail * 1.2, PAL.wallSeam);
+    strokeEdges(g, seams, LINE.detail, this.walls.seam);
+    strokeEdges(g, mergeRuns(faceLines), LINE.detail * 1.2, this.walls.seam);
     strokeEdges(
       g,
       edgeRuns(map, raised).map((r) => r.edge),

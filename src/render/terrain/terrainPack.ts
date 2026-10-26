@@ -9,7 +9,7 @@ import { TERRAIN_FX } from './terrainColors';
  * texel (little-endian: byte 0 = R).
  *
  *   codes  (nearest)  R display ground · G flags (oil, tar, owner, air, ember, over water) · B phase · A true ground
- *   fields (linear)   R fire · G charge strength · B smoke · A steam      (two copies: prev/cur)
+ *   fields (linear)   R fire (lit vents too) · G charge strength · B smoke · A steam  (prev/cur)
  *   masks  (linear)   R oil · G wet · B hazard (fire or charge, any owner) · A hostile hazard
  *   glow   (linear, one texel per tile, blurred)  R fire · G charge · B smoke · A steam
  *
@@ -191,6 +191,8 @@ export class TerrainPack {
     const mDeep = MAT.deep_water;
     const mIce = MAT.ice;
     const mBridge = MAT.ice_bridge;
+    const mVentLit = MAT.vent_lit;
+    const ventHeat = TERRAIN_FX.ventHeat;
     const sOil = SURFACE.oil;
     const aSmoke = AIR.smoke;
     const aSteam = AIR.steam;
@@ -254,7 +256,8 @@ export class TerrainPack {
           }
         }
         const g = ground[i]!;
-        const f = fire[i]!;
+        // A lit furnace vent (M8) is solid flame: the fire pass draws it like a burning cell.
+        const f = g === mVentLit ? ventHeat : fire[i]!;
         const ch = charge[i]!;
         const o = owner[i]!;
         const a = air[i]!;

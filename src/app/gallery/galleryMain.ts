@@ -12,6 +12,7 @@ import { createGame, type GameState, type SimEvent } from '../../sim';
 import { createRenderer, type Renderer } from '../../render/renderer';
 import { poseActors, spawnActor, type Actor, type ActorSpec } from './galleryActors';
 import { beastSpecs, raritySpecs, telegraphSpecs } from './galleryBeasts';
+import { fenSpecs } from './galleryFen';
 import {
   crowdRoomText,
   galleryRoomText,
@@ -69,6 +70,7 @@ export async function bootGallery(): Promise<void> {
     }
   };
   add(beastSpecs());
+  add(fenSpecs());
   add(raritySpecs());
   add(telegraphSpecs());
   const world = new GalleryWorld(state, renderer, labels);

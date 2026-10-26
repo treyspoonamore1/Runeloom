@@ -50,6 +50,8 @@ export function OverlayMenu(p: { overlays: Flags; visible: { value: boolean }; r
       {row('charge', 'charge')}
       {row('wet', 'wet')}
       {row('owner', 'owner')}
+      {row('wind', 'wind (M8)')}
+      {row('borrowed', 'borrowed (M8)')}
       {p.overlays.material && (
         <div style={{ fontSize: '10px', lineHeight: '15px', maxWidth: '220px', marginTop: '4px' }}>
           {Object.entries(DEBUG_MATERIAL).map(([id, c]) => (

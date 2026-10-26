@@ -1,5 +1,7 @@
 import { edgeTable } from './glslEdges';
 import { c3, f1 } from './glslLib';
+import { REGION_GLSL } from './glslRegion';
+import { FEN } from './regionLook';
 import { TERRAIN as C, TERRAIN_FX as FX, TERRAIN_LINE as L } from './terrainColors';
 
 /**
@@ -74,14 +76,22 @@ vec3 pick3(vec3 a, vec3 b, vec3 c, float h) {
   return i == 0 ? a : i == 1 ? b : c;
 }
 
+${REGION_GLSL}
+
 vec3 shadeStone(vec2 p, float aa) {
   ivec2 tile = ivec2(floor(p / 4.0));
   vec2 f = p - vec2(tile) * 4.0;
   float h = hash2(tile, 0);
-  vec3 col = pick4(${c3(C.stone[0])}, ${c3(C.stone[1])}, ${c3(C.stone[2])}, ${c3(C.stone[3])}, h);
+  vec3 col = foundryLook()
+    ? pick4(${c3(FEN.foundryStone[0])}, ${c3(FEN.foundryStone[1])}, ${c3(FEN.foundryStone[2])}, ${c3(FEN.foundryStone[3])}, h)
+    : fenLook()
+    ? pick4(${c3(FEN.stone[0])}, ${c3(FEN.stone[1])}, ${c3(FEN.stone[2])}, ${c3(FEN.stone[3])}, h)
+    : pick4(${c3(C.stone[0])}, ${c3(C.stone[1])}, ${c3(C.stone[2])}, ${c3(C.stone[3])}, h);
   col *= 1.0 + (vnoise(p * 0.6) - 0.5) * 0.035;
   float gd = min(min(f.x, 4.0 - f.x), min(f.y, 4.0 - f.y));
-  col = mix(col, ${c3(C.stoneGrout)}, band(gd, ${f1(L.detail * 0.4)}, aa));
+  vec3 grout = foundryLook() ? ${c3(FEN.foundryGrout)} : fenLook() ? ${c3(FEN.stoneGrout)} : ${c3(C.stoneGrout)};
+  col = mix(col, grout, band(gd, ${f1(L.detail * 0.4)}, aa));
+  if (foundryLook()) col = applySoot(col, p);
   if (hash2(tile, 7) > 0.88) {
     vec2 cp = vec2(1.0 + h * 2.0, 1.0 + hash2(tile, 9) * 2.0);
     col = mix(col, ${c3(C.stoneChip)}, ellipseMask(f, cp, vec2(0.3, 0.2), aa));
@@ -112,6 +122,7 @@ float tuft(vec2 f, vec2 b, float sway) {
 }
 
 vec3 shadeGrass(vec2 p, float aa) {
+  if (fenLook()) return shadeReeds(p, aa);
   ivec2 tile = ivec2(floor(p / 4.0));
   vec2 f = p - vec2(tile) * 4.0;
   vec3 col = pick3(${c3(C.grass[0])}, ${c3(C.grass[1])}, ${c3(C.grass[2])}, hash2(tile, 0));
@@ -200,12 +211,15 @@ vec3 shadeWood(vec2 p, int flags, float aa) {
 vec3 shadeWater(vec2 p, bool deep, Cls cl, float aa) {
   ivec2 tile = ivec2(floor(p / 4.0));
   vec2 f = p - vec2(tile) * 4.0;
-  vec3 col = deep ? ${c3(C.deep)} : ${c3(C.shallow)};
+  bool fen = fenLook();
+  vec3 col = deep ? (fen ? ${c3(FEN.deep)} : ${c3(C.deep)}) : (fen ? ${c3(FEN.shallow)} : ${c3(C.shallow)});
   // Darker band under the upper shore (the bank's shade), like M0.
   float bandH = deep ? 1.1 : 0.8;
   int up = groundAt(ivec2(floor(vec2(p.x, p.y - bandH))));
   bool upWet = deep ? up == M_DEEP_WATER : isWater(up);
-  if (!upWet) col = deep ? ${c3(C.deepShade)} : ${c3(C.shallowShade)};
+  if (!upWet)
+    col = deep ? (fen ? ${c3(FEN.deepShade)} : ${c3(C.deepShade)}) : (fen ? ${c3(FEN.shallowShade)} : ${c3(C.shallowShade)});
+  if (fen) col = glassify(col, p, deep, aa);
   col += (vnoise(p * 0.45 + vec2(uTime * 0.25, uTime * 0.12)) - 0.5) * 0.045;
   // Ripples: small arcs that grow, drift and fade (M0's loop, continuous).
   float phase = uTime / ${f1(FX.ripplePeriod)};
@@ -318,24 +332,8 @@ vec3 shadeMud(vec2 p, float aa) {
 }
 
 vec3 shadeMetal(vec2 p, float aa) {
-  // One riveted plate per tile, bevelled: light top-left lip, dark bottom-right.
-  vec2 plate = floor(p / 4.0);
-  vec2 f = p - plate * 4.0;
-  vec3 col = ${c3(C.metal)} * (0.96 + hash2(ivec2(plate), 701) * 0.08);
-  col *= 0.97 + vnoise(vec2(p.x * 0.25, p.y * 5.0)) * 0.05;
-  float lo = min(f.x, f.y);
-  float hi = max(f.x, f.y);
-  col = mix(col, ${c3(C.metalLight)}, 1.0 - smoothstep(0.22 - aa, 0.22 + aa, lo));
-  col = mix(col, ${c3(C.metalDark)}, smoothstep(3.78 - aa, 3.78 + aa, hi));
-  col = mix(col, ${c3(C.rivet)}, 1.0 - smoothstep(0.06 - aa, 0.06 + aa, min(lo, 4.0 - hi)));
-  // A diagonal tread line across the plate.
-  float tread = abs(fract((f.x + f.y) * 0.25) - 0.5);
-  col = mix(col, ${c3(C.metalLight)}, band(tread, 0.025, aa * 0.25) * 0.5);
-  vec2 rc = vec2(f.x < 2.0 ? 0.6 : 3.4, f.y < 2.0 ? 0.6 : 3.4);
-  float rd = length(f - rc);
-  col = mix(col, ${c3(C.rivet)}, 1.0 - smoothstep(0.2 - aa, 0.2 + aa, rd));
-  col = mix(col, ${c3(C.metalLight)}, 1.0 - smoothstep(0.07 - aa, 0.07 + aa, length(f - rc + 0.06)));
-  return col;
+  // One riveted plate per tile, bevelled: light top-left lip, dark bottom-right, a tread line.
+  return metalPlates(p, aa, ${c3(C.metal)}, ${c3(C.metalLight)}, ${c3(C.metalDark)}, ${c3(C.rivet)});
 }
 
 vec3 shadeAsh(vec2 p, float aa) {
@@ -380,10 +378,12 @@ vec3 shadeMaterial(int g, vec2 p, Cls cl, vec4 code, float aa) {
   }
   if (g == M_RIME) return shadeIce(p, false, 0.0, aa);
   if (g == M_MUD) return shadeMud(p, aa);
-  if (g == M_METAL_FLOOR) return shadeMetal(p, aa);
+  if (g == M_METAL_FLOOR) return fenLook() ? shadeRegionMetal(p, aa) : shadeMetal(p, aa);
+  if (g == M_VENT_LIT) return shadeVent(p, true, aa);
+  if (g == M_VENT_DOUSED) return shadeVent(p, false, aa);
   if (g == M_ASH) return shadeAsh(p, aa);
   if (g == M_PIT) return shadePit(p, aa);
-  if (g == M_METAL_PYLON) return ${c3(C.pylon)};
+  if (g == M_METAL_PYLON) return fenLook() ? ${c3(FEN.pylon)} : ${c3(C.pylon)};
   return ${c3(C.wallTop)};
 }
 `;

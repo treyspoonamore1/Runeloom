@@ -6,9 +6,13 @@ import { BeastTelegraphs, telegraphAccentEntries } from './bestiary/beastTelegra
 import { bigBeastEntries } from './bestiary/bigBeasts';
 import { RarityView, rarityAtlasEntries } from './bestiary/rarityView';
 import { smallBeastEntries } from './bestiary/smallBeasts';
-import { fenPlaceholderEntries } from './bestiary/fenPlaceholders';
+import { fenShapesA } from './bestiary/fenShapesA';
+import { fenShapesB } from './bestiary/fenShapesB';
+import { FenTelegraphs, fenTelegraphEntries } from './bestiary/fenTelegraphs';
+import { fenIconEntries } from './bestiary/fenIcons';
 import type { EnemyLayer } from './enemyLayer';
 import { objectAtlasEntries } from './world/objectShapes';
+import { fenObjectAtlasEntries } from './world/fenObjectShapes';
 import { objectCue } from './world/objectCues';
 import { ObjectView, ownedTiles } from './world/objectView';
 import { WorldFx } from './world/worldFx';
@@ -25,10 +29,14 @@ export function m4AtlasEntries(): AtlasEntry[] {
   return [
     ...smallBeastEntries(),
     ...bigBeastEntries(),
-    ...fenPlaceholderEntries(),
+    ...fenShapesA(),
+    ...fenShapesB(),
     ...rarityAtlasEntries(),
     ...telegraphAccentEntries(),
+    ...fenTelegraphEntries(),
+    ...fenIconEntries(),
     ...objectAtlasEntries(),
+    ...fenObjectAtlasEntries(),
     ...lootAtlasEntries(),
     ...runeAtlasEntries(),
   ];
@@ -67,7 +75,7 @@ export class M4Layers {
   constructor(atlas: Atlas, enemies: EnemyLayer, shake: Shake | null) {
     enemies.signals = this.signals;
     this.rarity = new RarityView(atlas);
-    this.tele = new BeastTelegraphs(atlas);
+    this.tele = new FenTelegraphs(atlas);
     this.fx = new WorldFx(atlas);
     this.objects = new ObjectView(atlas, this.fx);
     this.loot = new LootView(atlas, this.fx);

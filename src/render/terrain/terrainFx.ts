@@ -5,7 +5,7 @@ import type { Atlas } from '../atlas';
 import { FxLayer } from '../particles';
 import type { Shake } from '../shake';
 import { TERRAIN as C, TERRAIN_ONESHOT as O } from './terrainColors';
-import { riftRules } from '../../sim/world/rift/rules';
+import { pulseSeconds } from '../../sim/world/rift/pulse';
 import { gridTicks } from '../../sim/grid/cells';
 import { TILE_CELLS } from '../../sim/core/constants';
 
@@ -412,11 +412,12 @@ export class TerrainFx {
   private warnTick = -1;
 
   /**
-   * Live Wires: for the last warnSeconds before each pulse the room's pylons crackle and glow,
-   * brighter as it nears (render reads the grid clock; the sim's pulse is in world/rift/pulse.ts).
+   * Live Wires and `@pulse` (M8): for the glow seconds before each pulse (tuning.world
+   * pulseGlowSeconds, as the sim's `pylonGlow`) the room's pylons crackle and glow, brighter as it
+   * nears (render reads the grid clock; the sim's pulse is in world/rift/pulse.ts).
    */
   pylonWarn(s: GameState): void {
-    const seconds = riftRules(s).pylonPulseSeconds;
+    const seconds = pulseSeconds(s);
     if (seconds <= 0) return;
     if (this.pylonRoom !== s.room.id) {
       this.pylonRoom = s.room.id;
@@ -430,7 +431,7 @@ export class TerrainFx {
     const every = gridTicks(seconds);
     const tick = s.grid.tick;
     const left = every - (tick % every);
-    const warn = gridTicks(O.pylonWarnSeconds);
+    const warn = Math.max(1, Math.min(every - 1, gridTicks(s.tuning.world.pulseGlowSeconds)));
     if (left > warn || tick === this.warnTick) return;
     this.warnTick = tick;
     const k = 1 - left / warn;

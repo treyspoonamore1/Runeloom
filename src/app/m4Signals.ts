@@ -81,6 +81,7 @@ const OBJECT_CUE: Partial<Record<ObjectKind, M4CueType>> = {
   loom_stone: 'loomStoneActivated',
   pressure_plate: 'plateClick',
   conduit_switch: 'switchPowered',
+  sealed_switch: 'switchPowered',
   brazier: 'brazierLit',
 };
 

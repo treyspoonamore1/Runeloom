@@ -9,6 +9,7 @@ import { AIL, BODY, ICON_EXTRA, type BodyBox } from './ailmentPalette';
 import { AilmentParts, type PartsFrame, type PartTextures } from './ailmentParts';
 import { CreatureFx, PLAYER_KEY, type CreatureBody } from './creatureFx';
 import { ICON_BLIND, ICON_OIL, ICON_WET, StatusIcons } from './statusIcons';
+import { fenIconFlags } from './bestiary/fenIcons';
 import type { TerrainState } from '../sim/actors/terrainState';
 import type { EnemyLayer } from './enemyLayer';
 import { FX } from './combatPalette';
@@ -177,13 +178,20 @@ export class AilmentFx {
       this.creature.enemyState(v, dt);
       v.glowMul = a.freeze.timeLeft > 0 ? 0.25 : e.kind === 'tinderling' && T.wetLeft > 0 ? 0 : 1;
       let parts = v.ailParts;
+      const fen = fenIconFlags(e);
       if (
         !anyAilment(a) &&
         !CreatureFx.active(T) &&
         !this.creature.hasCrackle(e.id) &&
         !(parts && parts.active)
-      )
+      ) {
+        // M8 states still get their icon (Stranded, Charged, Hot or Cracked, Rung).
+        if (fen !== 0) {
+          const top = v.root.y + bodyBoxOf(lookKind(e.kind)).top - this.icons.lift - (ICON_EXTRA[lookKind(e.kind)] ?? 0);
+          this.icons.row(a, v.root.x, top, fen | terrainFlags(T));
+        }
         continue;
+      }
       const box = bodyBoxOf(lookKind(e.kind));
       if (!parts) {
         parts = v.ailParts = new AilmentParts(this.atlas, box, v.root);
@@ -211,7 +219,7 @@ export class AilmentFx {
       this.body(parts, a, box, v.root.x, v.root.y, vx, run, dt, this.norm);
       this.creatureBody(e.id, lookKind(e.kind), a, T, parts, box, rx, ry, vx, vy, false, dt);
       const top = v.root.y + box.top - this.icons.lift - (ICON_EXTRA[lookKind(e.kind)] ?? 0);
-      this.icons.row(a, v.root.x, top, terrainFlags(T));
+      this.icons.row(a, v.root.x, top, terrainFlags(T) | fen);
       this.debug.label(a, v.root.x + box.w + 0.4, v.root.y + box.top * 0.5, xf);
     }
     this.updatePlayer(s, player, dt, xf);
