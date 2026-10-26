@@ -32,6 +32,7 @@ import { rasterize } from './raster';
 import { WIND_DX, WIND_DY, windDirOf, type WindDir } from './windDir';
 import { objectCenter } from '../world/objects';
 import { sendNote } from '../world/objectGround';
+import { playerGustScale } from '../hero/effectsFen';
 
 export type { WindDir } from './windDir';
 
@@ -251,7 +252,10 @@ export function writeGust(state: GameState, gust: GustCone): void {
  * Spell forms with a cone (Bolt, Beam, Strike, Swath) pass their cone as an arc (weave runtime).
  */
 export function paintGust(state: GameState, app: ElementApplication, durationMult: number): void {
-  const s = app.shape;
+  const team = app.owner === OWNER.player ? TEAM_PLAYER : TEAM_ENEMY;
+  // Toad Bellows (Fuse part, hero/effectsFen.ts): the player's gusts last longer and cover more.
+  const scale = team === TEAM_PLAYER ? playerGustScale(state) : NO_SCALE;
+  const s = scaleShape(app.shape, scale.radiusMult);
   let dirs: GustDirs;
   if (s.kind === 'arc' || s.kind === 'strip') dirs = { kind: 'fixed', dir: windDirOf(s.dirX, s.dirY) };
   else if (s.kind === 'line') dirs = { kind: 'fixed', dir: windDirOf(s.x1 - s.x0, s.y1 - s.y0) };
@@ -259,8 +263,26 @@ export function paintGust(state: GameState, app: ElementApplication, durationMul
     dirs = { kind: 'fixed', dir: windDirOf(app.dirX, app.dirY) };
   else dirs = { kind: 'radial', x: s.x, y: s.y };
   if (dirs.kind === 'fixed' && dirs.dir === 0) return;
-  const team = app.owner === OWNER.player ? TEAM_PLAYER : TEAM_ENEMY;
-  writeGustShape(state, s, dirs, state.tuning.wind.gustSeconds * durationMult, team, app.spellId ?? 0);
+  const seconds = state.tuning.wind.gustSeconds * durationMult + scale.secondsAdd;
+  writeGustShape(state, s, dirs, seconds, team, app.spellId ?? 0);
+}
+
+const NO_SCALE = { secondsAdd: 0, radiusMult: 1 } as const;
+
+/** A footprint with its reach × k (cones and discs grow in radius; strips and lines in length and width). */
+function scaleShape(f: Footprint, k: number): Footprint {
+  if (k === 1) return f;
+  switch (f.kind) {
+    case 'circle':
+    case 'arc':
+      return { ...f, r: f.r * k };
+    case 'ring':
+      return { ...f, r0: f.r0 * k, r1: f.r1 * k };
+    case 'strip':
+      return { ...f, length: f.length * k, width: f.width * k };
+    case 'line':
+      return { ...f, x1: f.x0 + (f.x1 - f.x0) * k, y1: f.y0 + (f.y1 - f.y0) * k, width: f.width * k };
+  }
 }
 
 /** The cone a directed Gale spell blows (DESIGN §6.6): 60°, radius 12 (× √ Saturate's area), from (x, y). */
