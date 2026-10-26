@@ -46,3 +46,9 @@ export function stepObjectSystems(state: GameState, input: InputFrame | undefine
   stepLinks(state);
   stepExits(state);
 }
+
+/** The Chemistry Lab room outside adventure mode (M8): only its blocks and wind vanes move. */
+export function stepLabObjects(state: GameState, input: InputFrame | undefined): void {
+  stepVanes(state, DT);
+  stepBlocks(state, input);
+}
