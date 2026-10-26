@@ -179,9 +179,8 @@ export class CoilRig extends BeastRig {
 
   private head(c: BeastCtx, eyeGlow: number): void {
     const a = Math.atan2(c.cy, c.cx);
-    let lean = 0;
-    if (this.mode === 'stranded') lean = Math.sin(this.wave * 1.3) * 0.45;
-    else if (c.attack === 'coilLunge' && c.phase === 'windup') lean = 0;
+    // Stranded, the head whips side to side with the thrash.
+    const lean = this.mode === 'stranded' ? Math.sin(this.wave * 1.3) * 0.45 : 0;
     this.body.rotation = this.flash.rotation = a + lean;
     const alpha = 1 - (1 - F.submergedAlpha) * this.sub;
     this.body.alpha = alpha;
