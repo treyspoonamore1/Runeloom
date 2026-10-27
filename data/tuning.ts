@@ -414,6 +414,13 @@ export const defaultTuning = {
     brazierClear: 9,
     /** Fireflies per 100 water or reed cells of the Fen (0 turns them off). */
     fireflyDensity: 1.2,
+    /**
+     * Playtest 8: a radial Gale gust (Lob burst, Nova) streaks outward from its center. Dash
+     * period along a streak (cells), dash speed (cells/s) and streak lanes around the center.
+     */
+    galeBurstDash: 4,
+    galeBurstSpeed: 14,
+    galeBurstLanes: 18,
   },
   /** Rooms, exits and puzzle objects (M4, src/sim/world). */
   world: {

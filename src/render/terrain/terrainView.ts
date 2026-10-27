@@ -167,6 +167,8 @@ export class TerrainView {
     uLantern: { value: new Float32Array(4), type: 'vec4<f32>' },
     uWind: { value: new Float32Array(4), type: 'vec4<f32>' },
     uLights: { value: new Float32Array(32), type: 'vec4<f32>', size: 8 },
+    uBursts: { value: new Float32Array(32), type: 'vec4<f32>', size: 8 },
+    uBurstLook: { value: new Float32Array([4, 14, 18, 0]), type: 'vec4<f32>' },
   });
   private readonly programs: Record<Pass, GlProgram> = {
     ground: program('ground'),
@@ -258,6 +260,24 @@ export class TerrainView {
       const l = lights[k]!;
       a.set([l.x, l.y, l.radius, l.strength], k * 4);
     }
+  }
+
+  /**
+   * Playtest 8: radial Gale gusts (galeBursts.ts) streak outward from their centers: up to 8,
+   * with the streaks' dash period (cells), speed (cells/s) and lanes around.
+   */
+  setBursts(
+    bursts: readonly { x: number; y: number; reach: number }[],
+    look: { dash: number; speed: number; lanes: number },
+  ): void {
+    const u = this.uniforms.uniforms;
+    const a = u.uBursts as Float32Array;
+    a.fill(0);
+    for (let k = 0; k < Math.min(8, bursts.length); k++) {
+      const b = bursts[k]!;
+      a.set([b.x, b.y, b.reach, 1], k * 4);
+    }
+    (u.uBurstLook as Float32Array).set([Math.max(0.5, look.dash), look.speed, Math.max(1, Math.round(look.lanes)), 0]);
   }
 
   /** M8: the room has fog, gusts or room wind (the atmosphere pass draws). */
