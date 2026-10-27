@@ -17,9 +17,12 @@ const C = P.glasswater_coil;
 /**
  * The Glasswater Coil (DESIGN §10.5): a glass eel whose head is its sim body (the hit circle);
  * the trailing body is drawn only, segments laid along the path the head swam (CoilTrail). Its
- * states read at a glance:
- * - submerged: a dark shape under the water, ripples along it, only the eye lit;
- * - surfaced and exposed: clear glass with a pale lightning spine, splashing as it breaks water;
+ * states read at a glance (playtest 8: they must, since Submerged takes far less damage):
+ * - submerged: under the water's surface: dimmed, tinted deep and filmed over with water, ripples
+ *   running along it, only the eye lit;
+ * - surfaced and exposed: bright clear glass with a pale lightning spine, a splash and a ring as
+ *   it breaks the water, foam rings around its head while it is up in the deep water, drips off
+ *   its body in the shallows;
  * - stranded: grey and drying, thrashing hard on the stone;
  * - iced: frosted white and still; overloaded: crackling, the spine flickering, stars.
  * Before a pulse its eye (Eye pulse) or its whole spine (Body pulse) brightens.
@@ -33,6 +36,8 @@ export class CoilRig extends BeastRig {
   private readonly eyeGlow: Sprite;
   private readonly mouthGlow: Sprite;
   private readonly bodyGlow: Sprite;
+  /** Submerged: the water's film over the head (the body's is CoilBody.veil). */
+  private readonly headVeil: Sprite;
   private readonly stars: StunStars;
   private readonly back = new Container();
   private sub = 1;
@@ -53,6 +58,9 @@ export class CoilRig extends BeastRig {
     this.trail = new CoilTrail(n, F.coilSpacing);
     this.mouthGlow = glowSprite(atlas, lift, C.glow, false);
     this.eyeGlow = glowSprite(atlas, lift, C.glow, false);
+    this.headVeil = new Sprite(body.texture);
+    this.headVeil.tint = C.water;
+    lift.addChild(this.headVeil);
     this.eye = this.sprite('coil_eye', lift);
     lift.setChildIndex(this.flash, lift.children.length - 1);
     this.stars = new StunStars(atlas, lift);
@@ -101,7 +109,8 @@ export class CoilRig extends BeastRig {
     return 0.35 + 0.65 * smoothstep(0, 1, Math.min(1, this.glowT / this.glowTotal));
   }
 
-  private tint(base: number): number {
+  private tint(base: number, c: BeastCtx): number {
+    const R = c.tuning.bossReadout;
     switch (this.mode) {
       case 'stranded':
         return mixRgb(base, C.stranded, 0.45);
@@ -110,7 +119,8 @@ export class CoilRig extends BeastRig {
       case 'overloaded':
         return Math.random() < 0.3 ? 0xffffff : base;
       default:
-        return mixRgb(base, C.deep, 0.75 * this.sub);
+        // Under the surface it sinks toward the deep water's color; out of it, brightened glass.
+        return mixRgb(mixRgb(base, C.deep, R.coilSubmergedTint * this.sub), 0xffffff, R.coilSurfacedBright * (1 - this.sub));
     }
   }
 
@@ -118,9 +128,12 @@ export class CoilRig extends BeastRig {
   private layBody(c: BeastCtx, amp: number, glow: number): void {
     const s = c.scale;
     const n = this.pts.length;
-    const alpha = 1 - (1 - F.submergedAlpha) * this.sub;
+    const R = c.tuning.bossReadout;
+    const alpha = 1 - (1 - R.coilSubmergedAlpha) * this.sub;
     const flash = this.flash.alpha;
-    const tint = this.tint(0xffffff);
+    const tint = this.tint(0xffffff, c);
+    const veil = R.coilWaterVeil * this.sub;
+    this.tube.veilOn = veil > 0.01;
     // The neck starts under the head's center.
     const h = this.pts[0]!;
     h.x = 0;
@@ -161,6 +174,8 @@ export class CoilRig extends BeastRig {
       this.pts[i]!.ny = dx / l;
     }
     this.tube.draw(this.pts);
+    this.tube.veil.tint = C.water;
+    this.tube.veil.alpha = veil;
     this.tube.tube.tint = flash > 0.05 ? mixRgb(tint, 0xffffff, flash) : tint;
     this.tube.root.alpha = alpha;
     const flick = this.mode === 'overloaded' ? 0.4 + 0.6 * Math.random() : 1;
@@ -170,7 +185,7 @@ export class CoilRig extends BeastRig {
     this.tail.position.set(last.x, last.y);
     this.tail.rotation = Math.atan2(-last.nx, last.ny) + Math.sin(this.wave - n * 0.6) * 0.35;
     this.tail.alpha = alpha;
-    this.tail.tint = tint;
+    this.tail.tint = mixRgb(tint, C.water, veil);
     // The body pulse's glow along the whole body.
     this.bodyGlow.position.set(gx, gy);
     this.bodyGlow.scale.set(14 / s, 10 / s);
@@ -182,11 +197,15 @@ export class CoilRig extends BeastRig {
     // Stranded, the head whips side to side with the thrash.
     const lean = this.mode === 'stranded' ? Math.sin(this.wave * 1.3) * 0.45 : 0;
     this.body.rotation = this.flash.rotation = a + lean;
-    const alpha = 1 - (1 - F.submergedAlpha) * this.sub;
+    const R = c.tuning.bossReadout;
+    const alpha = 1 - (1 - R.coilSubmergedAlpha) * this.sub;
     this.body.alpha = alpha;
-    this.body.tint = this.tint(0xffffff);
+    this.body.tint = this.tint(0xffffff, c);
+    this.headVeil.rotation = this.body.rotation;
+    this.headVeil.alpha = R.coilWaterVeil * this.sub;
     this.flash.alpha *= alpha;
-    // Pulled back through the lunge's windup, raised to call the pylons.
+    // Pulled back through the lunge's windup, raised to call the pylons: offsets from the lift's
+    // base, which EnemyView sets on both axes every frame (tests/render/coilHead.test.ts).
     const w = c.phase === 'windup' ? smoothstep(0, 1, c.wind) : 0;
     if (c.attack === 'coilLunge') this.lift.position.x -= c.cx * 0.6 * w;
     if (c.attack === 'callPylons' || c.attack === 'coilDive') this.lift.position.y -= (c.attack === 'callPylons' ? 0.8 : -0.4) * w;
@@ -212,12 +231,22 @@ export class CoilRig extends BeastRig {
   /** Ripples while submerged, drips and droplets out of water, frost glints, dust when stranded. */
   private ambient(c: BeastCtx, mode: CoilMode): void {
     const fx = c.fx;
-    if (this.sub > 0.5 && fx.take(F.rippleRate, c.dt)) {
+    const R = c.tuning.bossReadout;
+    if (this.sub > 0.5 && fx.take(R.coilRippleRate, c.dt)) {
       const p = this.trail.at(Math.floor(rand(0, F.coilSegments)));
       fx.ripple(p.x, p.y, 1.2, 4.5, 1.1, C.ripple, 0.55);
     }
     if (this.sub > 0.5 && c.run > 0.3 && fx.take(6, c.dt))
       fx.ripple(c.x + c.cx * 3, c.y + c.cy * 3, 1.5, 5, 0.7, C.ripple, 0.7);
+    // Up in the deep water: foam rings where it breaks the surface.
+    if (mode === 'surfaced' && fx.take(R.coilFoamRate, c.dt))
+      fx.ripple(c.x + rand(-1, 1), c.y + rand(-1, 1), 2, 6.5, 0.6, C.foam, 0.85);
+    // In the shallows: water drips off its exposed body.
+    if (mode === 'exposed' && fx.take(8, c.dt)) {
+      const p = this.trail.at(Math.floor(rand(0, F.coilSegments / 2)));
+      const d = fx.spawn(fx.body, fx.tex.drip, p.x + rand(-1, 1), p.y - 1, 0, 2, rand(0.3, 0.5), C.ripple, 0.25, 0.1);
+      if (d) d.grav = 20;
+    }
     if (mode === 'stranded' && fx.take(10, c.dt)) {
       const p = this.trail.at(Math.floor(rand(0, F.coilSegments)));
       const d = fx.spawn(fx.body, fx.tex.dot, p.x, p.y, rand(-5, 5), -rand(4, 8), rand(0.3, 0.5), C.ripple, 0.3, 0.1);
@@ -249,13 +278,16 @@ export class CoilRig extends BeastRig {
 
   /** Breaking the surface splashes; diving leaves a ring; stranding a slap of droplets. */
   private changed(c: BeastCtx, from: CoilMode, to: CoilMode): void {
-    if (from === 'submerged' && to !== 'submerged') splash(c, c.x, c.y, 12, C.ripple, 7);
+    if (from === 'submerged' && to !== 'submerged') {
+      splash(c, c.x, c.y, c.tuning.bossReadout.coilSplash, C.foam, 9);
+      c.fx.ripple(c.x, c.y, 3, 12, 0.7, C.foam, 0.9);
+    }
     else if (to === 'submerged') c.fx.ripple(c.x, c.y, 2, 9, 0.8, C.ripple, 0.9);
     if (to === 'stranded') splash(c, c.x, c.y, 10, C.ripple, 0);
   }
 
   override die(): void {
-    this.eyeGlow.alpha = this.mouthGlow.alpha = this.bodyGlow.alpha = 0;
+    this.eyeGlow.alpha = this.mouthGlow.alpha = this.bodyGlow.alpha = this.headVeil.alpha = 0;
     this.back.visible = true;
   }
 }

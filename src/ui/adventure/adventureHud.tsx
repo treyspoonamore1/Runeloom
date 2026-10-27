@@ -97,7 +97,8 @@ const sameSnap = (a: AdventureSnap, b: AdventureSnap): boolean =>
       !!b.boss &&
       a.boss.name === b.boss.name &&
       a.boss.lifeFrac === b.boss.lifeFrac &&
-      a.boss.phase === b.boss.phase));
+      a.boss.phase === b.boss.phase &&
+      a.boss.status?.line === b.boss.status?.line));
 
 export function createAdventureHud(opts: {
   session: Session;
@@ -247,7 +248,7 @@ export function AdventureHudView({ snap }: { snap: { value: AdventureSnap } }) {
       </div>
       {s.boss ? (
         <div
-          class="ad-boss"
+          class={s.boss.status?.tone === 'guard' ? 'ad-boss ad-guarded' : 'ad-boss'}
           role="meter"
           aria-label={`${s.boss.name} life`}
           aria-valuenow={Math.round(s.boss.lifeFrac * 100)}
@@ -262,6 +263,11 @@ export function AdventureHudView({ snap }: { snap: { value: AdventureSnap } }) {
               <b key={m} class={s.boss!.lifeFrac < m ? 'past' : ''} style={`left:${m * 100}%`} />
             ))}
           </div>
+          {s.boss.status ? (
+            <div class={`ad-boss-state rl-outline ad-boss-${s.boss.status.tone}`} role="status">
+              {s.boss.status.line}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {uiTuning.stationPrompt && s.station ? (

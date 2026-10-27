@@ -18,24 +18,31 @@ export interface BodyPoint {
  * The Glasswater Coil's trailing body as one tapered glass tube, redrawn each frame from its
  * points (head end first): clear glass with a shaded belly, ribs, an ink outline and a highlight,
  * and on top its lightning spine as a separate layer the rig tints and brightens before a pulse.
- * The rig tints the whole tube per state (dark under water, grey stranded, frosted iced).
+ * The rig tints the whole tube per state (dark under water, grey stranded, frosted iced) and
+ * fades the water veil over it while it is submerged.
  */
 export class CoilBody {
   readonly root = new Container();
   readonly tube = new Graphics();
   readonly spine = new Graphics();
+  /** Submerged: a film of water over the whole body (the rig sets its tint and alpha). */
+  readonly veil = new Graphics();
   private readonly left: number[] = [];
   private readonly right: number[] = [];
 
   constructor() {
-    this.root.addChild(this.tube, this.spine);
+    this.root.addChild(this.tube, this.spine, this.veil);
   }
+
+  /** Draw the veil this frame (the rig turns it off when it's invisible). */
+  veilOn = false;
 
   draw(pts: readonly BodyPoint[]): void {
     const t = this.tube;
     const sp = this.spine;
     t.clear();
     sp.clear();
+    this.veil.clear();
     const n = pts.length;
     if (n < 2) return;
     const L = this.left;
@@ -61,6 +68,9 @@ export class CoilBody {
         .stroke({ width: 0.12, color: C.glassDeep, alpha: 0.45 });
     }
     t.poly(outline).stroke({ width: O * 0.7, color: INK, join: 'round' });
+    // White, so the rig's tint gives it the water's color; widened to cover the outline.
+    if (this.veilOn)
+      this.veil.poly(outline).fill(0xffffff).stroke({ width: O, color: 0xffffff, join: 'round' });
     // A long highlight along the upper flank.
     const p0 = pts[0]!;
     t.moveTo(p0.x + p0.nx * p0.w * 0.55, p0.y + p0.ny * p0.w * 0.55);

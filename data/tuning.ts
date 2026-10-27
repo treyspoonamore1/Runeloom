@@ -4,6 +4,7 @@
  * here exactly.
  */
 import { fenBossTuning } from './tuningFenBosses';
+import { bossReadoutTuning } from './tuningBossReadout';
 
 export const defaultTuning = {
   player: {
@@ -415,6 +416,8 @@ export const defaultTuning = {
     /** Fireflies per 100 water or reed cells of the Fen (0 turns them off). */
     fireflyDensity: 1.2,
   },
+  /** Playtest 8: how the Fen bosses' states read (render feel; data/tuningBossReadout.ts). */
+  bossReadout: bossReadoutTuning,
   /** Rooms, exits and puzzle objects (M4, src/sim/world). */
   world: {
     /** Seconds of walking into a push or ice block before it moves one tile (feel). */

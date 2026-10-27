@@ -270,7 +270,8 @@ export class EnemyView {
     const popScale = pop < 1 ? 0.3 + 0.7 * pop + Math.sin(pop * Math.PI) * 0.25 : 1;
 
     this.root.position.set(x + this.recoilX + cx * off, y + this.recoilY + cy * off * 0.6);
-    this.lift.position.y = layoutOf(this.kind).foot - hop;
+    // Both axes every frame: rigs offset the lift relative to this base (the Coil's Lunge pull-back).
+    this.lift.position.set(0, layoutOf(this.kind).foot - hop);
     const sq = 1 + this.deform;
     const crouch = 1 - wind * C.windupSquash;
     this.lift.scale.set(popScale * (1 / sq) * (2 - crouch), popScale * sq * crouch);
@@ -290,7 +291,7 @@ export class EnemyView {
     }
     this.animateParts(cx, cy, wind, norm);
     this.placeShadow(x, y, hop);
-    if (this.beast && beastFx) this.updateBeast(e, sig, beastFx, adt, wind, cx, cy);
+    if (this.beast && beastFx) this.updateBeast(state, sig, beastFx, adt, wind, cx, cy);
   }
 
   /** Windup seconds of the current attack: the def's, else the length seen when it started. */
@@ -311,7 +312,8 @@ export class EnemyView {
     return r >= 2.5 ? 0.4 : r >= 1.5 ? 0.75 : 1;
   }
 
-  private updateBeast(e: Enemy, sig: EnemySignal | undefined, fx: BeastFx, dt: number, wind: number, cx: number, cy: number): void {
+  private updateBeast(state: GameState, sig: EnemySignal | undefined, fx: BeastFx, dt: number, wind: number, cx: number, cy: number): void {
+    const e = this.enemy!;
     const c = (this.ctx ??= {
       e,
       sig,
@@ -332,6 +334,7 @@ export class EnemyView {
       shadow: null,
       glow: null,
       fx,
+      tuning: state.tuning,
     });
     c.e = e;
     c.sig = sig;
@@ -352,6 +355,7 @@ export class EnemyView {
     c.shadow = this.shadow;
     c.glow = this.glow;
     c.fx = fx;
+    c.tuning = state.tuning;
     this.beast!.update(c);
   }
 
@@ -458,7 +462,7 @@ export class EnemyView {
     this.flash.alpha = this.flashT > 0 ? C.flashAlpha : 0;
     this.lift.rotation = this.topple * ease * 1.25;
     this.lift.scale.set(1 + 0.2 * ease, 1 - 0.4 * ease);
-    this.lift.position.y = layoutOf(this.kind).foot + ease * 0.3;
+    this.lift.position.set(0, layoutOf(this.kind).foot + ease * 0.3);
     // Lerp toward the corpse tint.
     this.root.tint = mixRgb(0xffffff, C.corpseTint, ease * 0.45);
     const fadeStart = C.dieTime + C.corpseHold;
