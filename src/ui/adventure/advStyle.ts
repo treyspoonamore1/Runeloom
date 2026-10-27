@@ -29,6 +29,11 @@ const advCss = `
 .ad-boss-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--f) * 100%); border-radius: inherit; background: linear-gradient(180deg, #ff9a6a, #d23a2c 50%, #7d1a22); transition: width 0.2s ease-out; }
 .ad-boss-bar b { position: absolute; top: calc(var(--u) * -0.7); bottom: calc(var(--u) * -0.7); width: calc(var(--u) * 0.6); margin-left: calc(var(--u) * -0.3); background: var(--gold-hi); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink); border-radius: 99px; }
 .ad-boss-bar b.past { background: #6d6596; }
+.ad-boss-state { margin-top: calc(var(--u) * 1.6); font-size: calc(var(--u) * 2.2); font-weight: 700; letter-spacing: 0.06em; color: #f4ead8; }
+.ad-boss-state.ad-boss-guard { color: #9ec6e6; }
+.ad-boss-state.ad-boss-open { color: #ffd36a; }
+.ad-boss-state.ad-boss-helpless { color: #c8f0ff; }
+.ad-boss.ad-guarded .ad-boss-bar i { filter: saturate(0.35) brightness(0.8); }
 
 .ad-toasts { position: absolute; right: calc(var(--u) * 2); top: 26%; z-index: 110; display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--u) * 0.9); }
 .ad-toast { --rar: var(--gold); display: flex; align-items: center; gap: calc(var(--u) * 1); min-width: calc(var(--u) * 26); max-width: calc(var(--u) * 40); padding: calc(var(--u) * 0.6) calc(var(--u) * 1.6) calc(var(--u) * 0.6) calc(var(--u) * 0.6); border-radius: calc(var(--u) * 1.4);

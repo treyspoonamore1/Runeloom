@@ -19,6 +19,7 @@ import { riftSummary } from '../map/riftModel';
 import { readHearthSummary, stationNow } from '../hearth/adapter';
 import { stations, type StationId } from '../../../data/hearth';
 import { fenBossTuning as FB } from '../../../data/tuningFenBosses';
+import { bossStatus, type BossStateTone } from '../../app/bossStatus';
 
 /** Regions that are dungeons with small keys. */
 export const DUNGEONS: readonly string[] = ['kiln', 'foundry'];
@@ -51,6 +52,8 @@ export interface BossSnap {
   marks: number[];
   /** 1-based phase: marks passed + 1. */
   phase: number;
+  /** The Fen bosses' state line (app/bossStatus.ts), "Submerged · 90% less damage"; null for others. */
+  status: { id: string; line: string; tone: BossStateTone } | null;
 }
 
 export interface AdventureSnap {
@@ -110,7 +113,7 @@ function riftOf(session: Session): RiftSnap | null {
 let fixtureBoss: BossSnap | null = null;
 export function setFixtureBoss(kind: string | null, lifeFrac = 0.58): void {
   const info = kind ? BOSS_INFO[kind] : undefined;
-  fixtureBoss = info ? { ...info, lifeFrac, phase: phaseOf(info.marks, lifeFrac) } : null;
+  fixtureBoss = info ? { ...info, lifeFrac, phase: phaseOf(info.marks, lifeFrac), status: null } : null;
 }
 
 const phaseOf = (marks: readonly number[], f: number): number => 1 + marks.filter((m) => f < m).length;
@@ -155,7 +158,9 @@ function bossOf(session: Session): BossSnap | null {
     if (!bossKinds.includes(e.kind) || e.dead) continue;
     const info = BOSS_INFO[e.kind] ?? { name: e.kind, marks: [] };
     const f = quantize(e.maxLife > 0 ? e.life / e.maxLife : 0, 300);
-    return { name: info.name, marks: info.marks, lifeFrac: f, phase: phaseOf(info.marks, f) };
+    const st = bossStatus(session.state, e);
+    const status = st ? { id: st.id, line: st.line, tone: st.tone } : null;
+    return { name: info.name, marks: info.marks, lifeFrac: f, phase: phaseOf(info.marks, f), status };
   }
   return null;
 }

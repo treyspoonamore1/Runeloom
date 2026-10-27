@@ -117,3 +117,24 @@ export const introCards: {
     'fen/g1_storm_landing': { title: 'Glasswater Fen', sub: 'Area level 18 to 24' },
   },
 };
+
+/**
+ * The Fen bosses' state line under the boss bar and the pop label over the boss (playtest 8:
+ * "I could still hit it [under water]", "I couldn't figure out what to do with the bells"):
+ * each state's name, what it does ({pct} is filled from the live damage multiplier), and the pop
+ * shown when the boss enters it (null: no pop). src/app/bossStatus.ts picks the state.
+ */
+export const bossStateCopy: Readonly<Record<string, { name: string; does: string; pop: string | null }>> = {
+  // The Glasswater Coil (DESIGN §10.5).
+  submerged: { name: 'Submerged', does: '{pct}% less damage', pop: null },
+  surfaced: { name: 'Surfaced', does: 'full damage', pop: null },
+  exposed: { name: 'Exposed', does: "full damage, can't dive", pop: null },
+  stranded: { name: 'Stranded', does: '{pct}% more damage', pop: 'STRANDED' },
+  iced: { name: 'Iced', does: "can't move or attack", pop: 'ICED' },
+  overloaded: { name: 'Overloaded', does: 'stunned', pop: 'OVERLOADED' },
+  // The Old Bellwether (CONTENT §5).
+  shelled: { name: 'Shelled', does: '{pct}% less damage', pop: null },
+  // No pop: the shared ring effect already shows "RUNG!" over anything rung (pt8hits).
+  rung: { name: 'Rung open', does: '{pct}% more damage', pop: null },
+  rolling: { name: 'Rolling', does: "can't be rung", pop: null },
+};
