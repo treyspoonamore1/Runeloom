@@ -186,7 +186,8 @@ export class CoilRig extends BeastRig {
     this.body.alpha = alpha;
     this.body.tint = this.tint(0xffffff);
     this.flash.alpha *= alpha;
-    // Pulled back through the lunge's windup, raised to call the pylons.
+    // Pulled back through the lunge's windup, raised to call the pylons: offsets from the lift's
+    // base, which EnemyView sets on both axes every frame (tests/render/coilHead.test.ts).
     const w = c.phase === 'windup' ? smoothstep(0, 1, c.wind) : 0;
     if (c.attack === 'coilLunge') this.lift.position.x -= c.cx * 0.6 * w;
     if (c.attack === 'callPylons' || c.attack === 'coilDive') this.lift.position.y -= (c.attack === 'callPylons' ? 0.8 : -0.4) * w;
