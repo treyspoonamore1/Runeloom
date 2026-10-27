@@ -168,7 +168,7 @@ describe('Cinder Heart: Harvest > Nova[Fire] as an extra weave', () => {
     const s = arena();
     setWeaves(s, ['Cast > Bolt[Fire]', null, null, null]);
     fuse(s, ['cinder_heart', 1]);
-    expect(s.weaves.slots.map((x) => x.notation)).toEqual(['Cast > Bolt[Fire]', null, null, null, null]);
+    expect(s.weaves.slots.map((x) => x.notation)).toEqual(['Cast > Bolt[Fire]', null, null, null, null, null, null, null, null]);
     expect(s.heroFx.bonus.map((b) => b.notation)).toEqual(['Harvest > Nova[Fire]']);
     const e = addEnemy(s, 'tinderling', 100, 60);
     hitWith(s, e, 1000, 'physical');

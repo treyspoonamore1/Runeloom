@@ -5,8 +5,12 @@
  * fires while the player is dead or frozen (queued events are dropped).
  *
  * Passives and Fuse parts (hero/effects.ts): extra weaves (Cinder Heart) are offered Pulse and
- * events after slots 0–3, firing as slot −1; Living Loom makes automatic triggers free and
+ * events after the slots, firing as slot −1; Living Loom makes automatic triggers free and
  * gives them a shared cooldown.
+ *
+ * The second weave bar (runtime/bars.ts, slots.ts): only the acting slots (the live bar's four
+ * and R, or only R during the swap lockout) do anything here, timers included. The other bar's
+ * Pulse periods and ICDs stay frozen until it is live again.
  */
 import { isDodging } from '../../actors/player';
 import { DT } from '../../core/constants';
@@ -18,7 +22,9 @@ import type { GameState } from '../../state';
 import type { SpellProgram } from '../program';
 import { cancelCast, endCast } from './castState';
 import { nearestEnemy } from './geom';
-import { LOADOUT_SLOTS, SLOT_BUTTONS } from './loadout';
+import { SLOT_BUTTONS } from './channel';
+import { stepBarSwap } from './bars';
+import { actingSlots } from './slots';
 import { aimReach, TIME_EPSILON } from './procs';
 import { openCast, spawnSpell } from './spawn';
 import type { TriggerQueueEntry } from './types';
@@ -89,12 +95,15 @@ export function fireProgram(
 }
 
 /**
- * Order: ICDs count down → Cast flow (M1 casting) → Pulse → queued events in arrival order,
- * each offered to slots 0–3.
+ * Order: bar swap (X) → ICDs of the acting slots count down → Cast flow (M1 casting) → Channel →
+ * Pulse → queued events in arrival order, each offered to the acting slots in button order.
  */
 export function stepWeaves(state: GameState, input: InputFrame): void {
   const p = state.player;
-  for (const s of state.weaves.slots) {
+  const blocked = p.dead || isFrozen(p);
+  stepBarSwap(state, input, blocked);
+  for (const i of actingSlots(state.weaves)) {
+    const s = state.weaves.slots[i]!;
     // An ICD of d seconds set on tick T is ready again on tick T + 60d.
     if (s.cooldownLeft > 0) {
       s.cooldownLeft -= DT;
@@ -102,7 +111,6 @@ export function stepWeaves(state: GameState, input: InputFrame): void {
     }
   }
   tickHeroTriggers(state);
-  const blocked = p.dead || isFrozen(p);
   if (!p.dead) {
     if (blocked) cancelCast(state);
     else stepCast(state, input);
@@ -126,7 +134,7 @@ function stepCast(state: GameState, input: InputFrame): void {
     return;
   }
   if (isDodging(p)) return;
-  for (let slot = 0; slot < LOADOUT_SLOTS; slot++) {
+  for (const slot of actingSlots(state.weaves)) {
     const button = SLOT_BUTTONS[slot]!;
     const prog = state.weaves.slots[slot]!.program;
     if (prog === null || prog.trigger.event !== 'press' || !isHeld(input.buttons, button)) continue;
@@ -189,24 +197,25 @@ function advanceCast(state: GameState, input: InputFrame): void {
  */
 function stepChannel(state: GameState, input: InputFrame, blocked: boolean): void {
   const p = state.player;
-  state.weaves.slots.forEach((s, slot) => {
+  for (const slot of actingSlots(state.weaves)) {
+    const s = state.weaves.slots[slot]!;
     const prog = s.program;
-    if (prog === null || prog.trigger.event !== 'held') return;
+    if (prog === null || prog.trigger.event !== 'held') continue;
     if (!isHeld(input.buttons, SLOT_BUTTONS[slot]!)) {
       s.periodLeft = 0;
-      return;
+      continue;
     }
     const due = s.periodLeft <= TIME_EPSILON;
     if (due) s.periodLeft += prog.trigger.period ?? 0;
     s.periodLeft -= DT;
-    if (!due || blocked || isDodging(p)) return;
+    if (!due || blocked || isDodging(p)) continue;
     if (!payMana(state, prog.mana)) {
       if (wasPressed(state.prevButtons, input.buttons, SLOT_BUTTONS[slot]!))
         emit(state, { type: 'castFailed', slot, spell: prog.root.form, reason: 'mana' });
-      return;
+      continue;
     }
     fireProgram(state, slot, prog, p.x, p.y, p.aimDirX, p.aimDirY, input.aimX, input.aimY, -1, true);
-  });
+  }
 }
 
 /**
@@ -214,7 +223,8 @@ function stepChannel(state: GameState, input: InputFrame, blocked: boolean): voi
  * restarts) if there is none or mana is short. A period of d seconds fires every 60d ticks.
  */
 function stepPulse(state: GameState, blocked: boolean): void {
-  state.weaves.slots.forEach((s, slot) => pulseSlot(state, s, slot, blocked));
+  const w = state.weaves;
+  for (const slot of actingSlots(w)) pulseSlot(state, w.slots[slot]!, slot, blocked);
   for (const s of state.heroFx.bonus) pulseSlot(state, s, -1, blocked);
 }
 
@@ -256,8 +266,9 @@ function stepQueue(state: GameState, input: InputFrame, blocked: boolean): void 
   // Entries queued while these fire (crits from their hits) wait for the next tick.
   const list = q.splice(0, q.length);
   if (blocked) return;
+  const w = state.weaves;
   for (const entry of list) {
-    state.weaves.slots.forEach((s, slot) => offerEntry(state, input, s, slot, entry));
+    for (const slot of actingSlots(w)) offerEntry(state, input, w.slots[slot]!, slot, entry);
     for (const s of state.heroFx.bonus) offerEntry(state, input, s, -1, entry);
   }
 }
@@ -313,7 +324,8 @@ function fireFromEntry(
  * along the line to it.
  */
 function forceEvent(state: GameState, event: TriggerQueueEntry['event']): void {
-  if (!state.weaves.slots.some((s) => s.program?.trigger.event === event)) return;
+  const w = state.weaves;
+  if (!actingSlots(w).some((i) => w.slots[i]!.program?.trigger.event === event)) return;
   const p = state.player;
   const base = { event, targetId: -1, x: p.x, y: p.y, dirX: 0, dirY: 0, amount: 0 };
   if (event === 'dodge_start') state.triggerQueue.push({ ...base, dirX: p.aimDirX, dirY: p.aimDirY });

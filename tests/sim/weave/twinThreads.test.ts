@@ -1,6 +1,6 @@
 /**
- * Twin Threads (M7, CONTENT §11): a fifth weave slot on R. The loadout always has five slots;
- * the fifth is locked unless the hero owns the mutation.
+ * Twin Threads (M7, CONTENT §11): a weave slot on R, live on both weave bars. The loadout always
+ * has nine slots (bar 1, R, bar 2); R is locked unless the hero owns the mutation.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -41,14 +41,24 @@ function twin(state: GameState, owned = true): GameState {
 
 describe('Twin Threads: the fifth weave slot', () => {
   it('R is its own button bit, after the four slot buttons', () => {
-    expect(SLOT_BUTTONS).toEqual([Button.Cast1, Button.Cast2, Button.Cast3, Button.Cast4, R]);
+    const bar = [Button.Cast1, Button.Cast2, Button.Cast3, Button.Cast4];
+    expect(SLOT_BUTTONS).toEqual([...bar, R, ...bar]);
     expect(R & (Button.Dodge | Button.Interact)).toBe(0);
   });
 
   it('is locked without the mutation: weaves are refused, R does nothing', () => {
     const s = arena();
-    expect(openSlotCount(s)).toBe(4);
-    expect([0, 1, 2, 3, 4].map((i) => slotOpen(s, i))).toEqual([true, true, true, true, false]);
+    expect(openSlotCount(s)).toBe(8);
+    expect([0, 1, 2, 3, 4, 5, 8, 9].map((i) => slotOpen(s, i))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+    ]);
     const r = setSlotWeave(s, 4, 'Cast > Bolt[Fire]');
     expect(r.applied).toBe(false);
     expect(r.preview.compiled?.ok === false && r.preview.compiled.error.message).toBe(LOCKED_SLOT_MESSAGE);
@@ -70,7 +80,7 @@ describe('Twin Threads: the fifth weave slot', () => {
 
   it('with the mutation R casts the fifth slot, and the other four are unchanged', () => {
     const s = twin(weaveArena(['Cast > Strike[]', null, null, null, 'Cast > Bolt[Fire]']));
-    expect(openSlotCount(s)).toBe(5);
+    expect(openSlotCount(s)).toBe(9);
     expect(s.weaves.slots[4]!.program?.notation).toBe('Cast > Bolt[Fire]');
     const ev = ticks(s, 30, R);
     expect(ofType(ev, 'castStart').length).toBeGreaterThan(0);
@@ -151,18 +161,18 @@ describe('buying Twin Threads at the Hearth', () => {
     expect(setSlotWeave(s, 4, 'Cast > Bolt[Fire]').applied).toBe(false);
     s.hero.hearth.ash += 10;
     ok(s, { kind: 'mutationBuy', mutation: 'twin_threads' });
-    expect(openSlotCount(s)).toBe(5);
+    expect(openSlotCount(s)).toBe(9);
     expect(setSlotWeave(s, 4, 'Cast > Bolt[Fire]').applied).toBe(true);
     expect(s.weaves.slots[4]!.program).not.toBeNull();
   });
 });
 
 describe('Twin Threads in saves and replays', () => {
-  it('a save keeps five slots and the fifth weave round-trips', () => {
+  it('a save keeps every slot and the R weave round-trips', () => {
     const s = twinAdventure();
     const json = JSON.stringify(makeSave(s));
     const save = parseSave(json);
-    expect(save.weaves.notations).toHaveLength(5);
+    expect(save.weaves.notations).toHaveLength(9);
     expect(save.weaves.notations[4]).toBe('Cast > Bolt[Fire]');
     const loaded = load(save);
     expect(hashProgress(loaded)).toBe(hashProgress(s));
@@ -175,7 +185,7 @@ describe('Twin Threads in saves and replays', () => {
     raw.weaves.notations = raw.weaves.notations.slice(0, 4);
     raw.weaves.runes = raw.weaves.runes.slice(0, 4);
     const loaded = load(parseSave(raw));
-    expect(loaded.weaves.slots).toHaveLength(5);
+    expect(loaded.weaves.slots).toHaveLength(9);
     expect(loaded.weaves.slots[4]).toMatchObject({ notation: null, runes: null, program: null });
     expect(loaded.weaves.slots[0]!.program?.notation).toBe('Cast > Bolt[Fire]');
   });
@@ -220,9 +230,9 @@ describe('Twin Threads in saves and replays', () => {
 });
 
 describe('applyLoadoutSpec', () => {
-  it('fills missing fifth entries with an empty slot', () => {
+  it('fills missing entries (R and bar 2) with empty slots', () => {
     const s = arena();
     applyLoadoutSpec(s, { spindleId: 'twig', notations: ['Cast > Bolt[Fire]'] });
-    expect(s.weaves.slots.map((x) => x.notation)).toEqual(['Cast > Bolt[Fire]', null, null, null, null]);
+    expect(s.weaves.slots.map((x) => x.notation)).toEqual(['Cast > Bolt[Fire]', ...Array<null>(8).fill(null)]);
   });
 });

@@ -8,7 +8,7 @@ import type { Renderer } from '../render/renderer';
 import type { AudioSystem } from '../audio/audio';
 import type { AdventureFlow } from '../app/adventure';
 import { readSnap, snapEqual } from './hudModel';
-import { slotSnaps } from './hudSlots';
+import { barSnap, slotSnaps } from './hudSlots';
 import { getLoadout, slotTimers, type LoadoutView } from '../app/loadout';
 import { createLoom } from './loom/loom';
 import { differsFromSaved, loadoutRev, restoreLoadout } from './loom/loadoutStore';
@@ -383,7 +383,8 @@ export function createHud(ctx: HudContext): Hud {
     },
     frame(state) {
       const edits = ctx.session.loadoutEdits.length;
-      if (viewRev !== loadoutRev.peek() || edits !== viewEdits || ++viewAge >= 30) {
+      const swapped = view.activeBar !== state.weaves.activeBar;
+      if (swapped || viewRev !== loadoutRev.peek() || edits !== viewEdits || ++viewAge >= 30) {
         view = getLoadout(ctx.session);
         viewRev = loadoutRev.peek();
         viewEdits = edits;
@@ -398,6 +399,7 @@ export function createHud(ctx: HudContext): Hud {
       const next = readSnap(
         state,
         slotSnaps(view, state.player, (i) => slotTimers(state, i)),
+        barSnap(view),
       );
       if (!snapEqual(s.snap.peek(), next)) s.snap.value = next;
       adv.frame();

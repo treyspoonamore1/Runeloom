@@ -28,7 +28,20 @@ describe('parseSlot', () => {
   it('reads 1-5 and LMB/RMB/Q/E/R in any case (5 and R: Twin Threads)', () => {
     expect(['1', '2', '3', '4', '5'].map(parseSlot)).toEqual([0, 1, 2, 3, 4]);
     expect(['lmb', 'RMB', 'q', 'E', 'r'].map(parseSlot)).toEqual([0, 1, 2, 3, 4]);
-    expect(['0', '6', 'x', '', undefined].map(parseSlot)).toEqual([null, null, null, null, null]);
+    expect(['0', '10', 'x', '', undefined, 'r2', 'lmb3'].map(parseSlot)).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  it("reads bar 2's slots as 6-9, LMB2/RMB2/Q2/E2 or 2LMB", () => {
+    expect(['6', '7', '8', '9'].map(parseSlot)).toEqual([5, 6, 7, 8]);
+    expect(['lmb2', 'RMB2', 'q2', 'e-2', '2lmb', 'bar2:Q'].map(parseSlot)).toEqual([5, 6, 7, 8, 5, 7]);
   });
 });
 

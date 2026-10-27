@@ -1,41 +1,50 @@
 /**
  * The player's weave slots and spindle, in sim state (`GameState.weaves`). Only notation
- * strings, the spindle and trigger timers are real state (hashed); compiled programs are derived
- * from notation + spindle and rebuilt whenever either changes.
+ * strings, the spindle, trigger timers and the bar state are real state (hashed); compiled
+ * programs are derived from notation + spindle and rebuilt whenever either changes.
  *
  * Edits happen between ticks: the app records them (src/app/loadout.ts) and replays apply them
  * at the same tick (applyLoadoutEdit). An invalid weave never replaces a working one; a spindle
  * switch keeps weaves that no longer fit, which then don't fire until they fit (DECISIONS).
  *
- * Twin Threads (M7, CONTENT §11): the loadout always has five slots, but the fifth (R) is locked
- * unless the hero owns the mutation. A locked slot takes no weave (setSlotWeave refuses one with
- * LOCKED_SLOT_MESSAGE), and a weave still in it (only a debug edit can leave one) doesn't fire.
+ * Slots (runtime/slots.ts): bar 1 (0–3), R (4), bar 2 (5–8). Twin Threads (M7, CONTENT §11): R
+ * is locked unless the hero owns the mutation. A locked slot takes no weave (setSlotWeave refuses
+ * one with LOCKED_SLOT_MESSAGE), and a weave still in it (only a debug edit can leave one) doesn't
+ * fire. The second bar (playtest 8): only the live bar's slots and R act (runtime/bars.ts).
  */
-import { shipsThrough, weaveLimits, type TriggerEvent } from '../../../../data/runes';
+import type { TriggerEvent } from '../../../../data/runes';
 import { spells, type SpellId } from '../../../../data/spells';
-import { isSpindleId, spindles, type SpindleId } from '../../../../data/spindles';
+import { isSpindleId, type SpindleId } from '../../../../data/spindles';
 import type { Tuning } from '../../../../data/tuning';
 import type { GameState } from '../../state';
 import { compileWeave, type CompileResult } from '../compile';
-import { spindleContext, type CompileContext } from '../context';
-import { parseWeave, type ParseError } from '../notation';
+import { parseWeave } from '../notation';
 import type { SpellProgram } from '../program';
 import type { WeaveTree } from '../tree';
 import { NO_RULES, sameRules, type CompileRules } from '../rules';
 import { cancelCast } from './castState';
 import { assignRunes, runeLevelMap, runeQualityMap, usesRuneItems } from '../../hero/runes';
-import { LOADOUT_SLOTS, LOCKED_SLOT_MESSAGE, slotOpen } from './slots';
+import { previewFor, stateContext, type WeavePreview } from './loadoutContext';
+import { actingSlots, LOADOUT_SLOTS, LOCKED_SLOT_MESSAGE, slotOpen } from './slots';
 
-export { BASE_SLOTS, LOADOUT_SLOTS, LOCKED_SLOT_MESSAGE, openSlotCount, slotOpen } from './slots';
+export {
+  BAR_SLOTS,
+  BASE_SLOTS,
+  barOf,
+  LOADOUT_SLOTS,
+  LOCKED_SLOT_MESSAGE,
+  actingSlots,
+  liveSlots,
+  openSlotCount,
+  slotOpen,
+  TWIN_SLOT,
+} from './slots';
 
 /** Button for each slot, in slot order. */
 export { SLOT_BUTTONS } from './channel';
 
-/**
- * Runes the sim accepts (CONTENT §1 "Ships"): M2, M5, M7 and M8 (no M3, M4 or M6 runes exist; the
- * only M7 rune is the Shatter trigger, and M8 phase 1 adds only Tide and Gale).
- */
-export const RUNTIME_SHIPS = shipsThrough('M8');
+export { RUNTIME_SHIPS } from './ships';
+export { compileContextFor, previewFor, stateContext, type WeavePreview } from './loadoutContext';
 
 /** The starting loadout: Fire Bolt on LMB, Strike on RMB, Twig Spindle (CONTENT §9.1). */
 export const DEFAULT_LOADOUT: LoadoutSpec = {
@@ -70,6 +79,10 @@ export interface WeaveLoadout {
   /** Capacity override (dev test_spindle), or null for the spindle's own. */
   capacity: number | null;
   slots: WeaveSlot[];
+  /** The live weave bar: 0 (slots 0–3) or 1 (slots 5–8); R is live on both. Hashed and saved. */
+  activeBar: number;
+  /** Seconds left of the swap lockout: the new bar's slots don't act until it is 0. Hashed. */
+  swapLeft: number;
   /**
    * Passive and Fuse rules every slot is compiled with (weave/rules.ts). Derived from HeroMods
    * by refreshHero (setCompileRules); not hashed. NO_RULES without passives or parts.
@@ -85,6 +98,8 @@ export interface LoadoutSpec {
   notations: readonly (string | null)[];
   /** Adventure mode: socketed rune uids per slot (WeaveSlot.runes). Absent means none anywhere. */
   runes?: readonly (readonly number[] | null)[];
+  /** The live weave bar (WeaveLoadout.activeBar); absent means bar 1 (0). */
+  activeBar?: number;
 }
 
 /**
@@ -99,67 +114,8 @@ export interface LoadoutEdit {
   value: string | null;
 }
 
-export interface WeavePreview {
-  parseError?: ParseError;
-  compiled?: CompileResult;
-}
-
 /** M1-era slot contents for the legacy HUD: an M1 spell id per slot, or null. Derived. */
 export type Loadout = (SpellId | null)[];
-
-/** The compile context for a loadout's spindle (and Capacity override). */
-export function compileContextFor(
-  spindleId: SpindleId,
-  capacity: number | null,
-  tuning: Tuning,
-  rules: Readonly<CompileRules> = NO_RULES,
-): CompileContext {
-  const ctx = spindleContext(spindles[spindleId], { allowShips: RUNTIME_SHIPS });
-  if (capacity !== null) ctx.capacity = capacity;
-  ctx.critMultiplier = tuning.combat.critMultiplier;
-  if (rules !== NO_RULES) ctx.rules = rules;
-  return ctx;
-}
-
-/** Parses and compiles `notation` for a spindle without changing anything. */
-export function previewFor(
-  spindleId: SpindleId,
-  capacity: number | null,
-  tuning: Tuning,
-  notation: string,
-  rules: Readonly<CompileRules> = NO_RULES,
-): WeavePreview {
-  const parsed = parseWeave(notation);
-  if (!parsed.ok) return { parseError: parsed.error };
-  return { compiled: compileWeave(parsed.tree, compileContextFor(spindleId, capacity, tuning, rules)) };
-}
-
-/**
- * The compile context for the state's weaves: the spindle (and Capacity override) plus the
- * character (HeroMods Core group): added Capacity, increased cast speed, reduced mana cost, flat
- * Strike damage and added rune levels. With a spindle item equipped (adventure) its implicit
- * reaches the weave through HeroMods; without one (sandbox, arena, lab) from the spindle id, as
- * before M4. Neutral HeroMods give exactly compileContextFor's context.
- */
-export function stateContext(state: GameState): CompileContext {
-  const w = state.weaves;
-  const mods = state.heroMods;
-  const ctx = compileContextFor(w.spindleId, w.capacity, state.tuning, w.rules);
-  if (state.hero.equipped.spindle !== null) {
-    ctx.runeLevel = 1 + mods.runeLevelAdd.all;
-    ctx.strikeFlat = mods.strikeFlatAdd;
-  } else {
-    ctx.runeLevel = (ctx.runeLevel ?? 1) + mods.runeLevelAdd.all;
-    ctx.strikeFlat = (ctx.strikeFlat ?? 0) + mods.strikeFlatAdd;
-  }
-  ctx.capacity += mods.capacityAdd;
-  ctx.castSpeed = (ctx.castSpeed ?? 1) * (1 + mods.castSpeedInc);
-  ctx.manaCostMult = (1 - mods.manaCostReduced) * mods.manaMore;
-  // Uniques (hero/uniques.ts): neutral mods give the defaults, so these stay unset as before M5.
-  if (mods.maxDepth !== weaveLimits.maxDepth) ctx.maxDepth = mods.maxDepth;
-  if (mods.spawnCapPerCast !== weaveLimits.spawnCapPerCast) ctx.spawnCap = mods.spawnCapPerCast;
-  return ctx;
-}
 
 /** A weave planned for a slot: what it compiles to and, in adventure mode, the rune items it would socket. */
 interface WeavePlan {
@@ -283,7 +239,14 @@ export function createWeaveLoadout(
   tuning: Tuning,
   rules: Readonly<CompileRules> = NO_RULES,
 ): WeaveLoadout {
-  const w: WeaveLoadout = { spindleId: spec.spindleId, capacity: spec.capacity ?? null, slots: [], rules };
+  const w: WeaveLoadout = {
+    spindleId: spec.spindleId,
+    capacity: spec.capacity ?? null,
+    slots: [],
+    activeBar: spec.activeBar === 1 ? 1 : 0,
+    swapLeft: 0,
+    rules,
+  };
   for (let i = 0; i < LOADOUT_SLOTS; i++) {
     const slot = emptySlot();
     slot.notation = spec.notations[i] ?? null;
@@ -305,12 +268,14 @@ export function loadoutSpecOf(w: WeaveLoadout): LoadoutSpec {
     notations: w.slots.map((s) => s.notation),
   };
   if (w.slots.some((s) => s.runes !== null)) spec.runes = w.slots.map((s) => (s.runes ? [...s.runes] : null));
+  if (w.activeBar !== 0) spec.activeBar = w.activeBar;
   return spec;
 }
 
 /**
- * Replaces the whole loadout (new game, replays, loading a save). Cancels any cast. Socketed
- * rune uids in the spec are taken as given (src/sim/save.ts validates saves).
+ * Replaces the whole loadout (new game, replays, loading a save), with the spec's live bar and no
+ * swap lockout. Cancels any cast. Socketed rune uids in the spec are taken as given
+ * (src/sim/save.ts validates saves).
  */
 export function applyLoadoutSpec(state: GameState, spec: LoadoutSpec): void {
   cancelCast(state);
@@ -392,9 +357,10 @@ export function applyLoadoutEdit(state: GameState, edit: LoadoutEdit): boolean {
   return setSlotWeave(state, edit.slot ?? 0, edit.value).applied;
 }
 
-/** True if some slot's working weave fires on `event`. */
+/** True if some acting slot's working weave fires on `event` (the live bar and R; runtime/slots.ts). */
 export function listensFor(state: GameState, event: TriggerEvent): boolean {
-  for (const s of state.weaves.slots) if (s.program?.trigger.event === event) return true;
+  const w = state.weaves;
+  for (const i of actingSlots(w)) if (w.slots[i]!.program?.trigger.event === event) return true;
   // Extra weaves from Fuse parts (Cinder Heart; hero/effects.ts).
   for (const s of state.heroFx.bonus) if (s.program?.trigger.event === event) return true;
   return false;

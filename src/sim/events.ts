@@ -38,6 +38,8 @@ export type SimEvent =
   | { type: 'castCancel'; slot: number; spell: string }
   /** A cast button was pressed but the cast couldn't start. Sent on the press only, not while held. */
   | { type: 'castFailed'; slot: number; spell: string; reason: 'mana' }
+  /** The live weave bar swapped (X); `bar` is the new one, 0 or 1 (weave/runtime/bars.ts). */
+  | { type: 'barSwap'; bar: number }
   /**
    * A weave slot fired (any trigger): its root spell spawns from (x, y) along unit (dirX, dirY).
    * castId groups every instance of this fire's tree. mana: what it cost (paid even with

@@ -33,6 +33,7 @@ export function hashWeaveState(h: Hasher, state: GameState): void {
   const w = state.weaves;
   str(h, w.spindleId);
   h.num(w.capacity ?? -1).u32(w.slots.length);
+  h.u32(w.activeBar).num(w.swapLeft);
   for (const s of w.slots) {
     str(h, s.notation);
     h.num(s.cooldownLeft).num(s.periodLeft);

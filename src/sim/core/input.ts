@@ -8,6 +8,8 @@ export const Button = {
   Interact: 1 << 5, // F
   /** The fifth weave slot, open only with the Twin Threads mutation (weave/runtime/loadout.ts). */
   Cast5: 1 << 6, // R
+  /** Swaps the live weave bar (bar 1 ↔ bar 2) on the press edge (weave/runtime/bars.ts). */
+  SwapBar: 1 << 7, // X
 } as const;
 
 export type ButtonName = keyof typeof Button;

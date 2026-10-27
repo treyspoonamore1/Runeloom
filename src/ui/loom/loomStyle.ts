@@ -82,8 +82,13 @@ h4.k-trigger, h4.k-form, h4.k-element, h4.k-modifier, h4.k-branch { color: var(-
 
 /* ---- Center: tabs, tree, notation ---- */
 .lm-center { gap: calc(var(--u) * 1.1); }
-.lm-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: calc(var(--u) * 0.9); }
-.lm-tabs.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.lm-tabs { display: grid; grid-template-columns: auto repeat(4, minmax(0, 1fr)); gap: calc(var(--u) * 0.7) calc(var(--u) * 0.9); }
+.lm-tabs.twin { grid-template-columns: auto repeat(5, minmax(0, 1fr)); }
+.lm-barname { align-self: center; display: flex; flex-direction: column; align-items: center; font-size: calc(var(--u) * 1.45); font-weight: 700; letter-spacing: 0.08em; color: var(--sand); white-space: nowrap; padding-right: calc(var(--u) * 0.3); }
+.lm-barname small { font-size: calc(var(--u) * 1.2); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+.lm-barname.live { color: var(--cream); }
+.lm-tab.idle:not(.on) { background: #130f28; }
+.lm-tab.both { justify-content: center; }
 .lm-tab { font: inherit; position: relative; cursor: pointer; border: 0; text-align: left; display: flex; flex-direction: column; gap: calc(var(--u) * 0.2); padding: calc(var(--u) * 0.7) calc(var(--u) * 1.1); border-radius: calc(var(--u) * 1); color: var(--sand);
   background: #17122f; box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink), 0 0 0 calc(var(--u) * 0.45) rgba(168, 120, 42, 0.5); }
 .lm-tab.on { color: var(--cream); background: linear-gradient(180deg, #4a3f95, #2d2663); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink), 0 0 0 calc(var(--u) * 0.55) var(--gold); }

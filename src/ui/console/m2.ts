@@ -1,5 +1,5 @@
 /** M2 console commands: weave, weaves, spindle (CLAUDE.md debug features). */
-import { getLoadout, SANDBOX_SPINDLES, SLOT_LABELS } from '../../app/loadout';
+import { getLoadout, SANDBOX_SPINDLES, SLOT_LABELS, slotViewOf } from '../../app/loadout';
 import type { Session } from '../../app/session';
 import { spindles, type SpindleId } from '../../../data/spindles';
 import { compiledLine, parseSlot } from '../loom/describe';
@@ -12,7 +12,7 @@ export interface M2Env {
 }
 
 const WEAVE_USAGE =
-  'weave <slot> <notation>  (slot 1-4 or LMB/RMB/Q/E, 5 or R with Twin Threads; "weave <slot> clear" empties it)';
+  'weave <slot> <notation>  (slot 1-4 or LMB/RMB/Q/E, 5 or R with Twin Threads, 6-9 or LMB2/RMB2/Q2/E2 for bar 2; "weave <slot> clear" empties it)';
 
 /** Resolves a sandbox spindle from its id, a unique prefix, or its name ("ash", "Heartwood"). */
 export function resolveSpindle(word: string): SpindleId {
@@ -34,6 +34,7 @@ function slotLines(session: Session): string[] {
       (s) =>
         `${String(s.slot + 1)} ${s.label.padEnd(3)}  ${s.notation ?? '(empty)'}  [${compiledLine(s.compiled)}]`,
     ),
+    `Live bar: ${l.activeBar + 1} of 2 (X swaps)`,
   ];
 }
 
@@ -42,16 +43,16 @@ export function registerM2Commands<C extends M2Env>(reg: CommandRegistry<C>): vo
     name: 'weave',
     usage: 'weave <slot> <notation>',
     summary:
-      'Put a weave in slot 1-4 (or LMB/RMB/Q/E; 5 or R with Twin Threads), e.g. weave 3 Cast > Lob[Fire]. "clear" empties it.',
+      'Put a weave in slot 1-4 (or LMB/RMB/Q/E; 5 or R with Twin Threads; 6-9 or LMB2/RMB2/Q2/E2 on bar 2), e.g. weave 3 Cast > Lob[Fire]. "clear" empties it.',
     run: (args, c) => {
       const slot = parseSlot(args[0]);
       if (slot === null) throw new CommandError(`Usage: ${WEAVE_USAGE}`);
       const label = SLOT_LABELS[slot]!;
       const text = args.slice(1).join(' ').trim();
-      const open = getLoadout(c.session).slots.length;
-      if (slot >= open) throw new CommandError(`${label} is locked: ${LOCKED_SLOT_MESSAGE}.`);
+      const view = slotViewOf(getLoadout(c.session), slot);
+      if (!view) throw new CommandError(`${label} is locked: ${LOCKED_SLOT_MESSAGE}.`);
       if (text === '') {
-        const s = getLoadout(c.session).slots[slot]!;
+        const s = view;
         return `${label}: ${s.notation ?? '(empty)'}  [${compiledLine(s.compiled)}]`;
       }
       const clear = /^(clear|none|empty|-)$/i.test(text);
@@ -75,7 +76,7 @@ export function registerM2Commands<C extends M2Env>(reg: CommandRegistry<C>): vo
 
   reg.register({
     name: 'weaves',
-    summary: 'List the weave slots (four, five with Twin Threads) and the spindle.',
+    summary: 'List the weave slots (both bars, and R with Twin Threads), the live bar and the spindle.',
     run: (_a, c) => slotLines(c.session),
   });
 

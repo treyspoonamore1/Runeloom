@@ -1,5 +1,5 @@
 /** The notation line under the tree (editable, with parse errors marked) and the slot's status. */
-import { SLOT_LABELS } from '../../app/loadout';
+import { SLOT_LABELS, slotViewOf } from '../../app/loadout';
 import { slotWarning } from './editor';
 import type { LoomState } from './loomState';
 import { draftNotation } from './model';
@@ -62,7 +62,7 @@ export function NotationLine({ st }: { st: LoomState }) {
 export function SlotStatusLine({ st }: { st: LoomState }) {
   const s = st.status;
   const label = SLOT_LABELS[st.slot.value]!;
-  const live = st.loadout.value.slots[st.slot.value]?.notation ?? null;
+  const live = slotViewOf(st.loadout.value, st.slot.value)?.notation ?? null;
   const warn = st.parseError.value ? 'Not applied: the notation has an error (marked above)' : slotWarning(s);
   return (
     <div class={`lm-status${warn ? ' warn' : s.kind === 'ok' ? ' ok' : ''}`} aria-live="polite">
