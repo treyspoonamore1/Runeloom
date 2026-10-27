@@ -181,6 +181,14 @@ export class ProjectileView {
         e.drag = 3;
         e.spin = (Math.random() - 0.5) * 8;
       }
+    } else if (L.shed === 'wisp') {
+      // Gale: a pale streak left behind along the flight, no rise.
+      const e = this.embers.spawn(this.atlas.get('spark'), sx, sy, -p.vx * 0.15, -p.vy * 0.15, 0.16 + Math.random() * 0.1, c, 0.6, 0.2);
+      if (e) {
+        e.align = true;
+        e.stretch = 0.04;
+        e.drag = 4;
+      }
     } else {
       const e = this.embers.spawn(this.atlas.get('dot'), sx, sy, p.vx * 0.08 + (Math.random() - 0.5) * 4, p.vy * 0.08 + (Math.random() - 0.5) * 4 - 2, 0.2 + Math.random() * 0.15, c, 0.22, 0.05);
       if (e) e.drag = 4;

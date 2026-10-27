@@ -1,10 +1,12 @@
 /**
  * Playtest 8 ("the gale visual looked weird on a lob"): radial Gale gusts are drawn as bursts
- * streaking out of their center (render/terrain/galeBursts.ts).
+ * streaking out of their center (render/terrain/galeBursts.ts), and Gale spells have their own
+ * look instead of the plain physical pellet (render/elementLook.ts).
  */
 import { describe, expect, it } from 'vitest';
 import { Button, DT, type GameState } from '../../src/sim';
 import { GaleBursts } from '../../src/render/terrain/galeBursts';
+import { spellLook, secondLook } from '../../src/render/elementLook';
 import { ofType, room, run, weaves } from '../sim/terrain/helpers';
 
 function castAndWatch(notation: string, ticks: number): { s: GameState; bursts: GaleBursts; landed: number[] } {
@@ -52,5 +54,16 @@ describe('Gale bursts (playtest 8)', () => {
     expect(fire.bursts.update(fire.s)).toHaveLength(0);
     const { s, bursts } = castAndWatch('Cast > Lob[Gale]', 40 + 60 * 3);
     expect(bursts.update(s)).toHaveLength(0);
+  });
+});
+
+describe('the Gale look (playtest 8)', () => {
+  it('Gale spells are a ball of wind, not the physical pellet', () => {
+    const g = spellLook(['gale']);
+    expect(g.boltCore).toBe('bolt_gale');
+    expect(g.shed).toBe('wisp');
+    expect(g.rim).toBe(0xe8f4f0);
+    expect(spellLook(['tide']).boltCore).toBe('bolt_plain');
+    expect(secondLook(['fire', 'gale'])).toBe(g);
   });
 });
