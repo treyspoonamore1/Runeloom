@@ -39,7 +39,10 @@ export type IconKind =
   | 'level'
   | 'ember'
   | 'ash'
-  | 'weaver';
+  | 'weaver'
+  /** Hints (playtest 8): a brass shell with a small shield; deep water over a dark shape. */
+  | 'shell'
+  | 'deep';
 
 const SHAPES: Record<IconKind, () => JSX.Element> = {
   spindle: () => (
@@ -171,6 +174,22 @@ const SHAPES: Record<IconKind, () => JSX.Element> = {
       <circle cx="16" cy="9" r="5" fill="#f1dbab" {...S} />
       <path d="M6 28c0-8 4-12 10-12s10 4 10 12z" fill="#5d7ad9" {...S} />
       <path d="M12 20l4 4 4-4" stroke="#f2c35b" stroke-width={2} fill="none" stroke-linecap="round" />
+    </>
+  ),
+  shell: () => (
+    <>
+      <path d="M4 22c0-9 5-15 12-15s12 6 12 15z" fill="#d9a441" {...S} />
+      <path d="M10 21c0-6 2.6-10 6-10s6 4 6 10" fill="none" stroke="#8a5a1e" stroke-width={1.6} />
+      <path d="M3 22h26" {...S} />
+      <path d="M22 18l5-1.6 5 1.6v4.4c0 3.4-2.4 5.6-5 6.6-2.6-1-5-3.2-5-6.6z" fill="#b8c2cc" {...S} stroke-width={1.6} />
+    </>
+  ),
+  deep: () => (
+    <>
+      <circle cx="16" cy="16" r="13" fill="#1f4a6e" {...S} />
+      <ellipse cx="16" cy="19" rx="8" ry="3.6" fill="#0d2238" />
+      <path d="M6 13c2.5-2 5-2 7.5 0s5 2 7.5 0 4-1.5 5 0" fill="none" stroke="#8fd3ff" stroke-width={1.8} stroke-linecap="round" />
+      <path d="M8 24c2-1.4 4-1.4 6 0s4 1.4 6 0" fill="none" stroke="#5fa9d6" stroke-width={1.6} stroke-linecap="round" />
     </>
   ),
   level: () => (

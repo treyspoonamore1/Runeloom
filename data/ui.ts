@@ -26,6 +26,8 @@ export const uiTuning = {
   treeZoomStep: 1.15,
   /** Pixels the tree pans per arrow-key press (Shift or WASD). */
   treePanStep: 60,
+  /** Seconds a one-time hint toast (Shelled, Submerged: data/ui.ts reducedHints) stays on screen. */
+  hintToastSeconds: 7,
   /** Region map: padding around the layout, in screen pixels. */
   mapPadding: 28,
   /**
@@ -115,5 +117,20 @@ export const introCards: {
   },
   regions: {
     'fen/g1_storm_landing': { title: 'Glasswater Fen', sub: 'Area level 18 to 24' },
+  },
+};
+
+/**
+ * One-time hints (playtest 8) when the player keeps landing hits a state cuts a lot ('hit'
+ * `reduced`; thresholds in data/tuning.ts hints). Shown as a toast, once per page session.
+ */
+export const reducedHints: Readonly<Record<'shelled' | 'submerged', { title: string; sub: string }>> = {
+  shelled: {
+    title: 'The shell shrugs off blows',
+    sub: 'Charge the water or metal it stands in to ring it open.',
+  },
+  submerged: {
+    title: 'Deep water shields it',
+    sub: 'Hit it as it surfaces, or lure it into the shallows with Tide.',
   },
 };

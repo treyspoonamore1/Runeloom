@@ -446,6 +446,15 @@ export const defaultTuning = {
      */
     roomClearHeal: 0.3,
   },
+  /**
+   * Playtest 8 hints (src/ui/adventure/reducedHints.ts; UI only, the sim never reads them): a
+   * one-time toast once the player lands `reducedHits` hits cut by the same state (Shelled,
+   * Submerged) within `windowSeconds` of sim time (feel).
+   */
+  hints: {
+    reducedHits: 5,
+    windowSeconds: 8,
+  },
 };
 
 export type Tuning = typeof defaultTuning;

@@ -8,7 +8,7 @@ import type { LootContent } from '../../sim/items/loot';
 import { signal } from '@preact/signals';
 import { uiTuning } from '../../../data/ui';
 import { getRune } from '../../../data/runes';
-import type { SimEvent } from '../../sim';
+import { SIM_HZ, type SimEvent } from '../../sim';
 import type { Session } from '../../app/session';
 import { heroRev } from '../heroAdapter';
 import { itemDescription, partName } from '../inventory/adapter';
@@ -36,6 +36,7 @@ import {
   type ToastKind,
 } from './hudEvents';
 import { injectAdventureHudStyle } from './advStyle';
+import { hintToast, ReducedHitHints } from './reducedHints';
 import { CountUp } from '../hearth/countUp';
 import { injectHearthStyle } from '../hearth/hearthStyle';
 
@@ -61,9 +62,17 @@ const TOAST_ICON: Record<ToastKind, IconKind> = {
   door: 'key',
   hearth: 'ember',
   salvage: 'scrap',
+  hint: 'shell',
 };
 
 const toasts = signal<LiveToast[]>([]);
+/** One per page session: each hint shows once (playtest 8, reducedHints.ts). */
+const hints = new ReducedHitHints();
+
+function toastSeconds(kind: ToastKind): number {
+  if (kind === 'level') return uiTuning.levelToastSeconds;
+  return kind === 'hint' ? uiTuning.hintToastSeconds : uiTuning.toastSeconds;
+}
 let nextToast = 0;
 /** Screenshots: keep toasts until the next ones (a software-GL capture takes longer than a toast lives). */
 let hold = false;
@@ -131,6 +140,9 @@ export function createAdventureHud(opts: {
       // @note texts (K10's ending line), boss intro cards and boss kills take the banner after the room's.
       for (const b of bannersFor(loose, (k) => BOSS_INFO[k]?.name ?? k)) opts.showBanner(b.title, b.sub);
       const fresh = toastsFor(loose, names);
+      // Playtest 8: a one-time hint once the player keeps landing hits a state cuts a lot.
+      for (const why of hints.feed(loose, session.state.tick / SIM_HZ, session.state.tuning.hints))
+        fresh.push(hintToast(why));
       if (fresh.length) {
         heroRev.value++;
         toasts.value = pushToasts(toasts.peek(), fresh, nowSec(), {
@@ -138,6 +150,7 @@ export function createAdventureHud(opts: {
           levelSeconds: uiTuning.levelToastSeconds,
           mergeWindow: uiTuning.toastMergeSeconds,
           salvageWindow: uiTuning.salvageMergeSeconds,
+          hintSeconds: uiTuning.hintToastSeconds,
           max: uiTuning.maxToasts,
           nextId: () => ++nextToast,
         });
@@ -261,7 +274,7 @@ export function AdventureHudView({ snap }: { snap: { value: AdventureSnap } }) {
           <div
             key={`${t.id}-${t.amount}`}
             class={`ad-toast k-${t.kind}${t.rarity ? ` r-${t.rarity}` : ''}`}
-            style={`--out:${Math.max(0, (t.kind === 'level' ? uiTuning.levelToastSeconds : uiTuning.toastSeconds) - 0.5)}s`}
+            style={`--out:${Math.max(0, toastSeconds(t.kind) - 0.5)}s`}
           >
             {t.art ? (
               <span class="ad-toast-ico art">
@@ -269,7 +282,7 @@ export function AdventureHudView({ snap }: { snap: { value: AdventureSnap } }) {
               </span>
             ) : (
               <span class="ad-toast-ico">
-                <Icon kind={TOAST_ICON[t.kind]} />
+                <Icon kind={t.icon ?? TOAST_ICON[t.kind]} />
               </span>
             )}
             <span class="ad-toast-txt">
