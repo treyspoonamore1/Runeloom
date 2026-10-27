@@ -10,6 +10,8 @@ export interface Banner {
   id: number;
   title: string;
   sub: string;
+  /** An @note text: wraps at a max width, smaller than room names (playtest 8). */
+  note?: boolean;
 }
 
 export interface Sigs {

@@ -50,7 +50,7 @@ export function HudApp(p: HudAppProps) {
           <WavePanel s={s} />
           {adventure ? <AdventureHudView snap={p.adv.snap} /> : null}
           {banner ? (
-            <div class="rl-banner" key={`banner-${banner.id}`}>
+            <div class={banner.note ? 'rl-banner rl-note' : 'rl-banner'} key={`banner-${banner.id}`}>
               <h2>{banner.title}</h2>
               {banner.sub ? <p>{banner.sub}</p> : null}
             </div>

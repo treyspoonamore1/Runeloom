@@ -44,10 +44,10 @@ const advCss = `
 .ad-toast-txt b { font-size: calc(var(--u) * 2.1); color: var(--rar); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ad-toast.k-scrap b, .ad-toast.k-key b { color: var(--cream); }
 .ad-toast-txt small { font-size: calc(var(--u) * 1.5); color: var(--sand); }
-.ad-toast.k-hint { --rar: #c9d3dc; max-width: calc(var(--u) * 44); }
+.ad-toast.k-hint { --rar: #c9d3dc; max-width: calc(var(--u) * 48); }
 .ad-toast.k-hint .ad-toast-txt { gap: calc(var(--u) * 0.3); }
 .ad-toast.k-hint .ad-toast-txt b { white-space: normal; color: var(--cream); font-size: calc(var(--u) * 1.95); }
-.ad-toast.k-hint .ad-toast-txt small { font-size: calc(var(--u) * 1.65); line-height: 1.25; color: #e6dcc4; }
+.ad-toast.k-hint .ad-toast-txt small { font-size: calc(var(--u) * 1.8); line-height: 1.25; color: #e6dcc4; }
 @keyframes ad-in { 0% { opacity: 0; transform: translateX(calc(var(--u) * 3)); } 100% { opacity: 1; transform: none; } }
 @keyframes ad-out { 100% { opacity: 0; transform: translateX(calc(var(--u) * 2)); } }
 

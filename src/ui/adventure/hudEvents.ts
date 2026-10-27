@@ -280,19 +280,23 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
   return out;
 }
 
+/** A center-screen banner. note: an @note text (playtest 8): it wraps, in a smaller font than room names. */
+export interface BannerSpec {
+  title: string;
+  sub: string;
+  note?: true;
+}
+
 /**
  * Center-screen banners besides the room banner: @note texts and boss kills. `bossName` turns
  * an enemy kind into a display name.
  */
-export function bannersFor(
-  events: readonly LooseEvent[],
-  bossName: (kind: string) => string,
-): { title: string; sub: string }[] {
-  const out: { title: string; sub: string }[] = [];
+export function bannersFor(events: readonly LooseEvent[], bossName: (kind: string) => string): BannerSpec[] {
+  const out: BannerSpec[] = [];
   for (const e of events) {
     const hb = hearthBanner(e);
     if (hb) out.push(hb);
-    else if (e.type === HUD_EVENT.note) out.push({ title: String(e.text ?? ''), sub: '' });
+    else if (e.type === HUD_EVENT.note) out.push({ title: String(e.text ?? ''), sub: '', note: true });
     else if (e.type === HUD_EVENT.bossAwake) {
       const card = introCards.bosses[String(e.kind)];
       if (card) out.push({ ...card });

@@ -100,8 +100,8 @@ export function createHud(ctx: HudContext): Hud {
   };
   let bannerId = 0;
   const watcher = new WaveWatcher();
-  const showBanner = (title: string, sub = ''): void =>
-    void (s.banner.value = { id: ++bannerId, title, sub });
+  const showBanner = (title: string, sub = '', note = false): void =>
+    void (s.banner.value = { id: ++bannerId, title, sub, note });
 
   const root = document.createElement('div');
   root.className = 'rl-root';

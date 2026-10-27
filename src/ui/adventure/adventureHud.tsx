@@ -101,7 +101,7 @@ const sameSnap = (a: AdventureSnap, b: AdventureSnap): boolean =>
 
 export function createAdventureHud(opts: {
   session: Session;
-  showBanner(title: string, sub: string): void;
+  showBanner(title: string, sub: string, note?: boolean): void;
   /** Called when a Loom Stone wakes or becomes the respawn point again. */
   onLoomStone?(): void;
 }): AdventureHud {
@@ -138,7 +138,7 @@ export function createAdventureHud(opts: {
         } else if (e.type === HUD_EVENT.loomStone) opts.onLoomStone?.();
       }
       // @note texts (K10's ending line), boss intro cards and boss kills take the banner after the room's.
-      for (const b of bannersFor(loose, (k) => BOSS_INFO[k]?.name ?? k)) opts.showBanner(b.title, b.sub);
+      for (const b of bannersFor(loose, (k) => BOSS_INFO[k]?.name ?? k)) opts.showBanner(b.title, b.sub, b.note);
       const fresh = toastsFor(loose, names);
       // Playtest 8: a one-time hint once the player keeps landing hits a state cuts a lot.
       for (const why of hints.feed(loose, session.state.tick / SIM_HZ, session.state.tuning.hints))

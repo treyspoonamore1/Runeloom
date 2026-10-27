@@ -86,7 +86,7 @@ describe('adventure HUD events', () => {
       ['rune', 'BOLT level 2'],
     ]);
     expect(bannersFor(ev, (k) => (k === 'cinder_warden' ? 'The Cinder Warden' : k))).toEqual([
-      { title: "The Fen isn't woven yet.", sub: '' },
+      { title: "The Fen isn't woven yet.", sub: '', note: true },
       { title: 'The Cinder Warden defeated', sub: '' },
     ]);
   });
