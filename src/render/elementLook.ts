@@ -22,8 +22,11 @@ export interface ElementLook {
   sparks: readonly number[];
   /** Atlas texture of a projectile's core, pointing +x. */
   boltCore: string;
-  /** In-flight particles: 'ember' (rise and fade), 'flake' (drift), 'spark' (crackle). */
-  shed: 'ember' | 'flake' | 'spark';
+  /**
+   * In-flight particles: 'ember' (rise and fade), 'flake' (drift), 'spark' (crackle), 'wisp'
+   * (Gale: pale streaks left behind, no rise).
+   */
+  shed: 'ember' | 'flake' | 'spark' | 'wisp';
   /** The core jitters and flickers (storm). */
   crackle: boolean;
 }
@@ -79,6 +82,26 @@ const LOOKS: Record<DamageType, ElementLook> = {
   },
 };
 
+/** Gale's pale wind color (DESIGN §14: Gale is #E8F4F0 streaks). */
+export const GALE = 0xe8f4f0;
+
+/**
+ * Gale (playtest 8): a ball of wind, not a physical pellet. Gale deals Physical damage, so hit
+ * sparks keep the physical look; only the spell itself (projectile body, Lob, bursts) reads as wind.
+ */
+const GALE_LOOK: ElementLook = {
+  core: 0xffffff,
+  rim: GALE,
+  glow: 0xbfe0d8,
+  glowAlpha: 0.3,
+  trail: GALE,
+  trailAlpha: 0.55,
+  sparks: [GALE, 0xffffff, 0xbfe0d8],
+  boltCore: 'bolt_gale',
+  shed: 'wisp',
+  crackle: false,
+};
+
 /** The look of a bolt (and, for now, any form) of this element. */
 export function boltLook(element: DamageType): ElementLook {
   return LOOKS[element];
@@ -109,17 +132,22 @@ function refId(r: ElementRef | undefined): ElementId | undefined {
   return r === undefined ? undefined : typeof r === 'string' ? r : r.element;
 }
 
+/** The look of an element: Gale has its own; the others go by damage type. */
+function lookOf(id: ElementId | undefined): ElementLook {
+  return id === 'gale' ? GALE_LOOK : LOOKS[elementType(id)];
+}
+
 /** The look of a spell with these elements (its first one; physical when it has none). */
 export function spellLook(elements: readonly ElementRef[]): ElementLook {
-  return LOOKS[elementType(refId(elements[0]))];
+  return lookOf(refId(elements[0]));
 }
 
 /** A multi-element spell's second look (its trail or rim), or null when it has one element. */
 export function secondLook(elements: readonly ElementRef[]): ElementLook | null {
   if (elements.length < 2) return null;
-  const a = elementType(refId(elements[0]));
-  const b = elementType(refId(elements[1]));
-  return a === b ? null : LOOKS[b];
+  const a = lookOf(refId(elements[0]));
+  const b = lookOf(refId(elements[1]));
+  return a === b ? null : b;
 }
 
 /** Echo repeats are drawn ghostly: their colors pale toward this and their alpha drops. */
@@ -149,6 +177,25 @@ function stormCore(p: Pen): void {
   p.circle(0.05, 0, 0.36).fill(0xfffbe0);
 }
 
+/** Ball of wind: a pale swirl, three curling wisps around a white eye. */
+function galeCore(p: Pen): void {
+  // Outlined in the gust streaks' under-stroke color (regionLook ATMO.galeShadow) so it reads on pale floors.
+  p.circle(0, 0, 0.78).fill({ color: GALE, alpha: 0.55 }).stroke(0.12, 0x2f4542, 0.7);
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI * 2;
+    const pts: number[] = [];
+    for (let i = 0; i <= 8; i++) {
+      const t = a + (i / 8) * 2.2;
+      const r = 0.3 + (i / 8) * 0.72;
+      pts.push(Math.cos(t) * r, Math.sin(t) * r);
+    }
+    p.moveTo(pts[0]!, pts[1]!);
+    for (let i = 2; i < pts.length; i += 2) p.lineTo(pts[i]!, pts[i + 1]!);
+    p.stroke(0.16, 0xffffff, 0.95);
+  }
+  p.circle(0, 0, 0.26).fill(0xffffff);
+}
+
 function plainCore(p: Pen): void {
   p.circle(0, 0, 0.9).fill(FX.ivory).stroke(0.14, INK);
   p.circle(0.15, 0, 0.45).fill(0xffffff);
@@ -159,5 +206,6 @@ export function elementAtlasEntries(): AtlasEntry[] {
     { name: 'bolt_frost', x0: -1.1, y0: -0.7, x1: 1.4, y1: 0.7, draw: frostCore },
     { name: 'bolt_storm', x0: -1.2, y0: -1.2, x1: 1.2, y1: 1.2, draw: stormCore },
     { name: 'bolt_plain', x0: -1, y0: -1, x1: 1, y1: 1, draw: plainCore },
+    { name: 'bolt_gale', x0: -1.15, y0: -1.15, x1: 1.15, y1: 1.15, draw: galeCore },
   ];
 }

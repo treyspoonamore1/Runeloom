@@ -320,6 +320,7 @@ export class FormLayer {
 
   /** Lob landing: a ring out to the burst radius, a flash and element debris. */
   private burstAt(x: number, y: number, radius: number, L: ElementLook): void {
+    if (L.shed === 'wisp') return this.gustBurstAt(x, y, radius, L);
     const g = this.sparksAdd.spawn(this.t.glow, x, y, 0, 0, 0.2, L.glow, radius * 0.9, radius * 1.3);
     if (g) g.a0 = 0.7;
     const r = this.sparks.spawn(this.t.ring, x, y, 0, 0, 0.24, L.rim, radius * 0.35, radius);
@@ -351,6 +352,37 @@ export class FormLayer {
     }
     const pf = this.sparks.spawn(this.t.puff, x, y, 0, -1, 0.45, 0x8a7f88, radius * 0.25, radius * 0.45);
     if (pf) pf.a0 = 0.35;
+  }
+
+  /**
+   * Gale Lob landing (playtest 8): the ball of wind bursts. A soft pale flash, a ring out to the
+   * burst, and pale streaks flung outward along the radius, as the gust it leaves blows. No
+   * rising embers and no dust puff: wind has neither.
+   */
+  private gustBurstAt(x: number, y: number, radius: number, L: ElementLook): void {
+    const g = this.sparksAdd.spawn(this.t.glow, x, y, 0, 0, 0.18, L.glow, radius * 0.6, radius * 1.1);
+    if (g) g.a0 = 0.45;
+    const r = this.sparks.spawn(this.t.ring, x, y, 0, 0, 0.3, L.rim, radius * 0.3, radius * 1.05);
+    if (r) r.a0 = 0.8;
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + rand(-0.15, 0.15);
+      const v = rand(radius * 2.5, radius * 4);
+      const p = this.sparks.spawn(
+        this.t.spark,
+        x + Math.cos(a) * 0.8,
+        y + Math.sin(a) * 0.8,
+        Math.cos(a) * v,
+        Math.sin(a) * v,
+        rand(0.18, 0.3),
+        L.sparks[i % L.sparks.length]!,
+        0.8,
+        0.25,
+      );
+      if (!p) break;
+      p.align = true;
+      p.stretch = 0.05;
+      p.drag = 3;
+    }
   }
 }
 

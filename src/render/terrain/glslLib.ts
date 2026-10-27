@@ -69,6 +69,10 @@ uniform vec4 uLantern;
 uniform vec4 uWind;
 /** M8: lights that part the fog (lit braziers): x, y, radius, strength (0 = none). */
 uniform vec4 uLights[8];
+/** Playtest 8: radial gusts (Gale Lob and Nova): center x, y, reach (cells), 1 (0 = none). */
+uniform vec4 uBursts[8];
+/** Playtest 8: radial gust streaks: dash period (cells), speed (cells/s), lanes around, unused. */
+uniform vec4 uBurstLook;
 
 ${materialConsts}
 const int F_OIL = ${FLAG.oil};
@@ -130,6 +134,8 @@ vec4 masksAt(vec2 p) { return texture(uMasks, p / uSize); }
 vec4 glowAt(vec2 p) { return texture(uGlow, p / (uGlowSize * 4.0)); }
 /** M8: fog density, gust strength, gust direction x, y (0.5 = 0), bilinear. */
 vec4 atmoAt(vec2 p) { return texture(uAtmo, p / uSize); }
+/** M8: the same, exact for the cell at p (a gust's direction is per cell; blending opposite ones cancels). */
+vec4 atmoCell(vec2 p) { return texelFetch(uAtmo, clampCell(ivec2(floor(p))), 0); }
 /** M8: under code, borrowed expiry progress (0 = not expiring), borrowed flag; exact per cell. */
 vec4 extraAt(ivec2 c) { return texelFetch(uExtra, clampCell(c), 0); }
 

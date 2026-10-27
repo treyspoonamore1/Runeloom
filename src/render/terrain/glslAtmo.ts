@@ -11,14 +11,11 @@ import { TERRAIN as C } from './terrainColors';
  */
 export const ATMO_MAIN = /* glsl */ `
 /**
- * Streaks blowing along dir: lanes across it, dashes along it moving at speed (cells/s).
- * density = share of lanes that carry a streak, hw = half width, len = dash period and LANE =
- * lane spacing (cells). Returns the coverage and writes the dark under-stroke's coverage to shadow.
+ * Dashes in lanes: along runs with the wind, across runs across it (cells). Dashes move at speed
+ * (cells/s). density = share of lanes that carry a streak, hw = half width, len = dash period and
+ * LANE = lane spacing (cells). Returns the coverage and writes the dark under-stroke's to shadow.
  */
-float streaks(vec2 p, vec2 dir, float speed, float density, float len, float hw, float LANE, float aa, out float shadow) {
-  vec2 perp = vec2(-dir.y, dir.x);
-  float along = dot(p, dir);
-  float across = dot(p, perp);
+float dashes(float along, float across, float speed, float density, float len, float hw, float LANE, float aa, out float shadow) {
   float lane = floor(across / LANE);
   ivec2 lc = ivec2(int(lane), 0);
   float h = hash2(lc, 1501);
@@ -33,6 +30,28 @@ float streaks(vec2 p, vec2 dir, float speed, float density, float len, float hw,
   float w = hw * (0.45 + 0.55 * tail);
   shadow = body * band(c - w * 1.6, w * 1.2, aa) * tail;
   return body * band(c, w, aa) * (0.35 + 0.65 * tail);
+}
+
+/** Streaks blowing along dir (unit), in straight lanes across it. */
+float streaks(vec2 p, vec2 dir, float speed, float density, float len, float hw, float LANE, float aa, out float shadow) {
+  return dashes(dot(p, dir), dot(p, vec2(-dir.y, dir.x)), speed, density, len, hw, LANE, aa, shadow);
+}
+
+/**
+ * Playtest 8: the radial burst around uBursts[k] that p belongs to, or -1. A pixel belongs to
+ * a burst when it is within its reach and its cell blows away from that center (so a cone
+ * crossing the burst keeps its own streaks).
+ */
+int burstAt(vec2 p, vec2 cellDir) {
+  for (int k = 0; k < 8; k++) {
+    vec4 b = uBursts[k];
+    if (b.w <= 0.0) continue;
+    vec2 d = p - b.xy;
+    float r = length(d);
+    if (r > b.z) continue;
+    if (r < 1.5 || dot(d / r, cellDir) > 0.6) return k;
+  }
+  return -1;
 }
 
 void main() {
@@ -80,9 +99,13 @@ void main() {
     rgb += ${c3(ATMO.fogWarm)} * rim;
   }
 
-  // Gusts: #E8F4F0 streaks along the gust, fading with its timer (DESIGN §6.6 readability).
+  // Gusts: #E8F4F0 streaks along the gust, fading with its timer (DESIGN §6.6 readability). The
+  // direction is the pixel's own cell's: bilinear blending turns a radial gust's seams and center
+  // into twisted lanes and noise (playtest 8). Radial gusts (Gale Lob, Nova) streak outward from
+  // their center in wedge lanes, clear of the center itself.
   if (at.g > 0.01) {
-    vec2 v = at.ba * 2.0 - 1.0;
+    vec4 ac = atmoCell(p);
+    vec2 v = ac.ba * 2.0 - 1.0;
     float lv = length(v);
     if (lv > 0.05) {
       vec2 dir = v / lv;
@@ -91,7 +114,21 @@ void main() {
       float wash = smoothstep(0.0, 0.6, at.g) * ${f1(0.1)};
       rgb = rgb * (1.0 - wash) + ${c3(ATMO.gale)} * wash;
       a = a + wash * (1.0 - a);
-      float s = streaks(p, dir, 22.0, 0.85, 8.0, 0.27, 1.1, aa, sh) * at.g;
+      float s;
+      int k = burstAt(p, dir);
+      if (k >= 0) {
+        vec2 d = p - uBursts[k].xy;
+        float r = length(d);
+        // Lanes are wedges: angle × a fixed radius, so a lane keeps its streak as it fans out.
+        float lanes = uBurstLook.z;
+        float across = (atan(d.y, d.x) / (2.0 * PI) + 0.5) * lanes * 1.1;
+        // Across units per cell of arc here: keeps the streaks' width and edges in cells.
+        float k = lanes * 1.1 / (2.0 * PI * max(r, 0.5));
+        s = dashes(r, across, uBurstLook.y, 0.85, uBurstLook.x, 0.27 * k, 1.1, aa * k, sh);
+        float clear = smoothstep(0.8, 2.0, r);
+        s *= clear * at.g;
+        sh *= clear;
+      } else s = streaks(p, dir, 22.0, 0.85, 8.0, 0.27, 1.1, aa, sh) * at.g;
       sh *= at.g * 0.6;
       rgb = rgb * (1.0 - sh) + ${c3(ATMO.galeShadow)} * sh;
       a = a + sh * (1.0 - a);

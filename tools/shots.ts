@@ -22,6 +22,8 @@
  *   npm run shots -- --set boss [--shot coil_iced,bell_rung] [--viewport 390x844]   playtest 8: the Fen bosses
  *       held in each state (Coil: submerged … overloaded; Bellwether: shelled, rung, rolling), with the
  *       boss bar's state line and the pop label
+ *   npm run shots -- --set spells [--shot lob_gale,bolt_gale] [--ticks N]   one weave cast once in
+ *       test/fen_render, shot mid-flight, at landing and through its gust (or only at tick N)
  *   npm run shots -- --scenario weave_m5 --ticks 300 [--milestone m5]   a sim scenario (src/sim/scenarios.ts)
  *       set up and played in the browser for --ticks, then shot
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
@@ -49,6 +51,7 @@ import { hearthShotIds, showHearth, type HearthShotId } from './lib/hearthShots'
 import { fenShotIds, runFenShot, type FenShotId } from './lib/fenShots';
 import { hitShotIds, hitShotUrl, runHitShot, type HitShotId } from './lib/hitShots';
 import { bossShotIds, runBossShot, type BossShotId } from './lib/bossStateShots';
+import { SPELL_SHOT_TICKS, spellShotIds, spellShotSet, type SpellShotId } from './lib/spellShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -356,9 +359,18 @@ runCli(async () => {
       await page.screenshot({ path: file, timeout: 120_000 });
       written.push(file);
       if (errors.length) console.warn(`warning: page errors in scenario ${sc.id}: ${errors.join('; ')}`);
+    } else if (a.set === 'spells') {
+      const only = (a.shot?.split(',') ?? [...spellShotIds]) as SpellShotId[];
+      for (const id of only)
+        if (!spellShotIds.includes(id))
+          throw new ArgError(`Unknown spell shot "${id}". Available: ${spellShotIds.join(', ')}`);
+      const at = ticks > 0 ? [ticks] : SPELL_SHOT_TICKS;
+      const url = `http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`;
+      written.push(...(await spellShotSet(page, url, SHOTS_DIR, milestone, only, at)));
+      if (errors.length) console.warn(`warning: page errors in spell shots: ${errors.join('; ')}`);
     } else if (a.set !== undefined)
       throw new ArgError(
-        `Unknown --set "${a.set}". Available: creature, rooms, hearth, onload, ui, gallery, item, fight, fen, boss`,
+        `Unknown --set "${a.set}". Available: creature, rooms, hearth, onload, ui, gallery, item, fight, fen, hits, boss, spells`,
       );
     for (const scene of a.set === undefined && a.scenario === undefined ? selected : []) {
       errors.length = 0;

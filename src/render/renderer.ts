@@ -9,6 +9,7 @@ import { labRoomId, labStations, type LabStation } from '../../data/lab';
 import { LabLabels } from './labLabels';
 import { DEBUG_BITS } from './terrain/glslDebug';
 import { TerrainFx } from './terrain/terrainFx';
+import { GaleBursts } from './terrain/galeBursts';
 import { TerrainView } from './terrain/terrainView';
 import { regionOf } from './terrain/regionLook';
 import { FenAmbient, fogLights } from './fen/fenAmbient';
@@ -166,6 +167,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const forms = new FormLayer(atlas, fx);
   const ai = new AiOverlay();
   const terrainFx = new TerrainFx(atlas, shake);
+  const bursts = new GaleBursts();
   const fen = new FenAmbient(atlas);
   world.addChild(
     terrain.ground,
@@ -272,6 +274,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     telegraphs.reset();
     fx.reset();
     terrainFx.reset();
+    bursts.reset();
     fen.reset();
     ailments.reset();
     forms.reset();
@@ -338,6 +341,11 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
           atm.fogOpacity,
           fogLights(s, atm.brazierClear),
         );
+      terrain.setBursts(bursts.update(s), {
+        dash: atm.galeBurstDash,
+        speed: atm.galeBurstSpeed,
+        lanes: atm.galeBurstLanes,
+      });
       fen.update(s, dt);
       // Burnable props char and vanish with their cells (16 cells per prop, cheap); blocks
       // re-bake only when the count of block cells changes.
@@ -387,6 +395,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
     handleEvents(list) {
       events.handle(list);
       terrainFx.handle(list, current);
+      bursts.handle(list);
       m4.handle(current, list, lastDt);
     },
     stats: () => ({
