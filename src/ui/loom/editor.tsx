@@ -1,6 +1,6 @@
 /** The Loom's center: slot tabs, the weave as an indented tree, the notation line and the slot status. */
 import type { JSX } from 'preact';
-import { SLOT_LABELS } from '../../app/loadout';
+import { SLOT_KEYS, SLOT_LABELS, type SlotView } from '../../app/loadout';
 import { getRune, type RuneDef, type RuneId } from '../../../data/runes';
 import { listSpells, type SpellVisit, type WeavePath } from '../../sim/weave/tree';
 import { weaveStory } from './describe';
@@ -22,46 +22,70 @@ export function SlotTabs({ st }: { st: LoomState }) {
   const cur = st.slot.value;
   const statuses = st.statuses.value;
   const drafts = st.drafts.value;
-  // The open slots only: R appears with the Twin Threads mutation.
-  const labels = st.loadout.value.slots.map((s) => s.label);
+  const l = st.loadout.value;
+  // The open slots only: two bars of four, and R with the Twin Threads mutation (both bars).
+  const order = l.slots.map((s) => s.slot);
+  const twin = l.slots.some((s) => s.bar < 0);
+  const move = (n: number) => {
+    st.selectSlot(n);
+    document.getElementById(`lm-tab-${n}`)?.focus();
+  };
+  const tab = (v: SlotView) => {
+    const i = v.slot;
+    const warn =
+      i === cur && st.parseError.value ? 'Not applied: the notation has an error' : slotWarning(statuses[i]);
+    const d = drafts[i];
+    const summary =
+      d && !isBlank(d)
+        ? `${getRune(d.trigger)?.name ?? '?'} · ${getRune(d.root.form)?.name ?? '?'}`
+        : 'Empty';
+    // Bar rows; R sits at the end, spanning both (it is live on both bars).
+    const at =
+      v.bar < 0 ? 'grid-row:1 / span 2;grid-column:6' : `grid-row:${v.bar + 1};grid-column:${(i % 5) + 2}`;
+    return (
+      <button
+        key={i}
+        type="button"
+        role="tab"
+        id={`lm-tab-${i}`}
+        aria-selected={cur === i}
+        aria-controls="lm-weave"
+        aria-label={`${SLOT_LABELS[i]}: ${summary}`}
+        class={`lm-tab${cur === i ? ' on' : ''}${warn ? ' warn' : ''}${v.bar < 0 ? ' both' : ''}${v.bar >= 0 && v.bar !== l.activeBar ? ' idle' : ''}`}
+        style={at}
+        title={warn ?? undefined}
+        onClick={() => st.selectSlot(i)}
+        onKeyDown={(e) => {
+          const k = order.indexOf(i);
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            move(order[(k + (e.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length]!);
+          } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && v.bar >= 0) {
+            // The same button on the other bar.
+            e.preventDefault();
+            move(v.bar === 0 ? i + 5 : i - 5);
+          }
+        }}
+      >
+        <span class="lm-tab-key">{v.key}</span>
+        <span class="lm-tab-sum">{v.bar < 0 ? `${summary} · both bars` : summary}</span>
+        {warn ? <i class="lm-dot" aria-label="warning" /> : null}
+      </button>
+    );
+  };
   return (
-    <div class={`lm-tabs${labels.length > 4 ? ' five' : ''}`} role="tablist" aria-label="Weave slots">
-      {labels.map((label, i) => {
-        const warn =
-          i === cur && st.parseError.value
-            ? 'Not applied: the notation has an error'
-            : slotWarning(statuses[i]);
-        const d = drafts[i];
-        const summary =
-          d && !isBlank(d)
-            ? `${getRune(d.trigger)?.name ?? '?'} · ${getRune(d.root.form)?.name ?? '?'}`
-            : 'Empty';
-        return (
-          <button
-            key={label}
-            type="button"
-            role="tab"
-            id={`lm-tab-${i}`}
-            aria-selected={cur === i}
-            aria-controls="lm-weave"
-            class={`lm-tab${cur === i ? ' on' : ''}${warn ? ' warn' : ''}`}
-            title={warn ?? undefined}
-            onClick={() => st.selectSlot(i)}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                e.preventDefault();
-                const n = (i + (e.key === 'ArrowRight' ? 1 : labels.length - 1)) % labels.length;
-                st.selectSlot(n);
-                document.getElementById(`lm-tab-${n}`)?.focus();
-              }
-            }}
-          >
-            <span class="lm-tab-key">{label}</span>
-            <span class="lm-tab-sum">{summary}</span>
-            {warn ? <i class="lm-dot" aria-label="warning" /> : null}
-          </button>
-        );
-      })}
+    <div class={`lm-tabs${twin ? ' twin' : ''}`} role="tablist" aria-label="Weave slots">
+      {[0, 1].map((bar) => (
+        <span
+          key={`bar${bar}`}
+          class={`lm-barname${bar === l.activeBar ? ' live' : ''}`}
+          style={`grid-row:${bar + 1};grid-column:1`}
+        >
+          Bar {bar + 1}
+          {bar === l.activeBar ? <small>live</small> : null}
+        </span>
+      ))}
+      {l.slots.map(tab)}
     </div>
   );
 }
@@ -319,7 +343,7 @@ export function WeaveTreeView({ st }: { st: LoomState }) {
       {!isBlank(tree) ? (
         <div class="lm-story" aria-label="What this weave does">
           <h5>Reads as</h5>
-          {weaveStory(tree, SLOT_LABELS[st.slot.value]!).map((l, i) => (
+          {weaveStory(tree, SLOT_KEYS[st.slot.value]!).map((l, i) => (
             <p key={i} style={`padding-left:calc(var(--u) * ${l.depth * 2.6})`}>
               {l.depth > 0 ? '↳ ' : ''}
               {l.text}

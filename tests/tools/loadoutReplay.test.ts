@@ -21,7 +21,13 @@ describe('Loom loadout contract (src/app/loadout.ts)', () => {
       ['RMB', 'Cast > Strike[]', true, false],
       ['Q', null, undefined, false],
       ['E', null, undefined, false],
+      // Bar 2 starts empty; R stays hidden without Twin Threads.
+      ['Bar 2 LMB', null, undefined, false],
+      ['Bar 2 RMB', null, undefined, false],
+      ['Bar 2 Q', null, undefined, false],
+      ['Bar 2 E', null, undefined, false],
     ]);
+    expect(v.activeBar).toBe(0);
   });
 
   it('setWeave applies valid weaves to the sim, records them, and rejects invalid ones', () => {

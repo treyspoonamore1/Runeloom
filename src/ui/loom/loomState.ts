@@ -1,10 +1,12 @@
 /**
- * The Loom editor's state and actions, as signals. Holds one draft tree per slot; a draft that
- * compiles is applied to its slot at once (through loadoutStore → setWeave), one that doesn't
- * stays in the editor ("held") while the slot keeps its working weave.
+ * The Loom editor's state and actions, as signals. Holds one draft tree per slot, indexed by slot
+ * (bar 1 0–3, R 4, bar 2 5–8; a locked R keeps an empty draft); a draft that compiles is applied
+ * to its slot at once (through loadoutStore → setWeave), one that doesn't stays in the editor
+ * ("held") while the slot keeps its working weave.
  */
 import { batch, computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
-import { getLoadout, previewWeave, type LoadoutView } from '../../app/loadout';
+import { getLoadout, previewWeave, slotViewOf, type LoadoutView } from '../../app/loadout';
+import { LOADOUT_SLOTS, slotsClash } from '../../sim/weave/runtime/slots';
 import type { Session } from '../../app/session';
 import { parseWeave, printWeave, type ParseError } from '../../sim/weave/notation';
 import type { SpellProgram, WeaveCosts } from '../../sim/weave/program';
@@ -76,10 +78,19 @@ export class LoomState {
   readonly refMenu = signal(false);
   /** Adventure mode: owned copies per rune (null: the sandbox's unlimited pouch). */
   readonly totals = signal<RuneTotals>(null);
-  /** Free copies per rune given every slot's draft; null when unlimited. */
+  /**
+   * Free copies per rune for the selected slot, given the drafts of that slot and of the slots
+   * it shares no rune item with (its own bar and R; every slot for R); null when unlimited. The
+   * two bars share the pouch, so the other bar's drafts don't count.
+   */
   readonly free: ReadonlySignal<ReadonlyMap<string, number> | null> = computed(() => {
     const t = this.totals.value;
-    return t ? freeCounts(t, this.drafts.value) : null;
+    if (!t) return null;
+    const cur = this.slot.value;
+    return freeCounts(
+      t,
+      this.drafts.value.filter((_, i) => i === cur || slotsClash(cur, i)),
+    );
   });
   /** Live notation per slot when its draft was last synced from it. */
   private synced: (string | null)[] = [];
@@ -117,10 +128,10 @@ export class LoomState {
     const l = getLoadout(this.session);
     const drafts = this.drafts.peek().slice();
     const statuses = this.statuses.peek().slice();
-    // The open slots: four, or five with Twin Threads (getLoadout).
-    drafts.length = statuses.length = l.slots.length;
-    for (let i = 0; i < l.slots.length; i++) {
-      const live = l.slots[i]?.notation ?? null;
+    // Every slot by index; a locked one (R without Twin Threads) reads as empty.
+    drafts.length = statuses.length = LOADOUT_SLOTS;
+    for (let i = 0; i < LOADOUT_SLOTS; i++) {
+      const live = slotViewOf(l, i)?.notation ?? null;
       if (force || (!this.held[i] && this.synced[i] !== live) || drafts[i] === undefined) {
         drafts[i] = treeOf(live);
         this.synced[i] = live;
@@ -128,7 +139,7 @@ export class LoomState {
       }
     }
     batch(() => {
-      if (this.slot.peek() >= l.slots.length) this.slot.value = 0;
+      if (!slotViewOf(l, this.slot.peek())) this.slot.value = 0;
       this.loadout.value = l;
       this.drafts.value = drafts;
       drafts.forEach((t, i) => (statuses[i] = this.evaluate(i, t, l)));
@@ -138,7 +149,7 @@ export class LoomState {
 
   /** Validates a draft against the current spindle (no side effects). */
   private evaluate(slot: number, tree: WeaveTree, l: LoadoutView): SlotStatus {
-    const live = l.slots[slot]?.notation ?? null;
+    const live = slotViewOf(l, slot)?.notation ?? null;
     if (isBlank(tree)) return { kind: 'empty', applied: live === null };
     const gap = firstEmpty(tree);
     if (gap) return { kind: 'incomplete', message: gap.message, path: gap.path, applied: false };
@@ -186,14 +197,14 @@ export class LoomState {
   ): void {
     const l0 = getLoadout(this.session);
     const first = this.evaluate(slot, tree, l0);
-    const live = l0.slots[slot]?.notation ?? null;
+    const live = slotViewOf(l0, slot)?.notation ?? null;
     if (apply && first.kind === 'ok' && live !== first.notation)
       applyWeave(this.session, slot, first.notation);
     else if (apply && first.kind === 'empty' && live !== null) applyWeave(this.session, slot, null);
     const l = getLoadout(this.session);
     const status = this.evaluate(slot, tree, l);
     this.seenRev = loadoutRev.peek();
-    this.synced[slot] = l.slots[slot]?.notation ?? null;
+    this.synced[slot] = slotViewOf(l, slot)?.notation ?? null;
     this.held[slot] = !status.applied;
     batch(() => {
       const drafts = this.drafts.peek().slice();
@@ -280,7 +291,7 @@ export class LoomState {
 
   /** Puts the slot's live weave back into the editor. */
   revert(): void {
-    const live = getLoadout(this.session).slots[this.slot.peek()]?.notation ?? null;
+    const live = slotViewOf(getLoadout(this.session), this.slot.peek())?.notation ?? null;
     batch(() => {
       this.text.value = null;
       this.parseError.value = null;

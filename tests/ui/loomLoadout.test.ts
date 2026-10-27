@@ -47,7 +47,7 @@ describe('persistence', () => {
     expect(parseSaved('{"spindleId":"test_spindle","slots":[]}')).toBeNull();
     expect(parseSaved('{"spindleId":"ashwood","slots":["Cast > Bolt[Fire]", 3]}')).toEqual({
       spindleId: 'ashwood',
-      slots: ['Cast > Bolt[Fire]', null, null, null],
+      slots: ['Cast > Bolt[Fire]', ...Array<null>(8).fill(null)],
     });
   });
 
@@ -69,14 +69,15 @@ describe('persistence', () => {
     expect(applyWeave(a, 2, 'Cast > Nova[Fire, Pierce]').applied).toBe(false);
     const saved = JSON.parse(store.data.get(LOADOUT_KEY)!);
     expect(saved.spindleId).toBe('heartwood');
-    expect(saved.slots).toEqual([null, referenceWeaves[12]!.notation, null, null]);
+    // Every slot by index: bar 1, R (always empty in the sandbox), bar 2.
+    expect(saved.slots).toEqual([null, referenceWeaves[12]!.notation, ...Array<null>(7).fill(null)]);
 
     const b = session();
     expect(differsFromSaved(b)).toBe(true);
     expect(restoreLoadout(b)).toEqual({ restored: true, failed: [] });
     const l = getLoadout(b);
     expect(l.spindleId).toBe('heartwood');
-    expect(l.slots.map((x) => x.notation)).toEqual(saved.slots);
+    expect(l.slots.map((x) => x.notation)).toEqual(saved.slots.filter((_: unknown, i: number) => i !== 4));
     expect(differsFromSaved(b)).toBe(false);
   });
 
@@ -119,7 +120,7 @@ describe('console: weave, weaves, spindle', () => {
     expect(p.lines[0]).toContain("Unknown rune 'Fireball' at 18");
     expect(p.lines[0]).toContain('\n                    ^^^^^^^^');
     expect(getLoadout(env.session).slots[0]!.notation).toBe('Cast > Bolt[Fire]');
-    expect(run('weave 9 Cast > Bolt[Fire]').ok).toBe(false);
+    expect(run('weave 10 Cast > Bolt[Fire]').ok).toBe(false);
     expect(run('weave').lines[0]).toMatch(/^Usage: weave/);
   });
 

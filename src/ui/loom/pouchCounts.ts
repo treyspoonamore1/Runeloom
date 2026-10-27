@@ -1,7 +1,7 @@
 /**
- * Rune counts for the adventure-mode pouch (pure, no DOM). Each rune item sits in one place at a
- * time (DESIGN §5.1), so a rune is free when the hero owns more copies than the Loom's drafts
- * (all four slots, as the player sees them) use.
+ * Rune counts for the adventure-mode pouch (pure, no DOM). Each rune item sits in one place per
+ * weave bar (DESIGN §5.1), so a rune is free for a slot when the hero owns more copies than the
+ * drafts of that slot's bar and R use (LoomState.free picks those drafts).
  */
 import { getRune, type RuneId } from '../../../data/runes';
 import type { WeaveTree } from '../../sim/weave/tree';

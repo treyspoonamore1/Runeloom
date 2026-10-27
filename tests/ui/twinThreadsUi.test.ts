@@ -21,11 +21,13 @@ const idle: CasterView = { mana: 50, castSlot: -1, castLeft: 0, castTime: 0 };
 const noTimers = () => ({ cooldownLeft: 0, cooldownTotal: 0 });
 
 describe('Twin Threads: what the UI sees', () => {
-  it('getLoadout lists four slots without the mutation and five (R last) with it', () => {
-    expect(getLoadout(session(false)).slots.map((s) => s.label)).toEqual(['LMB', 'RMB', 'Q', 'E']);
+  it('getLoadout lists both bars without the mutation, and R between them with it', () => {
+    const bar2 = ['Bar 2 LMB', 'Bar 2 RMB', 'Bar 2 Q', 'Bar 2 E'];
+    expect(getLoadout(session(false)).slots.map((s) => s.label)).toEqual(['LMB', 'RMB', 'Q', 'E', ...bar2]);
     const l = getLoadout(session(true));
-    expect(l.slots.map((s) => s.label)).toEqual(['LMB', 'RMB', 'Q', 'E', 'R']);
-    expect(l.slots.map((s) => s.slot)).toEqual([0, 1, 2, 3, 4]);
+    expect(l.slots.map((s) => s.label)).toEqual(['LMB', 'RMB', 'Q', 'E', 'R', ...bar2]);
+    expect(l.slots.map((s) => s.slot)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(l.slots.map((s) => s.bar)).toEqual([0, 0, 0, 0, -1, 1, 1, 1, 1]);
   });
 
   it('the HUD strip follows the open slots', () => {
@@ -57,16 +59,19 @@ describe('Twin Threads: what the UI sees', () => {
       if (!twin) expect(r.lines.join('\n')).toBe(`R is locked: ${LOCKED_SLOT_MESSAGE}.`);
       else expect(r.lines[0]).toMatch(/^R: Cast > Lob\[Fire\]/);
       expect(run('weave r').ok).toBe(twin);
-      expect(run('weaves').lines).toHaveLength(twin ? 6 : 5);
+      // Spindle, the open slots (two bars, R with the mutation) and the live bar.
+      expect(run('weaves').lines).toHaveLength(twin ? 11 : 10);
     }
   });
 
-  it('the Loom edits the fifth slot only when it is open', () => {
+  it('the Loom edits the R slot only when it is open', () => {
     setLoadoutStorage(null);
-    expect(new LoomState(session(false)).drafts.value).toHaveLength(4);
+    // Drafts are kept per slot index; the locked R tab isn't shown (SlotTabs reads getLoadout).
+    expect(new LoomState(session(false)).drafts.value).toHaveLength(9);
+    expect(getLoadout(session(false)).slots.some((x) => x.slot === 4)).toBe(false);
     const s = session(true);
     const st = new LoomState(s);
-    expect(st.drafts.value).toHaveLength(5);
+    expect(st.drafts.value).toHaveLength(9);
     st.selectSlot(4);
     st.loadNotation('Cast > Lob[Fire]');
     expect(s.state.weaves.slots[4]!.notation).toBe('Cast > Lob[Fire]');

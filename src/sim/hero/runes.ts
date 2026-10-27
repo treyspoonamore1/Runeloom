@@ -1,8 +1,11 @@
 /**
  * Rune items in weaves (adventure mode, DESIGN §5.1): a weave may only use rune items the hero
- * owns, and each item sits in one place at a time, the pouch or one weave slot. Setting a weave
- * socket specific items, preferring the highest-level free item of each rune (ties: the oldest).
- * Sandbox, arena and lab games have unlimited runes and never socket items (WeaveSlot.runes null).
+ * owns, and each item sits in one place per weave bar: the pouch, or one slot of each bar. The
+ * two bars share the pouch (playtest 8), so an item can be in a bar-1 slot and a bar-2 slot, but
+ * not in two slots of one bar, and not in R (live on both bars) and any other slot
+ * (weave/runtime/slots.ts slotsClash). Setting a weave socket specific items, preferring the
+ * highest-level free item of each rune (ties: the oldest). Sandbox, arena and lab games have
+ * unlimited runes and never socket items (WeaveSlot.runes null).
  *
  * Rune order: the order a weave's runes are listed in WeaveSlot.runes. The trigger, then every
  * spell in tree order (pre-order, branches in order): the branch rune leading into it (if any),
@@ -14,6 +17,7 @@ import { emit } from '../events';
 import type { GameState } from '../state';
 import { runeKey } from '../weave/context';
 import { walkSpells, type WeavePath, type WeaveTree } from '../weave/tree';
+import { liveSlots, slotsClash } from '../weave/runtime/slots';
 import type { RuneItem } from './types';
 
 export interface RuneSlotRef {
@@ -47,28 +51,35 @@ export function socketedUids(state: GameState, exceptSlot = -1): Set<number> {
   return out;
 }
 
-/** Weave slot a rune item is socketed in, or -1 for the pouch. */
+/** The first weave slot a rune item is socketed in (it can be in one per bar), or -1 for the pouch. */
 export function slotOfRune(state: GameState, uid: number): number {
   return state.weaves.slots.findIndex((s) => s.runes?.includes(uid) ?? false);
 }
 
 /**
- * Uids that can't go into a weave `slot` now: socketed in another slot, or planted in the Rune
- * Garden (M7: a planted rune is not in the pouch for socketing).
+ * Uids that can't go into a weave `slot` now: socketed in a slot that clashes with it (the same
+ * bar's other slots and R; every slot for R, or for no slot, -1), or planted in the Rune Garden
+ * (M7: a planted rune is not in the pouch for socketing). The other bar's slots don't count.
  */
 function takenUids(state: GameState, slot: number): Set<number> {
-  const taken = socketedUids(state, slot);
+  const taken = new Set<number>();
+  state.weaves.slots.forEach((s, i) => {
+    if (s.runes && slotsClash(slot, i)) for (const u of s.runes) taken.add(u);
+  });
   for (const u of state.hero.hearth.garden) taken.add(u);
   return taken;
 }
 
-/** Rune items free for `slot` (in the pouch and not planted, or already in that slot), best first: level, then oldest. */
+/**
+ * Rune items free for `slot` (not planted and not in a clashing slot: in the pouch, in that slot,
+ * or in the other bar's slots), best first: level, then oldest. No slot: in the pouch only.
+ */
 export function freeRunes(state: GameState, slot = -1): RuneItem[] {
   const taken = takenUids(state, slot);
   return state.hero.runes.filter((r) => !taken.has(r.uid)).sort((a, b) => b.level - a.level || a.uid - b.uid);
 }
 
-/** Owned and free counts per rune id (free: in the pouch and not planted, or in `slot` when given). */
+/** Owned and free counts per rune id (free for `slot` as freeRunes; no slot: in the pouch and not planted). */
 export function runeCounts(
   state: GameState,
   slot = -1,
@@ -158,16 +169,20 @@ export function runeQualityMap(
 }
 
 /**
- * Socketed runes gain `amount` XP (more with quality: weaveLimits.qualityXpPerPoint per %) and
- * level up through runeXpToNext, up to maxRuneLevel (where XP stops). Returns the slots whose rune levels changed (they need recompiling).
+ * Runes socketed in the live slots (the active bar and R; weave/runtime/slots.ts liveSlots) gain
+ * `amount` XP (more with quality: weaveLimits.qualityXpPerPoint per %) and level up through
+ * runeXpToNext, up to maxRuneLevel (where XP stops). The other bar's runes gain nothing, so it
+ * can't level runes passively. Returns the slots whose rune levels changed, on either bar (an
+ * item shared with the other bar changes its weave too), in slot order; they need recompiling.
  */
 export function grantRuneXp(state: GameState, amount: number): number[] {
-  const changed: number[] = [];
-  if (amount <= 0) return changed;
+  if (amount <= 0) return [];
   const byUid = new Map(state.hero.runes.map((r) => [r.uid, r]));
-  state.weaves.slots.forEach((s, slot) => {
-    if (!s.runes) return;
-    let levelled = false;
+  const w = state.weaves;
+  const levelledUids = new Set<number>();
+  for (const slot of liveSlots(w)) {
+    const s = w.slots[slot]!;
+    if (!s.runes) continue;
     for (const uid of s.runes) {
       const r = byUid.get(uid);
       if (!r || r.level >= maxRuneLevel) continue;
@@ -175,12 +190,16 @@ export function grantRuneXp(state: GameState, amount: number): number[] {
       while (r.level < maxRuneLevel && r.xp >= runeXpToNext(r.level)) {
         r.xp -= runeXpToNext(r.level);
         r.level++;
-        levelled = true;
+        levelledUids.add(uid);
         emit(state, { type: 'runeLevelUp', uid: r.uid, rune: r.rune, level: r.level, slot });
       }
       if (r.level >= maxRuneLevel) r.xp = 0;
     }
-    if (levelled) changed.push(slot);
+  }
+  const changed: number[] = [];
+  if (levelledUids.size === 0) return changed;
+  w.slots.forEach((s, slot) => {
+    if (s.runes?.some((u) => levelledUids.has(u))) changed.push(slot);
   });
   return changed;
 }

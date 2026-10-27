@@ -593,7 +593,7 @@ Bought with Ash after a Rekindle. Permanent.
 | Stormglass Memory | 3 | Ice conducts Storm, as the Stormglass keystone |
 | Bright Hearth | 1, buyable 10 times | +10% Hearth production per purchase |
 | Sigil Cache | 1 | Start each Rekindle with five tier 3 Rift Sigils |
-| Twin Threads | 4 | A fifth weave slot, bound to R |
+| Twin Threads | 4 | An extra weave slot bound to R, live on both weave bars (DESIGN §5.1) |
 | Kindred Flame | 2 | Fire you create also spreads to adjacent Oiled or Ignited enemies |
 | Swift Expeditions | 2 | Expeditions return 50% faster |
 

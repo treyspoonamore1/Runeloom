@@ -23,7 +23,7 @@ import { syncWeaveSpindle } from './hero/equip';
 import { parseSaveData } from './saveParse';
 
 export const SAVE_FORMAT = 'runeloom-save';
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** The RNG streams a save restores. */
 export const SAVED_RNGS = [
@@ -39,10 +39,15 @@ export type SavedRng = (typeof SAVED_RNGS)[number];
 
 export interface SavedWeaves {
   spindleId: SpindleId;
-  /** One per slot (LMB, RMB, Q, E, R); null for an empty slot. Saves before M7 hold four. */
+  /**
+   * One per slot (weave/runtime/slots.ts): bar 1's LMB, RMB, Q, E, then R, then bar 2's LMB, RMB,
+   * Q, E; null for an empty slot. Saves before M7 hold four, saves before version 4 five.
+   */
   notations: (string | null)[];
   /** Socketed rune uids per slot in rune order (hero/runes.ts), null for an empty slot. */
   runes: (number[] | null)[];
+  /** The live weave bar, 0 or 1 (version 4; older saves load on bar 1, 0). */
+  activeBar: number;
 }
 
 export interface SaveData {
@@ -80,6 +85,7 @@ export function makeSave(state: GameState): SaveData {
       spindleId: w.spindleId,
       notations: w.slots.map((s) => s.notation),
       runes: w.slots.map((s) => (s.runes ? [...s.runes] : null)),
+      activeBar: w.activeBar,
     },
     rngs,
   };
@@ -112,7 +118,12 @@ export function restoreSave(state: GameState, save: SaveData): void {
     notations.push(save.weaves.notations[i] ?? null);
     runes.push(save.weaves.runes[i] ?? null);
   }
-  applyLoadoutSpec(state, { spindleId: save.weaves.spindleId, notations, runes });
+  applyLoadoutSpec(state, {
+    spindleId: save.weaves.spindleId,
+    notations,
+    runes,
+    activeBar: save.weaves.activeBar,
+  });
   syncWeaveSpindle(state);
   for (const k of SAVED_RNGS) state[k] = Rng.fromState(save.rngs[k]);
   refreshHero(state);
@@ -139,7 +150,7 @@ export function hashProgress(state: GameState): number {
   hashHero(h, state.hero);
   hashWorld(h, { ...state.world, pending: null });
   const w = state.weaves;
-  h.string(w.spindleId).byte(0).u32(w.slots.length);
+  h.string(w.spindleId).byte(0).u32(w.slots.length).u32(w.activeBar);
   for (const s of w.slots) {
     h.string(s.notation ?? '-').byte(0);
     h.u32(s.runes?.length ?? 0);

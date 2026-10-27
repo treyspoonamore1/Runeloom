@@ -11,7 +11,9 @@ import {
   RUNTIME_SHIPS,
   setLoadoutSpindle,
   setSlotWeave,
-  openSlotCount,
+  slotOpen,
+  barOf,
+  LOADOUT_SLOTS,
   type CompileResult,
   type GameState,
 } from '../sim';
@@ -24,8 +26,24 @@ import type { HeroState } from '../sim/hero/types';
 import type { RuneItem } from '../sim/hero/types';
 import type { Session } from './session';
 
-/** Button label per slot, in slot order. R is Twin Threads' fifth slot, open only with the mutation. */
-export const SLOT_LABELS = ['LMB', 'RMB', 'Q', 'E', 'R'] as const;
+/**
+ * The button per slot, in slot order (sim weave/runtime/slots.ts): bar 1's four, R (Twin Threads,
+ * open only with the mutation, live on both bars), then bar 2's four on the same buttons.
+ */
+export const SLOT_KEYS = ['LMB', 'RMB', 'Q', 'E', 'R', 'LMB', 'RMB', 'Q', 'E'] as const;
+
+/** Player-facing name per slot, in slot order: bar 2's slots say so ("Bar 2 LMB"). */
+export const SLOT_LABELS = [
+  'LMB',
+  'RMB',
+  'Q',
+  'E',
+  'R',
+  'Bar 2 LMB',
+  'Bar 2 RMB',
+  'Bar 2 Q',
+  'Bar 2 E',
+] as const;
 
 /** Spindles the sandbox lets the player pick (DECISIONS: M2 sandbox loadout; Loomsteel from M5). */
 export const SANDBOX_SPINDLES: readonly SpindleId[] = [
@@ -43,6 +61,10 @@ export const ALLOWED_SHIPS = RUNTIME_SHIPS;
 export interface SlotView {
   slot: number;
   label: (typeof SLOT_LABELS)[number];
+  /** Its button (LMB, RMB, Q, E, R). */
+  key: (typeof SLOT_KEYS)[number];
+  /** Its bar: 0 or 1, or -1 for R (on both bars). */
+  bar: number;
   /** Canonical notation of the weave in the slot, or null when the slot is empty. */
   notation: string | null;
   /** The slot's weave compiled against the current spindle; null when empty. */
@@ -56,10 +78,17 @@ export interface LoadoutView {
   /** Capacity of the current spindle (plus Loom Shards from M4). */
   capacity: number;
   /**
-   * The open slots, in slot order (`slots[i].slot === i`): four, or five with the Twin Threads
-   * mutation (R). The HUD and the Loom show exactly these.
+   * The open slots, in slot order (find one with slotViewOf): bar 1's four, R with the Twin
+   * Threads mutation, then bar 2's four. The HUD and the Loom show exactly these.
    */
   slots: SlotView[];
+  /** The live weave bar, 0 or 1 (X swaps it in play). */
+  activeBar: number;
+}
+
+/** The view of `slot` if it is open, else undefined. */
+export function slotViewOf(l: LoadoutView, slot: number): SlotView | undefined {
+  return l.slots.find((s) => s.slot === slot);
 }
 
 /** Cooldown display for a slot: ICD or Pulse period counting down. Both 0 when ready or not applicable. */
@@ -89,6 +118,8 @@ function slotView(state: GameState, slot: number): SlotView {
   return {
     slot,
     label: SLOT_LABELS[slot]!,
+    key: SLOT_KEYS[slot]!,
+    bar: barOf(slot),
     notation: s.notation,
     compiled: s.compiled,
     automatic: s.compiled?.ok === true ? s.compiled.program.trigger.automatic : false,
@@ -100,7 +131,10 @@ export function getLoadout(session: Session): LoadoutView {
   return {
     spindleId: w.spindleId,
     capacity: (w.capacity ?? spindles[w.spindleId].capacity) + session.state.heroMods.capacityAdd,
-    slots: w.slots.slice(0, openSlotCount(session.state)).map((_, i) => slotView(session.state, i)),
+    slots: Array.from({ length: LOADOUT_SLOTS }, (_, i) => i)
+      .filter((i) => slotOpen(session.state, i))
+      .map((i) => slotView(session.state, i)),
+    activeBar: w.activeBar,
   };
 }
 

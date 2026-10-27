@@ -49,6 +49,8 @@ export function cuesForEvent(e: SimEvent, state: GameState): Cue[] {
       return e.trigger === 'cast' || e.trigger === 'channel' ? [] : [{ id: 'triggerTick', x: e.x, y: e.y }];
     case 'castFailed':
       return [{ id: 'castFailed' }];
+    case 'barSwap':
+      return [{ id: 'barSwap' }];
     case 'projectileEnd': {
       const id = impactSfx[e.kind];
       if (!id || (e.reason !== 'hit' && e.reason !== 'wall')) return [];

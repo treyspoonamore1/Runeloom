@@ -42,6 +42,8 @@ export interface SuggestInput {
   unlimited: boolean;
   /** Canonical notation per slot, null when empty. */
   slots: readonly (string | null)[];
+  /** The weave slot of each `slots` entry (the live bar's and R); default: its index. */
+  slotIds?: readonly number[];
   /** Whether `notation` would compile in `slot` (Capacity, rune counts). Default: always. */
   fits?(notation: string, slot: number): boolean;
 }
@@ -76,7 +78,9 @@ export function withElement(
 export function suggestWeave(rune: RuneId, inp: SuggestInput): WeaveSuggestion {
   const el = runes[rune].notation;
   const fits = inp.fits ?? (() => true);
-  const empty = inp.slots.findIndex((n) => n === null);
+  const id = (i: number): number => inp.slotIds?.[i] ?? i;
+  const emptyAt = inp.slots.findIndex((n) => n === null);
+  const empty = emptyAt < 0 ? -1 : id(emptyAt);
   const form = suggestedForms.find((f) => free(inp, f));
   const newOk = empty >= 0 && free(inp, 'cast') && form !== undefined;
   if (newOk) {
@@ -93,7 +97,7 @@ export function suggestWeave(rune: RuneId, inp: SuggestInput): WeaveSuggestion {
   }
   // Swap: Cast weaves first, then the rest; replacing an element before adding one.
   const order = inp.slots
-    .map((n, slot) => ({ n, slot }))
+    .map((n, i) => ({ n, slot: id(i) }))
     .filter((x): x is { n: string; slot: number } => x.n !== null)
     .sort((a, b) => Number(!a.n.startsWith('Cast')) - Number(!b.n.startsWith('Cast')));
   const candidates = order

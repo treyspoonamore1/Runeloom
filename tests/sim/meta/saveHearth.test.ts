@@ -7,6 +7,7 @@ import {
   loadSave,
   makeSave,
   parseSave,
+  SAVE_VERSION,
   type GameState,
   type SaveData,
 } from '../../../src/sim';
@@ -73,7 +74,7 @@ describe('the Hearth in saves', () => {
     delete v2.hero.hearth;
     v2.world.bossesDefeated = ['tar_matriarch', 'cinder_warden'];
     const save = parseSave(v2);
-    expect(save.version).toBe(3);
+    expect(save.version).toBe(SAVE_VERSION);
     expect(save.hero.hearth.lit).toBe(true);
     expect(save.hero.hearth.embers).toBe(embers.onLit);
     expect(save.world.loomStones).toContain(loomStoneId(hearthStone.roomId, hearthStone.key));

@@ -29,6 +29,11 @@ export const defaultTuning = {
     castSpeed: 1,
     /** Fraction of a spell's cast time after which it releases (mana is paid then). */
     castReleaseFraction: 0.25,
+    /**
+     * Seconds after swapping weave bars (X) before the new bar's slots act: casts, channels,
+     * Pulse and event triggers. Feel value (playtest 8: the second weave bar).
+     */
+    barSwapLockout: 0.15,
     /** Seconds dead before respawning at the room's Loom Stone. */
     respawnDelay: 2,
     /** Invulnerable seconds after respawning, so a camped spawn can't chain-kill. */

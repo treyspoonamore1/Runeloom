@@ -8,7 +8,7 @@ import type { Renderer } from '../render/renderer';
 import type { AudioSystem } from '../audio/audio';
 import type { AdventureFlow } from '../app/adventure';
 import { readSnap, snapEqual } from './hudModel';
-import { slotSnaps } from './hudSlots';
+import { barSnap, slotSnaps } from './hudSlots';
 import { getLoadout, slotTimers, type LoadoutView } from '../app/loadout';
 import { createLoom } from './loom/loom';
 import { differsFromSaved, loadoutRev, restoreLoadout } from './loom/loadoutStore';
@@ -96,6 +96,7 @@ export function createHud(ctx: HudContext): Hud {
     screen: signal<Screen>(ctx.title && flow ? 'title' : skipStart ? 'play' : 'start'),
     hurt: signal(0),
     deny: signal({ slot: -1, n: 0 }),
+    swap: signal(0),
     banner: signal<Banner | null>(null),
   };
   let bannerId = 0;
@@ -369,6 +370,7 @@ export function createHud(ctx: HudContext): Hud {
     handleEvents(events) {
       for (const e of events) {
         if (e.type === 'castFailed') s.deny.value = { slot: e.slot, n: s.deny.peek().n + 1 };
+        else if (e.type === 'barSwap') s.swap.value = s.swap.peek() + 1;
         else if (e.type === 'hit' && e.target === 'player') s.hurt.value = s.hurt.peek() + 1;
       }
       adv.handleEvents(events);
@@ -383,7 +385,8 @@ export function createHud(ctx: HudContext): Hud {
     },
     frame(state) {
       const edits = ctx.session.loadoutEdits.length;
-      if (viewRev !== loadoutRev.peek() || edits !== viewEdits || ++viewAge >= 30) {
+      const swapped = view.activeBar !== state.weaves.activeBar;
+      if (swapped || viewRev !== loadoutRev.peek() || edits !== viewEdits || ++viewAge >= 30) {
         view = getLoadout(ctx.session);
         viewRev = loadoutRev.peek();
         viewEdits = edits;
@@ -398,6 +401,7 @@ export function createHud(ctx: HudContext): Hud {
       const next = readSnap(
         state,
         slotSnaps(view, state.player, (i) => slotTimers(state, i)),
+        barSnap(view),
       );
       if (!snapEqual(s.snap.peek(), next)) s.snap.value = next;
       adv.frame();

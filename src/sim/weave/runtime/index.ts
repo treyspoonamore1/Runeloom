@@ -11,6 +11,11 @@ export type {
 export {
   LOADOUT_SLOTS,
   BASE_SLOTS,
+  BAR_SLOTS,
+  TWIN_SLOT,
+  barOf,
+  liveSlots,
+  actingSlots,
   LOCKED_SLOT_MESSAGE,
   slotOpen,
   openSlotCount,
@@ -39,6 +44,8 @@ export {
   type Loadout,
 } from './loadout';
 export { cancelCast, slotSpellName } from './castState';
+export { swapBar } from './bars';
+export { BAR_COUNT, slotsClash } from './slots';
 export { noteDodge, noteKill, noteShatter, noteCrit, noteHurt } from './queue';
 export { stepWeaves, fireProgram, payMana } from './triggers';
 export { stepSpells, compactSpells, holdSpells } from './step';

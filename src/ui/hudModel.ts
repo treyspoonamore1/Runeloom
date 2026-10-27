@@ -5,9 +5,9 @@
  */
 import { playerDodgeCharges, playerDodgeRecharge, type GameState } from '../sim';
 import { enemiesRemaining, readArena, type ArenaView } from './arena';
-import type { SlotSnap } from './hudSlots';
+import type { BarSnap, SlotSnap } from './hudSlots';
 
-export type { SlotSnap } from './hudSlots';
+export type { BarSnap, SlotSnap } from './hudSlots';
 
 export const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -78,12 +78,19 @@ export interface HudSnap {
   respawnSec: number;
   pips: number[];
   slots: SlotSnap[];
+  /** The weave bars (hudSlots.barSnap): the live bar and the other bar's preview. */
+  bar: BarSnap;
   wave: WaveSnap | null;
   god: boolean;
 }
 
-/** Vitals, dodge and wave from the state; `slots` come from hudSlots.slotSnaps (the loadout contract). */
-export function readSnap(state: GameState, slots: SlotSnap[] = []): HudSnap {
+const NO_BAR: BarSnap = { active: 0, other: [] };
+
+/**
+ * Vitals, dodge and wave from the state; `slots` and `bar` come from hudSlots.slotSnaps and
+ * barSnap (the loadout contract).
+ */
+export function readSnap(state: GameState, slots: SlotSnap[] = [], bar: BarSnap = NO_BAR): HudSnap {
   const p = state.player;
   const a = readArena(state);
   return {
@@ -99,6 +106,7 @@ export function readSnap(state: GameState, slots: SlotSnap[] = []): HudSnap {
     // With the character's dodge mods (passives, items): 0 of them outside adventure mode.
     pips: dodgePips(p.dodgeCharges, playerDodgeCharges(state), p.dodgeRechargeLeft, playerDodgeRecharge(state)),
     slots,
+    bar,
     wave: a
       ? { wave: a.wave, phase: a.phase, countdown: fmtCountdown(a.timer), remaining: enemiesRemaining(state) }
       : null,
@@ -117,10 +125,13 @@ export function snapEqual(a: HudSnap, b: HudSnap): boolean {
   if (a.pips.length !== b.pips.length || a.slots.length !== b.slots.length) return false;
   if (!a.pips.every((v, i) => v === b.pips[i])) return false;
   if (!a.slots.every((s, i) => shallowEq(s, b.slots[i]!))) return false;
+  if (a.bar.active !== b.bar.active) return false;
+  if (a.bar.other.length !== b.bar.other.length) return false;
+  if (!a.bar.other.every((s, i) => shallowEq(s, b.bar.other[i]!))) return false;
   if ((a.wave === null) !== (b.wave === null)) return false;
   if (a.wave && b.wave && !shallowEq(a.wave, b.wave)) return false;
-  const { pips: _p, slots: _s, wave: _w, ...ra } = a;
-  const { pips: _p2, slots: _s2, wave: _w2, ...rb } = b;
+  const { pips: _p, slots: _s, wave: _w, bar: _b, ...ra } = a;
+  const { pips: _p2, slots: _s2, wave: _w2, bar: _b2, ...rb } = b;
   return shallowEq(ra, rb);
 }
 

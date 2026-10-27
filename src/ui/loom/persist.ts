@@ -1,17 +1,17 @@
 /**
- * Remembers the sandbox player's four weaves and spindle in localStorage and restores them at boot
+ * Remembers the sandbox player's weaves (both bars) and spindle in localStorage and restores them at boot
  * through the loadout contract (setSpindle, then setWeave per slot). Storage can be missing or
  * blocked (private windows, sandboxed frames), so every access is guarded.
  */
 import { SANDBOX_SPINDLES } from '../../app/loadout';
-import { BASE_SLOTS } from '../../sim/weave/runtime/slots';
+import { LOADOUT_SLOTS } from '../../sim/weave/runtime/slots';
 import type { SpindleId } from '../../../data/spindles';
 
 export const LOADOUT_KEY = 'runeloom.loadout.v1';
 
 export interface SavedLoadout {
   spindleId: SpindleId;
-  /** One per slot; null is an empty slot. */
+  /** One per slot, in slot order (bar 1, R, bar 2); null is an empty slot. Older saves hold four. */
   slots: (string | null)[];
 }
 
@@ -43,8 +43,8 @@ export function parseSaved(raw: string | null): SavedLoadout | null {
   if (typeof d.spindleId !== 'string' || !(SANDBOX_SPINDLES as readonly string[]).includes(d.spindleId))
     return null;
   if (!Array.isArray(d.slots)) return null;
-  // The sandbox has the four base slots only (Twin Threads' fifth needs a hero with the mutation).
-  const slots = Array.from({ length: BASE_SLOTS }, (_, i) => {
+  // Every slot; R stays empty in the sandbox (Twin Threads needs a hero with the mutation).
+  const slots = Array.from({ length: LOADOUT_SLOTS }, (_, i) => {
     const v: unknown = (d.slots as unknown[])[i];
     return typeof v === 'string' && v.length <= 2000 ? v : null;
   });

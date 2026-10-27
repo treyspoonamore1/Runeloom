@@ -51,10 +51,14 @@ export function createItemGet(session: Session): ItemGet {
       return pending.splice(i, 1)[0]!.rune;
     },
     build(rune) {
+      // Suggestions go to the live bar's slots, then R.
+      const l = getLoadout(session);
+      const live = [...l.slots.filter((s) => s.bar === l.activeBar), ...l.slots.filter((s) => s.bar < 0)];
       return itemGetView(rune, {
         counts: getRuneCounts(session),
         unlimited: unlimitedRunes(session),
-        slots: getLoadout(session).slots.map((s) => s.notation),
+        slots: live.map((s) => s.notation),
+        slotIds: live.map((s) => s.slot),
         fits: (notation, slot) => previewWeave(session, notation, slot).compiled?.ok === true,
       });
     },
