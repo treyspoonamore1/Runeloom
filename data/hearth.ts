@@ -214,7 +214,7 @@ export const mutations = {
     name: 'Twin Threads',
     ash: 4,
     max: 1,
-    text: 'A fifth weave slot, bound to R',
+    text: 'A weave slot bound to R, live on both weave bars',
   },
   kindred_flame: {
     id: 'kindred_flame',

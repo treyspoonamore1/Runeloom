@@ -58,7 +58,7 @@ The Fen comes after the first rifts: it is reached through K10's storm door, whi
 
 - Top-down orthographic 2D. The camera follows the player with look-ahead toward the cursor (up to 15% of screen size, smoothed).
 - 1 cell = 8 px at the reference resolution 1280×720, so the default view is about 160×90 cells. The view scales with resolution.
-- Keyboard and mouse: WASD move, mouse aims, LMB / RMB / Q / E cast the 4 weave slots (R casts a fifth with the Twin Threads mutation, §11), Space dodges, Tab opens the Loom, I inventory, P passive tree, F interact. Gamepad arrives in M8.
+- Keyboard and mouse: WASD move, mouse aims, LMB / RMB / Q / E cast the 4 slots of the live weave bar, X swaps between the two weave bars (§5.1), R casts the Twin Threads slot (on both bars, §11), Space dodges, Tab opens the Loom, I inventory, P passive tree, F interact. Gamepad arrives in M8.
 - Casting while moving is allowed. Beam and Channel slow movement by 40% while active.
 
 Feel defaults. All live in `data/tuning.ts` and are exposed in the F2 tuning panel.
@@ -77,8 +77,8 @@ Feel defaults. All live in `data/tuning.ts` and are exposed in the F2 tuning pan
 
 ### 5.1 Concepts
 
-- **Rune**: an item that is one node of a spell. Kinds: trigger, form, element, modifier, branch. Runes drop as loot, level 1 to 20 from XP earned while socketed, and have quality 0 to 20%. Each rune item sits in one place at a time; duplicates drop.
-- **Weave**: a tree of runes that makes one spell. The player has 4 weave slots, bound to LMB, RMB, Q, E; the Twin Threads mutation (§11, CONTENT §11) adds a fifth on R. A weave with an automatic trigger (Pulse, On Dodge, ...) still uses a slot; its button does nothing.
+- **Rune**: an item that is one node of a spell. Kinds: trigger, form, element, modifier, branch. Runes drop as loot, level 1 to 20 from XP earned while socketed in a live slot, and have quality 0 to 20%. Each rune item sits in one place per weave bar: the pouch, or one slot of each bar (the two bars share the pouch; the R slot counts for both bars). Duplicates drop.
+- **Weave**: a tree of runes that makes one spell. The player has two weave bars of 4 slots each, bound to LMB, RMB, Q, E; X swaps which bar is live, like a weapon swap. Only the live bar's slots act, automatic triggers included; the other bar's trigger timers wait until it is live again. A swap cancels a cast or channel from the bar being left, and the new bar can't act for a short lockout (`tuning.player.barSwapLockout`, 0.15 s). The Twin Threads mutation (§11, CONTENT §11) adds a slot on R that is live on both bars. A weave with an automatic trigger (Pulse, On Dodge, ...) still uses a slot; its button does nothing.
 - **Spindle**: the weapon. It provides Capacity (the complexity budget per weave), cast speed, an implicit modifier, and 1 or 2 Fuse sockets.
 
 ### 5.2 Structure
@@ -353,7 +353,7 @@ Budget: the grid bench (§12) runs with room wind on, 8 live gusts and smoke on 
 
 ### 8.1 Slots
 
-Spindle, Cloak, Hood, Boots, Charm ×2. Runes live separately in the rune pouch and the weave slots.
+Spindle, Cloak, Hood, Boots, Charm ×2. Runes live separately in the rune pouch and the weave slots (both weave bars, §5.1).
 
 ### 8.2 Rarity
 

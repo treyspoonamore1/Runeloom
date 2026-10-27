@@ -3,7 +3,7 @@ import { Button, type InputFrame } from '../sim';
 const KEY_BUTTONS: Record<string, number> = {
   KeyQ: Button.Cast3,
   KeyE: Button.Cast4,
-  // Twin Threads' fifth slot; a no-op while it is locked (the lab's R reset is its own handler).
+  // Twin Threads' R slot (on both weave bars); a no-op while it is locked (the lab's R reset is its own handler).
   KeyR: Button.Cast5,
   // Swaps the live weave bar (the second bar, playtest 8).
   KeyX: Button.SwapBar,
