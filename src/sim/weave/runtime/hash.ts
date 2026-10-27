@@ -4,6 +4,7 @@ import type { DamagePacket } from '../../combat/damage';
 import type { Hasher } from '../../core/hash';
 import type { GameState } from '../../state';
 import type { SpawnAt } from './types';
+import type { WeaveSlot } from './loadout';
 
 export function hashPacket(h: Hasher, d: DamagePacket): void {
   for (const t of damageTypes) h.num(d.base[t]);
@@ -29,19 +30,33 @@ function at(h: Hasher, a: SpawnAt): void {
   h.bool(a.echo).num(a.damageMult).bool(a.fromPlayer);
 }
 
+function hashSlot(h: Hasher, s: WeaveSlot): void {
+  str(h, s.notation);
+  h.num(s.cooldownLeft).num(s.periodLeft);
+  // Socketed rune uids exist only in adventure mode; other modes hash exactly as before M4.
+  if (s.runes) {
+    h.byte(1).u32(s.runes.length);
+    for (const u of s.runes) h.u32(u);
+  }
+}
+
+/** Slots before the second weave bar (bar 1 and R): hashed as they always were. */
+const FIRST_SLOTS = 5;
+
+const untouched = (s: WeaveSlot): boolean =>
+  s.notation === null && s.runes === null && s.cooldownLeft === 0 && s.periodLeft === 0;
+
 export function hashWeaveState(h: Hasher, state: GameState): void {
   const w = state.weaves;
   str(h, w.spindleId);
-  h.num(w.capacity ?? -1).u32(w.slots.length);
-  h.u32(w.activeBar).num(w.swapLeft);
-  for (const s of w.slots) {
-    str(h, s.notation);
-    h.num(s.cooldownLeft).num(s.periodLeft);
-    // Socketed rune uids exist only in adventure mode; other modes hash exactly as before M4.
-    if (s.runes) {
-      h.byte(1).u32(s.runes.length);
-      for (const u of s.runes) h.u32(u);
-    }
+  h.num(w.capacity ?? -1).u32(Math.min(w.slots.length, FIRST_SLOTS));
+  for (const s of w.slots.slice(0, FIRST_SLOTS)) hashSlot(h, s);
+  // The second weave bar (playtest 8) is hashed once used, so a run that never touches it hashes
+  // exactly as before and older replays still match their recorded hash.
+  const bar2 = w.slots.slice(FIRST_SLOTS);
+  if (w.activeBar !== 0 || w.swapLeft !== 0 || !bar2.every(untouched)) {
+    h.byte(2).u32(w.activeBar).num(w.swapLeft).u32(bar2.length);
+    for (const s of bar2) hashSlot(h, s);
   }
   h.bool(state.cheats.infiniteMana === true)
     .u32(state.triggerForcing)

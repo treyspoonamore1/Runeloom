@@ -196,6 +196,17 @@ describe('weave bars: state, determinism and replays', () => {
     expect(hashState(b)).not.toBe(hashState(a));
   });
 
+  it('an unused bar 2 hashes as the five-slot loadout did, so older replays keep their hash', () => {
+    const s = bars([null]);
+    ticks(s, 30, LMB);
+    const five = { ...s, weaves: { ...s.weaves, slots: s.weaves.slots.slice(0, 5) } };
+    expect(hashState(s)).toBe(hashState(five));
+    expect(setSlotWeave(s, 6, 'Cast > Strike[]').applied).toBe(true);
+    expect(hashState(s)).not.toBe(hashState(five));
+    expect(setSlotWeave(s, 6, null).applied).toBe(true);
+    expect(hashState(s)).toBe(hashState(five));
+  });
+
   it('loadoutSpecOf keeps the live bar (replay starts), and leaves it out on bar 1', () => {
     const s = bars();
     expect(loadoutSpecOf(s.weaves).activeBar).toBeUndefined();
