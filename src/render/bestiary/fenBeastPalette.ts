@@ -159,6 +159,8 @@ export const FEN_BEAST = {
     skinDark: 0x56604e,
     eye: 0x1a1a14,
     ring: 0xf2e6b0,
+    /** Rung open (playtest 8): the shell's warm glow and its ring waves, gold to read on pale water. */
+    ringGold: 0xffc83a,
   },
 } as const;
 
@@ -174,6 +176,9 @@ export const FEN_FEEL = {
   /** Bellshell: ring wave rate while rung, shell shiver. */
   bellRingHz: 2.2,
   bellShiver: 0.06,
+  /** Bellshell rung open: shell lift (cells) and the most gold its tint takes. */
+  bellLift: 2.1,
+  bellGlow: 0.55,
   /** Mirebull: how deep it sinks when bogged. */
   bogSink: 0.7,
 } as const;

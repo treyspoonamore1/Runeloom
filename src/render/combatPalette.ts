@@ -168,6 +168,10 @@ export const FX = {
   /** Player death collapse and re-weave seconds. */
   collapseTime: 0.35,
   reweaveTime: 0.55,
+  /** Playtest 8: a bell rung by charge (Bellshell, Old Bellwether): its gold flash and burst. */
+  bellRing: 0xffc83a,
+  bellRingLight: 0xfff0a8,
+  bellRingFlash: 0.3,
   /** Busy-screen dimming of player effects: enemy-equivalents where it starts and is full. */
   busyStart: 40,
   busyFull: 110,
@@ -198,6 +202,12 @@ export const NUMBERS = {
   dotDy: -1.2,
   dotColors: { physical: 0xe8dccb, fire: ELEMENT.fire, frost: 0x7fd6f5, storm: 0xe8d23a },
   dotPlayer: 0xff6a4a,
+  /** Playtest 8: a hit a state cut (Shelled, Submerged): dull grey, smaller, a shield mark (× size). */
+  reduced: 0x9aa4ad,
+  reducedSize: 14,
+  reducedLife: 0.75,
+  reducedRise: 2.2,
+  reducedMark: 1.05,
 } as const;
 
 /** Screen shake (render only). Pixels at 720p, scaled with screen height; max 3 px (DESIGN §4). */

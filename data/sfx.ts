@@ -888,4 +888,6 @@ export const audioTuning = {
   /** Sounds this far away (cells) are attenuated down to `farGain`. */
   fadeDistance: 90,
   farGain: 0.45,
+  /** Playtest 8: loudness of the usual hit sound under a reduced hit's clank (sfxFenBosses shellClank). */
+  reducedHitGain: 0.35,
 } as const;

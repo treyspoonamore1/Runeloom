@@ -104,11 +104,26 @@ export class CombatEvents {
             if (ev.spellId !== undefined) forms.handle(ev);
             const v = enemies.view(ev.target);
             v?.hit(ev.kbX, ev.kbY, s.player.x, s.player.y, ev.damageType);
-            fx.hitEnemy(ev.x, ev.y, v?.kind ?? '', ev.damageType, ev.crit, ev.kbX, ev.kbY);
-            numbers.damage(ev.target, ev.x, ev.y, ev.amount, ev.crit, ev.damageType, false);
+            if (ev.reduced !== undefined) {
+              // Playtest 8: a state cut it (Shelled, Submerged): a dull clank and a grey number.
+              fx.reducedHit(ev.x, ev.y, ev.kbX, ev.kbY);
+              numbers.reduced(ev.target, ev.x, ev.y, ev.amount, ev.crit);
+            } else {
+              fx.hitEnemy(ev.x, ev.y, v?.kind ?? '', ev.damageType, ev.crit, ev.kbX, ev.kbY);
+              numbers.damage(ev.target, ev.x, ev.y, ev.amount, ev.crit, ev.damageType, false);
+            }
             if (ev.crit && ev.sourceId === PLAYER_ID) shake.kick(SHAKE.crit);
           }
           break;
+        case 'bellRung': {
+          // Playtest 8: the moment charge rings a bell (Bellshell, Old Bellwether) must read.
+          const r = s.enemies.find((e) => e.id === ev.id)?.radius ?? 2.2;
+          enemies.view(ev.id)?.rung(FX.bellRing, FX.bellRingFlash);
+          fx.bellRing(ev.x, ev.y, r);
+          numbers.label(ev.x, ev.y - r * 0.6, 'RUNG!', FX.bellRing);
+          shake.kick(SHAKE.crit);
+          break;
+        }
         case 'death':
           if (ev.shattered) {
             // Frozen: burst into ice, no corpse (DESIGN §4 shakes on Shatter).

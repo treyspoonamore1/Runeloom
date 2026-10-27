@@ -169,6 +169,13 @@ export class EnemyView {
     if (this.kind === 'dummy') this.wobbleVel += (dx >= 0 ? 1 : -1) * 3.5;
   }
 
+  /** Rung by charge (playtest 8): a long gold flash and a jolt. */
+  rung(tint: number, seconds: number): void {
+    this.flashT = Math.max(this.flashT, seconds);
+    this.flash.tint = tint;
+    this.deformVel += C.hitKick * 2;
+  }
+
   attacked(): void {
     this.lungeT = 0.16;
     this.pull = 0;
