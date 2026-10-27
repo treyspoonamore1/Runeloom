@@ -17,6 +17,8 @@
  *       --room bellwether|coil plays the Fen boss arenas; --view fit,play adds play zoom; --viewport 390x844
  *   npm run shots -- --set fen [--shot fog,vents] [--viewport 390x844] [--milestone m8]   M8 Fen looks: fog and
  *       lantern, gusts and room wind, vents, borrowed terrain, pylon warning, F1 overlays, palettes
+ *   npm run shots -- --set hits [--shot shell_hit,note_long] [--viewport 960x540]   playtest 8: reduced
+ *       hits on a Shelled Bellshell, its ring, the one-time hints, the longest @note banner
  *   npm run shots -- --scenario weave_m5 --ticks 300 [--milestone m5]   a sim scenario (src/sim/scenarios.ts)
  *       set up and played in the browser for --ticks, then shot
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
@@ -42,6 +44,7 @@ import { itemShotIds, itemShotUrl, runItemShot, type ItemShotId } from './lib/it
 import { showFight } from './lib/fightShots';
 import { hearthShotIds, showHearth, type HearthShotId } from './lib/hearthShots';
 import { fenShotIds, runFenShot, type FenShotId } from './lib/fenShots';
+import { hitShotIds, hitShotUrl, runHitShot, type HitShotId } from './lib/hitShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -76,7 +79,7 @@ runCli(async () => {
     port: { kind: 'number', default: 0, help: 'dev server port (0: any free port)' },
     shot: {
       kind: 'string',
-      help: `with --set ui: some of ${uiShotIds.join(', ')}; with --set item: some of ${itemShotIds.join(', ')}; with --set fen: some of ${fenShotIds.join(', ')}`,
+      help: `with --set ui: some of ${uiShotIds.join(', ')}; with --set item: some of ${itemShotIds.join(', ')}; with --set fen: some of ${fenShotIds.join(', ')}; with --set hits: some of ${hitShotIds.join(', ')}`,
     },
     section: { kind: 'string', help: 'gallery sections to shoot, comma-separated (default all, plus crowd)' },
     perf: { kind: 'boolean', help: 'gallery: measure render time with 300 M4 and 300 M1 enemies' },
@@ -260,6 +263,26 @@ runCli(async () => {
           written.push(more);
         }
         if (errors.length) console.warn(`warning: page errors in fen shot ${id}: ${errors.join('; ')}`);
+      }
+    } else if (a.set === 'hits') {
+      const only = (a.shot?.split(',') ?? [...hitShotIds]) as HitShotId[];
+      const vp = `${viewport.width}x${viewport.height}`;
+      for (const id of only) {
+        if (!hitShotIds.includes(id))
+          throw new ArgError(`Unknown hits shot "${id}". Available: ${hitShotIds.join(', ')}`);
+        errors.length = 0;
+        const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+        const p = await ctx.newPage();
+        p.on('pageerror', (e) => errors.push(e.message));
+        await p.goto(hitShotUrl(`http://127.0.0.1:${port}`));
+        await p.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+        const note = await runHitShot(p, id);
+        const file = join(SHOTS_DIR, `${milestone}_hits_${id}_${vp}.png`);
+        await p.screenshot({ path: file, timeout: 120_000 });
+        console.log(`shot ${id}: ${note}`);
+        written.push(file);
+        await ctx.close();
+        if (errors.length) console.warn(`warning: page errors in hits shot ${id}: ${errors.join('; ')}`);
       }
     } else if (a.set === 'gallery') {
       const url = `http://127.0.0.1:${port}/?scene=gallery`;
