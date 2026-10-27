@@ -96,6 +96,7 @@ export function createHud(ctx: HudContext): Hud {
     screen: signal<Screen>(ctx.title && flow ? 'title' : skipStart ? 'play' : 'start'),
     hurt: signal(0),
     deny: signal({ slot: -1, n: 0 }),
+    swap: signal(0),
     banner: signal<Banner | null>(null),
   };
   let bannerId = 0;
@@ -369,6 +370,7 @@ export function createHud(ctx: HudContext): Hud {
     handleEvents(events) {
       for (const e of events) {
         if (e.type === 'castFailed') s.deny.value = { slot: e.slot, n: s.deny.peek().n + 1 };
+        else if (e.type === 'barSwap') s.swap.value = s.swap.peek() + 1;
         else if (e.type === 'hit' && e.target === 'player') s.hurt.value = s.hurt.peek() + 1;
       }
       adv.handleEvents(events);

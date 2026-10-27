@@ -2,6 +2,7 @@
 import type { Signal } from '@preact/signals';
 import { fmtCost, waveText, type HudSnap } from './hudModel';
 import { WeaveIcon } from './loom/glyphs';
+import { OtherBar } from './hudBarSwap';
 import type { MenuId } from './menus/frame';
 
 /** 'itemGet': the new-element panel (src/ui/itemGet). */
@@ -19,6 +20,8 @@ export interface Sigs {
   hurt: Signal<number>;
   /** Slot and counter of the last failed cast, to restart that slot's red flash. */
   deny: Signal<{ slot: number; n: number }>;
+  /** Bumped on each weave bar swap (X), to replay the slot row's swap animation. */
+  swap: Signal<number>;
   banner: Signal<Banner | null>;
 }
 
@@ -53,6 +56,7 @@ function Globe(p: {
 export function Bar({ s }: { s: Sigs }) {
   const v = s.snap.value;
   const deny = s.deny.value;
+  const swap = s.swap.value;
   return (
     <div class="rl-bar">
       <Globe kind="life" value={v.life} max={v.maxLife} frac={v.lifeFrac} low={v.lifeFrac < 0.3 && !v.dead} />
@@ -65,33 +69,37 @@ export function Bar({ s }: { s: Sigs }) {
           ))}
           <small>Space</small>
         </div>
-        <div class="rl-slots">
-          {v.slots.map((sl) => (
-            <div class="rl-slotwrap" key={sl.slot}>
-              <div
-                class={`rl-slot${sl.affordable ? '' : ' poor'}${sl.casting ? ' casting' : ''}${sl.notation ? '' : ' empty'}${sl.warn ? ' warn' : ''}`}
-                title={
-                  sl.warn ? `Doesn't fire: ${sl.warn}` : (sl.notation ?? 'Empty slot: press Tab to weave')
-                }
-              >
-                {sl.notation ? <WeaveIcon form={sl.form} element={sl.element} /> : null}
-                <i class={`rl-sweep${sl.casting ? '' : ' idle'}`} style={`--p:${sl.progress}`} />
-                {sl.auto ? (
-                  <i class={`rl-cd${sl.cooldown > 0 ? '' : ' idle'}`} style={`--p:${sl.cooldown}`} />
-                ) : null}
-                {sl.auto ? <span class="rl-auto">auto</span> : null}
-                {sl.cost !== null ? (
-                  <span class="rl-cost" title="Mana cost">
-                    {fmtCost(sl.cost)}
-                  </span>
-                ) : null}
-                {sl.warn ? <i class="rl-warn" aria-label="Doesn't fit the spindle" /> : null}
-                {deny.slot === sl.slot && deny.n > 0 ? <i class="rl-deny" key={deny.n} /> : null}
+        <div class="rl-slotrow">
+          {/* Keyed on the swap count, so each swap replays the row's swap-in animation. */}
+          <div class={`rl-slots${swap > 0 ? ' swapped' : ''}`} key={swap}>
+            {v.slots.map((sl) => (
+              <div class="rl-slotwrap" key={sl.slot}>
+                <div
+                  class={`rl-slot${sl.affordable ? '' : ' poor'}${sl.casting ? ' casting' : ''}${sl.notation ? '' : ' empty'}${sl.warn ? ' warn' : ''}`}
+                  title={
+                    sl.warn ? `Doesn't fire: ${sl.warn}` : (sl.notation ?? 'Empty slot: press Tab to weave')
+                  }
+                >
+                  {sl.notation ? <WeaveIcon form={sl.form} element={sl.element} /> : null}
+                  <i class={`rl-sweep${sl.casting ? '' : ' idle'}`} style={`--p:${sl.progress}`} />
+                  {sl.auto ? (
+                    <i class={`rl-cd${sl.cooldown > 0 ? '' : ' idle'}`} style={`--p:${sl.cooldown}`} />
+                  ) : null}
+                  {sl.auto ? <span class="rl-auto">auto</span> : null}
+                  {sl.cost !== null ? (
+                    <span class="rl-cost" title="Mana cost">
+                      {fmtCost(sl.cost)}
+                    </span>
+                  ) : null}
+                  {sl.warn ? <i class="rl-warn" aria-label="Doesn't fit the spindle" /> : null}
+                  {deny.slot === sl.slot && deny.n > 0 ? <i class="rl-deny" key={deny.n} /> : null}
+                </div>
+                <span class="rl-key">{sl.key}</span>
+                <span class="rl-spellname">{sl.name}</span>
               </div>
-              <span class="rl-key">{sl.key}</span>
-              <span class="rl-spellname">{sl.name}</span>
-            </div>
-          ))}
+            ))}
+          </div>
+          <OtherBar bar={v.bar} />
         </div>
         <div class="rl-loomhint">
           <span class="rl-cap">Tab</span> Loom

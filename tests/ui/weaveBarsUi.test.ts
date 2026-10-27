@@ -13,6 +13,7 @@ import { setFixtures } from '../../src/ui/fixtures/mode';
 import { newGameHero } from '../../src/ui/fixtures/hero';
 import { setFixtureHero } from '../../src/ui/fixtures/store';
 import { suggestWeave } from '../../src/ui/itemGet/itemGetModel';
+import { cuesForEvent } from '../../src/audio/cues';
 import { refreshHero, swapBar } from '../../src/sim';
 
 const idle: CasterView = { mana: 50, castSlot: -1, castLeft: 0, castTime: 0 };
@@ -71,6 +72,10 @@ describe('HUD: the live bar and a preview of the other', () => {
     expect(snapEqual(a, snap())).toBe(true);
     swapBar(s.state);
     expect(snapEqual(a, snap())).toBe(false);
+  });
+
+  it('a swap plays its light sound', () => {
+    expect(cuesForEvent({ type: 'barSwap', bar: 1 }, arena().state).map((c) => c.id)).toEqual(['barSwap']);
   });
 });
 

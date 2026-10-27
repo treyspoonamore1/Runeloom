@@ -6,6 +6,7 @@
 import type { Page } from '@playwright/test';
 import { craftShotIds, runCraftShot, type CraftShotId } from './craftShots';
 import { invShotIds, isInvShot, runInvShot } from './invShots';
+import { barShotIds, isBarShot, runBarShot } from './barShots';
 
 export const uiShotIds = [
   'title',
@@ -47,6 +48,7 @@ export const uiShotIds = [
   'hud_twin',
   'loom_twin',
   'item_art',
+  ...barShotIds,
   ...invShotIds,
 ] as const;
 export type UiShotId = (typeof uiShotIds)[number];
@@ -56,7 +58,7 @@ const ADV = 'scene=adventure&fixture=1&paused=1&seed=1';
 export function uiShotUrl(base: string, id: UiShotId): string {
   if (id === 'title' || id === 'title_load') return `${base}/?fixture=1&seed=1`;
   if (id === 'hud') return `${base}/?${ADV}&ui=play&boss=cinder_warden`;
-  if (id === 'hud_twin' || id === 'loom_twin') return `${base}/?${ADV}&ui=play`;
+  if (id === 'hud_twin' || id === 'loom_twin' || isBarShot(id)) return `${base}/?${ADV}&ui=play`;
   if (id === 'death') return `${base}/?${ADV}&ui=play`;
   if (id === 'item_art') return `${base}/?${ADV}`;
   // The inventory shots (invShots.ts) run on a real game with a rolled bag.
@@ -87,6 +89,7 @@ export async function runUiShot(page: Page, id: UiShotId): Promise<void> {
   await page.evaluate('window.__name = (f) => f');
   await settle(page);
   if (isInvShot(id)) return runInvShot(page, id);
+  if (isBarShot(id)) return runBarShot(page, id);
   if (id === 'title' || id === 'title_load') {
     // Two saves, so Continue and the slot list have something to show.
     await page.evaluate(async (load) => {

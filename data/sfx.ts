@@ -501,6 +501,16 @@ export const sfx = {
       { at: 0.035, volume: 0.6, frequency: NOTE(22), shape: 'sine', release: 0.14 },
     ],
   },
+  /** Weave bar swap (X): a light two-note flick up, like a page turning. */
+  barSwap: {
+    gain: 0.3,
+    pitchVar: 0.02,
+    minGapMs: 80,
+    layers: [
+      { volume: 0.6, frequency: 660, shape: 'triangle', attack: 0.003, release: 0.05 },
+      { at: 0.04, volume: 0.55, frequency: 990, shape: 'sine', release: 0.08 },
+    ],
+  },
   /** Not enough mana: a short, dull two-step down. Soft, so it doesn't nag. */
   castFailed: {
     gain: 0.4,

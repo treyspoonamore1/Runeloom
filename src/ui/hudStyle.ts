@@ -80,6 +80,20 @@ export const hudCss = `
 .rl-loomhint .rl-cap { min-width: 0; margin: 0; padding: calc(var(--u) * 0.15) calc(var(--u) * 0.6); font-size: calc(var(--u) * 1.3); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink); }
 .rl-key { font-size: calc(var(--u) * 1.8); font-weight: 700; letter-spacing: 0.1em; color: var(--gold); text-transform: uppercase; line-height: 1; }
 .rl-spellname { font-size: calc(var(--u) * 1.6); color: var(--sand); line-height: 1; margin-top: calc(var(--u) * -0.1); max-width: calc(var(--u) * 11); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The second weave bar (hudBarSwap.tsx): live slots, then the bar number, the other bar small and grey, and X. */
+.rl-slotrow { display: flex; align-items: flex-start; gap: calc(var(--u) * 2.6); }
+.rl-slots.swapped { animation: rl-swapin 0.24s ease-out; }
+@keyframes rl-swapin { 0% { transform: translateY(calc(var(--u) * 1.8)) scale(0.92); opacity: 0.3; filter: brightness(1.9); } 100% { transform: none; opacity: 1; filter: none; } }
+.rl-otherbar { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 0.8); padding-left: calc(var(--u) * 2.2); border-left: calc(var(--u) * 0.25) solid rgba(168, 120, 42, 0.35); }
+.rl-barnum { font-size: calc(var(--u) * 1.7); font-weight: 700; color: var(--sand); letter-spacing: 0.08em; line-height: 1; }
+.rl-barnum b { font-size: calc(var(--u) * 2.4); color: var(--gold-hi); }
+.rl-mini { display: grid; grid-template-columns: repeat(2, calc(var(--u) * 3.4)); gap: calc(var(--u) * 0.55); filter: grayscale(1) brightness(0.8); opacity: 0.75; }
+.rl-minislot { position: relative; width: calc(var(--u) * 3.4); height: calc(var(--u) * 3.4); border-radius: calc(var(--u) * 0.7); background: linear-gradient(160deg, var(--indigo-3), var(--indigo-2)); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink), 0 0 0 calc(var(--u) * 0.45) var(--gold-lo); }
+.rl-minislot svg { position: absolute; inset: calc(var(--u) * 0.4); width: calc(100% - var(--u) * 0.8); height: calc(100% - var(--u) * 0.8); }
+.rl-minislot.empty { background: rgba(26, 22, 56, 0.6); }
+.rl-minislot.empty::after { content: ''; position: absolute; inset: calc(var(--u) * 0.6); border-radius: calc(var(--u) * 0.4); border: calc(var(--u) * 0.2) dashed rgba(185, 176, 216, 0.35); }
+.rl-swapkey { display: flex; align-items: center; gap: calc(var(--u) * 0.5); font-size: calc(var(--u) * 1.4); color: var(--gold); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1; }
+.rl-swapkey .rl-cap { min-width: 0; margin: 0; padding: calc(var(--u) * 0.15) calc(var(--u) * 0.6); font-size: calc(var(--u) * 1.3); box-shadow: 0 0 0 calc(var(--u) * 0.25) var(--ink); }
 .rl-godtag { white-space: nowrap; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + var(--u) * 1.2); padding: calc(var(--u) * 0.3) calc(var(--u) * 1.2); border-radius: 999px; font-size: calc(var(--u) * 1.5); font-weight: 700; letter-spacing: 0.14em; color: var(--ink); background: var(--gold); box-shadow: 0 0 0 calc(var(--u) * 0.3) var(--ink); }
 
 /* ---- Top wave panel and banner ---- */

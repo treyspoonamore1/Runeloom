@@ -1,6 +1,7 @@
 /**
  * The rune pouch, grouped by kind and searchable. Sandbox, arena and lab: every rune this build
- * ships, unlimited. Adventure: only the runes the hero owns, with free / owned counts.
+ * ships, unlimited. Adventure: only the runes the hero owns, with free / owned counts for the
+ * selected slot (the other weave bar's drafts don't count: LoomState.free).
  */
 import { ALLOWED_SHIPS } from '../../app/loadout';
 import type { RuneDef } from '../../../data/runes';
@@ -48,7 +49,7 @@ export function Pouch({ st }: { st: LoomState }) {
       <header class="lm-panel-head">
         <h3>Rune pouch</h3>
         {totals ? (
-          <span class="lm-inf" title="Each rune sits in one place at a time. Free / owned">
+          <span class="lm-inf" title="Each rune sits in one place per weave bar: the two bars share the pouch, R counts for both. Free (for this slot) / owned">
             {owned} runes
           </span>
         ) : (
