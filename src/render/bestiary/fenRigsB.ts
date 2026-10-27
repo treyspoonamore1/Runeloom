@@ -252,19 +252,19 @@ export class BellRig extends BeastRig {
     // Open: the shell lifts and tilts; rung and stunned, it shivers and rings out in waves.
     const o = this.open;
     const shiver = stunned ? Math.sin(c.t * 45) * F.bellShiver : 0;
-    this.shell.position.set(shiver * 4 + 0.3 * o, -1.4 * o);
-    this.shell.rotation = -0.3 * o + shiver;
+    this.shell.position.set(shiver * 4 + 0.3 * o, -F.bellLift * o);
+    this.shell.rotation = -0.35 * o + shiver;
     const cool = s.ringCooldown > 0 && !opened;
     this.shell.tint = cool
       ? 0xc8b896
-      : mixRgb(0xffffff, B.bellshell.ring, o * (0.4 + 0.3 * Math.sin(c.t * 8)));
+      : mixRgb(0xffffff, B.bellshell.ringGold, o * F.bellGlow * (0.75 + 0.25 * Math.sin(c.t * 8)));
     if (stunned && opened) {
       this.ringClock -= c.dt;
       if (this.ringClock <= 0) {
         this.ringClock = 1 / F.bellRingHz;
-        for (const [r0, r1, a] of [
-          [2.2, 7.5, 0.95],
-          [1.8, 6, 0.6],
+        for (const [r0, r1, a, tint] of [
+          [2.2, 7.5, 1, B.bellshell.ringGold],
+          [1.8, 6, 0.75, B.bellshell.ring],
         ] as const) {
           const p = c.fx.spawn(
             c.fx.body,
@@ -274,7 +274,7 @@ export class BellRig extends BeastRig {
             0,
             0,
             0.55,
-            B.bellshell.ring,
+            tint,
             r0 * c.scale,
             r1 * c.scale,
           );

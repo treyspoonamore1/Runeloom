@@ -161,7 +161,7 @@ export async function createRenderer(host: HTMLElement, state: GameState): Promi
   const fx = new FxView(atlas);
   const projectiles = new ProjectileView(atlas, fx.pNorm);
   const telegraphs = new TelegraphView(app.renderer);
-  const numbers = new DamageNumbers();
+  const numbers = new DamageNumbers(atlas.get('mark_guard'));
   const ailments = new AilmentFx(atlas);
   const forms = new FormLayer(atlas, fx);
   const ai = new AiOverlay();

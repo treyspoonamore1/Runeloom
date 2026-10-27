@@ -240,6 +240,36 @@ export class FxView {
     this.burst(this.tNorm, 'splinter', x, y, 2, [6, 12], [0.3, 0.5], [0xffffff], [0.5, 0.4], { dir, spread: 1.2, spin: 14 });
   }
 
+  /**
+   * A bell rung by charge (playtest 8): a gold glow, two gold rings out from the shell, a big
+   * glint and sparks. size: the bell's radius in cells (Bellshell 2.2).
+   */
+  bellRing(x: number, y: number, size: number): void {
+    const k = size / 2.2;
+    const cy = y - 1 * k;
+    this.one(this.pAdd, 'glow', x, cy, 0.45, FX.bellRing, 3 * k, 7 * k, 0.9);
+    this.one(this.tNorm, 'ring', x, cy, 0.5, INK, 2.4 * k, 9 * k, 0.5);
+    this.one(this.tNorm, 'ring', x, cy, 0.5, FX.bellRing, 2.2 * k, 8.6 * k, 1);
+    this.one(this.tNorm, 'ring', x, cy, 0.38, FX.bellRingLight, 1.6 * k, 6 * k, 0.9);
+    this.glint(this.pNorm, x, cy - 0.6 * k, 3 * k, FX.bellRingLight, 0.3, rand(0, 1));
+    this.burst(this.pNorm, 'spark', x, cy, 14, [14, 30], [0.2, 0.4], [FX.bellRing, FX.bellRingLight, 0xffffff], [1.2 * k, 0.4], {
+      align: 0.03,
+      drag: 4,
+    });
+  }
+
+  /** A hit a state cut a lot (Shelled, Submerged): a small grey clank, a few dull sparks, no element accents. */
+  reducedHit(x: number, y: number, kbX: number, kbY: number): void {
+    const dir = kbX !== 0 || kbY !== 0 ? Math.atan2(-kbY, -kbX) : undefined;
+    this.glint(this.pNorm, x, y - 0.4, 1.1, FX.metal, 0.12, rand(0, 1));
+    this.burst(this.pNorm, 'spark', x, y - 0.4, 4, [8, 16], [0.08, 0.16], [FX.metal, 0xffffff], [0.7, 0.25], {
+      dir,
+      spread: dir === undefined ? 3.2 : 1.2,
+      align: 0.03,
+      drag: 7,
+    });
+  }
+
   /** Damage landed on an enemy. */
   hitEnemy(x: number, y: number, kind: string, type: DamageType, crit: boolean, kbX: number, kbY: number): void {
     const dir = kbX !== 0 || kbY !== 0 ? Math.atan2(kbY, kbX) : undefined;

@@ -150,7 +150,8 @@ export type SimEvent =
    * damageType is the type that dealt the most; byType splits amount by type (shared, never
    * mutate). kbX, kbY is the unit knockback direction, 0 if none. x, y is the target's position.
    * sourceId is the attacker (PLAYER_ID for the player). spellId: the player spell instance
-   * that dealt it, when there is one.
+   * that dealt it, when there is one. reduced: the target's state cut this hit a lot (Shelled,
+   * the Glasswater Coil's Submerged; actors/chemistry.ts reducedBy), absent otherwise.
    */
   | {
       type: 'hit';
@@ -165,6 +166,7 @@ export type SimEvent =
       kbY: number;
       byType?: DamageAmounts;
       spellId?: number;
+      reduced?: HitReducedBy;
     }
   /** A hit on the player was ignored because of i-frames. */
   | { type: 'evaded'; x: number; y: number; sourceId: number }
@@ -375,6 +377,9 @@ export type SimEventType = SimEvent['type'];
 export type Team = 'player' | 'enemy';
 
 /** What killed an enemy (see the 'death' event). */
+/** A state that cuts the damage a target takes a lot ('hit' event `reduced`). */
+export type HitReducedBy = 'shelled' | 'submerged';
+
 export type DeathCause = 'hit' | 'dot' | 'console';
 
 /** Ailments that send 'ailmentApplied' / 'ailmentEnded' (Freeze has 'freeze' / 'thaw'). */

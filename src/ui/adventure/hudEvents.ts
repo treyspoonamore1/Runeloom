@@ -13,6 +13,7 @@ import type { ItemRarity } from '../../sim/hero/types';
 import { riftGate } from '../../../data/riftGate';
 import { hearthBanner, hearthToast } from '../hearth/hearthEvents';
 import { introCards } from '../../../data/ui';
+import type { IconKind } from './icons';
 
 export const HUD_EVENT = {
   // ---- Rifts (M6, WorldEvent) ----
@@ -86,7 +87,9 @@ export type ToastKind =
   /** Hearth building and expedition news (M7). */
   | 'hearth'
   /** The Salvage Loom's Thread Scrap: quiet, merges over a longer window. */
-  | 'salvage';
+  | 'salvage'
+  /** A one-time hint (playtest 8: reducedHints.ts): stays longer, its text wraps. */
+  | 'hint';
 
 export interface ToastSpec {
   kind: ToastKind;
@@ -97,6 +100,8 @@ export interface ToastSpec {
   amount: number;
   /** Items, currencies and parts: what the toast's picture shows (src/ui/items/itemArt.tsx). */
   art?: ToastArt;
+  /** An icon other than the kind's own (hints). */
+  icon?: IconKind;
 }
 
 /** The picture of an item, currency or part toast. */
@@ -275,19 +280,23 @@ export function toastsFor(events: readonly LooseEvent[], names: ToastNames): Toa
   return out;
 }
 
+/** A center-screen banner. note: an @note text (playtest 8): it wraps, in a smaller font than room names. */
+export interface BannerSpec {
+  title: string;
+  sub: string;
+  note?: true;
+}
+
 /**
  * Center-screen banners besides the room banner: @note texts and boss kills. `bossName` turns
  * an enemy kind into a display name.
  */
-export function bannersFor(
-  events: readonly LooseEvent[],
-  bossName: (kind: string) => string,
-): { title: string; sub: string }[] {
-  const out: { title: string; sub: string }[] = [];
+export function bannersFor(events: readonly LooseEvent[], bossName: (kind: string) => string): BannerSpec[] {
+  const out: BannerSpec[] = [];
   for (const e of events) {
     const hb = hearthBanner(e);
     if (hb) out.push(hb);
-    else if (e.type === HUD_EVENT.note) out.push({ title: String(e.text ?? ''), sub: '' });
+    else if (e.type === HUD_EVENT.note) out.push({ title: String(e.text ?? ''), sub: '', note: true });
     else if (e.type === HUD_EVENT.bossAwake) {
       const card = introCards.bosses[String(e.kind)];
       if (card) out.push({ ...card });
@@ -330,6 +339,8 @@ export function pushToasts(
     mergeWindow: number;
     /** Salvage Loom toasts merge over this window (default: mergeWindow). */
     salvageWindow?: number;
+    /** Hint toasts stay this long (default: levelSeconds). */
+    hintSeconds?: number;
     max: number;
     nextId: () => number;
   },
@@ -337,7 +348,12 @@ export function pushToasts(
   let list = live.filter((t) => t.until > now);
   for (const t of incoming) {
     const last = list[list.length - 1];
-    const life = t.kind === 'level' ? opts.levelSeconds : opts.seconds;
+    const life =
+      t.kind === 'level'
+        ? opts.levelSeconds
+        : t.kind === 'hint'
+          ? (opts.hintSeconds ?? opts.levelSeconds)
+          : opts.seconds;
     const window = t.kind === 'salvage' ? (opts.salvageWindow ?? opts.mergeWindow) : opts.mergeWindow;
     if (
       (t.kind === 'scrap' || t.kind === 'salvage') &&

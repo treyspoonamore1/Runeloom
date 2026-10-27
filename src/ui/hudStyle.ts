@@ -91,6 +91,9 @@ export const hudCss = `
 .rl-banner { padding: calc(var(--u) * 2.4) calc(var(--u) * 8) calc(var(--u) * 1.6); background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(26, 22, 56, 0.8), rgba(26, 22, 56, 0.55) 55%, transparent 100%); position: absolute; top: 15%; left: 50%; z-index: 110; text-align: center; white-space: nowrap; transform: translateX(-50%); opacity: 0; animation: rl-banner 2.6s ease-out forwards; }
 .rl-banner h2 { margin: 0; font-size: calc(var(--u) * 6); font-weight: 700; letter-spacing: 0.06em; color: var(--gold-hi); paint-order: stroke fill; -webkit-text-stroke: calc(var(--u) * 1) var(--ink); text-shadow: 0 calc(var(--u) * 0.6) 0 var(--terra); }
 .rl-banner p { margin: calc(var(--u) * 0.4) 0 0; font-size: calc(var(--u) * 2.2); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sand); }
+/* @note texts (playtest 8: up to ~90 characters): wrap at a max width, smaller than room names. */
+.rl-banner.rl-note { white-space: normal; width: min(calc(var(--u) * 88), calc(100vw - 32px)); box-sizing: border-box; padding-left: calc(var(--u) * 5); padding-right: calc(var(--u) * 5); }
+.rl-banner.rl-note h2 { font-size: calc(var(--u) * 3.4); line-height: 1.3; letter-spacing: 0.02em; text-wrap: balance; -webkit-text-stroke-width: calc(var(--u) * 0.7); text-shadow: 0 calc(var(--u) * 0.4) 0 var(--terra); }
 .rl-banner::after { content: ''; display: block; height: calc(var(--u) * 0.5); margin: calc(var(--u) * 1) auto 0; width: 70%; border-radius: 99px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
 @keyframes rl-banner { 0% { opacity: 0; transform: translate(-50%, calc(var(--u) * -1.6)) scale(0.94); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1); } 74% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, calc(var(--u) * 0.8)); } }
 

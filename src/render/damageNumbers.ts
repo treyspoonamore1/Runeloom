@@ -1,4 +1,4 @@
-import { BitmapFont, BitmapText, Container } from 'pixi.js';
+import { BitmapFont, BitmapText, Container, Sprite, type Texture } from 'pixi.js';
 import type { DamageType } from '../../data/combatTypes';
 import { INK, NUMBERS as N } from './combatPalette';
 
@@ -36,12 +36,16 @@ interface Num {
   /** Cells risen over the number's life. */
   rise: number;
   live: boolean;
+  /** The shield mark of a reduced hit (playtest 8), drawn left of the number; null if none. */
+  mark: Sprite | null;
 }
 
 /**
  * Floating damage numbers (DESIGN §4): pooled bitmap text in screen space, placed from world
  * positions each frame so they keep a constant on-screen size. Rounded amounts, colored by damage
  * type; crits are bigger and gold with a pop; numbers on the same target stack sideways and up.
+ * A hit a state cut a lot ('hit' reduced: Shelled, Submerged) is a small dull grey number with a
+ * steel shield mark beside it and no pop, so it reads as "that barely went in".
  */
 export class DamageNumbers {
   readonly root = new Container();
@@ -50,14 +54,15 @@ export class DamageNumbers {
   private readonly stacks = new Map<number, { t: number; n: number }>();
   private time = 0;
 
-  constructor() {
+  /** markTexture: the reduced-hit shield (atlas 'mark_guard'); without it reduced hits show no mark. */
+  constructor(private readonly markTexture?: Texture) {
     installFont();
     for (let i = 0; i < N.pool; i++) {
       const text = new BitmapText({ text: '0', style: { fontFamily: FONT, fontSize: FONT_SIZE } });
       text.anchor.set(0.5, 1);
       text.visible = false;
       this.root.addChild(text);
-      this.nums.push({ text, wx: 0, wy: 0, t: 0, life: 1, size: 1, pop: 1, rise: N.rise, live: false });
+      this.nums.push({ text, wx: 0, wy: 0, t: 0, life: 1, size: 1, pop: 1, rise: N.rise, live: false, mark: null });
     }
   }
 
@@ -65,6 +70,7 @@ export class DamageNumbers {
     for (const n of this.nums) {
       n.live = false;
       n.text.visible = false;
+      if (n.mark) n.mark.visible = false;
     }
     this.stacks.clear();
   }
@@ -75,6 +81,21 @@ export class DamageNumbers {
     if (v <= 0) return;
     const color = onPlayer ? N.player : crit ? N.crit : N.colors[type];
     this.spawn(target, x, y, crit ? `${v}!` : `${v}`, color, crit ? N.critSize : N.size, crit ? N.critLife : N.life, crit ? N.critPop : 1.3);
+  }
+
+  /** A hit a state cut a lot (Shelled, Submerged): small, dull grey, a shield mark, no pop. */
+  reduced(target: number, x: number, y: number, amount: number, crit: boolean): void {
+    const v = Math.max(1, Math.round(amount));
+    const n = this.spawn(target, x, y, crit ? `${v}!` : `${v}`, N.reduced, N.reducedSize, N.reducedLife, 1, N.reducedRise);
+    if (!this.markTexture) return;
+    if (!n.mark) {
+      n.mark = new Sprite(this.markTexture);
+      n.mark.anchor.set(0.5);
+      this.root.addChild(n.mark);
+    }
+    n.mark.visible = true;
+    n.mark.alpha = 1;
+    this.root.setChildIndex(n.mark, this.root.children.length - 1);
   }
 
   /**
@@ -131,6 +152,7 @@ export class DamageNumbers {
     n.text.tint = color;
     n.text.visible = true;
     n.text.alpha = 1;
+    if (n.mark) n.mark.visible = false;
     // Newest on top.
     this.root.setChildIndex(n.text, this.root.children.length - 1);
     return n;
@@ -145,6 +167,7 @@ export class DamageNumbers {
       if (n.t >= n.life) {
         n.live = false;
         n.text.visible = false;
+        if (n.mark) n.mark.visible = false;
         continue;
       }
       const u = n.t / n.life;
@@ -154,6 +177,12 @@ export class DamageNumbers {
       n.text.position.set(n.wx * scale + ox, (n.wy - rise) * scale + oy);
       n.text.scale.set(((n.size * screenScale) / FONT_SIZE) * pop);
       n.text.alpha = u < 0.6 ? 1 : 1 - (u - 0.6) / 0.4;
+      if (n.mark?.visible) {
+        const px = n.size * screenScale * pop * N.reducedMark;
+        n.mark.width = n.mark.height = px;
+        n.mark.position.set(n.text.x - n.text.width / 2 - px * 0.55, n.text.y - n.text.height * 0.5);
+        n.mark.alpha = n.text.alpha;
+      }
     }
   }
 }

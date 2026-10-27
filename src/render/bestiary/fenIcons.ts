@@ -53,20 +53,30 @@ function crackedIcon(p: Pen): void {
   p.moveTo(-0.15, -0.2).quad(-0.3, -0.35, -0.12, -0.5).stroke(0.07, W, 0.9);
 }
 
-/** A brass bell ringing. */
+/** A brass bell ringing, on a gold disc (playtest 8: it must stand out from the other icons). */
 function rungIcon(p: Pen): void {
-  disc(p, 0x3a3240);
+  disc(p, B.bellshell.ringGold);
   p.moveTo(-0.3, 0.22)
     .quad(-0.3, -0.35, 0, -0.38)
     .quad(0.3, -0.35, 0.3, 0.22)
     .close()
-    .fill(B.bellshell.brassLight)
+    .fill(B.bellshell.brass)
     .stroke(0.07, INK);
-  p.circle(0, 0.28, 0.08).fill(B.bellshell.brassDark);
+  p.circle(0, 0.28, 0.08).fill(INK);
   for (const s of [-1, 1])
     p.moveTo(s * 0.4, -0.25)
       .quad(s * 0.52, 0, s * 0.4, 0.22)
-      .stroke(0.06, B.bellshell.ring);
+      .stroke(0.08, INK);
+}
+
+/**
+ * Playtest 8: the mark beside a damage number a state cut (Shelled, Submerged; 'hit' reduced):
+ * a small steel shield with a dent.
+ */
+function guardMark(p: Pen): void {
+  p.poly([0, -0.55, 0.46, -0.38, 0.42, 0.1, 0, 0.56, -0.42, 0.1, -0.46, -0.38]).fill(0xb8c2cc).stroke(0.12, INK);
+  p.poly([0, -0.38, 0.28, -0.27, 0.25, 0.06, 0, 0.36]).fill(0xe4eaef);
+  p.moveTo(-0.18, -0.12).lineTo(0.02, 0.02).lineTo(-0.08, 0.2).stroke(0.07, INK, 0.7);
 }
 
 export function fenIconEntries(): AtlasEntry[] {
@@ -84,6 +94,7 @@ export function fenIconEntries(): AtlasEntry[] {
     e('icon_hot', hotIcon),
     e('icon_cracked', crackedIcon),
     e('icon_rung', rungIcon),
+    e('mark_guard', guardMark),
   ];
 }
 

@@ -12,6 +12,7 @@ import { teamOfSource, isIgnited, type AilmentTarget } from '../combat/ailments'
 import { WORLD_SOURCE_ID, ignitable } from '../grid/cells';
 import { applyElement } from '../grid/paint';
 import { rasterize } from '../grid/raster';
+import type { HitReducedBy } from '../events';
 import type { GameState } from '../state';
 import { PLAYER_ID, type Enemy } from './enemies';
 import { isWet } from './terrainState';
@@ -46,6 +47,18 @@ export function enemyTakenMult(state: GameState, e: Enemy): number {
   // M8: the Glasswater Coil takes much less while Submerged (ai/bosses/coilState.ts).
   if (e.boss?.fen && bossFightOf(e.kind) === 'glasswater_coil') m *= coilTakenMult(state, e);
   return e.boss !== null && e.boss.superheated ? m * state.tuning.bosses.superheatDamageTaken : m;
+}
+
+/**
+ * The state that cuts hits on `e` a lot, for the 'hit' event's `reduced` (the damage numbers and
+ * hints read it): a shell that isn't rung open (Bellshell, Old Bellwether: chemistry.bell) or
+ * the Glasswater Coil Submerged. Elemental resistances are not states and never count.
+ */
+export function reducedBy(state: GameState, e: Enemy): HitReducedBy | undefined {
+  const bell = chemistryOf(e)?.bell;
+  if (bell !== undefined && e.special.openLeft <= 0 && bell.shelledTaken < 1) return 'shelled';
+  if (e.boss?.fen && bossFightOf(e.kind) === 'glasswater_coil' && coilTakenMult(state, e) < 1) return 'submerged';
+  return undefined;
 }
 
 /**

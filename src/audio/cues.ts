@@ -57,7 +57,9 @@ export function cuesForEvent(e: SimEvent, state: GameState): Cue[] {
     }
     case 'hit': {
       if (e.target === 'player') return [{ id: 'playerHurt', gain: e.amount > 0 ? 1 : 0.6 }];
+      // A hit a state cut (playtest 8) sits back under its clank (fenBossCues.ts).
       const out: Cue[] = [{ id: hitSfx[e.damageType], x: e.x, y: e.y }];
+      if (e.reduced !== undefined) out[0]!.gain = audioTuning.reducedHitGain;
       if (e.crit) out.push({ id: 'crit', x: e.x, y: e.y });
       return out;
     }
