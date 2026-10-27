@@ -17,6 +17,9 @@
  *       --room bellwether|coil plays the Fen boss arenas; --view fit,play adds play zoom; --viewport 390x844
  *   npm run shots -- --set fen [--shot fog,vents] [--viewport 390x844] [--milestone m8]   M8 Fen looks: fog and
  *       lantern, gusts and room wind, vents, borrowed terrain, pylon warning, F1 overlays, palettes
+ *   npm run shots -- --set boss [--shot coil_iced,bell_rung] [--viewport 390x844]   playtest 8: the Fen bosses
+ *       held in each state (Coil: submerged … overloaded; Bellwether: shelled, rung, rolling), with the
+ *       boss bar's state line and the pop label
  *   npm run shots -- --scenario weave_m5 --ticks 300 [--milestone m5]   a sim scenario (src/sim/scenarios.ts)
  *       set up and played in the browser for --ticks, then shot
  * Starts a Vite dev server on a free port and a headless Chromium; always shuts both down.
@@ -42,6 +45,7 @@ import { itemShotIds, itemShotUrl, runItemShot, type ItemShotId } from './lib/it
 import { showFight } from './lib/fightShots';
 import { hearthShotIds, showHearth, type HearthShotId } from './lib/hearthShots';
 import { fenShotIds, runFenShot, type FenShotId } from './lib/fenShots';
+import { bossShotIds, runBossShot, type BossShotId } from './lib/bossStateShots';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SHOTS_DIR = join(ROOT, 'shots');
@@ -76,7 +80,7 @@ runCli(async () => {
     port: { kind: 'number', default: 0, help: 'dev server port (0: any free port)' },
     shot: {
       kind: 'string',
-      help: `with --set ui: some of ${uiShotIds.join(', ')}; with --set item: some of ${itemShotIds.join(', ')}; with --set fen: some of ${fenShotIds.join(', ')}`,
+      help: `with --set ui: some of ${uiShotIds.join(', ')}; with --set item: some of ${itemShotIds.join(', ')}; with --set fen: some of ${fenShotIds.join(', ')}; with --set boss: some of ${bossShotIds.join(', ')}`,
     },
     section: { kind: 'string', help: 'gallery sections to shoot, comma-separated (default all, plus crowd)' },
     perf: { kind: 'boolean', help: 'gallery: measure render time with 300 M4 and 300 M1 enemies' },
@@ -261,6 +265,22 @@ runCli(async () => {
         }
         if (errors.length) console.warn(`warning: page errors in fen shot ${id}: ${errors.join('; ')}`);
       }
+    } else if (a.set === 'boss') {
+      const only = (a.shot?.split(',') ?? [...bossShotIds]) as BossShotId[];
+      const vp = `${viewport.width}x${viewport.height}`;
+      for (const id of only) {
+        if (!bossShotIds.includes(id))
+          throw new ArgError(`Unknown boss shot "${id}". Available: ${bossShotIds.join(', ')}`);
+        errors.length = 0;
+        await page.goto(`http://127.0.0.1:${port}/?scene=adventure&seed=${SEED}&paused=1`);
+        await page.waitForFunction(() => window.__runeloom?.ready === true, undefined, { timeout: 30_000 });
+        const note = await runBossShot(page, id);
+        const file = join(SHOTS_DIR, `${milestone}_boss_${id}_${vp}.png`);
+        await page.screenshot({ path: file, timeout: 120_000 });
+        console.log(`shot ${id}: ${note}`);
+        written.push(file);
+        if (errors.length) console.warn(`warning: page errors in boss shot ${id}: ${errors.join('; ')}`);
+      }
     } else if (a.set === 'gallery') {
       const url = `http://127.0.0.1:${port}/?scene=gallery`;
       const only = a.section?.split(',');
@@ -315,7 +335,7 @@ runCli(async () => {
       if (errors.length) console.warn(`warning: page errors in scenario ${sc.id}: ${errors.join('; ')}`);
     } else if (a.set !== undefined)
       throw new ArgError(
-        `Unknown --set "${a.set}". Available: creature, rooms, hearth, onload, ui, gallery, item, fight, fen`,
+        `Unknown --set "${a.set}". Available: creature, rooms, hearth, onload, ui, gallery, item, fight, fen, boss`,
       );
     for (const scene of a.set === undefined && a.scenario === undefined ? selected : []) {
       errors.length = 0;

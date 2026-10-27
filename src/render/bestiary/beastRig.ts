@@ -1,5 +1,6 @@
 import { Container, Sprite } from 'pixi.js';
 import type { AttackPhase, Enemy } from '../../sim';
+import type { Tuning } from '../../../data/tuning';
 import type { EnemySignal } from '../../app/m4Signals';
 import { M4_STATE, type M4AttackKey } from '../../app/m4Wiring';
 import type { Atlas } from '../atlas';
@@ -38,6 +39,8 @@ export interface BeastCtx {
   shadow: FxParticle | null;
   glow: FxParticle | null;
   fx: BeastFx;
+  /** The live tuning (render-feel sections such as bossReadout). */
+  tuning: Tuning;
 }
 
 /** Kind-specific parts and poses over EnemyView's shared bob, flash and squash. */

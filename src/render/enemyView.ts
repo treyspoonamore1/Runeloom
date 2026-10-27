@@ -284,7 +284,7 @@ export class EnemyView {
     }
     this.animateParts(cx, cy, wind, norm);
     this.placeShadow(x, y, hop);
-    if (this.beast && beastFx) this.updateBeast(e, sig, beastFx, adt, wind, cx, cy);
+    if (this.beast && beastFx) this.updateBeast(state, sig, beastFx, adt, wind, cx, cy);
   }
 
   /** Windup seconds of the current attack: the def's, else the length seen when it started. */
@@ -305,7 +305,8 @@ export class EnemyView {
     return r >= 2.5 ? 0.4 : r >= 1.5 ? 0.75 : 1;
   }
 
-  private updateBeast(e: Enemy, sig: EnemySignal | undefined, fx: BeastFx, dt: number, wind: number, cx: number, cy: number): void {
+  private updateBeast(state: GameState, sig: EnemySignal | undefined, fx: BeastFx, dt: number, wind: number, cx: number, cy: number): void {
+    const e = this.enemy!;
     const c = (this.ctx ??= {
       e,
       sig,
@@ -326,6 +327,7 @@ export class EnemyView {
       shadow: null,
       glow: null,
       fx,
+      tuning: state.tuning,
     });
     c.e = e;
     c.sig = sig;
@@ -346,6 +348,7 @@ export class EnemyView {
     c.shadow = this.shadow;
     c.glow = this.glow;
     c.fx = fx;
+    c.tuning = state.tuning;
     this.beast!.update(c);
   }
 
