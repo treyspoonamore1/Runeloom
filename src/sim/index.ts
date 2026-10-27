@@ -15,7 +15,7 @@ export { moveCircle, circleOverlapsSolid, type CircleBody } from './actors/colli
 export { SPATIAL_BUCKET_CELLS } from './core/constants';
 export { isShotSolidCell } from './world/room';
 export { SpatialHash, type HashBody } from './core/spatialHash';
-export type { SimEvent, SimEventType, Team, ProjectileEndReason, DeathCause, TimedAilment } from './events';
+export type { SimEvent, SimEventType, Team, ProjectileEndReason, DeathCause, TimedAilment, HitReducedBy } from './events';
 export type { EnemyEvent } from './enemyEvents';
 export {
   PLAYER_ID,

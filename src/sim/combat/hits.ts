@@ -10,7 +10,7 @@ import { onEnemyKilled } from '../hero/onKill';
 import type { GameState } from '../state';
 import { applyHitAilments, isFrozen, teamOfSource, type AilmentTarget } from './ailments';
 import { arcShock } from './arcs';
-import { deathTerrain, enemyTakenMult } from '../actors/chemistry';
+import { deathTerrain, enemyTakenMult, reducedBy } from '../actors/chemistry';
 import { noteHurt, noteKill, noteShatter } from '../weave/runtime/queue';
 import { resolveHit, zeroAmounts, type DamagePacket, type DamageTarget, type HitResult } from './damage';
 import { afterPlayerHit, hasHitRules, playerHitPacket } from '../hero/effectsCombat';
@@ -111,6 +111,8 @@ function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInf
   e.life -= res.total;
   const kb = info.knockback * def.knockbackScale;
   if (kb > 0) addKnockback(e, info.dirX, info.dirY, kb, state.tuning.feel);
+  // Read before the hit's own effects: a reduced hit is one the state cut.
+  const reduced = reducedBy(state, e);
   emit(state, {
     type: 'hit',
     target: e.id,
@@ -124,6 +126,7 @@ function hitEnemy(state: GameState, e: Enemy, packet: DamagePacket, info: HitInf
     kbY: kb > 0 ? info.dirY : 0,
     byType: res.byType,
     spellId: info.spellId,
+    ...(reduced !== undefined ? { reduced } : {}),
   });
   if (res.crit) addHitstop(state, state.tuning.feel.hitstopCrit);
   if (rules) afterPlayerHit(state, e, res, info);
